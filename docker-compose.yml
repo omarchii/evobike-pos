@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: evobike_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evobike
+      POSTGRES_PASSWORD: evobike123
+      POSTGRES_DB: evobike_pos2
+    ports:
+      - "5434:5432"
+    volumes:
+      - evobike_pgdata:/var/lib/postgresql/data
+
+volumes:
+  evobike_pgdata:
