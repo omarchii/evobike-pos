@@ -18,12 +18,11 @@ export async function GET(request: Request) {
             return NextResponse.json([]);
         }
 
-        // Search in CustomerBike for serialNumber
         const bikes = await prisma.customerBike.findMany({
             where: {
                 serialNumber: {
                     contains: query,
-                    mode: 'insensitive'
+                    mode: "insensitive"
                 }
             },
             include: {
@@ -32,7 +31,19 @@ export async function GET(request: Request) {
             take: 10
         });
 
-        return NextResponse.json(bikes);
+        // Serializar campos Decimal de Customer antes de retornar como JSON
+        const serialized = bikes.map((bike) => ({
+            ...bike,
+            customer: bike.customer
+                ? {
+                      ...bike.customer,
+                      creditLimit: Number(bike.customer.creditLimit),
+                      balance: Number(bike.customer.balance)
+                  }
+                : null
+        }));
+
+        return NextResponse.json(serialized);
     } catch (error) {
         console.error("Error searching by serial:", error);
         return new NextResponse("Internal Server Error", { status: 500 });
