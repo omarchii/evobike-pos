@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 interface SaleInput {
-    items: { productId: string; quantity: number; price: number; name: string; isSerialized?: boolean; serialNumber?: string }[];
+    items: { modeloConfiguracionId: string; quantity: number; price: number; name: string; isSerialized?: boolean; serialNumber?: string }[];
     total: number;
     paymentMethod: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE";
     isLayaway?: boolean;
@@ -79,8 +79,8 @@ export async function processSaleAction(input: SaleInput) {
                 // Find existing stock
                 const stock = await tx.stock.findUnique({
                     where: {
-                        productId_branchId: {
-                            productId: item.productId,
+                        modeloConfiguracionId_branchId: {
+                            modeloConfiguracionId: item.modeloConfiguracionId,
                             branchId: branchId
                         }
                     }
@@ -107,12 +107,19 @@ export async function processSaleAction(input: SaleInput) {
                         throw new Error(`El producto ${item.name} requiere un número de serie, y DEBES seleccionar o crear un cliente a quién asignárselo.`);
                     }
 
-                    // Create CustomerBike linked to this customer
+                    // Validar unicidad del número de serie en la sucursal
+                    const existingBike = await tx.customerBike.findFirst({
+                        where: { serialNumber: item.serialNumber }
+                    });
+                    if (existingBike) {
+                        throw new Error(`Número de serie ya registrado en esta sucursal: ${item.serialNumber}`);
+                    }
+
                     await tx.customerBike.create({
                         data: {
                             customerId: input.customerId,
                             serialNumber: item.serialNumber,
-                            brand: "EVOBIKE", // Defaulting, could be added to DB later
+                            brand: "EVOBIKE",
                             model: item.name,
                             notes: `Venta original Folio pendiente`
                         }
@@ -136,7 +143,7 @@ export async function processSaleAction(input: SaleInput) {
                     total: input.total,
                     items: {
                         create: input.items.map(item => ({
-                            productId: item.productId,
+                            modeloConfiguracionId: item.modeloConfiguracionId,
                             quantity: item.quantity,
                             price: item.price
                         }))
@@ -148,7 +155,7 @@ export async function processSaleAction(input: SaleInput) {
             for (const item of input.items) {
                 await tx.inventoryMovement.create({
                     data: {
-                        productId: item.productId,
+                        modeloConfiguracionId: item.modeloConfiguracionId,
                         branchId: branchId,
                         userId: userId,
                         type: "SALE",
@@ -183,8 +190,8 @@ export async function processSaleAction(input: SaleInput) {
 
         return { success: true, saleId: result.id };
 
-    } catch (error: any) {
-        console.error("Error processing sale:", error);
-        return { success: false, error: error.message || "Error al procesar la venta" };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al procesar la venta";
+        return { success: false, error: message };
     }
 }
