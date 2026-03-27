@@ -71,11 +71,11 @@ export default function Sidebar({ user }: { user: UserProp }) {
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                                 isActive
-                                    ? "bg-[#1B4332] text-[#a5d0b9]"
+                                    ? "bg-emerald-600 text-white"
                                     : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5"
                             )}
                         >
-                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#a5d0b9]" : "text-zinc-500")} />
+                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-zinc-500")} />
                             {route.label}
                         </Link>
                     );
@@ -86,7 +86,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
             <div className="px-3 pb-4 pt-3 space-y-3">
                 <div className="flex items-center gap-3 px-2">
                     <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-[#1B4332] text-[#a5d0b9] text-xs font-medium">
+                        <AvatarFallback className="bg-emerald-600 text-white text-xs font-medium">
                             {getInitials(user?.name)}
                         </AvatarFallback>
                     </Avatar>

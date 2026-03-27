@@ -16,7 +16,7 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between px-6 backdrop-blur-md bg-white/90 dark:bg-[#131313]/80 border-b border-zinc-200 dark:border-white/5 shrink-0">
             {/* Left: Branch chip */}
-            <div className="bg-[#1B4332] text-[#a5d0b9] px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap">
+            <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap">
                 BRANCH: {user.branchName ?? "—"}
             </div>
 
@@ -42,8 +42,8 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
                 <button aria-label="Ayuda" className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
                     <HelpCircle className="h-5 w-5" />
                 </button>
-                <Avatar className="h-8 w-8 border border-[#1B4332]">
-                    <AvatarFallback className="bg-[#1B4332] text-[#a5d0b9] text-xs font-medium">
+                <Avatar className="h-8 w-8 border border-emerald-600">
+                    <AvatarFallback className="bg-emerald-600 text-white text-xs font-medium">
                         {getInitials(user.name)}
                     </AvatarFallback>
                 </Avatar>

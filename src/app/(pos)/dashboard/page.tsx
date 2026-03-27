@@ -90,17 +90,17 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Ingresos del Día — DESTACADA */}
-                <div className="bg-[#1B4332] rounded-2xl p-5 space-y-3">
+                <div className="bg-emerald-600 rounded-2xl p-5 space-y-3">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-[#a5d0b9]/60 uppercase tracking-wider">
+                        <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
                             Ingresos del Día
                         </span>
-                        <Banknote className="h-4 w-4 text-[#a5d0b9]/60" />
+                        <Banknote className="h-4 w-4 text-white/60" />
                     </div>
-                    <p className="text-3xl font-bold text-[#a5d0b9]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                    <p className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                         ${revenueToday.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-[#a5d0b9]/50">Total facturado hoy</p>
+                    <p className="text-xs text-white/50">Total facturado hoy</p>
                 </div>
 
                 {/* Taller Activo */}
@@ -147,7 +147,7 @@ export default async function DashboardPage() {
                             </p>
                         </div>
                         <div className="flex gap-1">
-                            <button className="px-3 py-1 rounded-full text-xs font-medium bg-[#1B4332] text-[#a5d0b9]">
+                            <button className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-600 text-white">
                                 Semana
                             </button>
                             <button className="px-3 py-1 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-700 transition-colors">
@@ -198,14 +198,14 @@ export default async function DashboardPage() {
                                                 </p>
                                             </div>
                                             <div className="text-right shrink-0">
-                                                <p className="text-sm font-semibold text-[#1B4332]">
+                                                <p className="text-sm font-semibold text-emerald-700">
                                                     +${Number(sale.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                                                 </p>
                                                 <span
                                                     className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                                                         sale.status === "LAYAWAY"
                                                             ? "bg-amber-100 text-amber-600"
-                                                            : "bg-[#1B4332]/10 text-[#1B4332]"
+                                                            : "bg-emerald-50 text-emerald-700"
                                                     }`}
                                                 >
                                                     {STATUS_LABELS[sale.status as string] ?? sale.status}
