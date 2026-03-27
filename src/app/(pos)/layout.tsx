@@ -27,7 +27,7 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
                     aria-hidden="true"
                     tabIndex={-1}
                     placeholder="Buscar órdenes, VIN…"
-                    className="w-full bg-[#1e1e1e] rounded-2xl pl-9 pr-4 py-2 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:ring-1 focus:ring-[#a5d0b9]/30"
+                    className="w-full bg-[#1e1e1e] rounded-2xl pl-9 pr-4 py-2 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none pointer-events-none cursor-default"
                 />
             </div>
 
