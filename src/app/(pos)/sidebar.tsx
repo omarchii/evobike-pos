@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface UserProp {
     name?: string | null;
@@ -26,53 +26,14 @@ interface UserProp {
 }
 
 const routes = [
-    {
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        href: "/dashboard",
-        color: "text-sky-500",
-    },
-    {
-        label: "Punto de Venta",
-        icon: ShoppingCart,
-        href: "/point-of-sale",
-        color: "text-emerald-500",
-    },
-    {
-        label: "Arqueo de Caja",
-        icon: Vault,
-        href: "/cash-register",
-        color: "text-yellow-500",
-    },
-    {
-        label: "Taller Mecánico",
-        icon: Wrench,
-        href: "/workshop",
-        color: "text-violet-500",
-    },
-    {
-        label: "Inventario",
-        icon: Package,
-        color: "text-orange-500",
-        href: "/inventory",
-    },
-    {
-        label: "Apartados",
-        icon: ArchiveRestore,
-        href: "/layaways",
-        color: "text-amber-500",
-    },
-    {
-        label: "Clientes",
-        icon: Users,
-        color: "text-pink-500",
-        href: "/customers",
-    },
-    {
-        label: "Configuración",
-        icon: Settings,
-        href: "/settings",
-    }
+    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
+    { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
+    { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
+    { label: "Inventario", icon: Package, href: "/inventory" },
+    { label: "Apartados", icon: ArchiveRestore, href: "/layaways" },
+    { label: "Clientes", icon: Users, href: "/customers" },
+    { label: "Configuración", icon: Settings, href: "/settings" },
 ];
 
 export default function Sidebar({ user }: { user: UserProp }) {
@@ -84,60 +45,65 @@ export default function Sidebar({ user }: { user: UserProp }) {
     };
 
     return (
-        <div className="space-y-4 py-4 flex flex-col h-full bg-slate-900 dark:bg-slate-950 text-white w-72 shadow-xl border-r border-slate-800">
-            <div className="px-3 py-2 flex-1">
-                <Link href="/dashboard" className="flex items-center pl-3 pr-4 mb-10 mt-2">
-                    <div className="relative w-full h-[40px]">
+        <div className="flex flex-col h-full bg-[#0d0d0d] text-white w-64 shrink-0">
+            {/* Logo */}
+            <div className="px-5 pt-6 pb-4">
+                <Link href="/dashboard" className="flex items-center">
+                    <div className="relative w-full h-[36px]">
                         <Image
                             src="/evobike-logo.webp"
                             alt="EVOBIKE Logo"
                             fill
-                            className="object-contain object-left dark:invert-[0.9]"
+                            className="object-contain object-left"
                         />
                     </div>
                 </Link>
-                <div className="space-y-1">
-                    {routes.map((route) => (
+            </div>
+
+            {/* Nav */}
+            <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+                {routes.map((route) => {
+                    const isActive = pathname === route.href;
+                    return (
                         <Link
                             key={route.href}
                             href={route.href}
                             className={cn(
-                                "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
-                                pathname === route.href
-                                    ? "text-white bg-white/10"
-                                    : "text-zinc-400"
+                                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                                isActive
+                                    ? "bg-[#1B4332] text-[#a5d0b9]"
+                                    : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"
                             )}
                         >
-                            <div className="flex items-center flex-1">
-                                <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
-                                {route.label}
-                            </div>
+                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#a5d0b9]" : "text-zinc-500")} />
+                            {route.label}
                         </Link>
-                    ))}
-                </div>
-            </div>
+                    );
+                })}
+            </nav>
 
-            <div className="px-4 py-4 mt-auto border-t border-slate-800">
-                <div className="flex items-center gap-x-3 mb-4">
-                    <Avatar className="h-10 w-10 border border-slate-700">
-                        <AvatarImage src="" />
-                        <AvatarFallback className="bg-slate-800 text-slate-300">
+            {/* Footer */}
+            <div className="px-3 pb-4 pt-3 space-y-3">
+                <div className="flex items-center gap-3 px-2">
+                    <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-[#1B4332] text-[#a5d0b9] text-xs font-medium">
                             {getInitials(user?.name)}
                         </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col flex-1 truncate">
-                        <span className="text-sm font-medium">{user?.name}</span>
-                        <span className="text-xs text-slate-400 truncate">
-                            {user?.role} • {user?.branchName}
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-medium text-zinc-200 truncate">{user?.name}</span>
+                        <span className="text-xs text-zinc-500 truncate">
+                            {user?.role} · {user?.branchName}
                         </span>
                     </div>
                 </div>
                 <Button
-                    variant="outline"
-                    className="w-full justify-start text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-zinc-500 hover:text-zinc-200 hover:bg-white/5 px-2"
                     onClick={() => signOut({ callbackUrl: "/login" })}
                 >
-                    <LogOut className="h-4 w-4 mr-2" />
+                    <LogOut className="h-4 w-4 mr-2 shrink-0" />
                     Cerrar Sesión
                 </Button>
             </div>
