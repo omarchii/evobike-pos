@@ -6,7 +6,14 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { ServiceOrderStatus } from "@prisma/client";
 
+interface SessionUser {
+    id: string;
+    branchId: string;
+}
+
 // Mover una orden entre columnas del Kanban
+// Nota: la transición COMPLETED → DELIVERED se maneja vía POST /api/workshop/deliver
+// porque requiere cobro (CashTransaction). Este action solo avanza hasta COMPLETED.
 export async function updateServiceOrderStatus(orderId: string, currentStatus: ServiceOrderStatus) {
     try {
         const session = await getServerSession(authOptions);
@@ -21,10 +28,6 @@ export async function updateServiceOrderStatus(orderId: string, currentStatus: S
             case "IN_PROGRESS":
                 newStatus = "COMPLETED";
                 break;
-            case "COMPLETED":
-                newStatus = "DELIVERED";
-                // TODO: Handle Payment/Sale linkage when delivering a paid service
-                break;
             default:
                 return { success: false, error: "Estado no válido para avanzar." };
         }
@@ -36,8 +39,9 @@ export async function updateServiceOrderStatus(orderId: string, currentStatus: S
 
         revalidatePath("/workshop");
         return { success: true, newStatus: updated.status };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al actualizar el estado";
+        return { success: false, error: message };
     }
 }
 
@@ -56,8 +60,7 @@ export async function createServiceOrder(input: NewOrderInput) {
         const session = await getServerSession(authOptions);
         if (!session?.user) return { success: false, error: "No autorizado" };
 
-        const userId = (session.user as any).id;
-        const branchId = (session.user as any).branchId;
+        const { id: userId, branchId } = session.user as unknown as SessionUser;
 
         if (!branchId) return { success: false, error: "Empleado sin sucursal asignada." };
 
@@ -102,15 +105,18 @@ export async function createServiceOrder(input: NewOrderInput) {
         revalidatePath("/workshop");
         return { success: true, orderId: newOrder.id, folio: newOrder.folio };
 
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al crear la orden";
+        return { success: false, error: message };
     }
 }
 
-// Agregar item a orden de servicio
+// Agregar item a orden de servicio.
+// Si el item tiene modeloConfiguracionId, verifica stock, lo descuenta
+// y registra un InventoryMovement(WORKSHOP_USAGE) dentro de una $transaction.
 export async function addServiceOrderItem(data: {
     serviceOrderId: string;
-    productId?: string;
+    modeloConfiguracionId?: string;
     description: string;
     quantity: number;
     price: number;
@@ -119,6 +125,10 @@ export async function addServiceOrderItem(data: {
         const session = await getServerSession(authOptions);
         if (!session?.user) return { success: false, error: "No autorizado" };
 
+        const { id: userId, branchId } = session.user as unknown as SessionUser;
+
+        if (!branchId) return { success: false, error: "Empleado sin sucursal asignada" };
+
         const order = await prisma.serviceOrder.findUnique({ where: { id: data.serviceOrderId } });
         if (!order) return { success: false, error: "Orden no encontrada" };
 
@@ -126,33 +136,71 @@ export async function addServiceOrderItem(data: {
             return { success: false, error: "No se puede modificar una orden cerrada/cancelada" };
         }
 
-        // Insert Item
-        await prisma.serviceOrderItem.create({
-            data: {
-                serviceOrderId: data.serviceOrderId,
-                productId: data.productId || null,
-                description: data.description,
-                quantity: data.quantity,
-                price: data.price
+        await prisma.$transaction(async (tx) => {
+            // Si es una refacción de inventario, verificar y descontar stock
+            if (data.modeloConfiguracionId) {
+                const stock = await tx.stock.findUnique({
+                    where: {
+                        modeloConfiguracionId_branchId: {
+                            modeloConfiguracionId: data.modeloConfiguracionId,
+                            branchId
+                        }
+                    }
+                });
+
+                if (!stock || stock.quantity < data.quantity) {
+                    throw new Error("Stock insuficiente para la refacción seleccionada");
+                }
+
+                await tx.stock.update({
+                    where: { id: stock.id },
+                    data: { quantity: { decrement: data.quantity } }
+                });
+
+                await tx.inventoryMovement.create({
+                    data: {
+                        modeloConfiguracionId: data.modeloConfiguracionId,
+                        branchId,
+                        userId,
+                        type: "WORKSHOP_USAGE",
+                        quantity: -data.quantity,
+                        referenceId: data.serviceOrderId
+                    }
+                });
             }
-        });
 
-        // Update Totals
-        const items = await prisma.serviceOrderItem.findMany({ where: { serviceOrderId: data.serviceOrderId } });
-        const subtotal = items.reduce((acc, current) => acc + (Number(current.price) * current.quantity), 0);
-        const total = subtotal; // If iva applies, calculate here
+            await tx.serviceOrderItem.create({
+                data: {
+                    serviceOrderId: data.serviceOrderId,
+                    modeloConfiguracionId: data.modeloConfiguracionId ?? null,
+                    description: data.description,
+                    quantity: data.quantity,
+                    price: data.price
+                }
+            });
 
-        await prisma.serviceOrder.update({
-            where: { id: data.serviceOrderId },
-            data: { subtotal, total }
+            // Recalcular totales con los ítems actualizados
+            const items = await tx.serviceOrderItem.findMany({
+                where: { serviceOrderId: data.serviceOrderId }
+            });
+            const subtotal = items.reduce(
+                (acc, item) => acc + Number(item.price) * item.quantity,
+                0
+            );
+
+            await tx.serviceOrder.update({
+                where: { id: data.serviceOrderId },
+                data: { subtotal, total: subtotal }
+            });
         });
 
         revalidatePath(`/workshop/${data.serviceOrderId}`);
         revalidatePath("/workshop");
 
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al agregar el concepto";
+        return { success: false, error: message };
     }
 }
 
@@ -185,7 +233,8 @@ export async function removeServiceOrderItem(itemId: string, serviceOrderId: str
         revalidatePath("/workshop");
 
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al eliminar el concepto";
+        return { success: false, error: message };
     }
 }
