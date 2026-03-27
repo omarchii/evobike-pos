@@ -1,193 +1,275 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Banknote, Users, Wrench, ArchiveRestore, Activity } from "lucide-react";
+import { TrendingUp, Banknote, Wrench, ArchiveRestore } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const STATUS_LABELS: Record<string, string> = {
+    COMPLETED: "Venta",
+    LAYAWAY: "Apartado",
+    CANCELLED: "Cancelado",
+};
+
+const WORKSHOP_STATUS_LABELS: Record<string, string> = {
+    PENDING: "Pendiente",
+    IN_PROGRESS: "En Proceso",
+    COMPLETED: "Completado",
+    DELIVERED: "Entregado",
+    CANCELLED: "Cancelado",
+};
 
 export default async function DashboardPage() {
     const session = await getServerSession(authOptions);
     const branchId = (session?.user as any)?.branchId;
+    const branchName = (session?.user as any)?.branchName ?? "la Sucursal";
 
-    // Dates for filtering "Today"
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    // 1. Sales Today (Sum)
     const salesTodayAgg = await prisma.sale.aggregate({
-        where: {
-            branchId: branchId,
-            createdAt: {
-                gte: startOfToday,
-                lte: endOfToday,
-            },
-            status: "COMPLETED"
-        },
-        _sum: {
-            total: true
-        }
+        where: { branchId, createdAt: { gte: startOfToday, lte: endOfToday }, status: "COMPLETED" },
+        _sum: { total: true },
     });
     const revenueToday = Number(salesTodayAgg._sum.total || 0);
 
-    // 2. Active Service Orders
     const activeWorkshopCount = await prisma.serviceOrder.count({
-        where: {
-            branchId: branchId,
-            status: { in: ["PENDING", "IN_PROGRESS"] }
-        }
+        where: { branchId, status: { in: ["PENDING", "IN_PROGRESS"] } },
     });
 
-    // 3. Active Layaways
     const activeLayawaysCount = await prisma.sale.count({
-        where: {
-            branchId: branchId,
-            status: "LAYAWAY"
-        }
+        where: { branchId, status: "LAYAWAY" },
     });
 
-    // 4. Total Costumers
-    const totalCustomersCount = await prisma.customer.count();
+    const salesTodayCount = await prisma.sale.count({
+        where: { branchId, status: "COMPLETED", createdAt: { gte: startOfToday, lte: endOfToday } },
+    });
 
-    // 5. Recent Activity (Last 5 Sales)
     const recentSales = await prisma.sale.findMany({
-        where: { branchId: branchId },
-        orderBy: { createdAt: 'desc' },
+        where: { branchId },
+        orderBy: { createdAt: "desc" },
         take: 5,
-        include: { customer: true, user: true }
+        include: { customer: true, user: true },
+    });
+
+    const upcomingOrders = await prisma.serviceOrder.findMany({
+        where: { branchId, status: { in: ["PENDING", "IN_PROGRESS"] } },
+        orderBy: { createdAt: "asc" },
+        take: 3,
+        include: { customer: true },
     });
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Panel de Control</h1>
-                    <p className="text-slate-500">Resumen operativo para {(session?.user as any)?.branchName || 'la Sucursal Actual'}</p>
+            {/* Header */}
+            <div>
+                <h1
+                    className="text-2xl font-bold text-[#f5f5f5]"
+                    style={{ fontFamily: "var(--font-space-grotesk)" }}
+                >
+                    Panel de Control
+                </h1>
+                <p className="text-sm text-zinc-500 mt-0.5">Resumen diario · {branchName}</p>
+            </div>
+
+            {/* Metric Cards */}
+            <div className="grid grid-cols-4 gap-4">
+                {/* Ventas Hoy */}
+                <div className="bg-[#1e1e1e] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Ventas Hoy</span>
+                        <TrendingUp className="h-4 w-4 text-zinc-500" />
+                    </div>
+                    <p className="text-3xl font-bold text-[#f5f5f5]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                        {salesTodayCount}{" "}
+                        <span className="text-lg font-normal text-zinc-500">unidades</span>
+                    </p>
+                    <p className="text-xs text-zinc-600">Ventas cobradas hoy</p>
+                </div>
+
+                {/* Ingresos del Día — DESTACADA */}
+                <div className="bg-[#1B4332] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-[#a5d0b9]/60 uppercase tracking-wider">
+                            Ingresos del Día
+                        </span>
+                        <Banknote className="h-4 w-4 text-[#a5d0b9]/60" />
+                    </div>
+                    <p className="text-3xl font-bold text-[#a5d0b9]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                        ${revenueToday.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-[#a5d0b9]/50">Total facturado hoy</p>
+                </div>
+
+                {/* Taller Activo */}
+                <div className="bg-[#1e1e1e] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Taller Activo</span>
+                        <Wrench className="h-4 w-4 text-zinc-500" />
+                    </div>
+                    <p className="text-3xl font-bold text-[#f5f5f5]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                        {String(activeWorkshopCount).padStart(2, "0")}{" "}
+                        <span className="text-lg font-normal text-zinc-500">órdenes</span>
+                    </p>
+                    <p className="text-xs text-zinc-600">Pendientes / En proceso</p>
+                </div>
+
+                {/* Apartados */}
+                <div className="bg-[#1e1e1e] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Apartados</span>
+                        <ArchiveRestore className="h-4 w-4 text-zinc-500" />
+                    </div>
+                    <p className="text-3xl font-bold text-[#f5f5f5]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                        {String(activeLayawaysCount).padStart(2, "0")}{" "}
+                        <span className="text-lg font-normal text-zinc-500">tickets</span>
+                    </p>
+                    <p className="text-xs text-zinc-600">Por liquidar</p>
                 </div>
             </div>
 
-            {/* TOP METRICS */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="border-t-4 border-t-emerald-500 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500">
-                            Ingresos del Día
-                        </CardTitle>
-                        <Banknote className="h-4 w-4 text-emerald-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600">${revenueToday.toFixed(2)}</div>
-                        <p className="text-xs text-slate-400 mt-1">
-                            Ventas cobradas hoy
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-t-4 border-t-violet-500 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500">
-                            Taller Activo
-                        </CardTitle>
-                        <Wrench className="h-4 w-4 text-violet-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{activeWorkshopCount}</div>
-                        <p className="text-xs text-slate-400 mt-1">
-                            Órdenes Pendientes/Proceso
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-t-4 border-t-amber-500 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500">
-                            Apartados Activos
-                        </CardTitle>
-                        <ArchiveRestore className="h-4 w-4 text-amber-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{activeLayawaysCount}</div>
-                        <p className="text-xs text-slate-400 mt-1">
-                            Tickets por liquidar
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-t-4 border-t-sky-500 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500">
-                            Clientes (CRM)
-                        </CardTitle>
-                        <Users className="h-4 w-4 text-sky-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{totalCustomersCount}</div>
-                        <p className="text-xs text-slate-400 mt-1">
-                            Contactos registrados
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* RECENT ACTIVITY & CHARTS */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <Activity className="h-5 w-5 text-emerald-500" />
-                            Rendimiento Semanal
-                        </CardTitle>
-                        <CardDescription>
-                            Visualización de ventas de los últimos 7 días.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[250px] w-full flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                            {/* Placeholder for future Recharts/Tremor Integration */}
-                            <p className="text-slate-400 text-sm">El gráfico de barras se activará en la v2.</p>
+            {/* Main Grid */}
+            <div className="grid grid-cols-7 gap-4">
+                {/* Revenue Trend — col 1-4 */}
+                <div className="col-span-4 bg-[#1e1e1e] rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-1">
+                        <div>
+                            <h2
+                                className="text-base font-semibold text-[#f5f5f5]"
+                                style={{ fontFamily: "var(--font-space-grotesk)" }}
+                            >
+                                Tendencia de Ingresos
+                            </h2>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                                Análisis de rendimiento semanal
+                            </p>
                         </div>
-                    </CardContent>
-                </Card>
+                        <div className="flex gap-1">
+                            <button className="px-3 py-1 rounded-full text-xs font-medium bg-[#1B4332] text-[#a5d0b9]">
+                                Semana
+                            </button>
+                            <button className="px-3 py-1 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors">
+                                Mes
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mt-4 h-56 flex items-center justify-center rounded-xl bg-[#131313]">
+                        <p className="text-zinc-600 text-sm">El gráfico se activará en v2</p>
+                    </div>
+                </div>
 
-                <Card className="col-span-3 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Ventas Recientes</CardTitle>
-                        <CardDescription>
-                            Últimas {recentSales.length} transacciones generadas.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-6">
-                            {recentSales.map(sale => (
-                                <div key={sale.id} className="flex items-center">
-                                    <div className="ml-4 space-y-1 overflow-hidden">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-medium leading-none truncate w-[150px]">
-                                                {sale.customer ? sale.customer.name : "Mostrador"}
-                                            </p>
-                                            <Badge variant={sale.status === "LAYAWAY" ? "secondary" : "default"} className="text-[10px] h-4">
-                                                {sale.status === "LAYAWAY" ? "APARTADO" : "VENTA"}
-                                            </Badge>
+                {/* Right column — col 5-7 */}
+                <div className="col-span-3 space-y-4">
+                    {/* Ventas Recientes */}
+                    <div className="bg-[#1e1e1e] rounded-2xl p-5">
+                        <h2
+                            className="text-base font-semibold text-[#f5f5f5] mb-4"
+                            style={{ fontFamily: "var(--font-space-grotesk)" }}
+                        >
+                            Ventas Recientes
+                        </h2>
+                        {recentSales.length === 0 ? (
+                            <p className="text-sm text-zinc-600 text-center py-4">
+                                No hay ventas registradas aún.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {recentSales.map((sale) => {
+                                    const initials = sale.customer
+                                        ? sale.customer.name.substring(0, 2).toUpperCase()
+                                        : "MO";
+                                    return (
+                                        <div key={sale.id} className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-[#2a2a2a] flex items-center justify-center text-xs font-medium text-zinc-400 shrink-0">
+                                                {initials}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-zinc-200 truncate">
+                                                    {sale.customer?.name ?? "Mostrador"}
+                                                </p>
+                                                <p className="text-xs text-zinc-600 truncate">
+                                                    {sale.folio} ·{" "}
+                                                    {new Date(sale.createdAt).toLocaleTimeString([], {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-sm font-semibold text-[#a5d0b9]">
+                                                    +${Number(sale.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                                                </p>
+                                                <span
+                                                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                                        sale.status === "LAYAWAY"
+                                                            ? "bg-amber-500/10 text-amber-400"
+                                                            : "bg-[#1B4332] text-[#a5d0b9]"
+                                                    }`}
+                                                >
+                                                    {STATUS_LABELS[sale.status as string] ?? sale.status}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {sale.folio} • {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto font-bold text-emerald-600">
-                                        +${Number(sale.total).toFixed(2)}
-                                    </div>
-                                </div>
-                            ))}
-                            {recentSales.length === 0 && (
-                                <p className="text-sm text-slate-500 text-center py-4">No hay ventas registradas aún.</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Próximas Órdenes de Taller */}
+                    <div className="bg-[#1e1e1e] rounded-2xl p-5">
+                        <h2
+                            className="text-base font-semibold text-[#f5f5f5] mb-4"
+                            style={{ fontFamily: "var(--font-space-grotesk)" }}
+                        >
+                            Próximas Órdenes de Taller
+                        </h2>
+                        {upcomingOrders.length === 0 ? (
+                            <p className="text-sm text-zinc-600 text-center py-4">
+                                No hay órdenes activas.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {upcomingOrders.map((order) => {
+                                    const d = new Date(order.createdAt);
+                                    const day = d.getDate();
+                                    const month = d.toLocaleString("es-MX", { month: "short" }).toUpperCase();
+                                    return (
+                                        <div key={order.id} className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-xl bg-[#131313] flex flex-col items-center justify-center shrink-0">
+                                                <span className="text-[10px] font-medium text-zinc-500 leading-none">
+                                                    {month}
+                                                </span>
+                                                <span className="text-sm font-bold text-zinc-300 leading-tight">
+                                                    {day}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-zinc-200 truncate">
+                                                    {order.bikeInfo ?? order.diagnosis ?? order.folio}
+                                                </p>
+                                                <p className="text-xs text-zinc-600 truncate">
+                                                    {order.customer?.name ?? "Sin cliente"} · {order.folio}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                                                    order.status === "IN_PROGRESS"
+                                                        ? "bg-[#94ccff]/10 text-[#94ccff]"
+                                                        : "bg-zinc-800 text-zinc-400"
+                                                }`}
+                                            >
+                                                {WORKSHOP_STATUS_LABELS[order.status as string] ?? order.status}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
