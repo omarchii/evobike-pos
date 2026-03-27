@@ -45,7 +45,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#0d0d0d] text-white w-64 shrink-0">
+        <div className="flex flex-col h-full bg-white dark:bg-[#0d0d0d] text-zinc-900 dark:text-white w-64 shrink-0">
             {/* Logo */}
             <div className="px-5 pt-6 pb-4">
                 <Link href="/dashboard" className="flex items-center">
@@ -54,7 +54,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                             src="/evobike-logo.webp"
                             alt="EVOBIKE Logo"
                             fill
-                            className="object-contain object-left"
+                            className="object-contain object-left dark:invert-[0.9]"
                         />
                     </div>
                 </Link>
@@ -72,7 +72,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                                 isActive
                                     ? "bg-[#1B4332] text-[#a5d0b9]"
-                                    : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"
+                                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5"
                             )}
                         >
                             <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#a5d0b9]" : "text-zinc-500")} />
@@ -91,7 +91,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-medium text-zinc-200 truncate">{user?.name}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-200 truncate">{user?.name}</span>
                         <span className="text-xs text-zinc-500 truncate">
                             {user?.role} · {user?.branchName}
                         </span>
@@ -100,7 +100,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-zinc-500 hover:text-zinc-200 hover:bg-white/5 px-2"
+                    className="w-full justify-start text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5 px-2"
                     onClick={() => signOut({ callbackUrl: "/login" })}
                 >
                     <LogOut className="h-4 w-4 mr-2 shrink-0" />
