@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Bike, Wrench, User as UserIcon, Calendar, Trash2, Plus, ArrowRight, CheckCircle2, Check, ChevronsUpDown } from "lucide-react";
+import { Bike, Wrench, User as UserIcon, Calendar, Trash2, Plus, ArrowRight, CheckCircle2, Check, ChevronsUpDown, DollarSign } from "lucide-react";
 import { addServiceOrderItem, removeServiceOrderItem, updateServiceOrderStatus } from "@/actions/workshop";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ServiceOrderStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -26,17 +28,17 @@ type SerializedProduct = {
 type SerializedOrderItem = {
     id: string;
     serviceOrderId: string;
-    productId: string | null;
+    modeloConfiguracionId: string | null;
     description: string;
     quantity: number;
     price: number;
-    product: SerializedProduct | null;
+    modeloConfiguracion: SerializedProduct | null;
 };
 
 type FullSerializedOrder = {
     id: string;
     folio: string;
-    status: string;
+    status: ServiceOrderStatus;
     customerId: string;
     bikeInfo: string | null;
     diagnosis: string | null;
@@ -58,6 +60,8 @@ export function ServiceOrderDetailsView({
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [isAdvancing, setIsAdvancing] = useState(false);
+    const [isDelivering, setIsDelivering] = useState(false);
+    const [deliveryMethod, setDeliveryMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
 
     const [openCombobox, setOpenCombobox] = useState(false);
 
@@ -103,7 +107,7 @@ export function ServiceOrderDetailsView({
 
         const result = await addServiceOrderItem({
             serviceOrderId: order.id,
-            productId: prod.id,
+            modeloConfiguracionId: prod.id,
             description: prod.name,
             quantity: parseInt(productQty) || 1,
             price: prod.price
@@ -134,9 +138,31 @@ export function ServiceOrderDetailsView({
         setLoading(false);
     };
 
+    const handleDeliver = async () => {
+        setIsDelivering(true);
+        toast.loading("Procesando cobro y entrega...", { id: "deliver-order" });
+        try {
+            const response = await fetch("/api/workshop/deliver", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ serviceOrderId: order.id, paymentMethod: deliveryMethod })
+            });
+            const result = (await response.json()) as { success: boolean; error?: string };
+            if (result.success) {
+                toast.success("Orden cobrada y entregada", { id: "deliver-order" });
+                router.refresh();
+            } else {
+                toast.error(result.error ?? "Error al entregar", { id: "deliver-order" });
+            }
+        } catch {
+            toast.error("Error de conexión", { id: "deliver-order" });
+        }
+        setIsDelivering(false);
+    };
+
     const handleAdvanceStatus = async () => {
         setIsAdvancing(true);
-        const result = await updateServiceOrderStatus(order.id, order.status as any);
+        const result = await updateServiceOrderStatus(order.id, order.status);
         if (result.success) {
             toast.success("Estatus actualizado");
             router.refresh();
@@ -210,8 +236,31 @@ export function ServiceOrderDetailsView({
                                 </Button>
                             )}
                             {order.status === "COMPLETED" && (
-                                <div className="text-sm text-slate-400">
-                                    Bicicleta lista. El cliente debe pagar para entregarla. (Flujo de Pago pendiente)
+                                <div className="space-y-3">
+                                    <p className="text-sm text-slate-300">
+                                        Bicicleta lista. Selecciona el método de pago para cobrar y entregar.
+                                    </p>
+                                    <Select
+                                        value={deliveryMethod}
+                                        onValueChange={(v) => setDeliveryMethod(v as "CASH" | "CARD" | "TRANSFER")}
+                                    >
+                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="CASH">Efectivo</SelectItem>
+                                            <SelectItem value="CARD">Tarjeta</SelectItem>
+                                            <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        onClick={handleDeliver}
+                                        disabled={isDelivering}
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        <DollarSign className="mr-2 w-4 h-4" />
+                                        Cobrar ${order.total.toFixed(2)} y Entregar
+                                    </Button>
                                 </div>
                             )}
                         </CardContent>
@@ -329,7 +378,7 @@ export function ServiceOrderDetailsView({
                                     <TableRow key={item.id}>
                                         <TableCell>
                                             {item.description}
-                                            {item.product && <Badge variant="outline" className="ml-2 text-[10px]">{item.product.sku}</Badge>}
+                                            {item.modeloConfiguracion && <Badge variant="outline" className="ml-2 text-[10px]">{item.modeloConfiguracion.sku}</Badge>}
                                         </TableCell>
                                         <TableCell className="text-center">{item.quantity}</TableCell>
                                         <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
