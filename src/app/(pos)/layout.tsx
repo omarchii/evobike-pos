@@ -1,17 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Space_Grotesk } from "next/font/google";
 import Sidebar from "./sidebar";
 import { CashSessionManager } from "@/components/pos/cash-session-manager";
 import Link from "next/link";
 import { Bell, HelpCircle, Search, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const spaceGrotesk = Space_Grotesk({
-    subsets: ["latin"],
-    variable: "--font-space-grotesk",
-});
 
 function getInitials(name?: string | null) {
     if (!name) return "U";
@@ -30,6 +24,8 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
             <div className="relative w-80 mx-6">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
+                    aria-hidden="true"
+                    tabIndex={-1}
                     placeholder="Buscar órdenes, VIN…"
                     className="w-full bg-[#1e1e1e] rounded-2xl pl-9 pr-4 py-2 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:ring-1 focus:ring-[#a5d0b9]/30"
                 />
@@ -37,13 +33,13 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
 
             {/* Right: Icons + Avatar */}
             <div className="flex items-center gap-3">
-                <button className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                <button aria-label="Notificaciones" className="text-zinc-500 hover:text-zinc-300 transition-colors">
                     <Bell className="h-5 w-5" />
                 </button>
-                <Link href="/settings" className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                <Link href="/settings" aria-label="Configuración" className="text-zinc-500 hover:text-zinc-300 transition-colors">
                     <Settings className="h-5 w-5" />
                 </Link>
-                <button className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                <button aria-label="Ayuda" className="text-zinc-500 hover:text-zinc-300 transition-colors">
                     <HelpCircle className="h-5 w-5" />
                 </button>
                 <Avatar className="h-8 w-8 border border-[#1B4332]">
@@ -68,7 +64,7 @@ export default async function PosLayout({
     }
 
     return (
-        <div className={`${spaceGrotesk.variable} flex h-screen overflow-hidden bg-[#131313]`}>
+        <div className="flex h-screen overflow-hidden bg-[#131313]">
             <Sidebar user={session.user as any} />
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Topbar user={session.user as any} />
