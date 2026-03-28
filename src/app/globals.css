@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -45,6 +46,90 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* EvoFlow design tokens */
+  --color-evo-p: var(--p);
+  --color-evo-p-mid: var(--p-mid);
+  --color-evo-p-bright: var(--p-bright);
+  --color-evo-p-container: var(--p-container);
+  --color-evo-sec: var(--sec);
+  --color-evo-sec-container: var(--sec-container);
+  --color-evo-ter: var(--ter);
+  --color-evo-ter-container: var(--ter-container);
+  --color-evo-warn: var(--warn);
+  --color-evo-warn-container: var(--warn-container);
+  --color-evo-surface: var(--surface);
+  --color-evo-surf-low: var(--surf-low);
+  --color-evo-surf-lowest: var(--surf-lowest);
+  --color-evo-surf-high: var(--surf-high);
+  --color-evo-on-surf: var(--on-surf);
+  --color-evo-on-surf-var: var(--on-surf-var);
+  --font-grotesk: var(--font-space-grotesk), sans-serif;
+}
+
+/* EvoFlow Green Edition — Light mode tokens */
+:root {
+  --p: #1b4332;
+  --p-mid: #2d6a4f;
+  --p-bright: #2ecc71;
+  --p-container: #a8e6cf;
+  --on-p: #ffffff;
+  --on-p-container: #1b4332;
+  --sec: #52b788;
+  --sec-container: #d8f3dc;
+  --on-sec-container: #1b4332;
+  --ter: #e74c3c;
+  --ter-container: #fdecea;
+  --on-ter-container: #7b241c;
+  --warn: #f39c12;
+  --warn-container: #fef9e7;
+  --surface: #f8fafa;
+  --surf-low: #f0f7f4;
+  --surf-lowest: #ffffff;
+  --surf-high: #dcf0e8;
+  --surf-highest: #c7e6d8;
+  --surf-dim: #d0e8dc;
+  --surf-bright: #fafffe;
+  --on-surf: #131b2e;
+  --on-surf-var: #3d5247;
+  --outline-var: #b2ccc0;
+  --shadow: 0px 12px 32px -4px rgba(19, 27, 46, 0.06);
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 9999px;
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+}
+
+/* EvoFlow Green Edition — Dark mode tokens */
+.dark {
+  --p: #a5d0b9;
+  --p-mid: #7ab89a;
+  --p-bright: #2ecc71;
+  --p-container: #1b4332;
+  --on-p: #131313;
+  --on-p-container: #a5d0b9;
+  --sec: #52b788;
+  --sec-container: #0d3320;
+  --on-sec-container: #a5d0b9;
+  --ter: #ff8080;
+  --ter-container: #3d1515;
+  --on-ter-container: #ffb3b1;
+  --warn: #f5c842;
+  --warn-container: #3d2e00;
+  --surface: #131313;
+  --surf-low: #1b1b1b;
+  --surf-lowest: #222222;
+  --surf-high: #2b2b2b;
+  --surf-highest: #333333;
+  --surf-dim: #181818;
+  --surf-bright: #2b2b2b;
+  --on-surf: #e8f0eb;
+  --on-surf-var: #8fbfa0;
+  --outline-var: #2d4a3a;
+  --shadow: 0px 12px 32px -4px rgba(0, 0, 0, 0.4);
 }
 
 :root {
@@ -122,5 +207,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
   }
 }

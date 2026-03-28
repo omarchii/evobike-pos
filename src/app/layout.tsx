@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { NextAuthProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
 
 const inter = Inter({ subsets: ["latin"] });
 const spaceGrotesk = Space_Grotesk({
@@ -23,12 +24,14 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning className={spaceGrotesk.variable}>
       <body
-        className={`${inter.className} antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50`}
+        className={`${inter.className} antialiased bg-[var(--surface)] text-[var(--on-surf)] transition-colors duration-200`}
       >
-        <NextAuthProvider>
-          {children}
-          <Toaster />
-        </NextAuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
+          <NextAuthProvider>
+            {children}
+            <Toaster />
+          </NextAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

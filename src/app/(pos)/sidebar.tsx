@@ -45,7 +45,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#18181b] text-white w-64 shrink-0">
+        <div className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0">
             {/* Logo */}
             <div className="px-5 pt-6 pb-4">
                 <Link href="/dashboard" className="flex items-center">
@@ -54,7 +54,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                             src="/evobike-logo.webp"
                             alt="EVOBIKE Logo"
                             fill
-                            className="object-contain object-left invert-[0.85]"
+                            className="object-contain object-left"
                         />
                     </div>
                 </Link>
@@ -71,11 +71,11 @@ export default function Sidebar({ user }: { user: UserProp }) {
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                                 isActive
-                                    ? "bg-green-500/10 text-green-500"
-                                    : "text-zinc-400 hover:text-zinc-100 hover:bg-white/5"
+                                    ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
                             )}
                         >
-                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-green-500" : "text-zinc-400")} />
+                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]")} />
                             {route.label}
                         </Link>
                     );
@@ -86,13 +86,13 @@ export default function Sidebar({ user }: { user: UserProp }) {
             <div className="px-3 pb-4 pt-3 space-y-3">
                 <div className="flex items-center gap-3 px-2">
                     <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-green-500/20 text-green-400 text-xs font-medium">
+                        <AvatarFallback className="text-xs font-medium" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#ffffff" }}>
                             {getInitials(user?.name)}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-medium text-zinc-200 truncate">{user?.name}</span>
-                        <span className="text-xs text-zinc-500 truncate">
+                        <span className="text-sm font-medium text-[var(--on-surf)] truncate">{user?.name}</span>
+                        <span className="text-xs text-[var(--on-surf-var)] truncate">
                             {user?.role} · {user?.branchName}
                         </span>
                     </div>
@@ -100,7 +100,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-zinc-400 hover:text-zinc-100 hover:bg-white/5 px-2"
+                    className="w-full justify-start text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)] px-2"
                     onClick={() => signOut({ callbackUrl: "/login" })}
                 >
                     <LogOut className="h-4 w-4 mr-2 shrink-0" />

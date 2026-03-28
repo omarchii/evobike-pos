@@ -44,11 +44,11 @@ interface SellerDashboardProps {
 }
 
 const METHOD_BADGE: Record<string, string> = {
-    CASH: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
-    CARD: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-    TRANSFER: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-    CREDIT_BALANCE: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-    ATRATO: "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    CASH: "bg-[var(--sec-container)] text-[var(--on-sec-container)]",
+    CARD: "bg-[var(--surf-high)] text-[var(--on-surf)]",
+    TRANSFER: "bg-[var(--surf-high)] text-[var(--on-surf)]",
+    CREDIT_BALANCE: "bg-[var(--warn-container)] text-[var(--warn)]",
+    ATRATO: "bg-[var(--p-container)] text-[var(--on-p-container)]",
 };
 
 const METHOD_LABEL: Record<string, string> = {
@@ -77,72 +77,72 @@ export function SellerDashboard({
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
                     Panel de Control
                 </h1>
-                <p className="text-sm text-zinc-500 mt-0.5">Resumen personal · {branchName}</p>
+                <p className="text-sm text-[var(--on-surf-var)] mt-0.5">Resumen personal · {branchName}</p>
             </div>
 
             {/* Panel 1: 3 KPI cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* KPI 1: Mis Ventas Hoy — accent */}
-                <div className="bg-green-500 rounded-[10px] p-5">
+                <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-white/70">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-white/70">
                             MIS VENTAS HOY
                         </span>
                         <TrendingUp className="h-4 w-4 text-white/70" />
                     </div>
-                    <p className="text-[22px] font-medium text-white">{salesTodayCount}</p>
+                    <p className="text-[2.75rem] font-bold text-white leading-none" style={{ fontFamily: "var(--font-display)" }}>{salesTodayCount}</p>
                     <p className="text-[11px] text-white/60 mt-1">Transacciones cobradas</p>
                 </div>
 
                 {/* KPI 2: Mis Ingresos Hoy */}
-                <div className="bg-white dark:bg-zinc-900 rounded-[10px] p-5 border border-zinc-100 dark:border-zinc-800">
+                <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">
                             MIS INGRESOS HOY
                         </span>
-                        <Banknote className="h-4 w-4 text-zinc-400" />
+                        <Banknote className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[22px] font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
-                    <p className="text-[11px] text-zinc-500 mt-1">Total facturado personal</p>
+                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Total facturado personal</p>
                 </div>
 
                 {/* KPI 3: Mis Apartados */}
-                <div className="bg-white dark:bg-zinc-900 rounded-[10px] p-5 border border-zinc-100 dark:border-zinc-800">
+                <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">
                             MIS APARTADOS
                         </span>
-                        <ArchiveRestore className="h-4 w-4 text-zinc-400" />
+                        <ArchiveRestore className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[22px] font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {activeLayawaysCount}
                     </p>
-                    <p className="text-[11px] text-zinc-500 mt-1">Pendientes de liquidar</p>
+                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Pendientes de liquidar</p>
                 </div>
             </div>
 
             {/* Panel 2: Estado de Caja */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[10px] p-5 border border-zinc-100 dark:border-zinc-800">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-3">
+            <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em] mb-3">
                     Estado de Caja
                 </h2>
                 <div className="flex items-center gap-3">
                     {cashSession.isOpen ? (
                         <>
-                            <span className="text-[11px] font-medium px-2.5 py-1 rounded-[6px] bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[var(--sec-container)] text-[var(--on-sec-container)]">
                                 Caja Abierta
                             </span>
-                            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                                Fondo inicial: <span className="font-medium text-zinc-900 dark:text-zinc-50">{formatMXN(cashSession.openingAmt)}</span>
+                            <span className="text-sm text-[var(--on-surf-var)]">
+                                Fondo inicial: <span className="font-medium text-[var(--on-surf)]">{formatMXN(cashSession.openingAmt)}</span>
                             </span>
                         </>
                     ) : (
-                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-[6px] bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[var(--warn-container)] text-[var(--warn)]">
                             Caja Cerrada
                         </span>
                     )}
@@ -152,51 +152,51 @@ export function SellerDashboard({
             {/* Panel 3 + 4: Últimas ventas + Apartados activos */}
             <div className="grid grid-cols-12 gap-4">
                 {/* Panel 3: Mis Últimas Ventas */}
-                <div className="col-span-12 lg:col-span-7 bg-white dark:bg-zinc-900 rounded-[10px] border border-zinc-100 dark:border-zinc-800">
+                <div className="col-span-12 lg:col-span-7 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)]">
                     <div className="px-5 pt-5 pb-3">
-                        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
                             Mis Últimas Ventas
                         </h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-t border-zinc-100 dark:border-zinc-800">
-                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-zinc-400">Folio</th>
-                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-zinc-400">Producto</th>
-                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-zinc-400">Método</th>
-                                    <th className="px-5 py-2.5 text-right text-[10px] font-medium uppercase tracking-wider text-zinc-400">Monto</th>
+                                <tr className="border-b border-[rgba(178,204,192,0.15)]">
+                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Folio</th>
+                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Producto</th>
+                                    <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Método</th>
+                                    <th className="px-5 py-2.5 text-right text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Monto</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            <tbody>
                                 {recentSales.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-5 py-8 text-center text-sm text-zinc-400">
+                                        <td colSpan={4} className="px-5 py-8 text-center text-sm text-[var(--on-surf-var)]">
                                             No hay ventas registradas hoy.
                                         </td>
                                     </tr>
                                 ) : (
                                     recentSales.map((sale) => (
-                                        <tr key={sale.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                                            <td className="px-5 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                                        <tr key={sale.id} className="hover:bg-[var(--surf-high)] transition-colors">
+                                            <td className="px-5 py-3 font-mono text-xs text-[var(--on-surf-var)]">
                                                 {sale.folio}
                                             </td>
-                                            <td className="px-5 py-3 text-zinc-800 dark:text-zinc-200">
+                                            <td className="px-5 py-3 text-[var(--on-surf)]">
                                                 {sale.mainProduct ?? "—"}
                                             </td>
                                             <td className="px-5 py-3">
                                                 {sale.paymentMethod ? (
                                                     <span className={cn(
-                                                        "text-[10px] font-medium px-2 py-0.5 rounded-[6px]",
-                                                        METHOD_BADGE[sale.paymentMethod] ?? "bg-zinc-100 text-zinc-600"
+                                                        "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                                                        METHOD_BADGE[sale.paymentMethod] ?? "bg-[var(--surf-high)] text-[var(--on-surf)]"
                                                     )}>
                                                         {METHOD_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-zinc-400">—</span>
+                                                    <span className="text-[var(--on-surf-var)]">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-3 text-right font-medium text-green-600 dark:text-green-400">
+                                            <td className="px-5 py-3 text-right font-medium text-[var(--sec)]">
                                                 {formatMXN(sale.total)}
                                             </td>
                                         </tr>
@@ -208,27 +208,27 @@ export function SellerDashboard({
                 </div>
 
                 {/* Panel 4: Mis Apartados Activos */}
-                <div className="col-span-12 lg:col-span-5 bg-white dark:bg-zinc-900 rounded-[10px] p-5 border border-zinc-100 dark:border-zinc-800">
-                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+                <div className="col-span-12 lg:col-span-5 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em] mb-4">
                         Mis Apartados Activos
                     </h2>
                     {layaways.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
+                        <div className="flex flex-col items-center justify-center py-8 text-[var(--on-surf-var)]">
                             <p className="text-sm">Sin apartados activos.</p>
                         </div>
                     ) : (
                         <div className="space-y-2">
                             {layaways.map((l) => (
-                                <div key={l.id} className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                                <div key={l.id} className="flex items-center justify-between py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                     <div className="min-w-0">
-                                        <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">{l.folio}</p>
-                                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                                        <p className="font-mono text-xs text-[var(--on-surf-var)]">{l.folio}</p>
+                                        <p className="text-sm font-medium text-[var(--on-surf)] truncate">
                                             {l.customerName ?? "Sin cliente"}
                                         </p>
                                     </div>
                                     <div className="text-right shrink-0 ml-3">
-                                        <p className="text-[11px] text-zinc-400">Total: {formatMXN(l.total)}</p>
-                                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                        <p className="text-[11px] text-[var(--on-surf-var)]">Total: {formatMXN(l.total)}</p>
+                                        <p className="text-sm font-medium text-[var(--warn)]">
                                             Pendiente: {formatMXN(l.pendingAmount)}
                                         </p>
                                     </div>
@@ -240,28 +240,28 @@ export function SellerDashboard({
             </div>
 
             {/* Panel 5: Atrato por Cobrar */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[10px] p-5 border border-zinc-100 dark:border-zinc-800">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+            <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em] mb-4">
                     Atrato por Cobrar
                 </h2>
                 {atratoRows.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-6 text-green-500 gap-2">
+                    <div className="flex flex-col items-center justify-center py-6 text-[var(--sec)] gap-2">
                         <CheckCircle className="h-8 w-8" />
-                        <p className="text-xs text-center text-zinc-400">Sin cobros Atrato pendientes.</p>
+                        <p className="text-xs text-center text-[var(--on-surf-var)]">Sin cobros Atrato pendientes.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    <div className="divide-y-0">
                         {atratoRows.map((row) => (
-                            <div key={row.id} className="flex items-center justify-between py-2.5">
+                            <div key={row.id} className="flex items-center justify-between py-2.5 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                 <div className="min-w-0">
-                                    <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                                    <p className="font-mono text-xs text-[var(--on-surf-var)]">
                                         {row.saleForlio ?? "—"}
                                     </p>
-                                    <p className="text-[10px] text-zinc-400">
+                                    <p className="text-[10px] text-[var(--on-surf-var)]">
                                         {row.diasPendiente === 0 ? "Hoy" : `Hace ${row.diasPendiente}d`}
                                     </p>
                                 </div>
-                                <span className="text-sm font-medium text-orange-600 dark:text-orange-400 shrink-0">
+                                <span className="text-sm font-medium text-[var(--warn)] shrink-0">
                                     {formatMXN(row.amount)}
                                 </span>
                             </div>
