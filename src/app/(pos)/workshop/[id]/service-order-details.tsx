@@ -47,6 +47,13 @@ type FullSerializedOrder = {
     createdAt: Date;
     customer: { name: string, phone: string | null };
     user: { name: string };
+    customerBike: {
+        serialNumber: string;
+        voltaje: string | null;
+        brand: string | null;
+        model: string | null;
+        color: string | null;
+    } | null;
     items: SerializedOrderItem[];
 };
 
@@ -191,6 +198,12 @@ export function ServiceOrderDetailsView({
                             <div>
                                 <p className="font-medium text-slate-900">Bicicleta</p>
                                 <p>{order.bikeInfo || "Sin especificar"}</p>
+                                {order.customerBike?.voltaje && (
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Voltaje: {order.customerBike.voltaje}
+                                        {order.customerBike.serialNumber && ` · VIN: ${order.customerBike.serialNumber}`}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <div className="flex items-start gap-3 text-slate-600">

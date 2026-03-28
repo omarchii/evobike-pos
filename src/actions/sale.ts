@@ -111,13 +111,18 @@ export async function processSaleAction(input: SaleInput) {
                         throw new Error(`El producto ${item.name} requiere un número de serie, y DEBES seleccionar o crear un cliente a quién asignárselo.`);
                     }
 
-                    // Validar unicidad del número de serie dentro de la sucursal
                     const existingBike = await tx.customerBike.findFirst({
                         where: { serialNumber: item.serialNumber, branchId }
                     });
                     if (existingBike) {
                         throw new Error(`Número de serie ya registrado en esta sucursal: ${item.serialNumber}`);
                     }
+
+                    // Obtener etiqueta de voltaje de la variante
+                    const variant = await tx.productVariant.findUnique({
+                        where: { id: item.productVariantId },
+                        include: { voltaje: true }
+                    });
 
                     await tx.customerBike.create({
                         data: {
@@ -126,6 +131,7 @@ export async function processSaleAction(input: SaleInput) {
                             serialNumber: item.serialNumber,
                             brand: "EVOBIKE",
                             model: item.name,
+                            voltaje: variant?.voltaje.label ?? null,
                             notes: `Venta original Folio pendiente`
                         }
                     });

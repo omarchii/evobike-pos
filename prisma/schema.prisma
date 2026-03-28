@@ -239,12 +239,14 @@ model CustomerBike {
   brand        String?
   model        String?
   color        String?
+  voltaje      String?
   notes        String?
   createdAt    DateTime @default(now())
 
-  customer      Customer       @relation(fields: [customerId], references: [id])
-  branch        Branch         @relation(fields: [branchId], references: [id])
-  serviceOrders ServiceOrder[]
+  customer       Customer          @relation(fields: [customerId], references: [id])
+  branch         Branch            @relation(fields: [branchId], references: [id])
+  serviceOrders  ServiceOrder[]
+  voltageChanges VoltageChangeLog[]
 
   @@unique([serialNumber, branchId])
 }
@@ -349,4 +351,17 @@ model ServiceCatalog {
 
   branch            Branch             @relation(fields: [branchId], references: [id])
   serviceOrderItems ServiceOrderItem[]
+}
+
+// === VOLTAGE CHANGE LOG ===
+model VoltageChangeLog {
+  id             String       @id @default(cuid())
+  customerBikeId String
+  fromVoltage    String
+  toVoltage      String
+  reason         String?
+  userId         String
+  createdAt      DateTime     @default(now())
+
+  customerBike CustomerBike @relation(fields: [customerBikeId], references: [id])
 }

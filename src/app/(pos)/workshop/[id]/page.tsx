@@ -14,6 +14,15 @@ export default async function WorkshopOrderPage(props: {
         where: { id: params.id },
         include: {
             customer: true,
+            customerBike: {
+                select: {
+                    serialNumber: true,
+                    voltaje: true,
+                    brand: true,
+                    model: true,
+                    color: true
+                }
+            },
             items: {
                 include: {
                     productVariant: {
@@ -48,6 +57,7 @@ export default async function WorkshopOrderPage(props: {
         ...order,
         subtotal: Number(order.subtotal),
         total: Number(order.total),
+        customerBike: order.customerBike ?? null,
         items: order.items.map((i: any) => ({
             ...i,
             price: Number(i.price),
