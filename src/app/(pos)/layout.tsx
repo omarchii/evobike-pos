@@ -6,6 +6,16 @@ import { CashSessionManager } from "@/components/pos/cash-session-manager";
 import Link from "next/link";
 import { Bell, HelpCircle, Search, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "./theme-toggle";
+
+interface SessionUser {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role: string;
+    branchId: string | null;
+    branchName: string | null;
+}
 
 function getInitials(name?: string | null) {
     if (!name) return "U";
@@ -33,6 +43,7 @@ function Topbar({ user }: { user: { name?: string | null; branchName?: string | 
 
             {/* Right: Icons + Avatar */}
             <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <button aria-label="Notificaciones" className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
                     <Bell className="h-5 w-5" />
                 </button>
@@ -63,11 +74,13 @@ export default async function PosLayout({
         redirect("/login");
     }
 
+    const user = session.user as unknown as SessionUser;
+
     return (
-        <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-[#131313]">
-            <Sidebar user={session.user as any} />
+        <div className="flex h-screen overflow-hidden bg-zinc-100 dark:bg-zinc-950">
+            <Sidebar user={user} />
             <div className="flex flex-col flex-1 overflow-hidden">
-                <Topbar user={session.user as any} />
+                <Topbar user={user} />
                 <main className="flex-1 overflow-y-auto relative">
                     <div className="p-8">
                         {children}
