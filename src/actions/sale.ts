@@ -107,9 +107,9 @@ export async function processSaleAction(input: SaleInput) {
                         throw new Error(`El producto ${item.name} requiere un número de serie, y DEBES seleccionar o crear un cliente a quién asignárselo.`);
                     }
 
-                    // Validar unicidad del número de serie en la sucursal
+                    // Validar unicidad del número de serie dentro de la sucursal
                     const existingBike = await tx.customerBike.findFirst({
-                        where: { serialNumber: item.serialNumber }
+                        where: { serialNumber: item.serialNumber, branchId }
                     });
                     if (existingBike) {
                         throw new Error(`Número de serie ya registrado en esta sucursal: ${item.serialNumber}`);
@@ -118,6 +118,7 @@ export async function processSaleAction(input: SaleInput) {
                     await tx.customerBike.create({
                         data: {
                             customerId: input.customerId,
+                            branchId,
                             serialNumber: item.serialNumber,
                             brand: "EVOBIKE",
                             model: item.name,

@@ -9,52 +9,100 @@ datasource db {
 
 // === IAM ===
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
-  branchId  String?
-  branch    Branch?  @relation(fields: [branchId], references: [id])
-  sales     Sale[]
-  sessions  CashRegisterSession[]
+  id            String                @id @default(uuid())
+  name          String
+  email         String                @unique
+  password      String
+  role          String                @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
+  branchId      String?
+  branch        Branch?               @relation(fields: [branchId], references: [id])
+  sales         Sale[]
+  sessions      CashRegisterSession[]
   serviceOrders ServiceOrder[]
 }
 
 model Branch {
-  id        String   @id @default(uuid())
-  code      String   @unique // "LEO", "AV135"
-  name      String
-  address   String?
-  users     User[]
-  stocks    Stock[]
-  sales     Sale[]
-  sessions  CashRegisterSession[]
+  id            String                @id @default(uuid())
+  code          String                @unique // "LEO", "AV135"
+  name          String
+  address       String?
+  users         User[]
+  stocks        Stock[]
+  sales         Sale[]
+  sessions      CashRegisterSession[]
   serviceOrders ServiceOrder[]
+  customerBikes CustomerBike[]
 }
 
 // === CATALOG & INVENTORY ===
-model Product {
-  id          String   @id @default(uuid())
-  sku         String   @unique
-  name        String
-  price       Decimal  @db.Decimal(10, 2)
-  cost        Decimal  @db.Decimal(10, 2)
-  isSerialized Boolean @default(false)
-  stocks      Stock[]
-  saleItems   SaleItem[]
-  serviceOrderItems ServiceOrderItem[]
+model Modelo {
+  id           String   @id @default(uuid())
+  nombre       String   @unique
+  descripcion  String?
+  requiere_vin Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  coloresDisponibles ModeloColor[]
+  configuraciones    ModeloConfiguracion[]
+}
+
+model Color {
+  id     String @id @default(uuid())
+  nombre String @unique
+
+  modelos         ModeloColor[]
+  configuraciones ModeloConfiguracion[]
+}
+
+model Voltaje {
+  id    String @id @default(uuid())
+  valor Int    @unique
+  label String
+
+  configuraciones ModeloConfiguracion[]
+}
+
+model ModeloColor {
+  modelo_id String
+  color_id  String
+  modelo    Modelo @relation(fields: [modelo_id], references: [id], onDelete: Cascade)
+  color     Color  @relation(fields: [color_id], references: [id], onDelete: Cascade)
+
+  @@id([modelo_id, color_id])
+}
+
+model ModeloConfiguracion {
+  id         String  @id @default(uuid())
+  modelo_id  String
+  color_id   String
+  voltaje_id String
+  sku        String  @unique
+  precio     Decimal @db.Decimal(10, 2)
+  costo      Decimal @db.Decimal(10, 2)
+  imageUrl   String?
+
+  modelo  Modelo  @relation(fields: [modelo_id], references: [id])
+  color   Color   @relation(fields: [color_id], references: [id])
+  voltaje Voltaje @relation(fields: [voltaje_id], references: [id])
+
+  stocks             Stock[]
+  saleItems          SaleItem[]
+  serviceOrderItems  ServiceOrderItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([modelo_id, color_id, voltaje_id])
 }
 
 model Stock {
-  id          String   @id @default(uuid())
-  productId   String
-  branchId    String
-  quantity    Int      @default(0)
-  product     Product  @relation(fields: [productId], references: [id])
-  branch      Branch   @relation(fields: [branchId], references: [id])
+  id                    String              @id @default(uuid())
+  modeloConfiguracionId String              @map("productId")
+  branchId              String
+  quantity              Int                 @default(0)
+  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
+  branch                Branch              @relation(fields: [branchId], references: [id])
 
-  @@unique([productId, branchId])
+  @@unique([modeloConfiguracionId, branchId])
 }
 
 enum MovementType {
@@ -68,14 +116,15 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id          String   @id @default(uuid())
-  productId   String
-  branchId    String
-  quantity    Int
-  type        MovementType
-  referenceId String?
-  userId      String
-  createdAt   DateTime @default(now())
+  id                    String              @id @default(uuid())
+  modeloConfiguracionId String              @map("productId")
+  branchId              String
+  quantity              Int
+  type                  MovementType
+  referenceId           String?
+  userId                String
+  createdAt             DateTime            @default(now())
+  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
 }
 
 // === SALES ===
@@ -86,90 +135,94 @@ enum SaleStatus {
 }
 
 model Sale {
-  id          String   @id @default(uuid())
-  folio       String   @unique
-  branchId    String
-  userId      String
-  customerId  String?
-  subtotal    Decimal  @db.Decimal(10, 2)
-  discount    Decimal  @default(0) @db.Decimal(10, 2)
-  total       Decimal  @db.Decimal(10, 2)
-  status      SaleStatus
-  notes       String?
-  createdAt   DateTime @default(now())
-  
-  branch      Branch   @relation(fields: [branchId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-  customer    Customer? @relation(fields: [customerId], references: [id])
-  items       SaleItem[]
-  payments    CashTransaction[]
+  id         String     @id @default(uuid())
+  folio      String     @unique
+  branchId   String
+  userId     String
+  customerId String?
+  subtotal   Decimal    @db.Decimal(10, 2)
+  discount   Decimal    @default(0) @db.Decimal(10, 2)
+  total      Decimal    @db.Decimal(10, 2)
+  status     SaleStatus
+  notes      String?
+  createdAt  DateTime   @default(now())
+
+  branch   Branch            @relation(fields: [branchId], references: [id])
+  user     User              @relation(fields: [userId], references: [id])
+  customer Customer?         @relation(fields: [customerId], references: [id])
+  items    SaleItem[]
+  payments CashTransaction[]
 }
 
 model SaleItem {
-  id          String   @id @default(uuid())
-  saleId      String
-  productId   String
-  quantity    Int
-  price       Decimal  @db.Decimal(10, 2)
-  discount    Decimal  @default(0) @db.Decimal(10, 2)
-  sale        Sale     @relation(fields: [saleId], references: [id])
-  product     Product  @relation(fields: [productId], references: [id])
+  id                    String              @id @default(uuid())
+  saleId                String
+  modeloConfiguracionId String              @map("productId")
+  quantity              Int
+  price                 Decimal             @db.Decimal(10, 2)
+  discount              Decimal             @default(0) @db.Decimal(10, 2)
+  sale                  Sale                @relation(fields: [saleId], references: [id])
+  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
 }
 
 // === PAYMENTS & CASHIER ===
 model CashRegisterSession {
-  id          String   @id @default(uuid())
-  branchId    String
-  userId      String
-  openedAt    DateTime @default(now())
-  closedAt    DateTime?
-  openingAmt  Decimal  @db.Decimal(10, 2)
-  closingAmt  Decimal? @db.Decimal(10, 2)
-  status      String   @default("OPEN") // OPEN, CLOSED
-  
-  branch      Branch   @relation(fields: [branchId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  id         String    @id @default(uuid())
+  branchId   String
+  userId     String
+  openedAt   DateTime  @default(now())
+  closedAt   DateTime?
+  openingAmt Decimal   @db.Decimal(10, 2)
+  closingAmt Decimal?  @db.Decimal(10, 2)
+  status     String    @default("OPEN") // OPEN, CLOSED
+
+  branch       Branch            @relation(fields: [branchId], references: [id])
+  user         User              @relation(fields: [userId], references: [id])
   transactions CashTransaction[]
 }
 
 model CashTransaction {
-  id          String   @id @default(uuid())
-  sessionId   String
-  saleId      String?
-  type        String   // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
-  method      String   // CASH, CARD, TRANSFER, CREDIT_BALANCE
-  amount      Decimal  @db.Decimal(10, 2)
-  createdAt   DateTime @default(now())
-  
-  session     CashRegisterSession @relation(fields: [sessionId], references: [id])
-  sale        Sale?    @relation(fields: [saleId], references: [id])
+  id        String   @id @default(uuid())
+  sessionId String
+  saleId    String?
+  type      String // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
+  method    String // CASH, CARD, TRANSFER, CREDIT_BALANCE
+  amount    Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  session CashRegisterSession @relation(fields: [sessionId], references: [id])
+  sale    Sale?               @relation(fields: [saleId], references: [id])
 }
 
 // === CRM ===
 model Customer {
-  id          String   @id @default(uuid())
-  name        String
-  phone       String?  @unique
-  email       String?
-  creditLimit Decimal  @default(0) @db.Decimal(10, 2)
-  balance     Decimal  @default(0) @db.Decimal(10, 2)
-  sales       Sale[]
+  id            String         @id @default(uuid())
+  name          String
+  phone         String?        @unique
+  email         String?
+  creditLimit   Decimal        @default(0) @db.Decimal(10, 2)
+  balance       Decimal        @default(0) @db.Decimal(10, 2)
+  sales         Sale[]
   serviceOrders ServiceOrder[]
-  bikes       CustomerBike[]
+  bikes         CustomerBike[]
 }
 
 model CustomerBike {
   id           String   @id @default(uuid())
   customerId   String
-  serialNumber String   @unique
+  branchId     String
+  serialNumber String
   brand        String?
   model        String?
   color        String?
   notes        String?
   createdAt    DateTime @default(now())
 
-  customer     Customer       @relation(fields: [customerId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
   serviceOrders ServiceOrder[]
+
+  @@unique([serialNumber, branchId])
 }
 
 // === WORKSHOP (TALLER) ===
@@ -182,35 +235,35 @@ enum ServiceOrderStatus {
 }
 
 model ServiceOrder {
-  id          String   @id @default(uuid())
-  folio       String   @unique
-  branchId    String
-  userId      String   // Technician or Seller who registered it
-  customerId  String
+  id             String             @id @default(uuid())
+  folio          String             @unique
+  branchId       String
+  userId         String // Technician or Seller who registered it
+  customerId     String
   customerBikeId String?
-  bikeInfo    String?  // Ej. "Trek Marlin 5 Roja 2021"
-  diagnosis   String?
-  subtotal    Decimal  @default(0) @db.Decimal(10, 2)
-  total       Decimal  @default(0) @db.Decimal(10, 2)
-  status      ServiceOrderStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  bikeInfo       String? // Ej. "Trek Marlin 5 Roja 2021"
+  diagnosis      String?
+  subtotal       Decimal            @default(0) @db.Decimal(10, 2)
+  total          Decimal            @default(0) @db.Decimal(10, 2)
+  status         ServiceOrderStatus @default(PENDING)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
-  branch      Branch   @relation(fields: [branchId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-  customer    Customer @relation(fields: [customerId], references: [id])
-  customerBike CustomerBike? @relation(fields: [customerBikeId], references: [id])
-  items       ServiceOrderItem[]
+  branch       Branch             @relation(fields: [branchId], references: [id])
+  user         User               @relation(fields: [userId], references: [id])
+  customer     Customer           @relation(fields: [customerId], references: [id])
+  customerBike CustomerBike?      @relation(fields: [customerBikeId], references: [id])
+  items        ServiceOrderItem[]
 }
 
 model ServiceOrderItem {
-  id              String   @id @default(uuid())
-  serviceOrderId  String
-  productId       String?  // Optional, could be just labor/service
-  description     String   // e.g. "Mano de obra", "Cámara 29"
-  quantity        Int      @default(1)
-  price           Decimal  @db.Decimal(10, 2)
-  
-  serviceOrder    ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
-  product         Product?     @relation(fields: [productId], references: [id])
+  id                    String              @id @default(uuid())
+  serviceOrderId        String
+  modeloConfiguracionId String?             @map("productId")  // Optional, could be just labor/service
+  description           String              // e.g. "Mano de obra", "Cámara 29"
+  quantity              Int                 @default(1)
+  price                 Decimal             @db.Decimal(10, 2)
+
+  serviceOrder        ServiceOrder         @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  modeloConfiguracion ModeloConfiguracion? @relation(fields: [modeloConfiguracionId], references: [id])
 }
