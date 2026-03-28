@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TrendingUp, Banknote, Wrench, ArchiveRestore } from "lucide-react";
 import { ManagerDashboard } from "./manager-dashboard";
+import { SellerDashboard } from "./seller-dashboard";
+import { TechnicianDashboard } from "./technician-dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,6 @@ interface SessionUser {
     branchName: string | null;
 }
 
-const WORKSHOP_STATUS_LABELS: Record<string, string> = {
-    PENDING: "Pendiente",
-    IN_PROGRESS: "En Proceso",
-    COMPLETED: "Completado",
-    DELIVERED: "Entregado",
-    CANCELLED: "Cancelado",
-};
 
 export default async function DashboardPage() {
     const session = await getServerSession(authOptions);
@@ -284,245 +278,268 @@ export default async function DashboardPage() {
         );
     }
 
-    // === SELLER / TECHNICIAN branch (basic dashboard) ===
-    const salesTodayAgg = await prisma.sale.aggregate({
-        where: {
-            ...(branchId ? { branchId } : {}),
-            createdAt: { gte: startOfDay, lte: endOfDay },
-            status: "COMPLETED",
-        },
-        _sum: { total: true },
-    });
-    const revenueToday = Number(salesTodayAgg._sum.total ?? 0);
+    // === SELLER branch ===
+    if (role === "SELLER") {
+        const userId = user?.id ?? "";
 
-    const activeWorkshopCount = await prisma.serviceOrder.count({
-        where: {
-            ...(branchId ? { branchId } : {}),
-            status: { in: ["PENDING", "IN_PROGRESS"] },
-        },
-    });
+        const sellerSalesAgg = await prisma.sale.aggregate({
+            where: {
+                userId,
+                status: "COMPLETED",
+                createdAt: { gte: startOfDay, lte: endOfDay },
+            },
+            _sum: { total: true },
+            _count: { id: true },
+        });
 
-    const activeLayawaysCount = await prisma.sale.count({
-        where: {
-            ...(branchId ? { branchId } : {}),
-            status: "LAYAWAY",
-        },
-    });
+        const activeLayawaysCountSeller = await prisma.sale.count({
+            where: { userId, status: "LAYAWAY" },
+        });
 
-    const salesTodayCount = await prisma.sale.count({
-        where: {
-            ...(branchId ? { branchId } : {}),
-            status: "COMPLETED",
-            createdAt: { gte: startOfDay, lte: endOfDay },
-        },
-    });
+        const sellerSession = await prisma.cashRegisterSession.findFirst({
+            where: { userId, ...(branchId ? { branchId } : {}), status: "OPEN" },
+            select: { id: true, openingAmt: true },
+        });
 
-    const recentSalesBasic = await prisma.sale.findMany({
-        where: { ...(branchId ? { branchId } : {}) },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { customer: true, user: true },
-    });
+        const openSessionId = sellerSession?.id ?? null;
 
-    const upcomingOrders = await prisma.serviceOrder.findMany({
-        where: {
-            ...(branchId ? { branchId } : {}),
-            status: { in: ["PENDING", "IN_PROGRESS"] },
-        },
-        orderBy: { createdAt: "asc" },
-        take: 3,
-        include: { customer: true },
-    });
+        const recentSellerSalesPrisma = await prisma.sale.findMany({
+            where: {
+                userId,
+                status: "COMPLETED",
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            select: {
+                id: true,
+                folio: true,
+                total: true,
+                createdAt: true,
+                items: {
+                    take: 1,
+                    select: {
+                        productVariant: {
+                            select: {
+                                modelo: { select: { nombre: true } },
+                            },
+                        },
+                    },
+                },
+                payments: {
+                    take: 1,
+                    orderBy: { createdAt: "asc" },
+                    select: { method: true },
+                },
+            },
+        });
 
+        const sellerLayawaysPrisma = await prisma.sale.findMany({
+            where: { userId, status: "LAYAWAY" },
+            select: {
+                id: true,
+                folio: true,
+                total: true,
+                customer: { select: { name: true } },
+                payments: { select: { amount: true } },
+            },
+        });
+
+        const atratoSellerPrisma = openSessionId
+            ? await prisma.cashTransaction.findMany({
+                  where: {
+                      sessionId: openSessionId,
+                      method: "ATRATO",
+                      collectionStatus: "PENDING",
+                  },
+                  orderBy: { createdAt: "desc" },
+                  select: {
+                      id: true,
+                      amount: true,
+                      createdAt: true,
+                      sale: { select: { folio: true } },
+                  },
+              })
+            : [];
+
+        const recentSales = recentSellerSalesPrisma.map((s) => ({
+            id: s.id,
+            folio: s.folio,
+            total: Number(s.total),
+            createdAt: s.createdAt,
+            mainProduct: s.items[0]?.productVariant?.modelo.nombre ?? null,
+            paymentMethod: s.payments[0]?.method ?? null,
+        }));
+
+        const layaways = sellerLayawaysPrisma.map((l) => {
+            const paid = l.payments.reduce((acc, p) => acc + Number(p.amount), 0);
+            return {
+                id: l.id,
+                folio: l.folio,
+                total: Number(l.total),
+                customerName: l.customer?.name ?? null,
+                pendingAmount: Number(l.total) - paid,
+            };
+        });
+
+        const atratoRows = atratoSellerPrisma.map((t) => ({
+            id: t.id,
+            amount: Number(t.amount),
+            saleForlio: t.sale?.folio ?? null,
+            diasPendiente: Math.floor((now.getTime() - t.createdAt.getTime()) / 86400000),
+        }));
+
+        return (
+            <SellerDashboard
+                branchName={branchName}
+                salesTodayCount={sellerSalesAgg._count.id}
+                revenueToday={Number(sellerSalesAgg._sum.total ?? 0)}
+                activeLayawaysCount={activeLayawaysCountSeller}
+                cashSession={{
+                    isOpen: sellerSession !== null,
+                    openingAmt: sellerSession ? Number(sellerSession.openingAmt) : 0,
+                }}
+                recentSales={recentSales}
+                layaways={layaways}
+                atratoRows={atratoRows}
+            />
+        );
+    }
+
+    // === TECHNICIAN branch ===
+    if (role === "TECHNICIAN") {
+        const activeOrdersCountTech = await prisma.serviceOrder.count({
+            where: {
+                ...(branchId ? { branchId } : {}),
+                status: { in: ["PENDING", "IN_PROGRESS"] },
+            },
+        });
+
+        const readyOrdersCountTech = await prisma.serviceOrder.count({
+            where: {
+                ...(branchId ? { branchId } : {}),
+                status: "COMPLETED",
+            },
+        });
+
+        const deliveredTodayCountTech = await prisma.serviceOrder.count({
+            where: {
+                ...(branchId ? { branchId } : {}),
+                status: "DELIVERED",
+                updatedAt: { gte: startOfDay },
+            },
+        });
+
+        const activeOrdersPrisma = await prisma.serviceOrder.findMany({
+            where: {
+                ...(branchId ? { branchId } : {}),
+                status: { in: ["PENDING", "IN_PROGRESS"] },
+            },
+            orderBy: { createdAt: "asc" },
+            take: 10,
+            select: {
+                id: true,
+                folio: true,
+                status: true,
+                createdAt: true,
+                bikeInfo: true,
+                customer: { select: { name: true } },
+                customerBike: { select: { model: true, voltaje: true } },
+            },
+        });
+
+        const readyOrdersPrisma = await prisma.serviceOrder.findMany({
+            where: {
+                ...(branchId ? { branchId } : {}),
+                status: "COMPLETED",
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 8,
+            select: {
+                id: true,
+                folio: true,
+                bikeInfo: true,
+                customer: { select: { name: true } },
+                customerBike: { select: { model: true } },
+            },
+        });
+
+        const allBikes = await prisma.customerBike.findMany({
+            where: branchId ? { branchId } : {},
+            select: {
+                id: true,
+                model: true,
+                voltaje: true,
+                customer: { select: { name: true } },
+                serviceOrders: {
+                    where: { status: { in: ["COMPLETED", "DELIVERED"] } },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                    select: { createdAt: true, status: true },
+                },
+            },
+        });
+
+        const MAINTENANCE_THRESHOLD_DAYS = 150;
+        const maintenanceAlerts = allBikes
+            .filter((bike) => {
+                const lastOrder = bike.serviceOrders[0];
+                if (!lastOrder) return true;
+                const dias = Math.floor(
+                    (now.getTime() - lastOrder.createdAt.getTime()) / 86400000
+                );
+                return dias > MAINTENANCE_THRESHOLD_DAYS;
+            })
+            .map((bike) => {
+                const lastOrder = bike.serviceOrders[0];
+                return {
+                    bikeId: bike.id,
+                    bikeModel: bike.model ?? null,
+                    bikeVoltaje: bike.voltaje ?? null,
+                    customerName: bike.customer.name,
+                    lastServiceDate: lastOrder?.createdAt ?? null,
+                    diasDesdeServicio: lastOrder
+                        ? Math.floor((now.getTime() - lastOrder.createdAt.getTime()) / 86400000)
+                        : 999,
+                };
+            })
+            .sort((a, b) => b.diasDesdeServicio - a.diasDesdeServicio)
+            .slice(0, 10);
+
+        const activeOrders = activeOrdersPrisma.map((o) => ({
+            id: o.id,
+            folio: o.folio,
+            status: o.status,
+            createdAt: o.createdAt,
+            customerName: o.customer.name,
+            bikeInfo: o.bikeInfo ?? o.customerBike?.model ?? null,
+            bikeVoltaje: o.customerBike?.voltaje ?? null,
+            minutosTranscurridos: Math.floor((now.getTime() - o.createdAt.getTime()) / 60000),
+        }));
+
+        const readyOrders = readyOrdersPrisma.map((o) => ({
+            id: o.id,
+            folio: o.folio,
+            customerName: o.customer.name,
+            bikeInfo: o.bikeInfo ?? o.customerBike?.model ?? null,
+        }));
+
+        return (
+            <TechnicianDashboard
+                branchName={branchName}
+                activeOrdersCount={activeOrdersCountTech}
+                readyOrdersCount={readyOrdersCountTech}
+                deliveredTodayCount={deliveredTodayCountTech}
+                activeOrders={activeOrders}
+                readyOrders={readyOrders}
+                maintenanceAlerts={maintenanceAlerts}
+            />
+        );
+    }
+
+    // === Fallback para roles no reconocidos ===
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                    Panel de Control
-                </h1>
-                <p className="text-sm text-zinc-500 mt-0.5">Resumen diario · {branchName}</p>
-            </div>
-
-            {/* Metric Cards */}
-            <div className="grid grid-cols-4 gap-4">
-                {/* Ventas Hoy */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 space-y-3 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Ventas Hoy</span>
-                        <TrendingUp className="h-4 w-4 text-zinc-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                        {salesTodayCount}{" "}
-                        <span className="text-lg font-normal text-zinc-400">unidades</span>
-                    </p>
-                    <p className="text-xs text-zinc-400">Ventas cobradas hoy</p>
-                </div>
-
-                {/* Ingresos del Día */}
-                <div className="bg-green-500 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                            Ingresos del Día
-                        </span>
-                        <Banknote className="h-4 w-4 text-white/60" />
-                    </div>
-                    <p className="text-3xl font-bold text-white">
-                        ${revenueToday.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-white/50">Total facturado hoy</p>
-                </div>
-
-                {/* Taller Activo */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 space-y-3 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Taller Activo</span>
-                        <Wrench className="h-4 w-4 text-zinc-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                        {String(activeWorkshopCount).padStart(2, "0")}{" "}
-                        <span className="text-lg font-normal text-zinc-400">órdenes</span>
-                    </p>
-                    <p className="text-xs text-zinc-400">Pendientes / En proceso</p>
-                </div>
-
-                {/* Apartados */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 space-y-3 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Apartados</span>
-                        <ArchiveRestore className="h-4 w-4 text-zinc-400" />
-                    </div>
-                    <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                        {String(activeLayawaysCount).padStart(2, "0")}{" "}
-                        <span className="text-lg font-normal text-zinc-400">tickets</span>
-                    </p>
-                    <p className="text-xs text-zinc-400">Por liquidar</p>
-                </div>
-            </div>
-
-            {/* Main Grid */}
-            <div className="grid grid-cols-7 gap-4">
-                {/* Revenue Trend */}
-                <div className="col-span-4 bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center justify-between mb-1">
-                        <div>
-                            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                                Tendencia de Ingresos
-                            </h2>
-                            <p className="text-xs text-zinc-500 mt-0.5">
-                                Análisis de rendimiento semanal
-                            </p>
-                        </div>
-                        <div className="flex gap-1">
-                            <button className="px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white">
-                                Semana
-                            </button>
-                            <button className="px-3 py-1 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
-                                Mes
-                            </button>
-                        </div>
-                    </div>
-                    <div className="mt-4 h-56 flex items-center justify-center rounded-xl bg-zinc-50 dark:bg-zinc-800">
-                        <p className="text-zinc-400 text-sm">El gráfico se activará en v2</p>
-                    </div>
-                </div>
-
-                {/* Right column */}
-                <div className="col-span-3 space-y-4">
-                    {/* Ventas Recientes */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
-                            Ventas Recientes
-                        </h2>
-                        {recentSalesBasic.length === 0 ? (
-                            <p className="text-sm text-zinc-400 text-center py-4">
-                                No hay ventas registradas aún.
-                            </p>
-                        ) : (
-                            <div className="space-y-3">
-                                {recentSalesBasic.map((sale) => {
-                                    const initials = sale.customer
-                                        ? sale.customer.name.substring(0, 2).toUpperCase()
-                                        : "MO";
-                                    return (
-                                        <div key={sale.id} className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-500 shrink-0">
-                                                {initials}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                                                    {sale.customer?.name ?? "Mostrador"}
-                                                </p>
-                                                <p className="text-xs text-zinc-400 truncate">
-                                                    {sale.folio} ·{" "}
-                                                    {new Date(sale.createdAt).toLocaleTimeString([], {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    })}
-                                                </p>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                                    +${Number(sale.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Próximas Órdenes de Taller */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
-                            Próximas Órdenes de Taller
-                        </h2>
-                        {upcomingOrders.length === 0 ? (
-                            <p className="text-sm text-zinc-400 text-center py-4">
-                                No hay órdenes activas.
-                            </p>
-                        ) : (
-                            <div className="space-y-3">
-                                {upcomingOrders.map((order) => {
-                                    const d = new Date(order.createdAt);
-                                    const day = d.getDate();
-                                    const month = d.toLocaleString("es-MX", { month: "short" }).toUpperCase();
-                                    return (
-                                        <div key={order.id} className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center shrink-0">
-                                                <span className="text-[10px] font-medium text-zinc-400 leading-none">
-                                                    {month}
-                                                </span>
-                                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300 leading-tight">
-                                                    {day}
-                                                </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                                                    {order.bikeInfo ?? order.diagnosis ?? order.folio}
-                                                </p>
-                                                <p className="text-xs text-zinc-400 truncate">
-                                                    {order.customer?.name ?? "Sin cliente"} · {order.folio}
-                                                </p>
-                                            </div>
-                                            <span
-                                                className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                                                    order.status === "IN_PROGRESS"
-                                                        ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
-                                                }`}
-                                            >
-                                                {WORKSHOP_STATUS_LABELS[order.status as string] ?? order.status}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+        <div className="flex items-center justify-center h-64">
+            <p className="text-sm text-zinc-500">Rol no reconocido: {role}</p>
         </div>
     );
 }
