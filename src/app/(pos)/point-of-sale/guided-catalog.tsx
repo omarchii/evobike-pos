@@ -41,8 +41,7 @@ type CartProduct = {
     price: number;
     cost: number;
     isSerialized: boolean;
-    stocks: any[];
-    [key: string]: any;
+    stocks: { branchId: string; quantity: number }[];
 };
 
 interface GuidedCatalogProps {

@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 // Since we are passing serialized data, we define the types accordingly
-type SerializedProduct = {
+export type SerializedProduct = {
     id: string;
     sku: string;
     name: string;
@@ -25,7 +25,7 @@ type SerializedProduct = {
     cost: number;
 };
 
-type SerializedOrderItem = {
+export type SerializedOrderItem = {
     id: string;
     serviceOrderId: string;
     productVariantId: string | null;
@@ -35,7 +35,7 @@ type SerializedOrderItem = {
     productVariant: SerializedProduct | null;
 };
 
-type FullSerializedOrder = {
+export type FullSerializedOrder = {
     id: string;
     folio: string;
     status: ServiceOrderStatus;

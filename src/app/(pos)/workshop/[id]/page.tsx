@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { ServiceOrderDetailsView } from "./service-order-details";
+import type { FullSerializedOrder, SerializedProduct, SerializedOrderItem } from "./service-order-details";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -53,24 +54,39 @@ export default async function WorkshopOrderPage(props: {
     });
 
     // Convert Decimals
-    const serializedOrder = {
-        ...order,
+    const serializedOrder: FullSerializedOrder = {
+        id: order.id,
+        folio: order.folio,
+        status: order.status,
+        customerId: order.customerId,
+        bikeInfo: order.bikeInfo,
+        diagnosis: order.diagnosis,
         subtotal: Number(order.subtotal),
         total: Number(order.total),
+        createdAt: order.createdAt,
+        customer: order.customer,
+        user: order.user,
         customerBike: order.customerBike ?? null,
-        items: order.items.map((i: any) => ({
-            ...i,
+        items: order.items.map((i): SerializedOrderItem => ({
+            id: i.id,
+            serviceOrderId: i.serviceOrderId,
+            productVariantId: i.productVariantId,
+            description: i.description,
+            quantity: i.quantity,
             price: Number(i.price),
             productVariant: i.productVariant ? {
-                ...i.productVariant,
-                precioPublico: Number(i.productVariant.precioPublico),
-                costo: Number(i.productVariant.costo)
+                id: i.productVariant.id,
+                sku: i.productVariant.sku,
+                name: `${i.productVariant.modelo.nombre} ${i.productVariant.color.nombre} ${i.productVariant.voltaje.label}`,
+                price: Number(i.productVariant.precioPublico),
+                cost: Number(i.productVariant.costo)
             } : null
         }))
     };
 
-    const serializedProducts = products.map((p: any) => ({
-        ...p,
+    const serializedProducts: SerializedProduct[] = products.map((p) => ({
+        id: p.id,
+        sku: p.sku,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
         price: Number(p.precioPublico),
         cost: Number(p.costo)
@@ -85,7 +101,7 @@ export default async function WorkshopOrderPage(props: {
                 <h1 className="text-3xl font-bold tracking-tight">Orden de Servicio {order.folio}</h1>
             </div>
 
-            <ServiceOrderDetailsView order={serializedOrder as any} catalogProducts={serializedProducts} />
+            <ServiceOrderDetailsView order={serializedOrder} catalogProducts={serializedProducts} />
         </div>
     );
 }
