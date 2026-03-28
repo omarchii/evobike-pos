@@ -22,16 +22,17 @@ model User {
 }
 
 model Branch {
-  id            String                @id @default(uuid())
-  code          String                @unique // "LEO", "AV135"
-  name          String
-  address       String?
-  users         User[]
-  stocks        Stock[]
-  sales         Sale[]
-  sessions      CashRegisterSession[]
-  serviceOrders ServiceOrder[]
-  customerBikes CustomerBike[]
+  id               String                @id @default(uuid())
+  code             String                @unique // "LEO", "AV135"
+  name             String
+  address          String?
+  users            User[]
+  stocks           Stock[]
+  sales            Sale[]
+  sessions         CashRegisterSession[]
+  serviceOrders    ServiceOrder[]
+  customerBikes    CustomerBike[]
+  serviceCatalogs  ServiceCatalog[]
 }
 
 // === CATALOG & INVENTORY ===
@@ -275,10 +276,26 @@ model ServiceOrderItem {
   id                    String              @id @default(uuid())
   serviceOrderId        String
   modeloConfiguracionId String?             @map("productId")  // Optional, could be just labor/service
+  serviceCatalogId      String?             // Referencia al catálogo de servicios (opcional)
   description           String              // e.g. "Mano de obra", "Cámara 29"
   quantity              Int                 @default(1)
   price                 Decimal             @db.Decimal(10, 2)
 
   serviceOrder        ServiceOrder         @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   modeloConfiguracion ModeloConfiguracion? @relation(fields: [modeloConfiguracionId], references: [id])
+  serviceCatalog      ServiceCatalog?      @relation(fields: [serviceCatalogId], references: [id])
+}
+
+// === SERVICE CATALOG ===
+model ServiceCatalog {
+  id        String   @id @default(uuid())
+  name      String
+  basePrice Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch            Branch             @relation(fields: [branchId], references: [id])
+  serviceOrderItems ServiceOrderItem[]
 }
