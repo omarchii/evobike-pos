@@ -9,16 +9,17 @@ datasource db {
 
 // === IAM ===
 model User {
-  id            String                @id @default(uuid())
-  name          String
-  email         String                @unique
-  password      String
-  role          String                @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
-  branchId      String?
-  branch        Branch?               @relation(fields: [branchId], references: [id])
-  sales         Sale[]
-  sessions      CashRegisterSession[]
-  serviceOrders ServiceOrder[]
+  id                String                @id @default(uuid())
+  name              String
+  email             String                @unique
+  password          String
+  role              String                @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
+  branchId          String?
+  branch            Branch?               @relation(fields: [branchId], references: [id])
+  sales             Sale[]
+  sessions          CashRegisterSession[]
+  serviceOrders     ServiceOrder[]
+  commissionRecords CommissionRecord[]
 }
 
 model Branch {
@@ -33,6 +34,7 @@ model Branch {
   serviceOrders    ServiceOrder[]
   customerBikes    CustomerBike[]
   serviceCatalogs  ServiceCatalog[]
+  commissionRules  CommissionRule[]
 }
 
 // === CATALOG & INVENTORY ===
@@ -46,6 +48,7 @@ model Modelo {
 
   coloresDisponibles ModeloColor[]
   configuraciones    ModeloConfiguracion[]
+  commissionRules    CommissionRule[]
 }
 
 model Color {
@@ -149,11 +152,12 @@ model Sale {
   internalNote String?  // Visible para MANAGER; no aparece en el ticket del cliente
   createdAt    DateTime @default(now())
 
-  branch   Branch            @relation(fields: [branchId], references: [id])
-  user     User              @relation(fields: [userId], references: [id])
-  customer Customer?         @relation(fields: [customerId], references: [id])
-  items    SaleItem[]
-  payments CashTransaction[]
+  branch            Branch             @relation(fields: [branchId], references: [id])
+  user              User               @relation(fields: [userId], references: [id])
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  items             SaleItem[]
+  payments          CashTransaction[]
+  commissionRecords CommissionRecord[]
 }
 
 model SaleItem {
@@ -284,6 +288,49 @@ model ServiceOrderItem {
   serviceOrder        ServiceOrder         @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   modeloConfiguracion ModeloConfiguracion? @relation(fields: [modeloConfiguracionId], references: [id])
   serviceCatalog      ServiceCatalog?      @relation(fields: [serviceCatalogId], references: [id])
+}
+
+// === COMMISSIONS ===
+enum CommissionType {
+  PERCENTAGE   // Porcentaje sobre el total de la venta (ej. 3.5%)
+  FIXED_AMOUNT // Monto fijo por venta (ej. $50 MXN)
+}
+
+enum CommissionStatus {
+  PENDING  // Comisión generada, pendiente de revisión
+  APPROVED // Aprobada por gerente, lista para pagar
+  PAID     // Pagada al vendedor
+}
+
+model CommissionRule {
+  id             String         @id @default(uuid())
+  role           String         // ADMIN | MANAGER | SELLER | TECHNICIAN
+  commissionType CommissionType
+  value          Decimal        @db.Decimal(10, 4) // Porcentaje (0-100) o monto fijo
+  modeloId       String?        // null = aplica a todos los modelos
+  isActive       Boolean        @default(true)
+  branchId       String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  branch  Branch             @relation(fields: [branchId], references: [id])
+  modelo  Modelo?            @relation(fields: [modeloId], references: [id])
+  records CommissionRecord[]
+}
+
+model CommissionRecord {
+  id        String           @id @default(uuid())
+  saleId    String
+  userId    String
+  ruleId    String
+  amount    Decimal          @db.Decimal(10, 2) // Monto calculado al momento de la venta
+  status    CommissionStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  sale Sale           @relation(fields: [saleId], references: [id])
+  user User           @relation(fields: [userId], references: [id])
+  rule CommissionRule @relation(fields: [ruleId], references: [id])
 }
 
 // === SERVICE CATALOG ===
