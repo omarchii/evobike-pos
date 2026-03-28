@@ -167,6 +167,19 @@ model SaleItem {
 }
 
 // === PAYMENTS & CASHIER ===
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  CREDIT_BALANCE
+  ATRATO // Financiera externa; el cobro queda PENDING hasta que transfieren
+}
+
+enum CollectionStatus {
+  COLLECTED // Dinero ya recibido (default)
+  PENDING   // Pago pendiente de liquidación por la financiera (ej. Atrato)
+}
+
 model CashRegisterSession {
   id         String    @id @default(uuid())
   branchId   String
@@ -183,13 +196,14 @@ model CashRegisterSession {
 }
 
 model CashTransaction {
-  id        String   @id @default(uuid())
-  sessionId String
-  saleId    String?
-  type      String // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
-  method    String // CASH, CARD, TRANSFER, CREDIT_BALANCE
-  amount    Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
+  id               String           @id @default(uuid())
+  sessionId        String
+  saleId           String?
+  type             String           // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
+  method           PaymentMethod
+  amount           Decimal          @db.Decimal(10, 2)
+  collectionStatus CollectionStatus @default(COLLECTED)
+  createdAt        DateTime         @default(now())
 
   session CashRegisterSession @relation(fields: [sessionId], references: [id])
   sale    Sale?               @relation(fields: [saleId], references: [id])

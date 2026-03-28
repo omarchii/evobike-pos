@@ -4,11 +4,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-type PaymentMethod = "CASH" | "CARD" | "TRANSFER";
+// Atrato no aplica para cobros de taller (cobro directo, sin financiera)
+type DeliveryPaymentMethod = "CASH" | "CARD" | "TRANSFER";
 
 interface DeliverRequestBody {
     serviceOrderId: string;
-    paymentMethod: PaymentMethod;
+    paymentMethod: DeliveryPaymentMethod;
 }
 
 interface SessionUser {
@@ -42,7 +43,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             return NextResponse.json({ success: false, error: "Datos incompletos" }, { status: 400 });
         }
 
-        const validMethods: PaymentMethod[] = ["CASH", "CARD", "TRANSFER"];
+        const validMethods: DeliveryPaymentMethod[] = ["CASH", "CARD", "TRANSFER"];
         if (!validMethods.includes(paymentMethod)) {
             return NextResponse.json({ success: false, error: "Método de pago no válido" }, { status: 400 });
         }
