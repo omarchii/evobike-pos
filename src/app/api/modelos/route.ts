@@ -24,7 +24,7 @@ export async function GET() {
                 nombre: m.nombre,
                 descripcion: m.descripcion,
                 requiere_vin: m.requiere_vin,
-                imagenPrincipal: m.configuraciones[0]?.imageUrl || null,
+                imagenPrincipal: m.imageUrl || null,
                 variantesCount: m.configuraciones.length,
                 precioDesde: minPrice
             };

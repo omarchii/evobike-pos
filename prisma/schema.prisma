@@ -43,6 +43,7 @@ model Modelo {
   nombre       String   @unique
   descripcion  String?
   requiere_vin Boolean  @default(true)
+  imageUrl     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
