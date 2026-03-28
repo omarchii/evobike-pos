@@ -14,19 +14,25 @@ export default async function InventoryPage() {
     const branchId = (session?.user as any)?.branchId;
 
     // Get products with their stocks in this branch
-    const rawProducts = await prisma.product.findMany({
+    const rawProducts = await prisma.modeloConfiguracion.findMany({
         include: {
             stocks: {
                 where: { branchId: branchId }
-            }
+            },
+            modelo: true,
+            color: true,
+            voltaje: true
         },
-        orderBy: { name: 'asc' }
+        orderBy: { sku: 'asc' }
     });
 
     const products = rawProducts.map(p => ({
         ...p,
-        price: Number(p.price),
-        cost: Number(p.cost),
+        name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
+        price: Number(p.precio),
+        cost: Number(p.costo),
+        precioDistribuidor: p.precioDistribuidor ? Number(p.precioDistribuidor) : null,
+        precioDistribuidorConfirmado: p.precioDistribuidorConfirmado,
         stock: p.stocks[0]?.quantity || 0
     }));
 
@@ -77,6 +83,9 @@ export default async function InventoryPage() {
                                     <TableCell className="text-slate-500">{p.sku}</TableCell>
                                     <TableCell className="text-right font-medium text-emerald-600">
                                         ${p.price.toFixed(2)}
+                                        {!p.precioDistribuidorConfirmado && (
+                                            <Badge className="ml-2 bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-100">Precio dist. pendiente</Badge>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right text-slate-500">
                                         ${p.cost.toFixed(2)}

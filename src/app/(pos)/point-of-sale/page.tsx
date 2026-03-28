@@ -4,22 +4,32 @@ import PosTerminal from "./pos-terminal";
 export const dynamic = "force-dynamic";
 
 export default async function PointOfSalePage() {
-    // Fetch active products to populate the POS catalog/search
-    const rawProducts = await prisma.product.findMany({
+    const rawProducts = await prisma.modeloConfiguracion.findMany({
         include: {
+            modelo: true,
+            color: true,
+            voltaje: true,
             stocks: {
                 include: {
                     branch: true,
                 }
             }
         },
-        orderBy: { name: 'asc' }
+        orderBy: { sku: 'asc' }
     });
 
-    const products = rawProducts.map(p => ({
+    const products = rawProducts.map((p: any) => ({
         ...p,
-        price: Number(p.price),
-        cost: Number(p.cost),
+        name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
+        price: Number(p.precio),
+        cost: Number(p.costo),
+        precioDistribuidor: p.precioDistribuidor ? Number(p.precioDistribuidor) : null,
+        precioDistribuidorConfirmado: p.precioDistribuidorConfirmado,
+        color: p.color.nombre,
+        voltage: p.voltaje.label,
+        imageUrl: p.modelo.imageUrl || null,
+        baseProductId: p.modelo.id,
+        baseProduct: p.modelo,
     }));
 
     const customers = await prisma.customer.findMany({

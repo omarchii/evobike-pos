@@ -20,15 +20,23 @@ export default async function LayawaysPage() {
             customer: true,
             payments: true,
             items: {
-                include: { product: true }
+                include: {
+                    modeloConfiguracion: {
+                        include: {
+                            modelo: true,
+                            color: true,
+                            voltaje: true
+                        }
+                    }
+                }
             }
         },
         orderBy: { createdAt: "desc" }
     });
 
     // Serialize decimal fields
-    const serializedLayaways = layaways.map(l => {
-        const totalPayments = l.payments.reduce((acc, p) => acc + Number(p.amount), 0);
+    const serializedLayaways = layaways.map((l: any) => {
+        const totalPayments = l.payments.reduce((acc: number, p: any) => acc + Number(p.amount), 0);
         return {
             ...l,
             subtotal: Number(l.subtotal),
@@ -39,18 +47,18 @@ export default async function LayawaysPage() {
                 creditLimit: Number(l.customer.creditLimit),
                 balance: Number(l.customer.balance)
             } : null,
-            payments: l.payments.map(p => ({
+            payments: l.payments.map((p: any) => ({
                 ...p,
                 amount: Number(p.amount)
             })),
-            items: l.items.map(i => ({
+            items: l.items.map((i: any) => ({
                 ...i,
                 price: Number(i.price),
                 discount: Number(i.discount),
-                product: {
-                    ...i.product,
-                    price: Number(i.product.price),
-                    cost: Number(i.product.cost)
+                modeloConfiguracion: {
+                    ...i.modeloConfiguracion,
+                    precio: Number(i.modeloConfiguracion.precio),
+                    costo: Number(i.modeloConfiguracion.costo)
                 }
             }))
         };

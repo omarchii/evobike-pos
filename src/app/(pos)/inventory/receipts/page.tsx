@@ -4,20 +4,24 @@ import ReceiptsTerminal from "./receipts-terminal";
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptsPage() {
-    const rawProducts = await prisma.product.findMany({
+    const rawProducts = await prisma.modeloConfiguracion.findMany({
         include: {
             stocks: {
                 include: { branch: true }
-            }
+            },
+            modelo: true,
+            color: true,
+            voltaje: true
         },
-        orderBy: { name: 'asc' }
+        orderBy: { sku: 'asc' }
     });
 
     // Serialize Decimals for Client Component
     const products = rawProducts.map(p => ({
         ...p,
-        price: Number(p.price),
-        cost: Number(p.cost)
+        name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
+        price: Number(p.precio),
+        cost: Number(p.costo)
     }));
 
     return (

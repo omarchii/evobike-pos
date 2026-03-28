@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Product, Stock, Branch } from "@prisma/client";
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, Package, User } from "lucide-react";
+import { ModeloConfiguracion, Stock, Branch } from "@prisma/client";
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, Package, User, ChevronRight, LayoutGrid, List } from "lucide-react";
+import GuidedCatalog from "./guided-catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,13 +33,37 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { processSaleAction } from "@/actions/sale";
 import { createCustomer } from "@/actions/customer";
+import Image from "next/image";
 
-type OmittedProduct = Omit<Product, 'price' | 'cost'>;
+type OmittedProduct = Omit<ModeloConfiguracion, 'precio' | 'costo'>;
 
 type ProductWithStock = OmittedProduct & {
+    name: string;
     price: number;
     cost: number;
+    color?: string | null;
+    voltage?: string | null;
+    imageUrl?: string | null;
+    baseProductId?: string | null;
+    isSerialized: boolean;
+    baseProduct?: any;
     stocks: (Stock & { branch: Branch })[];
+};
+
+interface CartItem {
+    product: ProductWithStock;
+    quantity: number;
+    price: number;
+    serialNumber?: string;
+}
+
+// Helper to group products by BaseProduct
+type BaseProductGroup = {
+    id: string; // BaseProduct id or "ungrouped"
+    name: string;
+    description: string | null;
+    imageUrl: string | null;
+    variants: ProductWithStock[];
 };
 
 interface CartItem {
@@ -70,20 +95,48 @@ export default function PosTerminal({
     const [creatingCustomer, setCreatingCustomer] = useState(false);
     const [newCustomerForm, setNewCustomerForm] = useState({ name: "", phone: "" });
 
+    // Variant Selection State
+    const [selectedGroup, setSelectedGroup] = useState<BaseProductGroup | null>(null);
+    const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+
     // Layaway States
     const [isLayaway, setIsLayaway] = useState(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
     const [downPayment, setDownPayment] = useState<string>("");
 
-    // Filtering products based on search input
-    const filteredProducts = useMemo(() => {
-        if (!search) return initialProducts;
-        const lowerSearch = search.toLowerCase();
-        return initialProducts.filter(
-            (p) =>
-                p.name.toLowerCase().includes(lowerSearch) ||
-                p.sku.toLowerCase().includes(lowerSearch)
-        );
+    // Catalog mode: "guided" (step-by-step) or "flat" (flat SKU search)
+    const [catalogMode, setCatalogMode] = useState<"guided" | "flat">("guided");
+
+    // Filtering and Grouping
+    const groupedProducts = useMemo(() => {
+        let filtered = initialProducts;
+        if (search) {
+            const lowerSearch = search.toLowerCase();
+            filtered = initialProducts.filter(
+                (p) =>
+                    p.name.toLowerCase().includes(lowerSearch) ||
+                    p.sku.toLowerCase().includes(lowerSearch) ||
+                    p.baseProduct?.name.toLowerCase().includes(lowerSearch)
+            );
+        }
+
+        const groups = new Map<string, BaseProductGroup>();
+
+        filtered.forEach(p => {
+            const groupId = p.baseProductId || `ungrouped-${p.id}`;
+            if (!groups.has(groupId)) {
+                groups.set(groupId, {
+                    id: groupId,
+                    name: p.baseProduct?.name || p.name,
+                    description: p.baseProduct?.description || null,
+                    imageUrl: p.baseProduct?.imageUrl || p.imageUrl || null,
+                    variants: []
+                });
+            }
+            groups.get(groupId)!.variants.push(p);
+        });
+
+        return Array.from(groups.values());
     }, [search, initialProducts]);
 
     // Cart operations
@@ -111,6 +164,8 @@ export default function PosTerminal({
                 return prev;
             }
 
+            toast.success(`Agregado: ${product.name} ${product.color ? `(${product.color})` : ""}`);
+            setIsVariantModalOpen(false); // Close modal if open
             return [...prev, { product, quantity: 1, price: Number(product.price) }];
         });
     };
@@ -168,7 +223,7 @@ export default function PosTerminal({
         try {
             const response = await processSaleAction({
                 items: cart.map(item => ({
-                    productId: item.product.id,
+                    modeloConfiguracionId: item.product.id,
                     name: item.product.name,
                     quantity: item.quantity,
                     price: item.price,
@@ -234,55 +289,180 @@ export default function PosTerminal({
             {/* LEFT COLUMN: Catalog and Search */}
             <div className="lg:col-span-7 xl:col-span-8 flex flex-col bg-white dark:bg-slate-950 rounded-xl border shadow-sm overflow-hidden">
                 <div className="p-4 border-b">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Buscar por código (SKU) o nombre de producto..."
-                            className="pl-9 bg-slate-50 dark:bg-slate-900 border-none select-all"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
-                        />
+                    {/* Mode Toggle */}
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            {catalogMode === "guided" ? "Selección Guiada" : "Búsqueda Rápida"}
+                        </span>
+                        <div className="flex items-center rounded-lg border bg-slate-50 dark:bg-slate-900 p-0.5">
+                            <button
+                                onClick={() => setCatalogMode("guided")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                    catalogMode === "guided"
+                                        ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600"
+                                        : "text-slate-500 hover:text-slate-800"
+                                }`}
+                            >
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                Guiado
+                            </button>
+                            <button
+                                onClick={() => setCatalogMode("flat")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                    catalogMode === "flat"
+                                        ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600"
+                                        : "text-slate-500 hover:text-slate-800"
+                                }`}
+                            >
+                                <Search className="w-3.5 h-3.5" />
+                                Por SKU
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Flat search input – only shown when in flat mode */}
+                    {catalogMode === "flat" && (
+                        <div className="relative">
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Buscar por código (SKU) o nombre de producto..."
+                                className="pl-9 bg-slate-50 dark:bg-slate-900 border-none select-all"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                    )}
                 </div>
 
+                {/* ---- GUIDED catalog mode ---- */}
+                {catalogMode === "guided" && (
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        <GuidedCatalog
+                            branchId={branchId}
+                            onAddToCart={(product) => addToCart(product as any)}
+                        />
+                    </div>
+                )}
+
+                {/* ---- FLAT SKU grid mode ---- */}
+                {catalogMode === "flat" && (
                 <ScrollArea className="flex-1 p-4">
                     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredProducts.map((product) => {
-                            const localStock = product.stocks.find(s => s.branchId === branchId)?.quantity || 0;
-                            const hasStock = localStock > 0;
+                        {groupedProducts.map((group) => {
+                            // Calculate total stock across all variants for this branch
+                            const totalLocalStock = group.variants.reduce((acc, variant) => {
+                                const stock = variant.stocks.find(s => s.branchId === branchId)?.quantity || 0;
+                                return acc + stock;
+                            }, 0);
+
+                            const hasStock = totalLocalStock > 0;
+                            const isSingleVariant = group.variants.length === 1;
 
                             return (
                                 <div
-                                    key={product.id}
-                                    onClick={() => hasStock && addToCart(product)}
+                                    key={group.id}
+                                    onClick={() => {
+                                        if (!hasStock) return;
+                                        if (isSingleVariant) {
+                                            addToCart(group.variants[0]);
+                                        } else {
+                                            setSelectedGroup(group);
+                                            setIsVariantModalOpen(true);
+                                        }
+                                    }}
                                     className={`relative p-4 rounded-xl border flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-md ${hasStock
                                         ? "bg-white dark:bg-slate-900 hover:border-emerald-500"
                                         : "bg-slate-50 dark:bg-slate-900/50 opacity-60 cursor-not-allowed grayscale-[0.8]"
                                         }`}
                                 >
-                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                                        <Package className="h-8 w-8 text-slate-400" />
+                                    <div className="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mb-3 overflow-hidden relative">
+                                        {group.imageUrl ? (
+                                            <img src={group.imageUrl} alt={group.name} className="object-cover w-full h-full" />
+                                        ) : (
+                                            <Package className="h-10 w-10 text-slate-400" />
+                                        )}
                                     </div>
-                                    <div className="text-sm font-semibold mb-1 line-clamp-2">{product.name}</div>
-                                    <div className="text-xs text-slate-500 mb-2">{product.sku}</div>
+                                    <div className="text-sm font-bold mb-1 line-clamp-2">{group.name}</div>
+                                    {!isSingleVariant && <div className="text-xs text-slate-500 mb-2">{group.variants.length} Variables</div>}
+                                    {isSingleVariant && <div className="text-xs text-slate-500 mb-2">{group.variants[0].sku}</div>}
+
                                     <Badge variant={hasStock ? "default" : "destructive"} className="mt-auto">
-                                        {hasStock ? `${localStock} en stock` : "Agotado"}
+                                        {hasStock ? `${totalLocalStock} en stock` : "Agotado"}
                                     </Badge>
-                                    <div className="mt-2 text-emerald-600 dark:text-emerald-400 font-bold">
-                                        ${Number(product.price).toFixed(2)}
-                                    </div>
+
+                                    {isSingleVariant && (
+                                        <div className="mt-2 text-emerald-600 dark:text-emerald-400 font-bold">
+                                            ${Number(group.variants[0].price).toFixed(2)}
+                                        </div>
+                                    )}
+                                    {!isSingleVariant && hasStock && (
+                                        <div className="mt-2 text-indigo-600 dark:text-indigo-400 font-semibold text-xs flex items-center">
+                                            Ver Opciones <ChevronRight className="h-3 w-3 ml-1" />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
 
-                        {filteredProducts.length === 0 && (
+                        {groupedProducts.length === 0 && (
                             <div className="col-span-full py-12 text-center text-slate-500">
                                 No se encontraron productos con "{search}"
                             </div>
                         )}
                     </div>
                 </ScrollArea>
+                )} {/* end flat mode */}
+
+                {/* Variant Selection Modal - always rendered so state persists */}
+                <Dialog open={isVariantModalOpen} onOpenChange={setIsVariantModalOpen}>
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Seleccionar Variante: {selectedGroup?.name}</DialogTitle>
+                            <DialogDescription>
+                                Elige el modelo exacto que deseas agregar al carrito.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-3 py-4 max-h-[60vh] overflow-y-auto pr-2">
+                            {selectedGroup?.variants.map(variant => {
+                                const localStock = variant.stocks.find(s => s.branchId === branchId)?.quantity || 0;
+                                const hasStock = localStock > 0;
+                                return (
+                                    <div key={variant.id} className={`flex items-center justify-between p-3 border rounded-lg ${hasStock ? 'bg-white hover:border-emerald-500 hover:shadow-sm cursor-pointer' : 'bg-slate-50 opacity-60 cursor-not-allowed'}`} onClick={() => hasStock && addToCart(variant)}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                                {variant.imageUrl ? (
+                                                    <img src={variant.imageUrl} alt={variant.name} className="object-cover w-full h-full" />
+                                                ) : selectedGroup.imageUrl ? (
+                                                    <img src={selectedGroup.imageUrl} alt={selectedGroup.name} className="object-cover w-full h-full" />
+                                                ) : (
+                                                    <Package className="h-6 w-6 text-slate-400" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm">
+                                                    {variant.name} {variant.color ? `- ${variant.color}` : ""} {variant.voltage ? `(${variant.voltage})` : ""}
+                                                </p>
+                                                <p className="text-xs text-slate-500">{variant.sku}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-right">
+                                            <div>
+                                                <Badge variant={hasStock ? "outline" : "destructive"}>{hasStock ? `Stock: ${localStock}` : "Agotado"}</Badge>
+                                            </div>
+                                            <div className="font-bold text-emerald-600">
+                                                ${Number(variant.price).toFixed(2)}
+                                            </div>
+                                            <Button variant={hasStock ? "default" : "secondary"} size="sm" disabled={!hasStock}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* RIGHT COLUMN: Cart and Checkout */}
@@ -311,57 +491,69 @@ export default function PosTerminal({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {cart.map((item) => (
-                                    <TableRow key={item.product.id}>
-                                        <TableCell className="font-medium text-xs">
-                                            {item.product.name}
-                                            <div className="text-slate-500 font-normal">{item.product.sku}</div>
-                                            {item.product.isSerialized && (
-                                                <Input
-                                                    className="h-7 text-xs mt-2 w-full"
-                                                    placeholder="Escanear Núm. Serie VIN"
-                                                    value={item.serialNumber || ""}
-                                                    onChange={(e) => updateSerialNumber(item.product.id, e.target.value)}
-                                                />
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center justify-center space-x-2">
+                                {cart.map((item) => {
+                                    const imgSource = item.product.imageUrl || item.product.baseProduct?.imageUrl;
+                                    return (
+                                        <TableRow key={item.product.id}>
+                                            <TableCell className="font-medium text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    {imgSource && (
+                                                        <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-slate-100 flex items-center justify-center">
+                                                            <img src={imgSource} alt={item.product.name} className="object-cover w-full h-full" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p>{item.product.name} {item.product.color ? `- ${item.product.color}` : ""} {item.product.voltage ? `(${item.product.voltage})` : ""}</p>
+                                                        <p className="text-slate-500 font-normal">{item.product.sku}</p>
+                                                    </div>
+                                                </div>
+                                                {item.product.isSerialized && (
+                                                    <Input
+                                                        className="h-7 text-xs mt-2 w-full"
+                                                        placeholder="Escanear Núm. Serie VIN"
+                                                        value={item.serialNumber || ""}
+                                                        onChange={(e) => updateSerialNumber(item.product.id, e.target.value)}
+                                                    />
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center justify-center space-x-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => updateQuantity(item.product.id, -1)}
+                                                        disabled={item.quantity <= 1}
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <span className="text-sm w-4 text-center">{item.quantity}</span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => updateQuantity(item.product.id, 1)}
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="text-sm font-semibold">
+                                                    ${(item.price * item.quantity).toFixed(2)}
+                                                </div>
                                                 <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-6 w-6"
-                                                    onClick={() => updateQuantity(item.product.id, -1)}
-                                                    disabled={item.quantity <= 1}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50 mx-auto mt-1"
+                                                    onClick={() => removeFromCart(item.product.id)}
                                                 >
-                                                    <Minus className="h-3 w-3" />
+                                                    <Trash2 className="h-3 w-3 mr-1" /> Remove
                                                 </Button>
-                                                <span className="text-sm w-4 text-center">{item.quantity}</span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-6 w-6"
-                                                    onClick={() => updateQuantity(item.product.id, 1)}
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="text-sm font-semibold">
-                                                ${(item.price * item.quantity).toFixed(2)}
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50 mx-auto mt-1"
-                                                onClick={() => removeFromCart(item.product.id)}
-                                            >
-                                                <Trash2 className="h-3 w-3 mr-1" /> Remove
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     )}
@@ -534,8 +726,8 @@ export default function PosTerminal({
                         </DialogContent>
                     </Dialog>
 
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 }

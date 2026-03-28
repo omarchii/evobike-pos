@@ -85,6 +85,8 @@ model ModeloConfiguracion {
   sku        String  @unique
   precio     Decimal @db.Decimal(10, 2)
   costo      Decimal @db.Decimal(10, 2)
+  precioDistribuidor           Decimal? @db.Decimal(10, 2)
+  precioDistribuidorConfirmado Boolean  @default(false)
   imageUrl   String?
 
   modelo  Modelo  @relation(fields: [modelo_id], references: [id])

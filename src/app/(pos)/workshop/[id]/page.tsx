@@ -15,7 +15,15 @@ export default async function WorkshopOrderPage(props: {
         include: {
             customer: true,
             items: {
-                include: { product: true }
+                include: {
+                    modeloConfiguracion: {
+                        include: {
+                            modelo: true,
+                            color: true,
+                            voltaje: true
+                        }
+                    }
+                }
             },
             user: true, // Technician
         }
@@ -26,8 +34,13 @@ export default async function WorkshopOrderPage(props: {
     }
 
     // Fetch active products to allow mechanic to add parts from inventory
-    const products = await prisma.product.findMany({
-        orderBy: { name: "asc" }
+    const products = await prisma.modeloConfiguracion.findMany({
+        include: {
+            modelo: true,
+            color: true,
+            voltaje: true
+        },
+        orderBy: { sku: "asc" }
     });
 
     // Convert Decimals
@@ -35,21 +48,22 @@ export default async function WorkshopOrderPage(props: {
         ...order,
         subtotal: Number(order.subtotal),
         total: Number(order.total),
-        items: order.items.map(i => ({
+        items: order.items.map((i: any) => ({
             ...i,
             price: Number(i.price),
-            product: i.product ? {
-                ...i.product,
-                price: Number(i.product.price),
-                cost: Number(i.product.cost)
+            modeloConfiguracion: i.modeloConfiguracion ? {
+                ...i.modeloConfiguracion,
+                precio: Number(i.modeloConfiguracion.precio),
+                costo: Number(i.modeloConfiguracion.costo)
             } : null
         }))
     };
 
-    const serializedProducts = products.map(p => ({
+    const serializedProducts = products.map((p: any) => ({
         ...p,
-        price: Number(p.price),
-        cost: Number(p.cost)
+        name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
+        price: Number(p.precio),
+        cost: Number(p.costo)
     }));
 
     return (
