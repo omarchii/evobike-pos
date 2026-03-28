@@ -112,11 +112,11 @@ export async function createServiceOrder(input: NewOrderInput) {
 }
 
 // Agregar item a orden de servicio.
-// Si el item tiene modeloConfiguracionId, verifica stock, lo descuenta
+// Si el item tiene productVariantId, verifica stock, lo descuenta
 // y registra un InventoryMovement(WORKSHOP_USAGE) dentro de una $transaction.
 export async function addServiceOrderItem(data: {
     serviceOrderId: string;
-    modeloConfiguracionId?: string;
+    productVariantId?: string;
     description: string;
     quantity: number;
     price: number;
@@ -138,11 +138,11 @@ export async function addServiceOrderItem(data: {
 
         await prisma.$transaction(async (tx) => {
             // Si es una refacción de inventario, verificar y descontar stock
-            if (data.modeloConfiguracionId) {
+            if (data.productVariantId) {
                 const stock = await tx.stock.findUnique({
                     where: {
-                        modeloConfiguracionId_branchId: {
-                            modeloConfiguracionId: data.modeloConfiguracionId,
+                        productVariantId_branchId: {
+                            productVariantId: data.productVariantId,
                             branchId
                         }
                     }
@@ -159,7 +159,7 @@ export async function addServiceOrderItem(data: {
 
                 await tx.inventoryMovement.create({
                     data: {
-                        modeloConfiguracionId: data.modeloConfiguracionId,
+                        productVariantId: data.productVariantId,
                         branchId,
                         userId,
                         type: "WORKSHOP_USAGE",
@@ -172,7 +172,7 @@ export async function addServiceOrderItem(data: {
             await tx.serviceOrderItem.create({
                 data: {
                     serviceOrderId: data.serviceOrderId,
-                    modeloConfiguracionId: data.modeloConfiguracionId ?? null,
+                    productVariantId: data.productVariantId ?? null,
                     description: data.description,
                     quantity: data.quantity,
                     price: data.price

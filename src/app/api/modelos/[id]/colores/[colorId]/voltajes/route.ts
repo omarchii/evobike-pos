@@ -8,7 +8,7 @@ export async function GET(
     const { id, colorId } = await params;
     
     try {
-        const configuraciones = await prisma.modeloConfiguracion.findMany({
+        const configuraciones = await prisma.productVariant.findMany({
             where: {
                 modelo_id: id,
                 color_id: colorId
@@ -29,7 +29,7 @@ export async function GET(
                 id: conf.voltaje.id,
                 valor: conf.voltaje.valor,
                 label: conf.voltaje.label,
-                precio: Number(conf.precio),
+                precioPublico: Number(conf.precioPublico),
                 costo: Number(conf.costo),
                 sku: conf.sku,
                 configuracionId: conf.id,

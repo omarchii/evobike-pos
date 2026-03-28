@@ -3,8 +3,7 @@ import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "./prisma";
 
-// Dummy bcrypt check since we haven't implemented hashing in seed yet
-// In production, we would use: import bcrypt from 'bcryptjs'
+import bcrypt from "bcryptjs";
 
 export const authOptions: AuthOptions = {
     adapter: PrismaAdapter(prisma),
@@ -35,8 +34,8 @@ export const authOptions: AuthOptions = {
                     throw new Error("Usuario no encontrado");
                 }
 
-                // TEMP: Using exact match until bcrypt is implemented in reset password/creation
-                const isPasswordValid = credentials.password === user.password;
+                // Compare hashed password
+                const isPasswordValid = bcrypt.compareSync(credentials.password, user.password);
 
                 if (!isPasswordValid) {
                     throw new Error("Contraseña incorrecta");

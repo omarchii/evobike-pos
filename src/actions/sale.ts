@@ -5,8 +5,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+interface SessionUser {
+    id: string;
+    branchId: string;
+}
+
 interface SaleInput {
-    items: { modeloConfiguracionId: string; quantity: number; price: number; name: string; isSerialized?: boolean; serialNumber?: string }[];
+    items: { productVariantId: string; quantity: number; price: number; name: string; isSerialized?: boolean; serialNumber?: string }[];
     total: number;
     paymentMethod: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE";
     isLayaway?: boolean;
@@ -22,8 +27,7 @@ export async function processSaleAction(input: SaleInput) {
             return { success: false, error: "No autorizado" };
         }
 
-        const userId = (session.user as any).id;
-        const branchId = (session.user as any).branchId;
+        const { id: userId, branchId } = session.user as unknown as SessionUser;
 
         if (!branchId) {
             return { success: false, error: "Usuario sin sucursal asignada" };
@@ -79,8 +83,8 @@ export async function processSaleAction(input: SaleInput) {
                 // Find existing stock
                 const stock = await tx.stock.findUnique({
                     where: {
-                        modeloConfiguracionId_branchId: {
-                            modeloConfiguracionId: item.modeloConfiguracionId,
+                        productVariantId_branchId: {
+                            productVariantId: item.productVariantId,
                             branchId: branchId
                         }
                     }
@@ -144,7 +148,7 @@ export async function processSaleAction(input: SaleInput) {
                     total: input.total,
                     items: {
                         create: input.items.map(item => ({
-                            modeloConfiguracionId: item.modeloConfiguracionId,
+                            productVariantId: item.productVariantId,
                             quantity: item.quantity,
                             price: item.price
                         }))
@@ -156,7 +160,7 @@ export async function processSaleAction(input: SaleInput) {
             for (const item of input.items) {
                 await tx.inventoryMovement.create({
                     data: {
-                        modeloConfiguracionId: item.modeloConfiguracionId,
+                        productVariantId: item.productVariantId,
                         branchId: branchId,
                         userId: userId,
                         type: "SALE",

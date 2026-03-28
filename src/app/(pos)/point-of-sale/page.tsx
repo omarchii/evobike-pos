@@ -4,7 +4,7 @@ import PosTerminal from "./pos-terminal";
 export const dynamic = "force-dynamic";
 
 export default async function PointOfSalePage() {
-    const rawProducts = await prisma.modeloConfiguracion.findMany({
+    const rawProducts = await prisma.productVariant.findMany({
         include: {
             modelo: true,
             color: true,
@@ -21,7 +21,7 @@ export default async function PointOfSalePage() {
     const products = rawProducts.map((p: any) => ({
         ...p,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
-        price: Number(p.precio),
+        price: Number(p.precioPublico),
         cost: Number(p.costo),
         precioDistribuidor: p.precioDistribuidor ? Number(p.precioDistribuidor) : null,
         precioDistribuidorConfirmado: p.precioDistribuidorConfirmado,

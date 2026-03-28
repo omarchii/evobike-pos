@@ -16,7 +16,7 @@ export default async function WorkshopOrderPage(props: {
             customer: true,
             items: {
                 include: {
-                    modeloConfiguracion: {
+                    productVariant: {
                         include: {
                             modelo: true,
                             color: true,
@@ -34,7 +34,7 @@ export default async function WorkshopOrderPage(props: {
     }
 
     // Fetch active products to allow mechanic to add parts from inventory
-    const products = await prisma.modeloConfiguracion.findMany({
+    const products = await prisma.productVariant.findMany({
         include: {
             modelo: true,
             color: true,
@@ -51,10 +51,10 @@ export default async function WorkshopOrderPage(props: {
         items: order.items.map((i: any) => ({
             ...i,
             price: Number(i.price),
-            modeloConfiguracion: i.modeloConfiguracion ? {
-                ...i.modeloConfiguracion,
-                precio: Number(i.modeloConfiguracion.precio),
-                costo: Number(i.modeloConfiguracion.costo)
+            productVariant: i.productVariant ? {
+                ...i.productVariant,
+                precioPublico: Number(i.productVariant.precioPublico),
+                costo: Number(i.productVariant.costo)
             } : null
         }))
     };
@@ -62,7 +62,7 @@ export default async function WorkshopOrderPage(props: {
     const serializedProducts = products.map((p: any) => ({
         ...p,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
-        price: Number(p.precio),
+        price: Number(p.precioPublico),
         cost: Number(p.costo)
     }));
 

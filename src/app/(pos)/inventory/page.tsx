@@ -14,7 +14,7 @@ export default async function InventoryPage() {
     const branchId = (session?.user as any)?.branchId;
 
     // Get products with their stocks in this branch
-    const rawProducts = await prisma.modeloConfiguracion.findMany({
+    const rawProducts = await prisma.productVariant.findMany({
         include: {
             stocks: {
                 where: { branchId: branchId }
@@ -29,7 +29,7 @@ export default async function InventoryPage() {
     const products = rawProducts.map(p => ({
         ...p,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
-        price: Number(p.precio),
+        price: Number(p.precioPublico),
         cost: Number(p.costo),
         precioDistribuidor: p.precioDistribuidor ? Number(p.precioDistribuidor) : null,
         precioDistribuidorConfirmado: p.precioDistribuidorConfirmado,

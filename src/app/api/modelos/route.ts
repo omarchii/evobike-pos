@@ -16,7 +16,7 @@ export async function GET() {
         // Calculamos métricas útiles para la vista inicial
         const modelosProcesados = modelos.map(m => {
             const minPrice = m.configuraciones.length > 0 
-                ? Math.min(...m.configuraciones.map(c => Number(c.precio))) 
+                ? Math.min(...m.configuraciones.map(c => Number(c.precioPublico)))
                 : 0;
             
             return {

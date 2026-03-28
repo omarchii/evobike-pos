@@ -73,7 +73,7 @@ export default function ReceiptsTerminal({ initialProducts }: { initialProducts:
         toast.loading("Registrando entrada de mercancía...", { id: "receipt" });
 
         const formattedItems = cart.map(i => ({
-            modeloConfiguracionId: i.product.id,
+            productVariantId: i.product.id,
             quantity: i.quantity,
             cost: i.cost
         }));

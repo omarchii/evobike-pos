@@ -21,7 +21,7 @@ export default async function LayawaysPage() {
             payments: true,
             items: {
                 include: {
-                    modeloConfiguracion: {
+                    productVariant: {
                         include: {
                             modelo: true,
                             color: true,
@@ -55,11 +55,14 @@ export default async function LayawaysPage() {
                 ...i,
                 price: Number(i.price),
                 discount: Number(i.discount),
-                modeloConfiguracion: {
-                    ...i.modeloConfiguracion,
-                    precio: Number(i.modeloConfiguracion.precio),
-                    costo: Number(i.modeloConfiguracion.costo)
-                }
+                productVariant: i.productVariant ? {
+                    ...i.productVariant,
+                    precioPublico: Number(i.productVariant.precioPublico),
+                    costo: Number(i.productVariant.costo)
+                } : null,
+                product: i.productVariant ? {
+                    name: `${i.productVariant.modelo.nombre} ${i.productVariant.color.nombre} ${i.productVariant.voltaje.label}`
+                } : { name: i.description || "Producto" }
             }))
         };
     });

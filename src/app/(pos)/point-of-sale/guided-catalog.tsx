@@ -28,7 +28,7 @@ type Voltaje = {
     id: string;
     valor: number;
     label: string;
-    precio: number;
+    precioPublico: number;
     sku: string;
     configuracionId: string;
     stockTotal: number;
@@ -148,7 +148,7 @@ export default function GuidedCatalog({ branchId, onAddToCart }: GuidedCatalogPr
             id: voltaje.configuracionId,
             name: `${selectedModelo!.nombre} ${selectedColor!.nombre} ${voltaje.label}`,
             sku: voltaje.sku,
-            price: voltaje.precio,
+            price: voltaje.precioPublico,
             cost: 0,
             isSerialized: selectedModelo!.requiere_vin,
             // We pass a fake stocks array with the branchId so cart stock-check works
@@ -349,7 +349,7 @@ export default function GuidedCatalog({ branchId, onAddToCart }: GuidedCatalogPr
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xl font-bold text-emerald-600">
-                                                ${v.precio.toLocaleString("es-MX")}
+                                                ${v.precioPublico.toLocaleString("es-MX")}
                                             </p>
                                             <Badge variant={hasStock ? "outline" : "destructive"} className="text-xs mt-1">
                                                 {hasStock ? `${v.stockTotal} en stock` : "Agotado"}

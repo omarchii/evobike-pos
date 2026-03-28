@@ -48,7 +48,7 @@ model Modelo {
   updatedAt    DateTime @updatedAt
 
   coloresDisponibles ModeloColor[]
-  configuraciones    ModeloConfiguracion[]
+  configuraciones    ProductVariant[]
   commissionRules    CommissionRule[]
 }
 
@@ -57,7 +57,7 @@ model Color {
   nombre String @unique
 
   modelos         ModeloColor[]
-  configuraciones ModeloConfiguracion[]
+  configuraciones ProductVariant[]
 }
 
 model Voltaje {
@@ -65,7 +65,7 @@ model Voltaje {
   valor Int    @unique
   label String
 
-  configuraciones ModeloConfiguracion[]
+  configuraciones ProductVariant[]
 }
 
 model ModeloColor {
@@ -77,14 +77,14 @@ model ModeloColor {
   @@id([modelo_id, color_id])
 }
 
-model ModeloConfiguracion {
+model ProductVariant {
   id         String  @id @default(uuid())
   modelo_id  String
   color_id   String
   voltaje_id String
   sku        String  @unique
-  precio     Decimal @db.Decimal(10, 2)
-  costo      Decimal @db.Decimal(10, 2)
+  precioPublico                Decimal  @map("precio") @db.Decimal(10, 2)
+  costo                        Decimal  @db.Decimal(10, 2)
   precioDistribuidor           Decimal? @db.Decimal(10, 2)
   precioDistribuidorConfirmado Boolean  @default(false)
   imageUrl   String?
@@ -99,17 +99,18 @@ model ModeloConfiguracion {
   inventoryMovements InventoryMovement[]
 
   @@unique([modelo_id, color_id, voltaje_id])
+  @@map("ModeloConfiguracion")
 }
 
 model Stock {
-  id                    String              @id @default(uuid())
-  modeloConfiguracionId String              @map("productId")
-  branchId              String
-  quantity              Int                 @default(0)
-  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
-  branch                Branch              @relation(fields: [branchId], references: [id])
+  id               String         @id @default(uuid())
+  productVariantId String         @map("productId")
+  branchId         String
+  quantity         Int            @default(0)
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  branch           Branch         @relation(fields: [branchId], references: [id])
 
-  @@unique([modeloConfiguracionId, branchId])
+  @@unique([productVariantId, branchId])
 }
 
 enum MovementType {
@@ -123,15 +124,15 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id                    String              @id @default(uuid())
-  modeloConfiguracionId String              @map("productId")
-  branchId              String
-  quantity              Int
-  type                  MovementType
-  referenceId           String?
-  userId                String
-  createdAt             DateTime            @default(now())
-  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
+  id               String         @id @default(uuid())
+  productVariantId String         @map("productId")
+  branchId         String
+  quantity         Int
+  type             MovementType
+  referenceId      String?
+  userId           String
+  createdAt        DateTime       @default(now())
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
 }
 
 // === SALES ===
@@ -164,14 +165,14 @@ model Sale {
 }
 
 model SaleItem {
-  id                    String              @id @default(uuid())
-  saleId                String
-  modeloConfiguracionId String              @map("productId")
-  quantity              Int
-  price                 Decimal             @db.Decimal(10, 2)
-  discount              Decimal             @default(0) @db.Decimal(10, 2)
-  sale                  Sale                @relation(fields: [saleId], references: [id])
-  modeloConfiguracion   ModeloConfiguracion @relation(fields: [modeloConfiguracionId], references: [id])
+  id               String         @id @default(uuid())
+  saleId           String
+  productVariantId String         @map("productId")
+  quantity         Int
+  price            Decimal        @db.Decimal(10, 2)
+  discount         Decimal        @default(0) @db.Decimal(10, 2)
+  sale             Sale           @relation(fields: [saleId], references: [id])
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
 }
 
 // === PAYMENTS & CASHIER ===
@@ -280,17 +281,17 @@ model ServiceOrder {
 }
 
 model ServiceOrderItem {
-  id                    String              @id @default(uuid())
-  serviceOrderId        String
-  modeloConfiguracionId String?             @map("productId")  // Optional, could be just labor/service
-  serviceCatalogId      String?             // Referencia al catálogo de servicios (opcional)
-  description           String              // e.g. "Mano de obra", "Cámara 29"
-  quantity              Int                 @default(1)
-  price                 Decimal             @db.Decimal(10, 2)
+  id               String          @id @default(uuid())
+  serviceOrderId   String
+  productVariantId String?         @map("productId")
+  serviceCatalogId String?
+  description      String
+  quantity         Int             @default(1)
+  price            Decimal         @db.Decimal(10, 2)
 
-  serviceOrder        ServiceOrder         @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
-  modeloConfiguracion ModeloConfiguracion? @relation(fields: [modeloConfiguracionId], references: [id])
-  serviceCatalog      ServiceCatalog?      @relation(fields: [serviceCatalogId], references: [id])
+  serviceOrder   ServiceOrder    @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
+  serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
 }
 
 // === COMMISSIONS ===

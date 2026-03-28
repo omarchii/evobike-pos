@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ModeloConfiguracion, Stock, Branch } from "@prisma/client";
+import { ProductVariant, Stock, Branch } from "@prisma/client";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, Package, User, ChevronRight, LayoutGrid, List } from "lucide-react";
 import GuidedCatalog from "./guided-catalog";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import { processSaleAction } from "@/actions/sale";
 import { createCustomer } from "@/actions/customer";
 import Image from "next/image";
 
-type OmittedProduct = Omit<ModeloConfiguracion, 'precio' | 'costo'>;
+type OmittedProduct = Omit<ProductVariant, 'precioPublico' | 'precioDistribuidor' | 'costo'>;
 
 type ProductWithStock = OmittedProduct & {
     name: string;
@@ -223,7 +223,7 @@ export default function PosTerminal({
         try {
             const response = await processSaleAction({
                 items: cart.map(item => ({
-                    modeloConfiguracionId: item.product.id,
+                    productVariantId: item.product.id,
                     name: item.product.name,
                     quantity: item.quantity,
                     price: item.price,

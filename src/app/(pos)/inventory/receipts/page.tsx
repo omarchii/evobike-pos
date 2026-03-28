@@ -4,7 +4,7 @@ import ReceiptsTerminal from "./receipts-terminal";
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptsPage() {
-    const rawProducts = await prisma.modeloConfiguracion.findMany({
+    const rawProducts = await prisma.productVariant.findMany({
         include: {
             stocks: {
                 include: { branch: true }
@@ -20,7 +20,7 @@ export default async function ReceiptsPage() {
     const products = rawProducts.map(p => ({
         ...p,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
-        price: Number(p.precio),
+        price: Number(p.precioPublico),
         cost: Number(p.costo)
     }));
 

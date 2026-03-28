@@ -28,11 +28,11 @@ type SerializedProduct = {
 type SerializedOrderItem = {
     id: string;
     serviceOrderId: string;
-    modeloConfiguracionId: string | null;
+    productVariantId: string | null;
     description: string;
     quantity: number;
     price: number;
-    modeloConfiguracion: SerializedProduct | null;
+    productVariant: SerializedProduct | null;
 };
 
 type FullSerializedOrder = {
@@ -107,7 +107,7 @@ export function ServiceOrderDetailsView({
 
         const result = await addServiceOrderItem({
             serviceOrderId: order.id,
-            modeloConfiguracionId: prod.id,
+            productVariantId: prod.id,
             description: prod.name,
             quantity: parseInt(productQty) || 1,
             price: prod.price
@@ -378,7 +378,7 @@ export function ServiceOrderDetailsView({
                                     <TableRow key={item.id}>
                                         <TableCell>
                                             {item.description}
-                                            {item.modeloConfiguracion && <Badge variant="outline" className="ml-2 text-[10px]">{item.modeloConfiguracion.sku}</Badge>}
+                                            {item.productVariant && <Badge variant="outline" className="ml-2 text-[10px]">{item.productVariant.sku}</Badge>}
                                         </TableCell>
                                         <TableCell className="text-center">{item.quantity}</TableCell>
                                         <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
