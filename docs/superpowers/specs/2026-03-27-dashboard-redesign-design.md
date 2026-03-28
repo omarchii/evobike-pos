@@ -180,7 +180,7 @@ Panel B — **Próximas Órdenes de Taller** (3 más recientes PENDING/IN_PROGRE
 
 ## 8. Typography
 
-Agregar `Space_Grotesk` vía `next/font/google` en `layout.tsx` raíz (o en el POS layout). Aplicar a headings del dashboard con `font-display` utility class o directamente en className.
+Agregar `Space_Grotesk` vía `next/font/google` en el POS layout (`src/app/(pos)/layout.tsx`), pasada como variable CSS. Aplicar a headings del dashboard directamente en className con la variable.
 
 ---
 
