@@ -1,196 +1,433 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Helper para parsear CSV manual simple
-function parseCSV(filePath: string): any[] {
-    if (!fs.existsSync(filePath)) {
-        console.warn(`Archivo no encontrado: ${filePath}`);
-        return [];
-    }
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    if (lines.length < 2) return [];
+// ─── Helper CSV ───────────────────────────────────────────────────────────────
+function parseCSV(filePath: string): Record<string, string>[] {
+  if (!fs.existsSync(filePath)) {
+    console.warn(`Archivo no encontrado: ${filePath}`);
+    return [];
+  }
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split('\n').filter((line) => line.trim() !== '');
+  if (lines.length < 2) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/^\uFEFF/, '')); // Remove BOM just in case
-    const rows = [];
+  const headers = lines[0]
+    .split(',')
+    .map((h) => h.trim().replace(/^"|"$/g, '').replace(/^\uFEFF/, ''));
 
-    for (let i = 1; i < lines.length; i++) {
-        const rawValues = lines[i].match(/(?:\"([^\"]*(?:\"\"[^\"]*)*)\")|([^\,]+)/g);
-        if(!rawValues) continue;
+  const rows: Record<string, string>[] = [];
 
-        const values = rawValues.map(v => {
-            let val = v.trim();
-            if (val.startsWith('"') && val.endsWith('"')) {
-                val = val.substring(1, val.length - 1).replace(/""/g, '"');
-            }
-            return val;
-        });
+  for (let i = 1; i < lines.length; i++) {
+    const rawValues = lines[i].match(/(?:"([^"]*(?:""[^"]*)*)")|([^,]+)/g);
+    if (!rawValues) continue;
 
-        const row: any = {};
-        headers.forEach((header, index) => {
-            row[header] = values[index] !== undefined ? values[index] : '';
-        });
-        rows.push(row);
-    }
-    return rows;
+    const values = rawValues.map((v) => {
+      let val = v.trim();
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.substring(1, val.length - 1).replace(/""/g, '"');
+      }
+      return val;
+    });
+
+    const row: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] !== undefined ? values[index] : '';
+    });
+    rows.push(row);
+  }
+  return rows;
 }
 
+// ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-    console.log("Iniciando Seed de la base de datos Normalizada desde archivos CSV...");
+  console.log('🌱 Iniciando seed de evobike-pos2...\n');
 
-    const dataDir = path.join(process.cwd(), 'prisma', 'data');
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
-        console.log("Directorio 'data' creado. Por favor, coloca tus CSV...");
-    }
+  // ── 1. Sucursales ────────────────────────────────────────────────────────────
+  const leoBranch = await prisma.branch.upsert({
+    where: { code: 'LEO' },
+    update: {},
+    create: { code: 'LEO', name: 'Sucursal Leo', address: 'Cancún, Q.R. Leo' },
+  });
 
-    // Asegurar sucursales básicas
-    const leoBranch = await prisma.branch.upsert({
-        where: { code: 'LEO' },
-        update: {},
-        create: { code: 'LEO', name: 'Sucursal Leo', address: 'Cancún, Q.R. Leo' },
+  const av135Branch = await prisma.branch.upsert({
+    where: { code: 'AV135' },
+    update: {},
+    create: { code: 'AV135', name: 'Sucursal Av 135', address: 'Cancún, Q.R. Av 135' },
+  });
+
+  console.log(`✅ Sucursales: ${leoBranch.code}, ${av135Branch.code}`);
+
+  // ── 2. Usuarios ──────────────────────────────────────────────────────────────
+  // Contraseña por defecto para todos los usuarios de prueba: "evobike123"
+  const defaultPassword = await bcrypt.hash('evobike123', 10);
+
+  const users = [
+    // ADMIN — puede ver todas las sucursales
+    {
+      email: 'admin@evobike.mx',
+      name: 'Admin General',
+      role: 'ADMIN' as const,
+      branchId: leoBranch.id,
+    },
+    // Managers
+    {
+      email: 'manager.leo@evobike.mx',
+      name: 'Manager Leo',
+      role: 'MANAGER' as const,
+      branchId: leoBranch.id,
+    },
+    {
+      email: 'manager.av135@evobike.mx',
+      name: 'Manager AV135',
+      role: 'MANAGER' as const,
+      branchId: av135Branch.id,
+    },
+    // Vendedores
+    {
+      email: 'vendedor.leo@evobike.mx',
+      name: 'Vendedor Leo',
+      role: 'SELLER' as const,
+      branchId: leoBranch.id,
+    },
+    {
+      email: 'vendedor.av135@evobike.mx',
+      name: 'Vendedor AV135',
+      role: 'SELLER' as const,
+      branchId: av135Branch.id,
+    },
+    // Técnicos
+    {
+      email: 'tecnico.leo@evobike.mx',
+      name: 'Técnico Leo',
+      role: 'TECHNICIAN' as const,
+      branchId: leoBranch.id,
+    },
+    {
+      email: 'tecnico.av135@evobike.mx',
+      name: 'Técnico AV135',
+      role: 'TECHNICIAN' as const,
+      branchId: av135Branch.id,
+    },
+  ];
+
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: { ...u, password: defaultPassword },
     });
-    
-    const av135Branch = await prisma.branch.upsert({
-        where: { code: 'AV135' },
-        update: {},
-        create: { code: 'AV135', name: 'Sucursal Av 135', address: 'Cancún, Q.R. Av 135' },
+  }
+
+  console.log(`✅ Usuarios creados (${users.length}) — contraseña: evobike123`);
+
+  // ── 3. Cliente demo ──────────────────────────────────────────────────────────
+  await prisma.customer.upsert({
+    where: { phone: '9981234567' },
+    update: {},
+    create: {
+      name: 'Cliente Mostrador',
+      phone: '9981234567',
+      email: 'mostrador@evobike.mx',
+      creditLimit: 0,
+      balance: 0,
+    },
+  });
+
+  console.log('✅ Cliente demo creado\n');
+
+  // ── 4. Catálogo desde CSV ────────────────────────────────────────────────────
+  const dataDir = path.join(process.cwd(), 'prisma', 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir);
+    console.warn("⚠️  Directorio 'prisma/data' creado. Agrega los CSV para poblar el catálogo.");
+    return;
+  }
+
+  const modelosMap = new Map<string, string>();
+  const coloresMap = new Map<string, string>();
+  const voltajesMap = new Map<string, string>();
+
+  // 4a. Modelos
+  const modelosCSV = parseCSV(path.join(dataDir, 'modelos.csv'));
+  for (const row of modelosCSV) {
+    if (!row.nombre) continue;
+    const dbModelo = await prisma.modelo.upsert({
+      where: { nombre: row.nombre },
+      update: {
+        descripcion: row.descripcion || null,
+        requiere_vin:
+          row.requiere_vin?.toLowerCase() === 'verdadero' ||
+          row.requiere_vin?.toLowerCase() === 'true',
+      },
+      create: {
+        nombre: row.nombre,
+        descripcion: row.descripcion || null,
+        requiere_vin:
+          row.requiere_vin?.toLowerCase() !== 'falso' &&
+          row.requiere_vin?.toLowerCase() !== 'false',
+      },
     });
+    if (row.id) modelosMap.set(row.id, dbModelo.id);
+  }
 
-    // 0. Diccionarios de Resolución
-    const modelosMap = new Map<string, string>(); // csv_id -> db_id
-    const coloresMap = new Map<string, string>();
-    const voltajesMap = new Map<string, string>();
+  // 4b. Colores
+  const coloresCSV = parseCSV(path.join(dataDir, 'colores.csv'));
+  for (const row of coloresCSV) {
+    if (!row.nombre) continue;
+    const dbColor = await prisma.color.upsert({
+      where: { nombre: row.nombre },
+      update: {},
+      create: { nombre: row.nombre },
+    });
+    if (row.id) coloresMap.set(row.id, dbColor.id);
+  }
 
-    // 1. Modelos Base
-    const modelosCSV = parseCSV(path.join(dataDir, 'modelos.csv'));
-    for (const row of modelosCSV) {
-        if (!row.nombre) continue;
-        const dbModelo = await prisma.modelo.upsert({
-            where: { nombre: row.nombre },
-            update: { descripcion: row.descripcion || null, requiere_vin: row.requiere_vin?.toLowerCase() === 'verdadero' || row.requiere_vin?.toLowerCase() === 'true' },
-            create: {
-                nombre: row.nombre,
-                descripcion: row.descripcion || null,
-                requiere_vin: row.requiere_vin?.toLowerCase() !== 'falso' && row.requiere_vin?.toLowerCase() !== 'false',
-            }
-        });
-        if (row.id) modelosMap.set(row.id.toString(), dbModelo.id);
+  // 4c. Voltajes
+  const voltajesCSV = parseCSV(path.join(dataDir, 'voltajes.csv'));
+  for (const row of voltajesCSV) {
+    if (!row.valor) continue;
+    const valorInt = parseInt(row.valor);
+    if (isNaN(valorInt)) continue;
+    const dbVoltaje = await prisma.voltaje.upsert({
+      where: { valor: valorInt },
+      update: { label: row.label || `${valorInt}V` },
+      create: { valor: valorInt, label: row.label || `${valorInt}V` },
+    });
+    if (row.id) voltajesMap.set(row.id, dbVoltaje.id);
+  }
+
+  console.log(
+    `✅ Catálogos base — Modelos: ${modelosMap.size}, Colores: ${coloresMap.size}, Voltajes: ${voltajesMap.size}`
+  );
+
+  // 4d. ModeloColor (disponibles)
+  const disponiblesCSV = parseCSV(path.join(dataDir, 'modelo_color_disponible.csv'));
+  for (const row of disponiblesCSV) {
+    if (!row.modelo_id || !row.color_id) continue;
+    const modeloId = modelosMap.get(row.modelo_id);
+    const colorId = coloresMap.get(row.color_id);
+    if (modeloId && colorId) {
+      try {
+        await prisma.modeloColor.create({ data: { modelo_id: modeloId, color_id: colorId } });
+      } catch {
+        // Ignorar duplicados — upsert no disponible sin unique compuesto nombrado
+      }
+    }
+  }
+
+  // 4e. ProductVariants + Stock
+  const configuracionesCSV = parseCSV(path.join(dataDir, 'modelo_configuracion.csv'));
+  let configsCreated = 0;
+
+  for (const row of configuracionesCSV) {
+    if (!row.sku || !row.modelo_id || !row.color_id || !row.voltaje_id) continue;
+
+    const modeloId = modelosMap.get(row.modelo_id);
+    const colorId = coloresMap.get(row.color_id);
+    const voltajeId = voltajesMap.get(row.voltaje_id);
+
+    if (!modeloId || !colorId || !voltajeId) {
+      console.warn(`⚠️  Saltando SKU ${row.sku} — dependencias faltantes`);
+      continue;
     }
 
-    // 2. Colores
-    const coloresCSV = parseCSV(path.join(dataDir, 'colores.csv'));
-    for (const row of coloresCSV) {
-        if (!row.nombre) continue;
-        const dbColor = await prisma.color.upsert({
-            where: { nombre: row.nombre },
-            update: {},
-            create: { nombre: row.nombre }
-        });
-        if (row.id) coloresMap.set(row.id.toString(), dbColor.id);
+    try {
+      const variant = await prisma.productVariant.upsert({
+        where: { sku: row.sku },
+        update: {
+          precioPublico: parseFloat(row.precioPublico) || 0,
+          costo: parseFloat(row.costo) || 0,
+        },
+        create: {
+          sku: row.sku,
+          precioPublico: parseFloat(row.precioPublico) || 0,
+          costo: parseFloat(row.costo) || 0,
+          modelo_id: modeloId,
+          color_id: colorId,
+          voltaje_id: voltajeId,
+        },
+      });
+
+      const stockLeo = parseInt(row.stock_leo) || 0;
+      const stockAv135 = parseInt(row.stock_av135) || 0;
+
+      await prisma.stock.upsert({
+        where: { productVariantId_branchId: { productVariantId: variant.id, branchId: leoBranch.id } },
+        update: { quantity: stockLeo },
+        create: { productVariantId: variant.id, branchId: leoBranch.id, quantity: stockLeo },
+      });
+
+      await prisma.stock.upsert({
+        where: { productVariantId_branchId: { productVariantId: variant.id, branchId: av135Branch.id } },
+        update: { quantity: stockAv135 },
+        create: { productVariantId: variant.id, branchId: av135Branch.id, quantity: stockAv135 },
+      });
+
+      configsCreated++;
+    } catch (e: unknown) {
+      if (e instanceof Error && 'code' in e && (e as NodeJS.ErrnoException).code === 'P2002') {
+        console.warn(`⚠️  SKU ${row.sku} duplicado, omitido.`);
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`❌ Error en SKU ${row.sku}:`, msg);
+      }
     }
+  }
 
-    // 3. Voltajes
-    const voltajesCSV = parseCSV(path.join(dataDir, 'voltajes.csv'));
-    for (const row of voltajesCSV) {
-        if (!row.valor) continue;
-        const valorInt = parseInt(row.valor);
-        if (isNaN(valorInt)) continue;
+  console.log(`✅ Variantes de producto cargadas: ${configsCreated}`);
+  // ── 5. Baterías y Configuraciones ───────────────────────────────────────────
+  console.log('\n⚡ Configurando trazabilidad de baterías...');
 
-        const dbVoltaje = await prisma.voltaje.upsert({
-            where: { valor: valorInt },
-            update: { label: row.label || `${valorInt}V` },
-            create: { valor: valorInt, label: row.label || `${valorInt}V` }
-        });
-        if (row.id) voltajesMap.set(row.id.toString(), dbVoltaje.id);
+  const genericColor = await prisma.color.upsert({
+    where: { nombre: 'N/A' },
+    update: { isGeneric: true },
+    create: { nombre: 'N/A', isGeneric: true },
+  });
+
+  const bateriaModelo = await prisma.modelo.upsert({
+    where: { nombre: 'Batería' },
+    update: { requiere_vin: false },
+    create: { nombre: 'Batería', descripcion: 'Batería genérica', requiere_vin: false },
+  });
+
+  const voltaje12V = await prisma.voltaje.upsert({
+    where: { valor: 12 },
+    update: { label: '12V' },
+    create: { valor: 12, label: '12V' },
+  });
+
+  const batteryVariantSku = 'BAT-12V-GEN';
+  const batteryVariant = await prisma.productVariant.upsert({
+    where: { sku: batteryVariantSku },
+    update: {},
+    create: {
+      sku: batteryVariantSku,
+      precioPublico: 1000,
+      costo: 800,
+      modelo_id: bateriaModelo.id,
+      color_id: genericColor.id,
+      voltaje_id: voltaje12V.id,
+    },
+  });
+
+  const fixedConfigs: Array<{ modeloName: string; voltajes: Record<number, number> }> = [
+    { modeloName: 'AGUILA', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'AGUILA PRO', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'AURORA', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'BEETLE', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'COLORITA', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'ECLIPSE', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'FAMILY', voltajes: { 48: 4, 60: 5, 72: 6 } },
+    { modeloName: 'FAMILY Q', voltajes: { 48: 4, 60: 5, 72: 6 } },
+    { modeloName: 'FAMILY Q PLUS', voltajes: { 48: 4, 60: 5, 72: 6 } },
+    { modeloName: 'GALAXY', voltajes: { 48: 4, 60: 5, 72: 6 } },
+    { modeloName: 'GALAXY PLUS', voltajes: { 48: 4, 60: 5, 72: 6 } },
+    { modeloName: 'GOLF', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'GOLF PLUS', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'JAGUAR', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'LEO', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'LUMO', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'MOPED', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'POLAR', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'PRIMAVERA', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'RAYO', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'RAYO PRO', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'REINA', voltajes: { 60: 5, 72: 6 } },
+    { modeloName: 'SOL', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'TAURO', voltajes: { 48: 4, 60: 5 } },
+    { modeloName: 'ZEUS', voltajes: { 60: 5, 72: 6 } },
+  ];
+
+  const singleBatteryModels = [
+    'ECLIPSE SCOOTER',
+    'M1', 'M2', 'M3', 'M4', 'M5', 'S6',
+    'SCOOTER EVOKID', 'RICOCHET', 'PHYTON', 'FOXY', 'CROSS KID'
+  ];
+
+  for (const config of fixedConfigs) {
+    const modelo = await prisma.modelo.findUnique({ where: { nombre: config.modeloName } });
+    if (!modelo) {
+      console.warn(`  ⚠️ Modelo "${config.modeloName}" no encontrado en DB. Se omite.`);
+      continue;
     }
-
-    console.log(`Catálogos base procesados (Modelos: ${modelosMap.size}, Colores: ${coloresMap.size}, Voltajes: ${voltajesMap.size}).`);
-
-    // 4. Disponibles
-    const disponiblesCSV = parseCSV(path.join(dataDir, 'modelo_color_disponible.csv'));
-    for (const row of disponiblesCSV) {
-        if(!row.modelo_id || !row.color_id) continue;
-        const modeloId = modelosMap.get(row.modelo_id.toString());
-        const colorId = coloresMap.get(row.color_id.toString());
-        
-        if(modeloId && colorId) {
-            try {
-                await prisma.modeloColor.create({
-                    data: { modelo_id: modeloId, color_id: colorId }
-                });
-            } catch(e) { /* Ignorar duplicate */ }
-        }
+    for (const [v, qty] of Object.entries(config.voltajes)) {
+      const volInt = parseInt(v);
+      const voltaje = await prisma.voltaje.findUnique({ where: { valor: volInt } });
+      if (!voltaje) continue;
+      
+      await prisma.batteryConfiguration.upsert({
+        where: {
+          modeloId_voltajeId_batteryVariantId: {
+            modeloId: modelo.id,
+            voltajeId: voltaje.id,
+            batteryVariantId: batteryVariant.id,
+          },
+        },
+        update: { quantity: qty },
+        create: {
+          modeloId: modelo.id,
+          voltajeId: voltaje.id,
+          batteryVariantId: batteryVariant.id,
+          quantity: qty,
+        },
+      });
     }
+  }
 
-    // 5. Configuraciones Finales
-    const configuracionesCSV = parseCSV(path.join(dataDir, 'modelo_configuracion.csv'));
-    let configsCreated = 0;
-    for (const row of configuracionesCSV) {
-        if(!row.sku || !row.modelo_id || !row.color_id || !row.voltaje_id) continue;
-
-        const modeloId = modelosMap.get(row.modelo_id.toString());
-        const colorId = coloresMap.get(row.color_id.toString());
-        const voltajeId = voltajesMap.get(row.voltaje_id.toString());
-
-        if(!modeloId || !colorId || !voltajeId) {
-            console.warn(`Saltando SKU ${row.sku} por dependencias faltantes: Modelo ${row.modelo_id}->${modeloId}, Color ${row.color_id}->${colorId}, Voltaje ${row.voltaje_id}->${voltajeId}`);
-            continue;
-        }
-
-        try {
-            const configuracion = await prisma.productVariant.upsert({
-                where: { sku: row.sku },
-                update: {
-                    precioPublico: parseFloat(row.precioPublico) || 0,
-                    costo: parseFloat(row.costo) || 0,
-                },
-                create: {
-                    sku: row.sku,
-                    precioPublico: parseFloat(row.precioPublico) || 0,
-                    costo: parseFloat(row.costo) || 0,
-                    modelo_id: modeloId,
-                    color_id: colorId,
-                    voltaje_id: voltajeId
-                }
-            });
-            configsCreated++;
-
-            // Actualizar Stock
-            const stockLeo = parseInt(row.stock_leo) || 0;
-            const stockAv135 = parseInt(row.stock_av135) || 0;
-
-            await prisma.stock.upsert({
-                where: { productVariantId_branchId: { productVariantId: configuracion.id, branchId: leoBranch.id } },
-                update: { quantity: stockLeo },
-                create: { productVariantId: configuracion.id, branchId: leoBranch.id, quantity: stockLeo }
-            });
-
-            await prisma.stock.upsert({
-                where: { productVariantId_branchId: { productVariantId: configuracion.id, branchId: av135Branch.id } },
-                update: { quantity: stockAv135 },
-                create: { productVariantId: configuracion.id, branchId: av135Branch.id, quantity: stockAv135 }
-            });
-        } catch (e: any) {
-            if (e.code === 'P2002') {
-                console.warn(`Saltando SKU ${row.sku} por combinación duplicada (Modelo+Color+Voltaje).`);
-            } else {
-                console.error(`Error procesando SKU ${row.sku}:`, e.message);
-            }
-        }
+  for (const modelName of singleBatteryModels) {
+    const modelo = await prisma.modelo.findUnique({ where: { nombre: modelName } });
+    if (!modelo) {
+      console.warn(`  ⚠️ Modelo "${modelName}" no encontrado en DB. Se omite.`);
+      continue;
     }
+    const variants = await prisma.productVariant.findMany({
+      where: { modelo_id: modelo.id },
+      select: { voltaje_id: true },
+    });
+    const uniqueVoltages = Array.from(new Set(variants.map(v => v.voltaje_id)));
+    for (const vid of uniqueVoltages) {
+      await prisma.batteryConfiguration.upsert({
+        where: {
+          modeloId_voltajeId_batteryVariantId: {
+            modeloId: modelo.id,
+            voltajeId: vid,
+            batteryVariantId: batteryVariant.id,
+          },
+        },
+        update: { quantity: 1 },
+        create: {
+          modeloId: modelo.id,
+          voltajeId: vid,
+          batteryVariantId: batteryVariant.id,
+          quantity: 1,
+        },
+      });
+    }
+  }
+  console.log('✅ Configuraciones de trazabilidad de baterías aplicadas.');
 
-    console.log(`¡Seed de CSV Finalizado! Configuraciones cargadas: ${configsCreated}`);
+  console.log('\n🎉 Seed completado exitosamente.\n');
+  console.log('─── Usuarios disponibles ───────────────────────────');
+  console.log('  admin@evobike.mx          → ADMIN    (LEO)');
+  console.log('  manager.leo@evobike.mx    → MANAGER  (LEO)');
+  console.log('  manager.av135@evobike.mx  → MANAGER  (AV135)');
+  console.log('  vendedor.leo@evobike.mx   → SELLER   (LEO)');
+  console.log('  vendedor.av135@evobike.mx → SELLER   (AV135)');
+  console.log('  tecnico.leo@evobike.mx    → TECHNICIAN (LEO)');
+  console.log('  tecnico.av135@evobike.mx  → TECHNICIAN (AV135)');
+  console.log('  Contraseña de todos: evobike123');
+  console.log('────────────────────────────────────────────────────\n');
 }
 
 main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

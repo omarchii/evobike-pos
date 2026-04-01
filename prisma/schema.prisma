@@ -20,6 +20,11 @@ model User {
   sessions          CashRegisterSession[]
   serviceOrders     ServiceOrder[]
   commissionRecords CommissionRecord[]
+
+  batteryLots          BatteryLot[]
+  batteryAssignments   BatteryAssignment[] @relation("AssignedBy")
+  batteryUnassignments BatteryAssignment[] @relation("UnassignedBy")
+  assemblyOrders       AssemblyOrder[]     @relation("AssemblyOrders")
 }
 
 model Branch {
@@ -35,6 +40,10 @@ model Branch {
   customerBikes    CustomerBike[]
   serviceCatalogs  ServiceCatalog[]
   commissionRules  CommissionRule[]
+
+  batteryLots    BatteryLot[]
+  batteries      Battery[]
+  assemblyOrders AssemblyOrder[]
 }
 
 // === CATALOG & INVENTORY ===
@@ -50,11 +59,14 @@ model Modelo {
   coloresDisponibles ModeloColor[]
   configuraciones    ProductVariant[]
   commissionRules    CommissionRule[]
+
+  batteryConfigurations BatteryConfiguration[]
 }
 
 model Color {
   id     String @id @default(uuid())
   nombre String @unique
+  isGeneric Boolean @default(false)
 
   modelos         ModeloColor[]
   configuraciones ProductVariant[]
@@ -66,6 +78,8 @@ model Voltaje {
   label String
 
   configuraciones ProductVariant[]
+
+  batteryConfigurations BatteryConfiguration[]
 }
 
 model ModeloColor {
@@ -97,6 +111,9 @@ model ProductVariant {
   saleItems          SaleItem[]
   serviceOrderItems  ServiceOrderItem[]
   inventoryMovements InventoryMovement[]
+
+  batteryLots    BatteryLot[]
+  batteryConfigs BatteryConfiguration[] @relation("ConfiguredBattery")
 
   @@unique([modelo_id, color_id, voltaje_id])
   @@map("ModeloConfiguracion")
@@ -248,6 +265,9 @@ model CustomerBike {
   serviceOrders  ServiceOrder[]
   voltageChanges VoltageChangeLog[]
 
+  batteryAssignments BatteryAssignment[]
+  assemblyOrders     AssemblyOrder[]
+
   @@unique([serialNumber, branchId])
 }
 
@@ -364,4 +384,102 @@ model VoltageChangeLog {
   createdAt      DateTime     @default(now())
 
   customerBike CustomerBike @relation(fields: [customerBikeId], references: [id])
+
+  installedBatteries BatteryAssignment[] @relation("InstalledBatteries")
+  removedBatteries   BatteryAssignment[] @relation("RemovedBatteries")
+}
+
+// === BATTERIES & ASSEMBLY ===
+enum BatteryStatus {
+  IN_STOCK
+  INSTALLED
+  DEFECTIVE
+  WARRANTY_REVIEW
+}
+
+enum AssemblyStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model BatteryConfiguration {
+  id               String @id @default(cuid())
+  modeloId         String
+  voltajeId        String
+  batteryVariantId String @map("batteryProductId")
+  quantity         Int
+
+  modelo         Modelo         @relation(fields: [modeloId], references: [id])
+  voltaje        Voltaje        @relation(fields: [voltajeId], references: [id])
+  batteryVariant ProductVariant @relation("ConfiguredBattery", fields: [batteryVariantId], references: [id])
+
+  @@unique([modeloId, voltajeId, batteryVariantId])
+}
+
+model BatteryLot {
+  id               String   @id @default(cuid())
+  productVariantId String   @map("productId")
+  branchId         String
+  supplier         String?
+  reference        String?
+  receivedAt       DateTime @default(now())
+  userId           String
+
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+  branch         Branch         @relation(fields: [branchId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  batteries      Battery[]
+}
+
+model Battery {
+  id           String        @id @default(cuid())
+  serialNumber String        @unique
+  lotId        String
+  branchId     String
+  status       BatteryStatus @default(IN_STOCK)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  lot         BatteryLot          @relation(fields: [lotId], references: [id])
+  branch      Branch              @relation(fields: [branchId], references: [id])
+  assignments BatteryAssignment[]
+}
+
+model AssemblyOrder {
+  id                String         @id @default(cuid())
+  customerBikeId    String
+  branchId          String
+  status            AssemblyStatus @default(PENDING)
+  assembledByUserId String?
+  completedAt       DateTime?
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  customerBike  CustomerBike @relation(fields: [customerBikeId], references: [id])
+  branch        Branch       @relation(fields: [branchId], references: [id])
+  assembledBy   User?        @relation("AssemblyOrders", fields: [assembledByUserId], references: [id])
+}
+
+model BatteryAssignment {
+  id                         String    @id @default(cuid())
+  batteryId                  String
+  customerBikeId             String
+  assemblyOrderId            String?
+  isCurrent                  Boolean   @default(true)
+  assignedAt                 DateTime  @default(now())
+  assignedByUserId           String
+  installedAtVoltageChangeId String?
+  unassignedAt               DateTime?
+  unassignedByUserId         String?
+  removedAtVoltageChangeId   String?
+  notes                      String?
+
+  battery                  Battery           @relation(fields: [batteryId], references: [id])
+  customerBike             CustomerBike      @relation(fields: [customerBikeId], references: [id])
+  assignedByUser           User              @relation("AssignedBy", fields: [assignedByUserId], references: [id])
+  unassignedByUser         User?             @relation("UnassignedBy", fields: [unassignedByUserId], references: [id])
+  installedAtVoltageChange VoltageChangeLog? @relation("InstalledBatteries", fields: [installedAtVoltageChangeId], references: [id])
+  removedAtVoltageChange   VoltageChangeLog? @relation("RemovedBatteries", fields: [removedAtVoltageChangeId], references: [id])
 }
