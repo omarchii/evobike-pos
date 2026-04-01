@@ -343,9 +343,8 @@ async function main() {
   ];
 
   const singleBatteryModels = [
-    'ECLIPSE SCOOTER',
-    'M1', 'M2', 'M3', 'M4', 'M5', 'S6',
-    'SCOOTER EVOKID', 'RICOCHET', 'PHYTON', 'FOXY', 'CROSS KID'
+    'SCOOTER M1', 'SCOOTER M2', 'SCOOTER M3', 'SCOOTER M4', 'SCOOTER M5', 'SCOOTER S6',
+    'SCOOTER EVOKID', 'RICOCHET', 'PHYTON', 'FOXY', 'CROSS KID',
   ];
 
   for (const config of fixedConfigs) {
