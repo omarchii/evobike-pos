@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "BatteryStatus" AS ENUM ('IN_STOCK', 'INSTALLED', 'DEFECTIVE', 'WARRANTY_REVIEW');
+
+-- CreateEnum
+CREATE TYPE "AssemblyStatus" AS ENUM ('PENDING', 'COMPLETED', 'CANCELLED');
