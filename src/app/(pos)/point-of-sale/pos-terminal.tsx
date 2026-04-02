@@ -5,17 +5,11 @@ import {
   Search,
   Plus,
   Trash2,
-  Zap,
   Battery,
   ShoppingBag,
   Check,
   X,
   Loader2,
-  ScanBarcode,
-  Banknote,
-  CreditCard,
-  ArrowLeftRight,
-  Clock,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -776,298 +770,254 @@ export default function PosTerminal({
       <div
         className="w-[360px] shrink-0 flex flex-col border-l overflow-hidden"
         style={{
-          background: "var(--surf-low)",
-          borderColor: "rgba(178, 204, 192, 0.2)",
-          boxShadow: "-4px 0 16px rgba(19,27,46,0.04)",
+          background: "#0f0f0e",
+          borderColor: "rgba(46, 204, 113, 0.12)",
         }}
       >
         {/* Panel header */}
         <div
           className="px-4 py-3.5 shrink-0 border-b"
           style={{
-            background: "var(--surf-lowest)",
-            borderColor: "rgba(178, 204, 192, 0.15)",
+            background: "#1a1a18",
+            borderColor: "rgba(46,204,113,0.12)",
           }}
         >
           <div className="flex items-center justify-between mb-1">
             <span
               className="font-bold text-[16px]"
-              style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+              style={{ fontFamily: "var(--font-display)", color: "#f0f0ee" }}
             >
               Transacción
             </span>
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--sec-container)", color: "var(--on-sec-container)" }}
+              style={{ background: "rgba(46,204,113,0.15)", color: "#2ECC71" }}
             >
               Caja abierta
             </span>
           </div>
-          <p className="text-[11px]" style={{ color: "var(--on-surf-var)" }}>
+          <p className="text-[11px]" style={{ color: "#8f8f85" }}>
             {sellerName} · {branchName}
           </p>
-          <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--on-surf-var)", opacity: 0.6 }}>
+          <p className="text-[10px] font-mono mt-0.5" style={{ color: "#8f8f85", opacity: 0.6 }}>
             {folio}
           </p>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflowY: "auto", background: "#0f0f0e" }}>
           <div className="py-2 space-y-2">
             {/* ── Guided config — floating card ────────────────────────────── */}
             {selectedModelo && (
               <div
                 style={{
-                  background: "var(--surf-lowest)",
-                  borderRadius: "var(--r-lg)",
-                  boxShadow: "var(--shadow)",
-                  margin: "0 12px",
-                  overflow: "hidden",
+                  background: "#1a1a18",
+                  borderRadius: 16,
+                  border: "1px solid rgba(46,204,113,0.2)",
+                  padding: 16,
+                  margin: 12,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
                 }}
               >
-                {/* Card header with thumbnail */}
-                <div
-                  className="flex items-center gap-2.5 p-3.5"
-                  style={{ borderBottom: "1px solid rgba(178,204,192,0.12)" }}
-                >
+                {/* Card header */}
+                <div className="flex items-center gap-2.5" style={{ position: "relative" }}>
                   {selectedModelo.imageUrl ? (
-                    <div
-                      className="relative shrink-0"
-                      style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", overflow: "hidden" }}
-                    >
-                      <Image
-                        src={selectedModelo.imageUrl}
-                        alt={selectedModelo.nombre}
-                        fill
-                        style={{ objectFit: "cover" }}
-                      />
+                    <div className="relative shrink-0" style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden" }}>
+                      <Image src={selectedModelo.imageUrl} alt={selectedModelo.nombre} fill style={{ objectFit: "cover" }} />
                     </div>
                   ) : (
-                    <div
-                      className="shrink-0 flex items-center justify-center"
-                      style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", background: "var(--surf-high)" }}
-                    >
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--on-surf-var)" }}>
+                    <div className="shrink-0 flex items-center justify-center" style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.06)" }}>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: "#8f8f85" }}>
                         {getInitials(selectedModelo.nombre)}
                       </span>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-[13px] font-bold truncate"
-                      style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
-                    >
+                  <div className="flex-1 min-w-0 pr-6">
+                    <p className="truncate" style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "#f0f0ee", lineHeight: 1.2 }}>
                       {selectedModelo.nombre}
                     </p>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
-                      Selección guiada
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#2ECC71", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginTop: 2 }}>
+                      SELECCIÓN GUIADA
                     </p>
                   </div>
                   <button
                     onClick={resetGuidedConfig}
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
-                    style={{ color: "var(--on-surf-var)", background: "var(--surf-high)" }}
+                    className="absolute top-0 right-0 flex items-center justify-center"
+                    style={{ width: 20, height: 20, color: "#8f8f85", background: "none", border: "none", cursor: "pointer" }}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Step tabs */}
-                {(() => {
-                  const currentStep = !selectedVoltajeId
-                    ? "VOLTAJE"
-                    : !selectedColorId
-                    ? "COLOR"
-                    : selectedModelo.requiere_vin && vinStatus !== "valid"
-                    ? "VIN"
-                    : assemblyMode
-                    ? "BATERÍAS"
-                    : "COLOR";
-                  const tabs = [
-                    "VOLTAJE",
-                    ...(selectedVoltajeId ? ["COLOR"] : []),
-                    ...(selectedColorId && selectedModelo.requiere_vin ? ["VIN"] : []),
-                    ...(selectedColorId && assemblyMode ? ["BATERÍAS"] : []),
-                  ];
-                  return (
-                    <div
-                      className="flex overflow-x-auto"
-                      style={{ borderBottom: "1px solid rgba(178,204,192,0.12)" }}
-                    >
-                      {tabs.map((tab) => (
-                        <span
-                          key={tab}
-                          className="px-3 py-2 text-[9px] uppercase tracking-widest whitespace-nowrap"
-                          style={{
-                            color: tab === currentStep ? "var(--on-surf)" : "var(--on-surf-var)",
-                            fontWeight: tab === currentStep ? 600 : 400,
-                            borderBottom: tab === currentStep ? "2px solid var(--p-bright)" : "2px solid transparent",
-                            letterSpacing: "0.05em",
-                          }}
-                        >
-                          {tab}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                })()}
+                {/* Separator */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
 
-                {/* Steps content */}
-                <div className="p-3.5 space-y-3">
-                  {/* Step 1: Voltaje */}
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
-                      1 · Voltaje
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {voltajeOptions.map((opt) => {
-                        const isVoltajeSelected = opt.id === selectedVoltajeId;
-                        const hasVoltajeStock = opt.stockInBranch > 0;
-                        const canAssemble = !hasVoltajeStock && opt.canAssemble;
-                        const noOption = !hasVoltajeStock && !opt.canAssemble;
-                        let pillStyle: React.CSSProperties;
-                        if (noOption) {
-                          pillStyle = { background: "var(--ter-container)", color: "var(--on-ter-container)", opacity: 0.7 };
-                        } else if (isVoltajeSelected) {
-                          pillStyle = { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" };
-                        } else if (canAssemble) {
-                          pillStyle = { background: "var(--warn-container)", color: "var(--warn)", border: "1.5px solid var(--warn)" };
-                        } else {
-                          pillStyle = { border: "1.5px solid var(--outline-var)", color: "var(--on-surf-var)" };
-                        }
-                        return (
-                          <button
-                            key={opt.id}
-                            disabled={noOption}
-                            onClick={() => handleSelectVoltaje(opt.id)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all"
-                            style={pillStyle}
-                          >
-                            <Zap className="w-2.5 h-2.5" />
-                            {opt.label}
-                            {canAssemble && <Battery className="w-2.5 h-2.5 ml-0.5" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {selectedVoltajeId && (() => {
-                      const opt = voltajeOptions.find((v) => v.id === selectedVoltajeId);
-                      if (!opt) return null;
+                {/* Step 1: Voltaje */}
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                    1. SYSTEM VOLTAGE
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {voltajeOptions.map((opt) => {
+                      const isVoltajeSelected = opt.id === selectedVoltajeId;
+                      const hasVoltajeStock = opt.stockInBranch > 0;
+                      const canAssembleOpt = !hasVoltajeStock && opt.canAssemble;
+                      const noOption = !hasVoltajeStock && !opt.canAssemble;
+                      let pillStyle: React.CSSProperties = {};
+                      if (noOption) {
+                        pillStyle = { background: "rgba(231,76,60,0.1)", border: "1.5px solid rgba(231,76,60,0.3)", color: "#ff8080", cursor: "not-allowed" };
+                      } else if (isVoltajeSelected) {
+                        pillStyle = { background: "rgba(46,204,113,0.15)", border: "1.5px solid #2ECC71", color: "#2ECC71", fontWeight: 600 };
+                      } else if (canAssembleOpt) {
+                        pillStyle = { background: "transparent", border: "1.5px solid rgba(243,156,18,0.5)", color: "#F39C12" };
+                      } else {
+                        pillStyle = { background: "transparent", border: "1.5px solid rgba(255,255,255,0.15)", color: "#f0f0ee" };
+                      }
                       return (
-                        <p className="text-[11px] mt-1.5" style={{ color: opt.stockInBranch > 0 ? "var(--p-bright)" : opt.canAssemble ? "var(--warn)" : "var(--ter)" }}>
-                          {opt.stockInBranch > 0
-                            ? `${opt.stockInBranch} unidades disponibles`
-                            : opt.canAssemble
-                            ? `Sin unidades · ${availableBatteriesCount} baterías disponibles`
-                            : "Sin stock"}
-                        </p>
+                        <button
+                          key={opt.id}
+                          disabled={noOption}
+                          onClick={() => handleSelectVoltaje(opt.id)}
+                          className="flex items-center gap-1 transition-all"
+                          style={{ borderRadius: 999, padding: "6px 16px", fontSize: 13, fontWeight: isVoltajeSelected ? 600 : 500, ...pillStyle }}
+                        >
+                          {opt.label}
+                          {canAssembleOpt && <Battery className="w-3 h-3 ml-0.5" />}
+                        </button>
                       );
-                    })()}
+                    })}
                   </div>
+                  {selectedVoltajeId && (() => {
+                    const opt = voltajeOptions.find((v) => v.id === selectedVoltajeId);
+                    if (!opt) return null;
+                    if (opt.stockInBranch > 0) return (
+                      <p style={{ fontSize: 11, color: "#2ECC71", marginTop: 6 }}>{opt.stockInBranch} unidades disponibles</p>
+                    );
+                    if (opt.canAssemble) return (
+                      <p style={{ fontSize: 11, color: "#F39C12", marginTop: 6 }}>Sin stock · {availableBatteriesCount} baterías disponibles</p>
+                    );
+                    return <p style={{ fontSize: 11, color: "#ff8080", marginTop: 6 }}>Sin stock</p>;
+                  })()}
+                </div>
 
-                  {/* Step 2: Color */}
-                  {selectedVoltajeId && (
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
-                        2 · Color
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {colorOptions.map((c) => {
-                          const css = colorToCSS(c.nombre);
-                          const isGradient = css.startsWith("conic");
-                          const isColorSelected = c.id === selectedColorId;
-                          return (
-                            <button
-                              key={c.id}
-                              title={c.nombre}
-                              onClick={() => setSelectedColorId(c.id)}
-                              className="w-6 h-6 rounded-full transition-all"
-                              style={{
-                                ...(isGradient ? { background: css } : { backgroundColor: css }),
-                                border: isColorSelected ? "2px solid var(--p-bright)" : "2px solid rgba(178,204,192,0.3)",
-                                transform: isColorSelected ? "scale(1.15)" : undefined,
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                      {selectedColorId && (
-                        <p className="text-[11px] mt-1.5 font-medium" style={{ color: "var(--p)" }}>
-                          {colorOptions.find((c) => c.id === selectedColorId)?.nombre}
-                          {selectedVariant ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}` : ""}
-                        </p>
-                      )}
-                    </div>
+                {/* Separator */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+
+                {/* Step 2: Color — always visible */}
+                <div style={{ opacity: !selectedVoltajeId ? 0.4 : 1, pointerEvents: !selectedVoltajeId ? "none" : undefined }}>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                    2. FRAME COLOR
+                  </p>
+                  <div className="flex flex-wrap" style={{ gap: 8 }}>
+                    {colorOptions.length > 0 ? colorOptions.map((c) => {
+                      const css = colorToCSS(c.nombre);
+                      const isGradient = css.startsWith("conic");
+                      const isColorSelected = c.id === selectedColorId;
+                      return (
+                        <button
+                          key={c.id}
+                          title={c.nombre}
+                          onClick={() => setSelectedColorId(c.id)}
+                          style={{
+                            width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                            ...(isGradient ? { background: css } : { backgroundColor: css }),
+                            border: isColorSelected ? "2px solid #2ECC71" : "2px solid transparent",
+                            transform: isColorSelected ? "scale(1.15)" : undefined,
+                            transition: "all 0.15s",
+                          }}
+                        />
+                      );
+                    }) : [0, 1, 2].map((i) => (
+                      <div key={i} style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px solid transparent" }} />
+                    ))}
+                  </div>
+                  {selectedColorId && (
+                    <p style={{ fontSize: 11, color: "#2ECC71", fontWeight: 500, marginTop: 6 }}>
+                      {colorOptions.find((c) => c.id === selectedColorId)?.nombre}
+                      {selectedVariant ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}` : ""}
+                    </p>
                   )}
+                </div>
 
-                  {/* Step 3: VIN */}
-                  {selectedColorId && selectedModelo.requiere_vin && (
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
-                        3 · Número de serie (VIN)
+                {/* Step 3: VIN — always visible when requiere_vin */}
+                {selectedModelo.requiere_vin && (
+                  <>
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+                    <div style={{ opacity: !selectedColorId ? 0.4 : 1 }}>
+                      <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                        3. VIN VERIFICATION
                       </p>
                       <div className="relative">
-                        <ScanBarcode className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--on-surf-var)" }} />
                         <input
-                          className="w-full pl-8 pr-8 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                          disabled={!selectedColorId}
+                          className="w-full focus:outline-none"
                           style={{
-                            background: "var(--surf-low)",
+                            background: "rgba(255,255,255,0.05)",
                             border: vinStatus === "valid"
-                              ? "1px solid var(--p-bright)"
+                              ? "1px solid #2ECC71"
                               : vinStatus === "taken"
-                              ? "1px solid var(--ter)"
-                              : "1px solid rgba(178,204,192,0.3)",
-                            color: "var(--on-surf)",
-                            borderRadius: "var(--r-md)",
+                              ? "1px solid #ff8080"
+                              : "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: 10,
+                            color: "#f0f0ee",
+                            padding: "10px 40px 10px 14px",
+                            fontSize: 12,
                           }}
                           placeholder="Escanear o escribir VIN..."
                           value={vinInput}
                           onChange={(e) => { setVinInput(e.target.value); setVinStatus("idle"); }}
                           onBlur={() => checkVin(vinInput)}
                         />
-                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                          {vinStatus === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
-                          {vinStatus === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "var(--p-bright)" }} />}
-                          {vinStatus === "taken" && <X className="w-3.5 h-3.5" style={{ color: "var(--ter)" }} />}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#8f8f85" }}>
+                          {vinStatus === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          {vinStatus === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "#2ECC71" }} />}
+                          {vinStatus === "taken" && <X className="w-3.5 h-3.5" style={{ color: "#ff8080" }} />}
+                          {vinStatus === "idle" && (
+                            <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+                              <rect x="2" y="2" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
+                              <rect x="9" y="2" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
+                              <rect x="2" y="9" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
+                              <rect x="3.5" y="3.5" width="2" height="2" fill="#8f8f85"/>
+                              <rect x="10.5" y="3.5" width="2" height="2" fill="#8f8f85"/>
+                              <rect x="3.5" y="10.5" width="2" height="2" fill="#8f8f85"/>
+                              <path d="M9 9h2v2H9zM13 9v4M13 13H9v-2" stroke="#8f8f85" strokeWidth="1.5"/>
+                            </svg>
+                          )}
                         </div>
                       </div>
                       {vinStatus === "taken" && (
-                        <p className="text-[10px] mt-1" style={{ color: "var(--ter)" }}>
+                        <p style={{ fontSize: 10, color: "#ff8080", marginTop: 4 }}>
                           Este VIN ya está registrado en esta sucursal
                         </p>
                       )}
                     </div>
-                  )}
+                  </>
+                )}
 
-                  {/* Step 4: Battery serials */}
-                  {selectedColorId && assemblyMode && (
+                {/* Step 4: Battery serials — only when assembly mode */}
+                {selectedColorId && assemblyMode && (
+                  <>
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
                     <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
-                          4 · Baterías
-                        </p>
-                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--warn-container)", color: "var(--warn)" }}>
-                          {requiredBatteries} requeridas
-                        </span>
-                      </div>
-                      <p className="text-[10px] mb-2" style={{ color: "var(--p-bright)" }}>
-                        Asignadas: {batterySerialInputs.filter((_, i) => batteryStatuses[i] === "valid").length}/{requiredBatteries}
+                      <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                        4. BATTERY SERIALS ({batterySerialInputs.filter((_, i) => batteryStatuses[i] === "valid").length}/{requiredBatteries})
                       </p>
                       <div className="space-y-2">
                         {batterySerialInputs.map((serial, idx) => (
                           <div key={idx} className="relative">
-                            <Battery className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--on-surf-var)" }} />
                             <input
-                              className="w-full pl-8 pr-8 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                              className="w-full focus:outline-none"
                               style={{
-                                background: "var(--surf-low)",
+                                background: "rgba(255,255,255,0.05)",
                                 border: batteryStatuses[idx] === "valid"
-                                  ? "1px solid var(--p-bright)"
+                                  ? "1px solid #2ECC71"
                                   : batteryStatuses[idx] === "invalid"
-                                  ? "1px solid var(--ter)"
-                                  : "1px solid rgba(178,204,192,0.3)",
-                                color: "var(--on-surf)",
-                                borderRadius: "var(--r-md)",
+                                  ? "1px solid #ff8080"
+                                  : "1px solid rgba(255,255,255,0.1)",
+                                borderRadius: 10,
+                                color: "#f0f0ee",
+                                padding: "10px 40px 10px 14px",
+                                fontSize: 12,
                               }}
                               placeholder={`Batería ${idx + 1}...`}
                               value={serial}
@@ -1079,37 +1029,37 @@ export default function PosTerminal({
                               }}
                               onBlur={() => checkBatterySerial(serial, idx)}
                             />
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                              {batteryStatuses[idx] === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
-                              {batteryStatuses[idx] === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "var(--p-bright)" }} />}
-                              {batteryStatuses[idx] === "invalid" && <X className="w-3.5 h-3.5" style={{ color: "var(--ter)" }} />}
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {batteryStatuses[idx] === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#8f8f85" }} />}
+                              {batteryStatuses[idx] === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "#2ECC71" }} />}
+                              {batteryStatuses[idx] === "invalid" && <X className="w-3.5 h-3.5" style={{ color: "#ff8080" }} />}
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
 
                 {/* Complete config button */}
-                {selectedColorId && (
-                  <div className="px-3.5 pb-3.5">
-                    <button
-                      disabled={!canCompleteConfig}
-                      onClick={handleCompleteConfig}
-                      className="w-full py-2.5 text-[12px] font-bold transition-all"
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        borderRadius: "var(--r-full)",
-                        ...(canCompleteConfig
-                          ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }
-                          : { background: "var(--surf-high)", color: "var(--on-surf-var)", opacity: 0.6 }),
-                      }}
-                    >
-                      Completar configuración
-                    </button>
-                  </div>
-                )}
+                <button
+                  disabled={!canCompleteConfig}
+                  onClick={handleCompleteConfig}
+                  className="w-full transition-all"
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 999,
+                    background: canCompleteConfig ? "#2ECC71" : "rgba(255,255,255,0.06)",
+                    color: canCompleteConfig ? "#0f0f0e" : "#8f8f85",
+                    fontFamily: "var(--font-display)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: "none",
+                  }}
+                >
+                  Completar configuración
+                </button>
               </div>
             )}
 
@@ -1117,7 +1067,7 @@ export default function PosTerminal({
             {cart.length === 0 && !selectedModelo && (
               <div
                 className="flex flex-col items-center justify-center py-8 gap-2"
-                style={{ color: "var(--on-surf-var)" }}
+                style={{ color: "#8f8f85" }}
               >
                 <ShoppingBag className="w-8 h-8 opacity-20" />
                 <p className="text-[11px]">Selecciona un producto</p>
@@ -1127,57 +1077,57 @@ export default function PosTerminal({
             {cart.length > 0 && (
               <div>
                 <p
-                  className="text-[10px] font-medium uppercase tracking-wider px-4 mb-2"
-                  style={{ color: "var(--on-surf-var)" }}
+                  style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, padding: "8px 16px 4px" }}
                 >
-                  Artículos ({cart.length})
+                  ARTÍCULOS ({cart.length})
                 </p>
                 {cart.map((item, idx) => (
                   <div
                     key={`${item.variantId}-${idx}`}
-                    className="flex items-start gap-2 mx-3 mb-2"
+                    className="flex items-start gap-2"
                     style={{
-                      background: "var(--surf-lowest)",
-                      borderRadius: "var(--r-md)",
-                      padding: "10px 12px",
-                      boxShadow: "var(--shadow)",
+                      background: "rgba(255,255,255,0.04)",
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      margin: "4px 12px",
+                      border: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
                     <div className="flex-1 min-w-0">
                       <p
-                        className="font-bold text-[12px] truncate"
-                        style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+                        className="font-bold text-[13px] truncate"
+                        style={{ fontFamily: "var(--font-display)", color: "#f0f0ee" }}
                       >
                         {item.modeloNombre}
                       </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+                      <p className="text-[11px] mt-0.5" style={{ color: "#8f8f85" }}>
                         {item.colorNombre} / {item.voltajeLabel}
                       </p>
                       {item.serialNumber && (
-                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "#8f8f85" }}>
                           VIN: {item.serialNumber}
                         </p>
                       )}
                       {item.assemblyMode && item.batterySerials && item.batterySerials.length > 0 && (
-                        <p className="text-[10px] mt-0.5" style={{ color: "var(--warn)" }}>
+                        <p className="text-[10px] mt-0.5" style={{ color: "#F39C12" }}>
                           ⚡ {item.batterySerials.length} bat. ensambladas
                         </p>
                       )}
                       <p
-                        className="font-bold text-[13px] mt-1"
-                        style={{ color: "var(--p-bright)" }}
+                        className="font-bold text-[14px] mt-1"
+                        style={{ color: "#2ECC71" }}
                       >
                         ${(item.price * item.quantity).toLocaleString("es-MX")}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                      <span className="text-[11px] w-5 text-center" style={{ color: "var(--on-surf)" }}>
+                      <span className="text-[11px] w-5 text-center" style={{ color: "#f0f0ee" }}>
                         ×{item.quantity}
                       </span>
                       <button
                         onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
                         className="w-6 h-6 rounded-lg flex items-center justify-center"
-                        style={{ color: "var(--ter)", background: "var(--ter-container)" }}
+                        style={{ color: "#ff8080", background: "rgba(231,76,60,0.1)" }}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1189,45 +1139,39 @@ export default function PosTerminal({
 
             {/* ── Discount section ─────────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div className="space-y-1.5 rounded-xl mx-3 p-2.5" style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}>
+              <div className="space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "10px 14px", margin: "4px 12px" }}>
                 <div className="flex items-center justify-between">
                   <p
-                    className="text-[9px] font-medium uppercase tracking-wider"
-                    style={{ color: "var(--on-surf-var)" }}
+                    style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const }}
                   >
-                    Descuento
+                    DESCUENTO
                   </p>
                   {discountAuthorized ? (
                     <span
                       className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: "var(--sec-container)", color: "var(--on-sec-container)" }}
+                      style={{ background: "rgba(46,204,113,0.15)", color: "#2ECC71" }}
                     >
                       Aut. {discountAuthorized.name.split(" ")[0]}
                     </span>
                   ) : (
                     <span
                       className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: "var(--warn-container)", color: "var(--warn)" }}
+                      style={{ background: "rgba(243,156,18,0.15)", color: "#F39C12" }}
                     >
                       Req. Manager
                     </span>
                   )}
                 </div>
                 <div className="relative">
-                  <span
-                    className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px]"
-                    style={{ color: "var(--on-surf-var)" }}
-                  >
-                    $
-                  </span>
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: "#8f8f85" }}>$</span>
                   <input
                     type="number"
                     min={0}
-                    className="w-full pl-5 pr-2 py-1.5 text-[10px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                    className="w-full pl-5 pr-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                     style={{
-                      background: "var(--surf-lowest)",
-                      border: "1.5px solid var(--outline-var)",
-                      color: "var(--on-surf)",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#f0f0ee",
                     }}
                     placeholder="0.00"
                     value={discountAmount || ""}
@@ -1242,11 +1186,11 @@ export default function PosTerminal({
                   <>
                     <input
                       type="text"
-                      className="w-full px-2 py-1.5 text-[10px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                      className="w-full px-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                       style={{
-                        background: "var(--surf-lowest)",
-                        border: "1.5px solid var(--outline-var)",
-                        color: "var(--on-surf)",
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: "#f0f0ee",
                       }}
                       placeholder="Motivo del descuento..."
                       value={discountReason}
@@ -1255,11 +1199,11 @@ export default function PosTerminal({
                     <div className="flex gap-1.5">
                       <input
                         type="password"
-                        className={`flex-1 px-2 py-1.5 text-[10px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)] ${pinError ? "animate-pulse" : ""}`}
+                        className={`flex-1 px-2 py-1.5 text-[10px] rounded-lg focus:outline-none ${pinError ? "animate-pulse" : ""}`}
                         style={{
-                          background: "var(--surf-lowest)",
-                          border: pinError ? "1.5px solid var(--ter)" : "1.5px solid var(--outline-var)",
-                          color: "var(--on-surf)",
+                          background: "rgba(255,255,255,0.05)",
+                          border: pinError ? "1px solid #ff8080" : "1px solid rgba(255,255,255,0.1)",
+                          color: "#f0f0ee",
                         }}
                         placeholder="PIN Manager..."
                         value={discountPin}
@@ -1280,7 +1224,7 @@ export default function PosTerminal({
                       </button>
                     </div>
                     {pinError && (
-                      <p className="text-[9px]" style={{ color: "var(--ter)" }}>PIN incorrecto</p>
+                      <p className="text-[9px]" style={{ color: "#ff8080" }}>PIN incorrecto</p>
                     )}
                   </>
                 )}
@@ -1289,20 +1233,17 @@ export default function PosTerminal({
 
             {/* ── Internal note ────────────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div className="mx-3">
-                <p
-                  className="text-[10px] font-medium uppercase tracking-wider mb-1"
-                  style={{ color: "var(--on-surf-var)" }}
-                >
-                  Nota interna — solo gerencia
+              <div style={{ margin: "0 12px" }}>
+                <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
+                  NOTA INTERNA — SOLO GERENCIA
                 </p>
                 <textarea
                   rows={2}
-                  className="w-full px-2 py-1.5 text-[10px] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                  className="w-full px-3 py-2 text-[10px] rounded-lg resize-none focus:outline-none"
                   style={{
-                    background: "var(--surf-low)",
-                    border: "1.5px solid var(--outline-var)",
-                    color: "var(--on-surf)",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#f0f0ee",
                   }}
                   placeholder="Observaciones para gerencia..."
                   value={internalNote}
@@ -1318,7 +1259,7 @@ export default function PosTerminal({
                   <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
                     <SelectTrigger
                       className="flex-1 h-7 text-[10px]"
-                      style={{ background: "var(--surf-low)", border: "1.5px solid var(--outline-var)" }}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0ee" }}
                     >
                       <SelectValue placeholder="Cliente (opcional)" />
                     </SelectTrigger>
@@ -1333,9 +1274,9 @@ export default function PosTerminal({
                     <DialogTrigger asChild>
                       <button
                         className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ background: "var(--surf-high)" }}
+                        style={{ background: "rgba(255,255,255,0.08)" }}
                       >
-                        <Plus className="w-3.5 h-3.5" style={{ color: "var(--on-surf)" }} />
+                        <Plus className="w-3.5 h-3.5" style={{ color: "#f0f0ee" }} />
                       </button>
                     </DialogTrigger>
                     <DialogContent>
@@ -1368,7 +1309,7 @@ export default function PosTerminal({
                       <DialogFooter>
                         <button
                           className="px-3 py-1.5 rounded-lg text-sm"
-                          style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
+                          style={{ background: "rgba(255,255,255,0.08)", color: "#f0f0ee" }}
                           onClick={() => setIsNewCustomerOpen(false)}
                         >
                           Cancelar
@@ -1391,7 +1332,7 @@ export default function PosTerminal({
                   <Label
                     htmlFor="layaway-toggle"
                     className="text-[10px] cursor-pointer"
-                    style={{ color: "var(--on-surf)" }}
+                    style={{ color: "#8f8f85" }}
                   >
                     Modo apartado
                   </Label>
@@ -1403,10 +1344,10 @@ export default function PosTerminal({
                 </div>
 
                 {isLayaway && (
-                  <div className="space-y-1.5 p-2 rounded-lg" style={{ background: "var(--warn-container)" }}>
+                  <div className="space-y-1.5 p-2 rounded-lg" style={{ background: "rgba(243,156,18,0.08)", border: "1px solid rgba(243,156,18,0.2)" }}>
                     <p
                       className="text-[9px] font-medium"
-                      style={{ color: "var(--warn)" }}
+                      style={{ color: "#F39C12" }}
                     >
                       Anticipo: {layawayPercent}% = ${layawayDownPayment.toLocaleString("es-MX")}
                     </p>
@@ -1429,172 +1370,207 @@ export default function PosTerminal({
         {/* ── Fixed footer: totals + payment + CTA ──────────────────────────── */}
         {cart.length > 0 && (
           <div
-            className="px-4 pt-3 pb-4 border-t space-y-3 shrink-0"
+            className="px-4 pt-3.5 pb-4 border-t shrink-0"
             style={{
-              background: "var(--surf-lowest)",
-              borderColor: "rgba(178, 204, 192, 0.15)",
+              background: "#0f0f0e",
+              borderColor: "rgba(255,255,255,0.06)",
             }}
           >
             {/* Totals */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-[12px]" style={{ color: "var(--on-surf-var)" }}>
+            <div className="space-y-1 mb-3">
+              <div className="flex justify-between" style={{ fontSize: 12, color: "#8f8f85" }}>
                 <span>Subtotal</span>
-                <span>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+                <span style={{ color: "#f0f0ee" }}>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
               </div>
               {discountAmount > 0 && discountAuthorized && (
-                <div className="flex justify-between text-[12px]" style={{ color: "var(--ter)" }}>
+                <div className="flex justify-between" style={{ fontSize: 12, color: "#ff8080" }}>
                   <span>Descuento</span>
                   <span>-${discountAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
-              <div className="flex justify-between items-baseline pt-1.5" style={{ borderTop: "1px solid rgba(178,204,192,0.2)" }}>
-                <span
-                  className="font-bold text-[18px]"
-                  style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
-                >
+              <div className="flex justify-between items-baseline pt-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "#f0f0ee" }}>
                   {isLayaway ? "Anticipo" : "Total"}
                 </span>
-                <span
-                  className="font-bold text-[18px]"
-                  style={{ fontFamily: "var(--font-display)", color: "var(--p-bright)" }}
-                >
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "#2ECC71" }}>
                   ${(isLayaway ? layawayDownPayment : totalAfterDiscount).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
             {/* Payment methods */}
-            <div>
-              {(() => {
-                const methodLabels: Record<string, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transfer", ATRATO: "Atrato" };
-                const methodIcons: Record<string, React.ReactNode> = {
-                  CASH: <Banknote className="w-3.5 h-3.5" />,
-                  CARD: <CreditCard className="w-3.5 h-3.5" />,
-                  TRANSFER: <ArrowLeftRight className="w-3.5 h-3.5" />,
-                  ATRATO: <Clock className="w-3.5 h-3.5" />,
-                };
-                return (<>
-              <div className="grid grid-cols-4 gap-1.5 mb-2">
-                {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((method) => {
-                  const isActive = primaryMethod === method;
-                  return (
+            {(() => {
+              const paymentSvgIcons: Record<string, React.ReactNode> = {
+                CASH: (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                    <rect x="1" y="4" width="14" height="8" rx="1.5"/>
+                    <circle cx="8" cy="8" r="2"/>
+                    <path d="M4 8h.01M12 8h.01"/>
+                  </svg>
+                ),
+                CARD: (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                    <rect x="1" y="3" width="14" height="10" rx="1.5"/>
+                    <path d="M1 6h14"/>
+                    <path d="M4 10h3"/>
+                  </svg>
+                ),
+                TRANSFER: (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                    <path d="M2 8h12M10 5l3 3-3 3M6 5L3 8l3 3"/>
+                  </svg>
+                ),
+                ATRATO: (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                    <circle cx="8" cy="8" r="6"/>
+                    <path d="M8 5v3l2 2"/>
+                  </svg>
+                ),
+              };
+              const methodLabels: Record<string, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transfer", ATRATO: "Atrato" };
+
+              return (
+                <>
+                  <div className="grid grid-cols-2 mb-2" style={{ gap: 6 }}>
+                    {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((method) => {
+                      const isActive = primaryMethod === method;
+                      return (
+                        <button
+                          key={method}
+                          onClick={() => setPrimaryMethod(method)}
+                          className="flex flex-col items-center justify-center transition-all"
+                          style={{
+                            position: "relative",
+                            padding: "10px 8px",
+                            borderRadius: 10,
+                            border: isActive ? "1px solid #2ECC71" : "1px solid rgba(255,255,255,0.1)",
+                            background: isActive ? "rgba(46,204,113,0.1)" : "rgba(255,255,255,0.04)",
+                            color: isActive ? "#2ECC71" : "#8f8f85",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            gap: 5,
+                          }}
+                        >
+                          {method === "ATRATO" && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                                fontSize: 7,
+                                fontWeight: 600,
+                                padding: "1px 4px",
+                                borderRadius: 999,
+                                background: "rgba(243,156,18,0.2)",
+                                color: "#F39C12",
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              Pend.
+                            </span>
+                          )}
+                          {paymentSvgIcons[method]}
+                          <span>{methodLabels[method]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Credit balance option */}
+                  {selectedCustomer && selectedCustomer.balance > 0 && !isLayaway && (
                     <button
-                      key={method}
-                      onClick={() => setPrimaryMethod(method)}
-                      className="flex flex-col items-center justify-center py-2 gap-1 text-[9px] font-medium transition-all"
+                      onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
+                      className="w-full mb-2 transition-all"
                       style={{
-                        borderRadius: "var(--r-md)",
-                        border: isActive ? "1.5px solid var(--p-bright)" : "1.5px solid rgba(178,204,192,0.3)",
-                        background: isActive ? "var(--sec-container)" : "var(--surf-lowest)",
-                        color: isActive ? "var(--on-sec-container)" : "var(--on-surf-var)",
+                        padding: "8px",
+                        borderRadius: 10,
+                        border: primaryMethod === "CREDIT_BALANCE" ? "1px solid #2ECC71" : "1px solid rgba(255,255,255,0.1)",
+                        background: primaryMethod === "CREDIT_BALANCE" ? "rgba(46,204,113,0.1)" : "rgba(255,255,255,0.04)",
+                        color: primaryMethod === "CREDIT_BALANCE" ? "#2ECC71" : "#8f8f85",
+                        fontSize: 11,
+                        fontWeight: 500,
                       }}
                     >
-                      {methodIcons[method]}
-                      <span className="font-semibold leading-none">{methodLabels[method]}</span>
-                      {method === "ATRATO" && (
-                        <span
-                          className="text-[7px] px-1 rounded-full leading-tight"
-                          style={{ background: "var(--warn-container)", color: "var(--warn)" }}
-                        >
-                          Pend.
-                        </span>
-                      )}
+                      Saldo a favor (${selectedCustomer.balance.toFixed(2)})
                     </button>
-                  );
-                })}
-              </div>
-
-              {/* Credit balance option */}
-              {selectedCustomer && selectedCustomer.balance > 0 && !isLayaway && (
-                <button
-                  onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
-                  className="w-full py-2 text-[10px] font-medium mb-2 transition-all"
-                  style={{
-                    borderRadius: "var(--r-md)",
-                    border: primaryMethod === "CREDIT_BALANCE" ? "1.5px solid var(--p-bright)" : "1.5px solid rgba(178,204,192,0.3)",
-                    background: primaryMethod === "CREDIT_BALANCE" ? "var(--sec-container)" : "var(--surf-lowest)",
-                    color: primaryMethod === "CREDIT_BALANCE" ? "var(--on-sec-container)" : "var(--on-surf-var)",
-                  }}
-                >
-                  Saldo a favor (${selectedCustomer.balance.toFixed(2)})
-                </button>
-              )}
-
-              {/* Split payment toggle */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px]" style={{ color: "var(--on-surf-var)" }}>
-                  Dividir pago
-                </span>
-                <Switch
-                  checked={isSplitPayment}
-                  onCheckedChange={setIsSplitPayment}
-                />
-              </div>
-
-              {isSplitPayment && (
-                <div className="space-y-1.5 p-2.5 rounded-xl mb-2" style={{ background: "var(--surf-high)" }}>
-                  <div className="flex gap-1.5 items-center">
-                    <span className="text-[9px] w-16 shrink-0" style={{ color: "var(--on-surf-var)" }}>
-                      {methodLabels[primaryMethod] ?? primaryMethod}
-                    </span>
-                    <input
-                      type="number"
-                      className="flex-1 px-2 py-1 text-[10px] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--p-bright)]"
-                      style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)", color: "var(--on-surf)" }}
-                      placeholder="Monto..."
-                      value={primaryAmount}
-                      onChange={(e) => setPrimaryAmount(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex gap-1.5 items-center">
-                    <Select value={secondaryMethod} onValueChange={(v) => setSecondaryMethod(v as typeof secondaryMethod)}>
-                      <SelectTrigger
-                        className="w-16 h-6 text-[9px] shrink-0 px-1"
-                        style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)" }}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((m) => (
-                          <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div
-                      className="flex-1 px-2 py-1 text-[10px] rounded-lg text-right"
-                      style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)", color: "var(--on-surf-var)" }}
-                    >
-                      ${secondaryAmountNum.toFixed(2)}
-                    </div>
-                  </div>
-                  {splitCovered ? (
-                    <p className="text-[10px]" style={{ color: "var(--p-bright)" }}>
-                      <Check className="inline w-3 h-3 mr-0.5" />Cubierto
-                    </p>
-                  ) : (
-                    <p className="text-[10px]" style={{ color: "var(--warn)" }}>
-                      Falta ${(totalAfterDiscount - primaryAmountNum).toFixed(2)}
-                    </p>
                   )}
-                </div>
-              )}
-              </>); })()}
-            </div>
+
+                  {/* Split payment toggle */}
+                  <div className="flex items-center justify-between" style={{ marginBottom: isSplitPayment ? 8 : 0 }}>
+                    <span style={{ fontSize: 11, color: "#8f8f85" }}>Dividir pago</span>
+                    <Switch checked={isSplitPayment} onCheckedChange={setIsSplitPayment} />
+                  </div>
+
+                  {isSplitPayment && (
+                    <div className="space-y-1.5 p-2.5 rounded-xl mb-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-[9px] w-16 shrink-0" style={{ color: "#8f8f85" }}>
+                          {methodLabels[primaryMethod] ?? primaryMethod}
+                        </span>
+                        <input
+                          type="number"
+                          className="flex-1 px-2 py-1 text-[10px] rounded-lg focus:outline-none"
+                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0ee" }}
+                          placeholder="Monto..."
+                          value={primaryAmount}
+                          onChange={(e) => setPrimaryAmount(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-1.5 items-center">
+                        <Select value={secondaryMethod} onValueChange={(v) => setSecondaryMethod(v as typeof secondaryMethod)}>
+                          <SelectTrigger
+                            className="w-16 h-6 text-[9px] shrink-0 px-1"
+                            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((m) => (
+                              <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div
+                          className="flex-1 px-2 py-1 text-[10px] rounded-lg text-right"
+                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#8f8f85" }}
+                        >
+                          ${secondaryAmountNum.toFixed(2)}
+                        </div>
+                      </div>
+                      {splitCovered ? (
+                        <p className="text-[10px]" style={{ color: "#2ECC71" }}>
+                          <Check className="inline w-3 h-3 mr-0.5" />Cubierto
+                        </p>
+                      ) : (
+                        <p className="text-[10px]" style={{ color: "#F39C12" }}>
+                          Falta ${(totalAfterDiscount - primaryAmountNum).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Process button */}
             <button
               disabled={!canProcess}
               onClick={handleCheckout}
-              className="w-full py-3 text-[13px] font-bold tracking-wider transition-all"
+              className="w-full transition-all"
               style={{
-                fontFamily: "var(--font-display)",
-                borderRadius: "var(--r-full)",
-                letterSpacing: "0.05em",
+                marginTop: 10,
+                padding: 14,
+                borderRadius: 999,
                 background: canProcess
-                  ? "linear-gradient(135deg, #1b4332, #2ecc71)"
-                  : "var(--surf-highest)",
-                color: canProcess ? "#fff" : "var(--on-surf-var)",
-                opacity: canProcess ? 1 : 0.7,
+                  ? "linear-gradient(135deg, #1B4332, #2ECC71)"
+                  : "rgba(255,255,255,0.06)",
+                color: canProcess ? "#ffffff" : "#8f8f85",
+                fontFamily: "var(--font-display)",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase" as const,
+                border: "none",
               }}
             >
               {isProcessing ? (
