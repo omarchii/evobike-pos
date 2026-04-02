@@ -119,7 +119,7 @@ export default async function PointOfSalePage() {
   const branchName = authUser?.branchName ?? "";
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
+    <div className="absolute inset-0 flex flex-col overflow-hidden">
       <PosTerminal
         modelos={modelos}
         customers={customers}

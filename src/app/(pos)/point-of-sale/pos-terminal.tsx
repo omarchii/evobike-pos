@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -745,7 +744,7 @@ export default function PosTerminal({
         </div>
 
         {/* Product grid */}
-        <ScrollArea className="flex-1 px-4 pb-4">
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 14px 14px" }}>
           {filteredModelos.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-20 gap-3"
@@ -766,12 +765,12 @@ export default function PosTerminal({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </div>
 
       {/* ══ RIGHT COLUMN ═════════════════════════════════════════════════════════ */}
       <div
-        className="w-[280px] shrink-0 flex flex-col border-l overflow-hidden"
+        className="w-[320px] shrink-0 flex flex-col border-l overflow-hidden"
         style={{
           background: "var(--surf-lowest)",
           borderColor: "rgba(178, 204, 192, 0.2)",
@@ -809,7 +808,7 @@ export default function PosTerminal({
         </div>
 
         {/* Scrollable body */}
-        <ScrollArea className="flex-1">
+        <div style={{ flex: 1, overflowY: "auto" }}>
           <div className="px-3 py-2 space-y-3">
             {/* ── Guided config section ────────────────────────────────────── */}
             {selectedModelo && (
@@ -832,6 +831,33 @@ export default function PosTerminal({
                   >
                     <X className="w-3 h-3" />
                   </button>
+                </div>
+
+                {/* Step progress indicator */}
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { label: "VOLTAJE", active: true },
+                    { label: "COLOR", active: !!selectedVoltajeId },
+                    ...(selectedModelo.requiere_vin
+                      ? [{ label: "VIN", active: !!selectedColorId }]
+                      : []),
+                    ...(selectedColorId && assemblyMode
+                      ? [{ label: "BATERÍAS", active: true }]
+                      : []),
+                  ].map((step, i) => (
+                    <span
+                      key={step.label}
+                      className="text-[8px] uppercase tracking-widest"
+                      style={{
+                        color: step.active ? "var(--on-surf)" : "var(--on-surf-var)",
+                        fontWeight: step.active ? 600 : 400,
+                        opacity: step.active ? 1 : 0.5,
+                      }}
+                    >
+                      {i > 0 && <span className="mr-1.5" style={{ opacity: 0.3 }}>›</span>}
+                      {step.label}
+                    </span>
+                  ))}
                 </div>
 
                 {/* Step 1: Voltaje */}
@@ -1349,7 +1375,7 @@ export default function PosTerminal({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* ── Fixed footer: totals + payment + CTA ──────────────────────────── */}
         {cart.length > 0 && (
