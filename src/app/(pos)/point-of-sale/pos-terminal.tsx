@@ -10,9 +10,12 @@ import {
   ShoppingBag,
   Check,
   X,
-  ChevronRight,
   Loader2,
   ScanBarcode,
+  Banknote,
+  CreditCard,
+  ArrowLeftRight,
+  Clock,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -170,50 +173,54 @@ function ModelCard({
       tabIndex={hasStock ? 0 : -1}
       onClick={() => hasStock && onSelect(modelo)}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)}
-      className={`relative rounded-xl p-0 text-left transition-all group overflow-hidden
-        ${isSelected ? "ring-2 ring-[var(--p-bright)]" : ""}
+      className={`relative text-left transition-all group overflow-hidden
         ${hasStock ? "cursor-pointer" : "opacity-60 cursor-default"}`}
-      style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
+      style={{
+        background: "var(--surf-lowest)",
+        boxShadow: "var(--shadow)",
+        borderRadius: "var(--r-lg)",
+        border: isSelected ? "2px solid var(--p-bright)" : "2px solid transparent",
+      }}
     >
       {/* Image area */}
       <div
         className="relative w-full overflow-hidden"
-        style={{ height: 100, background: "var(--surf-high)" }}
+        style={{
+          height: 160,
+          background: "var(--surf-high)",
+          borderRadius: "var(--r-lg) var(--r-lg) 0 0",
+        }}
       >
         {modelo.imageUrl ? (
           <Image
             src={modelo.imageUrl}
             alt={modelo.nombre}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span
-              className="text-2xl font-bold tracking-tight"
-              style={{ fontFamily: "var(--font-display)", color: "var(--on-surf-var)" }}
+              className="font-bold tracking-tight"
+              style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--on-surf-var)" }}
             >
               {getInitials(modelo.nombre)}
             </span>
           </div>
         )}
-        {/* Stock badge overlay */}
-        <div className="absolute top-2 right-2">
+        {/* Stock badge — top left */}
+        <div className="absolute top-2 left-2">
           {hasStock ? (
             <span
-              className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-              style={{
-                background: "var(--sec-container)",
-                color: "var(--on-sec-container)",
-                letterSpacing: "0.04em",
-              }}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: "var(--sec-container)", color: "var(--on-sec-container)" }}
             >
               {modelo.totalStockInBranch} uds
             </span>
           ) : (
             <span
-              className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--ter)", color: "#fff", letterSpacing: "0.04em" }}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: "var(--ter-container)", color: "var(--on-ter-container)" }}
             >
               Sin stock
             </span>
@@ -222,39 +229,36 @@ function ModelCard({
       </div>
 
       {/* Body */}
-      <div className="p-2.5">
+      <div className="p-3">
         <p
-          className="font-bold text-[11px] leading-tight truncate mb-0.5"
+          className="font-bold text-[13px] leading-tight truncate"
           style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
         >
           {modelo.nombre}
         </p>
-        <p className="text-[10px]" style={{ color: "var(--on-surf-var)" }}>
+        <p className="text-[11px] mt-0.5" style={{ color: "var(--on-surf-var)" }}>
           {modelo.variants.length} variantes
         </p>
-        <p
-          className="font-bold text-[13px] mt-1"
-          style={{ fontFamily: "var(--font-display)", color: "var(--p-bright)" }}
-        >
-          ${modelo.minPrice.toLocaleString("es-MX")}
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p
+            className="font-bold text-[13px]"
+            style={{ color: "var(--p-bright)" }}
+          >
+            ${modelo.minPrice.toLocaleString("es-MX")}
+          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(modelo);
+            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+            style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }}
+            aria-label={`Agregar ${modelo.nombre}`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
-
-      {/* Add button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(modelo);
-        }}
-        className="absolute bottom-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-        style={{
-          background: "linear-gradient(135deg, #1b4332, #2ecc71)",
-          color: "#fff",
-        }}
-        aria-label={`Agregar ${modelo.nombre}`}
-      >
-        <Plus className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 }
@@ -754,7 +758,7 @@ export default function PosTerminal({
               <p className="text-sm">Sin resultados para &ldquo;{search}&rdquo;</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pt-1">
+            <div className="grid grid-cols-3 gap-3 pt-1">
               {filteredModelos.map((modelo) => (
                 <ModelCard
                   key={modelo.id}
@@ -770,301 +774,341 @@ export default function PosTerminal({
 
       {/* ══ RIGHT COLUMN ═════════════════════════════════════════════════════════ */}
       <div
-        className="w-[320px] shrink-0 flex flex-col border-l overflow-hidden"
+        className="w-[360px] shrink-0 flex flex-col border-l overflow-hidden"
         style={{
-          background: "var(--surf-lowest)",
+          background: "var(--surf-low)",
           borderColor: "rgba(178, 204, 192, 0.2)",
           boxShadow: "-4px 0 16px rgba(19,27,46,0.04)",
         }}
       >
         {/* Panel header */}
         <div
-          className="px-3 py-2.5 shrink-0 border-b"
+          className="px-4 py-3.5 shrink-0 border-b"
           style={{
-            background: "var(--surf-low)",
+            background: "var(--surf-lowest)",
             borderColor: "rgba(178, 204, 192, 0.15)",
           }}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-1">
             <span
-              className="font-bold text-[13px]"
+              className="font-bold text-[16px]"
               style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
             >
               Transacción
             </span>
             <span
-              className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{ background: "var(--sec-container)", color: "var(--on-sec-container)" }}
             >
               Caja abierta
             </span>
           </div>
-          <p className="text-[10px] mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+          <p className="text-[11px]" style={{ color: "var(--on-surf-var)" }}>
             {sellerName} · {branchName}
           </p>
-          <p className="text-[9px] font-mono mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+          <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--on-surf-var)", opacity: 0.6 }}>
             {folio}
           </p>
         </div>
 
         {/* Scrollable body */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          <div className="px-3 py-2 space-y-3">
-            {/* ── Guided config section ────────────────────────────────────── */}
+          <div className="py-2 space-y-2">
+            {/* ── Guided config — floating card ────────────────────────────── */}
             {selectedModelo && (
               <div
-                className="rounded-xl p-3 space-y-2.5"
-                style={{ background: "var(--surf-low)" }}
+                style={{
+                  background: "var(--surf-lowest)",
+                  borderRadius: "var(--r-lg)",
+                  boxShadow: "var(--shadow)",
+                  margin: "0 12px",
+                  overflow: "hidden",
+                }}
               >
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-[11px] font-bold truncate mr-2"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
-                  >
-                    {selectedModelo.nombre}
-                  </span>
+                {/* Card header with thumbnail */}
+                <div
+                  className="flex items-center gap-2.5 p-3.5"
+                  style={{ borderBottom: "1px solid rgba(178,204,192,0.12)" }}
+                >
+                  {selectedModelo.imageUrl ? (
+                    <div
+                      className="relative shrink-0"
+                      style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", overflow: "hidden" }}
+                    >
+                      <Image
+                        src={selectedModelo.imageUrl}
+                        alt={selectedModelo.nombre}
+                        fill
+                        style={{ objectFit: "cover" }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="shrink-0 flex items-center justify-center"
+                      style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", background: "var(--surf-high)" }}
+                    >
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--on-surf-var)" }}>
+                        {getInitials(selectedModelo.nombre)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-[13px] font-bold truncate"
+                      style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+                    >
+                      {selectedModelo.nombre}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
+                      Selección guiada
+                    </p>
+                  </div>
                   <button
                     onClick={resetGuidedConfig}
-                    className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
-                    style={{ background: "var(--ter-container)", color: "var(--on-ter-container)" }}
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
+                    style={{ color: "var(--on-surf-var)", background: "var(--surf-high)" }}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Step progress indicator */}
-                <div className="flex items-center gap-1.5">
-                  {[
-                    { label: "VOLTAJE", active: true },
-                    { label: "COLOR", active: !!selectedVoltajeId },
-                    ...(selectedModelo.requiere_vin
-                      ? [{ label: "VIN", active: !!selectedColorId }]
-                      : []),
-                    ...(selectedColorId && assemblyMode
-                      ? [{ label: "BATERÍAS", active: true }]
-                      : []),
-                  ].map((step, i) => (
-                    <span
-                      key={step.label}
-                      className="text-[8px] uppercase tracking-widest"
-                      style={{
-                        color: step.active ? "var(--on-surf)" : "var(--on-surf-var)",
-                        fontWeight: step.active ? 600 : 400,
-                        opacity: step.active ? 1 : 0.5,
-                      }}
+                {/* Step tabs */}
+                {(() => {
+                  const currentStep = !selectedVoltajeId
+                    ? "VOLTAJE"
+                    : !selectedColorId
+                    ? "COLOR"
+                    : selectedModelo.requiere_vin && vinStatus !== "valid"
+                    ? "VIN"
+                    : assemblyMode
+                    ? "BATERÍAS"
+                    : "COLOR";
+                  const tabs = [
+                    "VOLTAJE",
+                    ...(selectedVoltajeId ? ["COLOR"] : []),
+                    ...(selectedColorId && selectedModelo.requiere_vin ? ["VIN"] : []),
+                    ...(selectedColorId && assemblyMode ? ["BATERÍAS"] : []),
+                  ];
+                  return (
+                    <div
+                      className="flex overflow-x-auto"
+                      style={{ borderBottom: "1px solid rgba(178,204,192,0.12)" }}
                     >
-                      {i > 0 && <span className="mr-1.5" style={{ opacity: 0.3 }}>›</span>}
-                      {step.label}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Step 1: Voltaje */}
-                <div>
-                  <p
-                    className="text-[9px] font-medium uppercase tracking-wider mb-1.5"
-                    style={{ color: "var(--on-surf-var)" }}
-                  >
-                    1 · Voltaje
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {voltajeOptions.map((opt) => {
-                      const isSelected = opt.id === selectedVoltajeId;
-                      const hasStock = opt.stockInBranch > 0;
-                      const canAssemble = !hasStock && opt.canAssemble;
-                      const noOption = !hasStock && !opt.canAssemble;
-
-                      let pillStyle: React.CSSProperties;
-                      if (noOption) {
-                        pillStyle = { background: "var(--ter)", color: "#fff", opacity: 0.6 };
-                      } else if (isSelected) {
-                        pillStyle = { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" };
-                      } else if (canAssemble) {
-                        pillStyle = { background: "var(--warn-container)", color: "var(--warn)", border: "1.5px solid var(--warn)" };
-                      } else {
-                        pillStyle = { background: "var(--surf-high)", color: "var(--on-surf)" };
-                      }
-
-                      return (
-                        <button
-                          key={opt.id}
-                          disabled={noOption}
-                          onClick={() => handleSelectVoltaje(opt.id)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all"
-                          style={pillStyle}
+                      {tabs.map((tab) => (
+                        <span
+                          key={tab}
+                          className="px-3 py-2 text-[9px] uppercase tracking-widest whitespace-nowrap"
+                          style={{
+                            color: tab === currentStep ? "var(--on-surf)" : "var(--on-surf-var)",
+                            fontWeight: tab === currentStep ? 600 : 400,
+                            borderBottom: tab === currentStep ? "2px solid var(--p-bright)" : "2px solid transparent",
+                            letterSpacing: "0.05em",
+                          }}
                         >
-                          <Zap className="w-2.5 h-2.5" />
-                          {opt.label}
-                          {canAssemble && <Battery className="w-2.5 h-2.5 ml-0.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedVoltajeId && (() => {
-                    const opt = voltajeOptions.find((v) => v.id === selectedVoltajeId);
-                    if (!opt) return null;
-                    return (
-                      <p className="text-[9px] mt-1" style={{ color: opt.stockInBranch > 0 ? "var(--sec)" : "var(--warn)" }}>
-                        {opt.stockInBranch > 0
-                          ? `${opt.stockInBranch} unidades disponibles`
-                          : `Sin unidades · ${availableBatteriesCount} baterías disponibles`}
-                      </p>
-                    );
-                  })()}
-                </div>
+                          {tab}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
 
-                {/* Step 2: Color */}
-                {selectedVoltajeId && (
+                {/* Steps content */}
+                <div className="p-3.5 space-y-3">
+                  {/* Step 1: Voltaje */}
                   <div>
-                    <p
-                      className="text-[9px] font-medium uppercase tracking-wider mb-1.5"
-                      style={{ color: "var(--on-surf-var)" }}
-                    >
-                      2 · Color
+                    <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
+                      1 · Voltaje
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {colorOptions.map((c) => {
-                        const css = colorToCSS(c.nombre);
-                        const isGradient = css.startsWith("conic");
-                        const isSelected = c.id === selectedColorId;
+                    <div className="flex flex-wrap gap-1.5">
+                      {voltajeOptions.map((opt) => {
+                        const isVoltajeSelected = opt.id === selectedVoltajeId;
+                        const hasVoltajeStock = opt.stockInBranch > 0;
+                        const canAssemble = !hasVoltajeStock && opt.canAssemble;
+                        const noOption = !hasVoltajeStock && !opt.canAssemble;
+                        let pillStyle: React.CSSProperties;
+                        if (noOption) {
+                          pillStyle = { background: "var(--ter-container)", color: "var(--on-ter-container)", opacity: 0.7 };
+                        } else if (isVoltajeSelected) {
+                          pillStyle = { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" };
+                        } else if (canAssemble) {
+                          pillStyle = { background: "var(--warn-container)", color: "var(--warn)", border: "1.5px solid var(--warn)" };
+                        } else {
+                          pillStyle = { border: "1.5px solid var(--outline-var)", color: "var(--on-surf-var)" };
+                        }
                         return (
                           <button
-                            key={c.id}
-                            title={c.nombre}
-                            onClick={() => setSelectedColorId(c.id)}
-                            className="w-6 h-6 rounded-full transition-transform hover:scale-110"
-                            style={{
-                              ...(isGradient ? { background: css } : { backgroundColor: css }),
-                              border: isSelected
-                                ? "2.5px solid var(--p-bright)"
-                                : "2px solid rgba(178,204,192,0.3)",
-                              transform: isSelected ? "scale(1.2)" : undefined,
-                            }}
-                          />
+                            key={opt.id}
+                            disabled={noOption}
+                            onClick={() => handleSelectVoltaje(opt.id)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all"
+                            style={pillStyle}
+                          >
+                            <Zap className="w-2.5 h-2.5" />
+                            {opt.label}
+                            {canAssemble && <Battery className="w-2.5 h-2.5 ml-0.5" />}
+                          </button>
                         );
                       })}
                     </div>
-                    {selectedColorId && (
-                      <p className="text-[9px] mt-1 font-medium" style={{ color: "var(--p-bright)" }}>
-                        {colorOptions.find((c) => c.id === selectedColorId)?.nombre}
-                        {selectedVariant ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}` : ""}
-                      </p>
-                    )}
+                    {selectedVoltajeId && (() => {
+                      const opt = voltajeOptions.find((v) => v.id === selectedVoltajeId);
+                      if (!opt) return null;
+                      return (
+                        <p className="text-[11px] mt-1.5" style={{ color: opt.stockInBranch > 0 ? "var(--p-bright)" : opt.canAssemble ? "var(--warn)" : "var(--ter)" }}>
+                          {opt.stockInBranch > 0
+                            ? `${opt.stockInBranch} unidades disponibles`
+                            : opt.canAssemble
+                            ? `Sin unidades · ${availableBatteriesCount} baterías disponibles`
+                            : "Sin stock"}
+                        </p>
+                      );
+                    })()}
                   </div>
-                )}
 
-                {/* Step 3: VIN */}
-                {selectedColorId && selectedModelo.requiere_vin && (
-                  <div>
-                    <p
-                      className="text-[9px] font-medium uppercase tracking-wider mb-1.5"
-                      style={{ color: "var(--on-surf-var)" }}
-                    >
-                      3 · Número de serie (VIN)
-                    </p>
-                    <div className="relative">
-                      <ScanBarcode
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3"
-                        style={{ color: "var(--on-surf-var)" }}
-                      />
-                      <input
-                        className="w-full pl-7 pr-7 py-1.5 text-[10px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
-                        style={{
-                          background: "var(--surf-lowest)",
-                          border: vinStatus === "valid"
-                            ? "1.5px solid var(--sec)"
-                            : vinStatus === "taken"
-                            ? "1.5px solid var(--ter)"
-                            : "1.5px solid var(--outline-var)",
-                          color: "var(--on-surf)",
-                        }}
-                        placeholder="Escanear o escribir VIN..."
-                        value={vinInput}
-                        onChange={(e) => {
-                          setVinInput(e.target.value);
-                          setVinStatus("idle");
-                        }}
-                        onBlur={() => checkVin(vinInput)}
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                        {vinStatus === "checking" && <Loader2 className="w-3 h-3 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
-                        {vinStatus === "valid" && <Check className="w-3 h-3" style={{ color: "var(--sec)" }} />}
-                        {vinStatus === "taken" && <X className="w-3 h-3" style={{ color: "var(--ter)" }} />}
+                  {/* Step 2: Color */}
+                  {selectedVoltajeId && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
+                        2 · Color
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {colorOptions.map((c) => {
+                          const css = colorToCSS(c.nombre);
+                          const isGradient = css.startsWith("conic");
+                          const isColorSelected = c.id === selectedColorId;
+                          return (
+                            <button
+                              key={c.id}
+                              title={c.nombre}
+                              onClick={() => setSelectedColorId(c.id)}
+                              className="w-6 h-6 rounded-full transition-all"
+                              style={{
+                                ...(isGradient ? { background: css } : { backgroundColor: css }),
+                                border: isColorSelected ? "2px solid var(--p-bright)" : "2px solid rgba(178,204,192,0.3)",
+                                transform: isColorSelected ? "scale(1.15)" : undefined,
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      {selectedColorId && (
+                        <p className="text-[11px] mt-1.5 font-medium" style={{ color: "var(--p)" }}>
+                          {colorOptions.find((c) => c.id === selectedColorId)?.nombre}
+                          {selectedVariant ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}` : ""}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 3: VIN */}
+                  {selectedColorId && selectedModelo.requiere_vin && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--on-surf-var)" }}>
+                        3 · Número de serie (VIN)
+                      </p>
+                      <div className="relative">
+                        <ScanBarcode className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--on-surf-var)" }} />
+                        <input
+                          className="w-full pl-8 pr-8 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                          style={{
+                            background: "var(--surf-low)",
+                            border: vinStatus === "valid"
+                              ? "1px solid var(--p-bright)"
+                              : vinStatus === "taken"
+                              ? "1px solid var(--ter)"
+                              : "1px solid rgba(178,204,192,0.3)",
+                            color: "var(--on-surf)",
+                            borderRadius: "var(--r-md)",
+                          }}
+                          placeholder="Escanear o escribir VIN..."
+                          value={vinInput}
+                          onChange={(e) => { setVinInput(e.target.value); setVinStatus("idle"); }}
+                          onBlur={() => checkVin(vinInput)}
+                        />
+                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                          {vinStatus === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
+                          {vinStatus === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "var(--p-bright)" }} />}
+                          {vinStatus === "taken" && <X className="w-3.5 h-3.5" style={{ color: "var(--ter)" }} />}
+                        </div>
+                      </div>
+                      {vinStatus === "taken" && (
+                        <p className="text-[10px] mt-1" style={{ color: "var(--ter)" }}>
+                          Este VIN ya está registrado en esta sucursal
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4: Battery serials */}
+                  {selectedColorId && assemblyMode && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
+                          4 · Baterías
+                        </p>
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--warn-container)", color: "var(--warn)" }}>
+                          {requiredBatteries} requeridas
+                        </span>
+                      </div>
+                      <p className="text-[10px] mb-2" style={{ color: "var(--p-bright)" }}>
+                        Asignadas: {batterySerialInputs.filter((_, i) => batteryStatuses[i] === "valid").length}/{requiredBatteries}
+                      </p>
+                      <div className="space-y-2">
+                        {batterySerialInputs.map((serial, idx) => (
+                          <div key={idx} className="relative">
+                            <Battery className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--on-surf-var)" }} />
+                            <input
+                              className="w-full pl-8 pr-8 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
+                              style={{
+                                background: "var(--surf-low)",
+                                border: batteryStatuses[idx] === "valid"
+                                  ? "1px solid var(--p-bright)"
+                                  : batteryStatuses[idx] === "invalid"
+                                  ? "1px solid var(--ter)"
+                                  : "1px solid rgba(178,204,192,0.3)",
+                                color: "var(--on-surf)",
+                                borderRadius: "var(--r-md)",
+                              }}
+                              placeholder={`Batería ${idx + 1}...`}
+                              value={serial}
+                              onChange={(e) => {
+                                const newInputs = [...batterySerialInputs];
+                                newInputs[idx] = e.target.value;
+                                setBatterySerialInputs(newInputs);
+                                setBatteryStatuses((prev) => ({ ...prev, [idx]: "idle" }));
+                              }}
+                              onBlur={() => checkBatterySerial(serial, idx)}
+                            />
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                              {batteryStatuses[idx] === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
+                              {batteryStatuses[idx] === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "var(--p-bright)" }} />}
+                              {batteryStatuses[idx] === "invalid" && <X className="w-3.5 h-3.5" style={{ color: "var(--ter)" }} />}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {vinStatus === "taken" && (
-                      <p className="text-[9px] mt-0.5" style={{ color: "var(--ter)" }}>
-                        Este VIN ya está registrado en esta sucursal
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Step 4: Battery serials */}
-                {selectedColorId && assemblyMode && (
-                  <div>
-                    <p
-                      className="text-[9px] font-medium uppercase tracking-wider mb-1.5"
-                      style={{ color: "var(--on-surf-var)" }}
-                    >
-                      4 · Baterías ({batterySerialInputs.filter((_, i) => batteryStatuses[i] === "valid").length}/{requiredBatteries})
-                    </p>
-                    <div className="space-y-1.5">
-                      {batterySerialInputs.map((serial, idx) => (
-                        <div key={idx} className="relative">
-                          <Battery
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3"
-                            style={{ color: "var(--on-surf-var)" }}
-                          />
-                          <input
-                            className="w-full pl-7 pr-7 py-1.5 text-[10px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--p-bright)]"
-                            style={{
-                              background: "var(--surf-lowest)",
-                              border:
-                                batteryStatuses[idx] === "valid"
-                                  ? "1.5px solid var(--sec)"
-                                  : batteryStatuses[idx] === "invalid"
-                                  ? "1.5px solid var(--ter)"
-                                  : "1.5px solid var(--outline-var)",
-                              color: "var(--on-surf)",
-                            }}
-                            placeholder={`Batería ${idx + 1}...`}
-                            value={serial}
-                            onChange={(e) => {
-                              const newInputs = [...batterySerialInputs];
-                              newInputs[idx] = e.target.value;
-                              setBatterySerialInputs(newInputs);
-                              setBatteryStatuses((prev) => ({ ...prev, [idx]: "idle" }));
-                            }}
-                            onBlur={() => checkBatterySerial(serial, idx)}
-                          />
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                            {batteryStatuses[idx] === "checking" && <Loader2 className="w-3 h-3 animate-spin" style={{ color: "var(--on-surf-var)" }} />}
-                            {batteryStatuses[idx] === "valid" && <Check className="w-3 h-3" style={{ color: "var(--sec)" }} />}
-                            {batteryStatuses[idx] === "invalid" && <X className="w-3 h-3" style={{ color: "var(--ter)" }} />}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Complete config button */}
                 {selectedColorId && (
-                  <button
-                    disabled={!canCompleteConfig}
-                    onClick={handleCompleteConfig}
-                    className="w-full py-2 rounded-lg text-[11px] font-semibold transition-all"
-                    style={
-                      canCompleteConfig
-                        ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }
-                        : { background: "var(--surf-high)", color: "var(--on-surf-var)", opacity: 0.6 }
-                    }
-                  >
-                    Completar configuración
-                    <ChevronRight className="inline w-3.5 h-3.5 ml-1" />
-                  </button>
+                  <div className="px-3.5 pb-3.5">
+                    <button
+                      disabled={!canCompleteConfig}
+                      onClick={handleCompleteConfig}
+                      className="w-full py-2.5 text-[12px] font-bold transition-all"
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        borderRadius: "var(--r-full)",
+                        ...(canCompleteConfig
+                          ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }
+                          : { background: "var(--surf-high)", color: "var(--on-surf-var)", opacity: 0.6 }),
+                      }}
+                    >
+                      Completar configuración
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -1081,9 +1125,9 @@ export default function PosTerminal({
             )}
 
             {cart.length > 0 && (
-              <div className="space-y-1.5">
+              <div>
                 <p
-                  className="text-[9px] font-medium uppercase tracking-wider"
+                  className="text-[10px] font-medium uppercase tracking-wider px-4 mb-2"
                   style={{ color: "var(--on-surf-var)" }}
                 >
                   Artículos ({cart.length})
@@ -1091,44 +1135,49 @@ export default function PosTerminal({
                 {cart.map((item, idx) => (
                   <div
                     key={`${item.variantId}-${idx}`}
-                    className="flex items-start gap-2 py-2 px-2 rounded-lg"
-                    style={{ background: "var(--surf-low)" }}
+                    className="flex items-start gap-2 mx-3 mb-2"
+                    style={{
+                      background: "var(--surf-lowest)",
+                      borderRadius: "var(--r-md)",
+                      padding: "10px 12px",
+                      boxShadow: "var(--shadow)",
+                    }}
                   >
                     <div className="flex-1 min-w-0">
                       <p
-                        className="text-[10px] font-semibold truncate"
-                        style={{ color: "var(--on-surf)" }}
+                        className="font-bold text-[12px] truncate"
+                        style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                       >
                         {item.modeloNombre}
                       </p>
-                      <p className="text-[9px]" style={{ color: "var(--on-surf-var)" }}>
-                        {item.colorNombre} · {item.voltajeLabel}
+                      <p className="text-[11px] mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+                        {item.colorNombre} / {item.voltajeLabel}
                       </p>
                       {item.serialNumber && (
-                        <p className="text-[9px] font-mono" style={{ color: "var(--on-surf-var)" }}>
+                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--on-surf-var)" }}>
                           VIN: {item.serialNumber}
                         </p>
                       )}
                       {item.assemblyMode && item.batterySerials && item.batterySerials.length > 0 && (
-                        <p className="text-[9px]" style={{ color: "var(--warn)" }}>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--warn)" }}>
                           ⚡ {item.batterySerials.length} bat. ensambladas
                         </p>
                       )}
                       <p
-                        className="text-[11px] font-bold mt-0.5"
-                        style={{ fontFamily: "var(--font-display)", color: "var(--p-bright)" }}
+                        className="font-bold text-[13px] mt-1"
+                        style={{ color: "var(--p-bright)" }}
                       >
                         ${(item.price * item.quantity).toLocaleString("es-MX")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-[10px] w-5 text-center" style={{ color: "var(--on-surf)" }}>
+                    <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                      <span className="text-[11px] w-5 text-center" style={{ color: "var(--on-surf)" }}>
                         ×{item.quantity}
                       </span>
                       <button
                         onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
-                        className="w-5 h-5 rounded flex items-center justify-center"
-                        style={{ color: "var(--ter)" }}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center"
+                        style={{ color: "var(--ter)", background: "var(--ter-container)" }}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1140,7 +1189,7 @@ export default function PosTerminal({
 
             {/* ── Discount section ─────────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div className="space-y-1.5 rounded-xl p-2.5" style={{ background: "var(--surf-low)" }}>
+              <div className="space-y-1.5 rounded-xl mx-3 p-2.5" style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}>
                 <div className="flex items-center justify-between">
                   <p
                     className="text-[9px] font-medium uppercase tracking-wider"
@@ -1240,9 +1289,9 @@ export default function PosTerminal({
 
             {/* ── Internal note ────────────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div>
+              <div className="mx-3">
                 <p
-                  className="text-[9px] font-medium uppercase tracking-wider mb-1"
+                  className="text-[10px] font-medium uppercase tracking-wider mb-1"
                   style={{ color: "var(--on-surf-var)" }}
                 >
                   Nota interna — solo gerencia
@@ -1264,7 +1313,7 @@ export default function PosTerminal({
 
             {/* ── Customer + Layaway ───────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2 mx-3">
                 <div className="flex gap-1.5 items-center">
                   <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
                     <SelectTrigger
@@ -1380,33 +1429,33 @@ export default function PosTerminal({
         {/* ── Fixed footer: totals + payment + CTA ──────────────────────────── */}
         {cart.length > 0 && (
           <div
-            className="px-3 py-2.5 border-t space-y-2.5 shrink-0"
+            className="px-4 pt-3 pb-4 border-t space-y-3 shrink-0"
             style={{
-              background: "var(--surf-low)",
+              background: "var(--surf-lowest)",
               borderColor: "rgba(178, 204, 192, 0.15)",
             }}
           >
             {/* Totals */}
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px]" style={{ color: "var(--on-surf-var)" }}>
+              <div className="flex justify-between text-[12px]" style={{ color: "var(--on-surf-var)" }}>
                 <span>Subtotal</span>
                 <span>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
               </div>
               {discountAmount > 0 && discountAuthorized && (
-                <div className="flex justify-between text-[10px]" style={{ color: "var(--ter)" }}>
+                <div className="flex justify-between text-[12px]" style={{ color: "var(--ter)" }}>
                   <span>Descuento</span>
                   <span>-${discountAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1" style={{ borderTop: "1px solid rgba(178,204,192,0.2)" }}>
+              <div className="flex justify-between items-baseline pt-1.5" style={{ borderTop: "1px solid rgba(178,204,192,0.2)" }}>
                 <span
-                  className="font-bold text-[14px]"
+                  className="font-bold text-[18px]"
                   style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                 >
                   {isLayaway ? "Anticipo" : "Total"}
                 </span>
                 <span
-                  className="font-bold text-[16px]"
+                  className="font-bold text-[18px]"
                   style={{ fontFamily: "var(--font-display)", color: "var(--p-bright)" }}
                 >
                   ${(isLayaway ? layawayDownPayment : totalAfterDiscount).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
@@ -1416,35 +1465,36 @@ export default function PosTerminal({
 
             {/* Payment methods */}
             <div>
-              <div className="grid grid-cols-4 gap-1 mb-1.5">
+              {(() => {
+                const methodLabels: Record<string, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transfer", ATRATO: "Atrato" };
+                const methodIcons: Record<string, React.ReactNode> = {
+                  CASH: <Banknote className="w-3.5 h-3.5" />,
+                  CARD: <CreditCard className="w-3.5 h-3.5" />,
+                  TRANSFER: <ArrowLeftRight className="w-3.5 h-3.5" />,
+                  ATRATO: <Clock className="w-3.5 h-3.5" />,
+                };
+                return (<>
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
                 {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((method) => {
-                  const labels: Record<string, string> = {
-                    CASH: "Efectivo",
-                    CARD: "Tarjeta",
-                    TRANSFER: "Transfer",
-                    ATRATO: "Atrato",
-                  };
                   const isActive = primaryMethod === method;
                   return (
                     <button
                       key={method}
                       onClick={() => setPrimaryMethod(method)}
-                      className="flex flex-col items-center justify-center py-1.5 rounded-lg text-[8px] font-medium transition-all"
-                      style={
-                        isActive
-                          ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }
-                          : { background: "var(--surf-high)", color: "var(--on-surf-var)" }
-                      }
+                      className="flex flex-col items-center justify-center py-2 gap-1 text-[9px] font-medium transition-all"
+                      style={{
+                        borderRadius: "var(--r-md)",
+                        border: isActive ? "1.5px solid var(--p-bright)" : "1.5px solid rgba(178,204,192,0.3)",
+                        background: isActive ? "var(--sec-container)" : "var(--surf-lowest)",
+                        color: isActive ? "var(--on-sec-container)" : "var(--on-surf-var)",
+                      }}
                     >
-                      <span className="font-bold">{labels[method]}</span>
+                      {methodIcons[method]}
+                      <span className="font-semibold leading-none">{methodLabels[method]}</span>
                       {method === "ATRATO" && (
                         <span
-                          className="text-[7px] mt-0.5 px-1 rounded-full"
-                          style={
-                            isActive
-                              ? { background: "rgba(255,255,255,0.3)", color: "#fff" }
-                              : { background: "var(--warn-container)", color: "var(--warn)" }
-                          }
+                          className="text-[7px] px-1 rounded-full leading-tight"
+                          style={{ background: "var(--warn-container)", color: "var(--warn)" }}
                         >
                           Pend.
                         </span>
@@ -1458,20 +1508,21 @@ export default function PosTerminal({
               {selectedCustomer && selectedCustomer.balance > 0 && !isLayaway && (
                 <button
                   onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
-                  className="w-full py-1.5 rounded-lg text-[9px] font-medium mb-1.5 transition-all"
-                  style={
-                    primaryMethod === "CREDIT_BALANCE"
-                      ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }
-                      : { background: "var(--sec-container)", color: "var(--on-sec-container)" }
-                  }
+                  className="w-full py-2 text-[10px] font-medium mb-2 transition-all"
+                  style={{
+                    borderRadius: "var(--r-md)",
+                    border: primaryMethod === "CREDIT_BALANCE" ? "1.5px solid var(--p-bright)" : "1.5px solid rgba(178,204,192,0.3)",
+                    background: primaryMethod === "CREDIT_BALANCE" ? "var(--sec-container)" : "var(--surf-lowest)",
+                    color: primaryMethod === "CREDIT_BALANCE" ? "var(--on-sec-container)" : "var(--on-surf-var)",
+                  }}
                 >
                   Saldo a favor (${selectedCustomer.balance.toFixed(2)})
                 </button>
               )}
 
               {/* Split payment toggle */}
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px]" style={{ color: "var(--on-surf-var)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px]" style={{ color: "var(--on-surf-var)" }}>
                   Dividir pago
                 </span>
                 <Switch
@@ -1481,15 +1532,15 @@ export default function PosTerminal({
               </div>
 
               {isSplitPayment && (
-                <div className="space-y-1.5 p-2 rounded-lg" style={{ background: "var(--surf-high)" }}>
+                <div className="space-y-1.5 p-2.5 rounded-xl mb-2" style={{ background: "var(--surf-high)" }}>
                   <div className="flex gap-1.5 items-center">
-                    <span className="text-[9px] w-14 shrink-0" style={{ color: "var(--on-surf-var)" }}>
-                      {primaryMethod}
+                    <span className="text-[9px] w-16 shrink-0" style={{ color: "var(--on-surf-var)" }}>
+                      {methodLabels[primaryMethod] ?? primaryMethod}
                     </span>
                     <input
                       type="number"
-                      className="flex-1 px-2 py-1 text-[10px] rounded focus:outline-none focus:ring-1 focus:ring-[var(--p-bright)]"
-                      style={{ background: "var(--surf-lowest)", border: "1.5px solid var(--outline-var)", color: "var(--on-surf)" }}
+                      className="flex-1 px-2 py-1 text-[10px] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--p-bright)]"
+                      style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)", color: "var(--on-surf)" }}
                       placeholder="Monto..."
                       value={primaryAmount}
                       onChange={(e) => setPrimaryAmount(e.target.value)}
@@ -1498,8 +1549,8 @@ export default function PosTerminal({
                   <div className="flex gap-1.5 items-center">
                     <Select value={secondaryMethod} onValueChange={(v) => setSecondaryMethod(v as typeof secondaryMethod)}>
                       <SelectTrigger
-                        className="w-14 h-6 text-[9px] shrink-0 px-1"
-                        style={{ background: "var(--surf-lowest)", border: "1.5px solid var(--outline-var)" }}
+                        className="w-16 h-6 text-[9px] shrink-0 px-1"
+                        style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)" }}
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -1510,32 +1561,35 @@ export default function PosTerminal({
                       </SelectContent>
                     </Select>
                     <div
-                      className="flex-1 px-2 py-1 text-[10px] rounded text-right"
-                      style={{ background: "var(--surf-lowest)", border: "1.5px solid var(--outline-var)", color: "var(--on-surf-var)" }}
+                      className="flex-1 px-2 py-1 text-[10px] rounded-lg text-right"
+                      style={{ background: "var(--surf-lowest)", border: "1px solid rgba(178,204,192,0.3)", color: "var(--on-surf-var)" }}
                     >
                       ${secondaryAmountNum.toFixed(2)}
                     </div>
                   </div>
                   {splitCovered ? (
-                    <p className="text-[9px]" style={{ color: "var(--sec)" }}>
-                      <Check className="inline w-2.5 h-2.5 mr-0.5" />Cubierto
+                    <p className="text-[10px]" style={{ color: "var(--p-bright)" }}>
+                      <Check className="inline w-3 h-3 mr-0.5" />Cubierto
                     </p>
                   ) : (
-                    <p className="text-[9px]" style={{ color: "var(--warn)" }}>
+                    <p className="text-[10px]" style={{ color: "var(--warn)" }}>
                       Falta ${(totalAfterDiscount - primaryAmountNum).toFixed(2)}
                     </p>
                   )}
                 </div>
               )}
+              </>); })()}
             </div>
 
             {/* Process button */}
             <button
               disabled={!canProcess}
               onClick={handleCheckout}
-              className="w-full py-2.5 rounded-xl text-[12px] font-bold transition-all"
+              className="w-full py-3 text-[13px] font-bold tracking-wider transition-all"
               style={{
                 fontFamily: "var(--font-display)",
+                borderRadius: "var(--r-full)",
+                letterSpacing: "0.05em",
                 background: canProcess
                   ? "linear-gradient(135deg, #1b4332, #2ecc71)"
                   : "var(--surf-highest)",
