@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -166,8 +166,11 @@ function ModelCard({
 }) {
   const hasStock = modelo.totalStockInBranch > 0;
   return (
-    <button
-      onClick={() => onSelect(modelo)}
+    <div
+      role="button"
+      tabIndex={hasStock ? 0 : -1}
+      onClick={() => hasStock && onSelect(modelo)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)}
       className={`relative rounded-xl p-0 text-left transition-all group overflow-hidden
         ${isSelected ? "ring-2 ring-[var(--p-bright)]" : ""}
         ${hasStock ? "cursor-pointer" : "opacity-60 cursor-default"}`}
@@ -253,7 +256,7 @@ function ModelCard({
       >
         <Plus className="w-3.5 h-3.5" />
       </button>
-    </button>
+    </div>
   );
 }
 
@@ -686,7 +689,8 @@ export default function PosTerminal({
     return true;
   }, [cart.length, isProcessing, discountAmount, discountAuthorized, isLayaway, selectedCustomerId, isSplitPayment, splitCovered]);
 
-  const folio = `INV-${Date.now().toString().slice(-6)}`;
+  const [folio, setFolio] = useState("");
+  useEffect(() => { setFolio(`INV-${Date.now().toString().slice(-6)}`); }, []);
 
   // ── Selected customer
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
