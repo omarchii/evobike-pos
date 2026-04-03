@@ -189,23 +189,38 @@ function ModelCard({
         (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)
       }
       className={`relative text-left transition-all group overflow-hidden
-        ${hasStock ? "cursor-pointer" : "opacity-60 cursor-default"}`}
+        ${hasStock ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
       style={{
         background: "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
-        borderRadius: "var(--r-lg)",
+        borderRadius: "2rem",
         border: isSelected
           ? "2px solid var(--p-bright)"
           : "2px solid transparent",
       }}
+      onMouseEnter={(e) => {
+        if (hasStock && !isSelected) {
+          (e.currentTarget as HTMLDivElement).style.borderColor =
+            "rgba(46,204,113,0.4)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "transparent";
+        }
+      }}
     >
-      {/* Image area */}
+      {/* Image area — aspect-square with object-contain */}
       <div
-        className="relative w-full overflow-hidden"
         style={{
-          height: 160,
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
           background: "var(--surf-high)",
-          borderRadius: "var(--r-lg) var(--r-lg) 0 0",
+          borderRadius: "inherit",
+          overflow: "hidden",
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
         }}
       >
         {modelo.imageUrl ? (
@@ -213,7 +228,7 @@ function ModelCard({
             src={modelo.imageUrl}
             alt={modelo.nombre}
             fill
-            className="object-cover"
+            style={{ objectFit: "contain", padding: "8px" }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -230,11 +245,17 @@ function ModelCard({
           </div>
         )}
         {/* Stock badge — top left */}
-        <div className="absolute top-2 left-2">
+        <div
+          className="absolute"
+          style={{ top: 10, left: 10 }}
+        >
           {hasStock ? (
             <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: "3px 10px",
+                borderRadius: 999,
                 background: "var(--sec-container)",
                 color: "var(--on-sec-container)",
               }}
@@ -243,8 +264,11 @@ function ModelCard({
             </span>
           ) : (
             <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: "3px 10px",
+                borderRadius: 999,
                 background: "var(--ter-container)",
                 color: "var(--on-ter-container)",
               }}
@@ -256,23 +280,34 @@ function ModelCard({
       </div>
 
       {/* Body */}
-      <div className="p-3">
+      <div style={{ padding: "14px 16px" }}>
         <p
-          className="font-bold text-[13px] leading-tight truncate"
-          style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+          className="leading-tight truncate"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 14,
+            fontWeight: 700,
+            color: "var(--on-surf)",
+          }}
         >
           {modelo.nombre}
         </p>
         <p
-          className="text-[11px] mt-0.5"
-          style={{ color: "var(--on-surf-var)" }}
+          style={{
+            fontSize: 11,
+            marginTop: 2,
+            color: "var(--on-surf-var)",
+          }}
         >
           {modelo.variants.length} variantes
         </p>
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between" style={{ marginTop: 10 }}>
           <p
-            className="font-bold text-[13px]"
-            style={{ color: "var(--p-bright)" }}
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--p-bright)",
+            }}
           >
             ${modelo.minPrice.toLocaleString("es-MX")}
           </p>
@@ -281,10 +316,16 @@ function ModelCard({
               e.stopPropagation();
               onSelect(modelo);
             }}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+            className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
             style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
               background: "linear-gradient(135deg, #1B4332, #2ECC71)",
-              color: "var(--on-primary)",
+              color: "#fff",
+              border: "none",
+              fontSize: 18,
+              lineHeight: 1,
             }}
             aria-label={`Agregar ${modelo.nombre}`}
           >
