@@ -137,10 +137,19 @@ export async function processSaleAction(input: SaleInput) {
         finalNote = finalNote ? `${finalNote}${discountLine}` : discountLine.trimStart();
       }
 
-      // C. Create sale
+      // C. Generate sequential folio
       const subTotalCalc = (input.total - (input.discount ?? 0)) / 1.16;
-      const prefix = input.isLayaway ? "A" : "V";
-      const folio = `${prefix}-${Date.now().toString().slice(-6)}`;
+      const updatedBranch = await tx.branch.update({
+        where: { id: branchId },
+        data: { lastSaleFolioNumber: { increment: 1 } },
+        select: { lastSaleFolioNumber: true, name: true },
+      });
+      const branchPrefix = updatedBranch.name
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .substring(0, 3)
+        .toUpperCase();
+      const saleType = input.isLayaway ? "A" : "V";
+      const folio = `${branchPrefix}${saleType}-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
 
       const sale = await tx.sale.create({
         data: {
@@ -241,7 +250,7 @@ export async function processSaleAction(input: SaleInput) {
     revalidatePath("/point-of-sale");
     revalidatePath("/customers");
 
-    return { success: true, saleId: result.id };
+    return { success: true, saleId: result.id, folio: result.folio };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al procesar la venta";
     return { success: false, error: message };

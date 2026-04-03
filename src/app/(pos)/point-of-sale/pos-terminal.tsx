@@ -761,10 +761,8 @@ export default function PosTerminal({
       }
 
       toast.success(
-        `Venta procesada — Folio: ${result.saleId?.slice(-6).toUpperCase()}`,
-        {
-          id: "checkout",
-        },
+        `Venta registrada · Folio: ${result.folio}`,
+        { id: "checkout", duration: 6000 },
       );
       resetCart();
     } catch {
@@ -848,10 +846,7 @@ export default function PosTerminal({
     splitCovered,
   ]);
 
-  const [folio, setFolio] = useState("");
-  useEffect(() => {
-    setFolio(`INV-${Date.now().toString().slice(-6)}`);
-  }, []);
+  // Folio is generated server-side on sale creation — nothing to derive here
 
   // ── Selected customer
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
@@ -976,10 +971,10 @@ export default function PosTerminal({
             {sellerName} · {branchName}
           </p>
           <p
-            className="text-[10px] font-mono mt-0.5"
-            style={{ color: "var(--on-surf-var)", opacity: 0.6 }}
+            className="text-[10px] mt-0.5"
+            style={{ color: "var(--on-surf-var)", opacity: 0.6, fontFamily: "var(--font-body)" }}
           >
-            {folio}
+            Venta en proceso
           </p>
         </div>
 
@@ -1113,48 +1108,63 @@ export default function PosTerminal({
                     {voltajeOptions.map((opt) => {
                       const isVoltajeSelected = opt.id === selectedVoltajeId;
                       const hasVoltajeStock = opt.stockInBranch > 0;
-                      const canAssembleOpt =
-                        !hasVoltajeStock && opt.canAssemble;
+                      const canAssembleOpt = !hasVoltajeStock && opt.canAssemble;
                       const noOption = !hasVoltajeStock && !opt.canAssemble;
+
+                      // 3 visual states per spec
                       let pillStyle: React.CSSProperties = {};
-                      if (noOption) {
-                        pillStyle = {
-                          background: "var(--ter-container)",
-                          border: "1px solid var(--ter-container)",
-                          color: "var(--on-ter-container)",
-                          cursor: "not-allowed",
-                        };
-                      } else if (isVoltajeSelected) {
+                      if (isVoltajeSelected && hasVoltajeStock) {
                         pillStyle = {
                           background: "var(--sec-container)",
                           border: "1px solid var(--p-bright)",
                           color: "var(--p-bright)",
                           fontWeight: 700,
                         };
+                      } else if (isVoltajeSelected && canAssembleOpt) {
+                        pillStyle = {
+                          background: "var(--warn-container)",
+                          border: "1px solid var(--warn)",
+                          color: "var(--warn)",
+                          fontWeight: 700,
+                        };
+                      } else if (hasVoltajeStock) {
+                        // DISPONIBLE — not selected
+                        pillStyle = {
+                          background: "transparent",
+                          border: "1px solid var(--p-bright)",
+                          color: "var(--p)",
+                        };
                       } else if (canAssembleOpt) {
+                        // ENSAMBLAR — amber
                         pillStyle = {
                           background: "transparent",
                           border: "1px solid var(--warn)",
                           color: "var(--warn)",
                         };
                       } else {
+                        // SIN_STOCK — disabled
                         pillStyle = {
                           background: "transparent",
-                          border: "1px solid var(--outline-var)",
+                          border: "1px solid rgba(178,204,192,0.2)",
                           color: "var(--on-surf-var)",
+                          opacity: 0.4,
+                          pointerEvents: "none" as const,
+                          cursor: "not-allowed",
                         };
                       }
+
                       return (
                         <button
                           key={opt.id}
                           disabled={noOption}
                           onClick={() => handleSelectVoltaje(opt.id)}
-                          className="flex items-center gap-1 transition-all"
+                          className="flex items-center justify-center gap-1 transition-all"
                           style={{
                             borderRadius: 999,
                             padding: "6px 16px",
                             fontSize: 13,
-                            fontWeight: isVoltajeSelected ? 600 : 500,
+                            fontFamily: "var(--font-body)",
+                            fontWeight: isVoltajeSelected ? 700 : 500,
                             ...pillStyle,
                           }}
                         >
@@ -1179,6 +1189,7 @@ export default function PosTerminal({
                               fontSize: 11,
                               color: "var(--p-bright)",
                               marginTop: 6,
+                              fontFamily: "var(--font-body)",
                             }}
                           >
                             {opt.stockInBranch} unidades disponibles
@@ -1191,10 +1202,10 @@ export default function PosTerminal({
                               fontSize: 11,
                               color: "var(--warn)",
                               marginTop: 6,
+                              fontFamily: "var(--font-body)",
                             }}
                           >
-                            Sin stock · {availableBatteriesCount} baterías
-                            disponibles
+                            Requiere ensamblaje · {availableBatteriesCount} baterías
                           </p>
                         );
                       return (
@@ -1234,6 +1245,7 @@ export default function PosTerminal({
                       letterSpacing: "0.12em",
                       textTransform: "uppercase" as const,
                       marginBottom: 8,
+                      fontFamily: "var(--font-body)",
                     }}
                   >
                     2. FRAME COLOR
@@ -1244,11 +1256,12 @@ export default function PosTerminal({
                           const css = colorToCSS(c.nombre);
                           const isGradient = css.startsWith("conic");
                           const isColorSelected = c.id === selectedColorId;
+                          const hasColorStock = c.stockInBranch > 0;
                           return (
                             <button
                               key={c.id}
-                              title={c.nombre}
-                              onClick={() => setSelectedColorId(c.id)}
+                              title={c.nombre + (hasColorStock ? "" : " — Sin stock")}
+                              onClick={() => hasColorStock && setSelectedColorId(c.id)}
                               style={{
                                 width: 32,
                                 height: 32,
@@ -1263,7 +1276,10 @@ export default function PosTerminal({
                                 boxShadow: isColorSelected
                                   ? "0 0 0 2px rgba(46,204,113,0.2)"
                                   : "none",
-                                opacity: isColorSelected ? 1 : 0.5,
+                                opacity: !hasColorStock ? 0.35 : isColorSelected ? 1 : 0.8,
+                                filter: !hasColorStock ? "grayscale(100%)" : "none",
+                                cursor: !hasColorStock ? "not-allowed" : "pointer",
+                                pointerEvents: !hasColorStock ? "none" : undefined,
                                 transition: "all 0.15s",
                               }}
                             />

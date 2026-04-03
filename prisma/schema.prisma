@@ -28,18 +28,19 @@ model User {
 }
 
 model Branch {
-  id               String                @id @default(uuid())
-  code             String                @unique // "LEO", "AV135"
-  name             String
-  address          String?
-  users            User[]
-  stocks           Stock[]
-  sales            Sale[]
-  sessions         CashRegisterSession[]
-  serviceOrders    ServiceOrder[]
-  customerBikes    CustomerBike[]
-  serviceCatalogs  ServiceCatalog[]
-  commissionRules  CommissionRule[]
+  id                   String                @id @default(uuid())
+  code                 String                @unique // "LEO", "AV135"
+  name                 String
+  address              String?
+  lastSaleFolioNumber  Int                   @default(0)
+  users                User[]
+  stocks               Stock[]
+  sales                Sale[]
+  sessions             CashRegisterSession[]
+  serviceOrders        ServiceOrder[]
+  customerBikes        CustomerBike[]
+  serviceCatalogs      ServiceCatalog[]
+  commissionRules      CommissionRule[]
 
   batteryLots    BatteryLot[]
   batteries      Battery[]
