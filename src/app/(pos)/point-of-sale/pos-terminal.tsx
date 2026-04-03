@@ -921,7 +921,7 @@ export default function PosTerminal({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-4 gap-3 pt-1">
               {filteredModelos.map((modelo) => (
                 <ModelCard
                   key={modelo.id}
