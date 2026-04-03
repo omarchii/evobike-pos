@@ -15,7 +15,13 @@ import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -140,14 +146,27 @@ function getInitials(name: string): string {
 
 function deriveCategory(nombre: string): string {
   const upper = nombre.toUpperCase();
-  if (upper.startsWith("SCOOTER") || upper === "EVOTANK 160" || upper === "EVOTANK 180") return "Scooters";
+  if (
+    upper.startsWith("SCOOTER") ||
+    upper === "EVOTANK 160" ||
+    upper === "EVOTANK 180"
+  )
+    return "Scooters";
   if (upper === "BATERÍA" || upper === "BATERIA") return "Baterías";
-  if (upper.includes("ACCESORIO") || upper.includes("CASCO")) return "Accesorios";
-  if (upper.includes("REFACCION") || upper.includes("REFACCIÓN")) return "Refacciones";
+  if (upper.includes("ACCESORIO") || upper.includes("CASCO"))
+    return "Accesorios";
+  if (upper.includes("REFACCION") || upper.includes("REFACCIÓN"))
+    return "Refacciones";
   return "Bicicletas";
 }
 
-const CATEGORIES = ["Todos", "Bicicletas", "Scooters", "Baterías", "Accesorios"];
+const CATEGORIES = [
+  "Todos",
+  "Bicicletas",
+  "Scooters",
+  "Baterías",
+  "Accesorios",
+];
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -166,14 +185,18 @@ function ModelCard({
       role="button"
       tabIndex={hasStock ? 0 : -1}
       onClick={() => hasStock && onSelect(modelo)}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)}
+      onKeyDown={(e) =>
+        (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)
+      }
       className={`relative text-left transition-all group overflow-hidden
         ${hasStock ? "cursor-pointer" : "opacity-60 cursor-default"}`}
       style={{
         background: "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
         borderRadius: "var(--r-lg)",
-        border: isSelected ? "2px solid var(--p-bright)" : "2px solid transparent",
+        border: isSelected
+          ? "2px solid var(--p-bright)"
+          : "2px solid transparent",
       }}
     >
       {/* Image area */}
@@ -196,7 +219,11 @@ function ModelCard({
           <div className="w-full h-full flex items-center justify-center">
             <span
               className="font-bold tracking-tight"
-              style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--on-surf-var)" }}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 28,
+                color: "var(--on-surf-var)",
+              }}
             >
               {getInitials(modelo.nombre)}
             </span>
@@ -207,14 +234,20 @@ function ModelCard({
           {hasStock ? (
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--sec-container)", color: "var(--on-sec-container)" }}
+              style={{
+                background: "var(--sec-container)",
+                color: "var(--on-sec-container)",
+              }}
             >
               {modelo.totalStockInBranch} uds
             </span>
           ) : (
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--ter-container)", color: "var(--on-ter-container)" }}
+              style={{
+                background: "var(--ter-container)",
+                color: "var(--on-ter-container)",
+              }}
             >
               Sin stock
             </span>
@@ -230,7 +263,10 @@ function ModelCard({
         >
           {modelo.nombre}
         </p>
-        <p className="text-[11px] mt-0.5" style={{ color: "var(--on-surf-var)" }}>
+        <p
+          className="text-[11px] mt-0.5"
+          style={{ color: "var(--on-surf-var)" }}
+        >
           {modelo.variants.length} variantes
         </p>
         <div className="flex items-center justify-between mt-2">
@@ -246,7 +282,10 @@ function ModelCard({
               onSelect(modelo);
             }}
             className="w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-            style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#fff" }}
+            style={{
+              background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+              color: "var(--on-primary)",
+            }}
             aria-label={`Agregar ${modelo.nombre}`}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -278,7 +317,8 @@ export default function PosTerminal({
 }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const sessionBranchId = (session?.user as { branchId?: string } | undefined)?.branchId ?? branchId;
+  const sessionBranchId =
+    (session?.user as { branchId?: string } | undefined)?.branchId ?? branchId;
 
   // ── Catalog state
   const [categoryFilter, setCategoryFilter] = useState("Todos");
@@ -290,9 +330,13 @@ export default function PosTerminal({
   const [selectedColorId, setSelectedColorId] = useState("");
   const [assemblyMode, setAssemblyMode] = useState(false);
   const [vinInput, setVinInput] = useState("");
-  const [vinStatus, setVinStatus] = useState<"idle" | "checking" | "valid" | "taken">("idle");
+  const [vinStatus, setVinStatus] = useState<
+    "idle" | "checking" | "valid" | "taken"
+  >("idle");
   const [batterySerialInputs, setBatterySerialInputs] = useState<string[]>([]);
-  const [batteryStatuses, setBatteryStatuses] = useState<Record<number, BatteryStatus>>({});
+  const [batteryStatuses, setBatteryStatuses] = useState<
+    Record<number, BatteryStatus>
+  >({});
 
   // ── Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -301,7 +345,10 @@ export default function PosTerminal({
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountPin, setDiscountPin] = useState("");
   const [pinError, setPinError] = useState(false);
-  const [discountAuthorized, setDiscountAuthorized] = useState<{ userId: string; name: string } | null>(null);
+  const [discountAuthorized, setDiscountAuthorized] = useState<{
+    userId: string;
+    name: string;
+  } | null>(null);
   const [discountReason, setDiscountReason] = useState("");
   const [validatingPin, setValidatingPin] = useState(false);
 
@@ -316,12 +363,17 @@ export default function PosTerminal({
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [creatingCustomer, setCreatingCustomer] = useState(false);
-  const [newCustomerForm, setNewCustomerForm] = useState({ name: "", phone: "" });
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: "",
+    phone: "",
+  });
 
   // ── Payment state
   const [isSplitPayment, setIsSplitPayment] = useState(false);
-  const [primaryMethod, setPrimaryMethod] = useState<PaymentMethodInput["method"]>("CASH");
-  const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethodInput["method"]>("TRANSFER");
+  const [primaryMethod, setPrimaryMethod] =
+    useState<PaymentMethodInput["method"]>("CASH");
+  const [secondaryMethod, setSecondaryMethod] =
+    useState<PaymentMethodInput["method"]>("TRANSFER");
   const [primaryAmount, setPrimaryAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -329,7 +381,8 @@ export default function PosTerminal({
   const filteredModelos = useMemo(() => {
     return modelos.filter((m) => {
       const matchesCategory =
-        categoryFilter === "Todos" || deriveCategory(m.nombre) === categoryFilter;
+        categoryFilter === "Todos" ||
+        deriveCategory(m.nombre) === categoryFilter;
       const matchesSearch =
         !search || m.nombre.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
@@ -343,7 +396,8 @@ export default function PosTerminal({
     for (const v of selectedModelo.variants) {
       if (!seen.has(v.voltajeId)) {
         const bConfig = batteryConfigs.find(
-          (bc) => bc.modeloId === selectedModelo.id && bc.voltajeId === v.voltajeId
+          (bc) =>
+            bc.modeloId === selectedModelo.id && bc.voltajeId === v.voltajeId,
         );
         const required = bConfig?.quantity ?? 0;
         const stockInBranch = selectedModelo.variants
@@ -365,7 +419,10 @@ export default function PosTerminal({
   // ── Derived: color options filtered by voltaje
   const colorOptions = useMemo(() => {
     if (!selectedModelo || !selectedVoltajeId) return [];
-    const seen = new Map<string, { id: string; nombre: string; stockInBranch: number }>();
+    const seen = new Map<
+      string,
+      { id: string; nombre: string; stockInBranch: number }
+    >();
     for (const v of selectedModelo.variants) {
       if (v.voltajeId !== selectedVoltajeId) continue;
       if (!seen.has(v.colorId)) {
@@ -387,7 +444,8 @@ export default function PosTerminal({
     if (!selectedModelo || !selectedVoltajeId || !selectedColorId) return null;
     return (
       selectedModelo.variants.find(
-        (v) => v.voltajeId === selectedVoltajeId && v.colorId === selectedColorId
+        (v) =>
+          v.voltajeId === selectedVoltajeId && v.colorId === selectedColorId,
       ) ?? null
     );
   }, [selectedModelo, selectedVoltajeId, selectedColorId]);
@@ -397,21 +455,29 @@ export default function PosTerminal({
     if (!selectedModelo || !selectedVoltajeId) return 0;
     return (
       batteryConfigs.find(
-        (bc) => bc.modeloId === selectedModelo.id && bc.voltajeId === selectedVoltajeId
+        (bc) =>
+          bc.modeloId === selectedModelo.id &&
+          bc.voltajeId === selectedVoltajeId,
       )?.quantity ?? 0
     );
   }, [selectedModelo, selectedVoltajeId, batteryConfigs]);
 
   // ── Derived: cart totals
   const subtotal = cart.reduce((a, item) => a + item.price * item.quantity, 0);
-  const totalAfterDiscount = subtotal - (discountAuthorized ? discountAmount : 0);
-  const layawayDownPayment = isLayaway ? Math.round((totalAfterDiscount * layawayPercent) / 100) : 0;
+  const totalAfterDiscount =
+    subtotal - (discountAuthorized ? discountAmount : 0);
+  const layawayDownPayment = isLayaway
+    ? Math.round((totalAfterDiscount * layawayPercent) / 100)
+    : 0;
 
   // ── Derived: payment coverage check
   const primaryAmountNum = parseFloat(primaryAmount) || 0;
-  const secondaryAmountNum = isSplitPayment ? totalAfterDiscount - primaryAmountNum : 0;
+  const secondaryAmountNum = isSplitPayment
+    ? totalAfterDiscount - primaryAmountNum
+    : 0;
   const splitCovered =
-    !isSplitPayment || Math.abs(primaryAmountNum + secondaryAmountNum - totalAfterDiscount) < 0.01;
+    !isSplitPayment ||
+    Math.abs(primaryAmountNum + secondaryAmountNum - totalAfterDiscount) < 0.01;
 
   // ── Handlers: model selection
   const handleSelectModelo = (modelo: ModeloData) => {
@@ -445,10 +511,15 @@ export default function PosTerminal({
 
   // ── Handlers: VIN check
   const checkVin = useCallback(async (vin: string) => {
-    if (vin.length < 3) { setVinStatus("idle"); return; }
+    if (vin.length < 3) {
+      setVinStatus("idle");
+      return;
+    }
     setVinStatus("checking");
     try {
-      const res = await fetch(`/api/serial-search?q=${encodeURIComponent(vin)}`);
+      const res = await fetch(
+        `/api/serial-search?q=${encodeURIComponent(vin)}`,
+      );
       const data: unknown = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setVinStatus("taken");
@@ -470,7 +541,7 @@ export default function PosTerminal({
       setBatteryStatuses((prev) => ({ ...prev, [index]: "checking" }));
       try {
         const res = await fetch(
-          `/api/batteries/check?serial=${encodeURIComponent(serial)}&branchId=${sessionBranchId}`
+          `/api/batteries/check?serial=${encodeURIComponent(serial)}&branchId=${sessionBranchId}`,
         );
         const data: { found?: boolean; status?: string } = await res.json();
         if (data.found && data.status === "IN_STOCK") {
@@ -482,7 +553,7 @@ export default function PosTerminal({
         setBatteryStatuses((prev) => ({ ...prev, [index]: "idle" }));
       }
     },
-    [sessionBranchId]
+    [sessionBranchId],
   );
 
   // ── Handlers: validate manager PIN
@@ -496,9 +567,16 @@ export default function PosTerminal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin: discountPin, branchId: sessionBranchId }),
       });
-      const data: { success?: boolean; managerId?: string; managerName?: string } = await res.json();
+      const data: {
+        success?: boolean;
+        managerId?: string;
+        managerName?: string;
+      } = await res.json();
       if (data.success && data.managerId && data.managerName) {
-        setDiscountAuthorized({ userId: data.managerId, name: data.managerName });
+        setDiscountAuthorized({
+          userId: data.managerId,
+          name: data.managerName,
+        });
         setDiscountPin("");
         toast.success(`Descuento autorizado por ${data.managerName}`);
       } else {
@@ -514,7 +592,13 @@ export default function PosTerminal({
 
   // ── Handlers: complete guided config → add to cart
   const handleCompleteConfig = () => {
-    if (!selectedModelo || !selectedVoltajeId || !selectedColorId || !selectedVariant) return;
+    if (
+      !selectedModelo ||
+      !selectedVoltajeId ||
+      !selectedColorId ||
+      !selectedVariant
+    )
+      return;
 
     const needsVin = selectedModelo.requiere_vin;
     if (needsVin && (!vinInput || vinStatus !== "valid")) {
@@ -524,7 +608,7 @@ export default function PosTerminal({
 
     if (assemblyMode) {
       const allValid = batterySerialInputs.every(
-        (s, i) => s.length > 0 && batteryStatuses[i] === "valid"
+        (s, i) => s.length > 0 && batteryStatuses[i] === "valid",
       );
       if (!allValid) {
         toast.error("Todos los seriales de baterías deben ser válidos");
@@ -533,7 +617,9 @@ export default function PosTerminal({
     }
 
     // Check for duplicate cart item
-    const existingIdx = cart.findIndex((ci) => ci.variantId === selectedVariant.id);
+    const existingIdx = cart.findIndex(
+      (ci) => ci.variantId === selectedVariant.id,
+    );
     if (existingIdx >= 0) {
       toast.info("Este producto ya está en el carrito");
       resetGuidedConfig();
@@ -555,7 +641,9 @@ export default function PosTerminal({
     };
 
     setCart((prev) => [...prev, newItem]);
-    toast.success(`${selectedModelo.nombre} ${selectedVariant.colorNombre} ${selectedVariant.voltajeLabel} agregado`);
+    toast.success(
+      `${selectedModelo.nombre} ${selectedVariant.colorNombre} ${selectedVariant.voltajeLabel} agregado`,
+    );
     resetGuidedConfig();
   };
 
@@ -593,7 +681,12 @@ export default function PosTerminal({
             { method: primaryMethod, amount: primaryAmountNum },
             { method: secondaryMethod, amount: secondaryAmountNum },
           ]
-        : [{ method: primaryMethod, amount: isLayaway ? layawayDownPayment : totalAfterDiscount }];
+        : [
+            {
+              method: primaryMethod,
+              amount: isLayaway ? layawayDownPayment : totalAfterDiscount,
+            },
+          ];
 
       const result = await processSaleAction({
         items: cart.map((ci) => ({
@@ -613,19 +706,25 @@ export default function PosTerminal({
         customerId: selectedCustomerId || undefined,
         downPayment: isLayaway ? layawayDownPayment : undefined,
         internalNote,
-        discountAmount: discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
+        discountAmount:
+          discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
         discountAuthorizedByUserId: discountAuthorized?.userId,
         discountAuthorizedByName: discountAuthorized?.name,
       });
 
       if (!result.success) {
-        toast.error(result.error ?? "Error al procesar la venta", { id: "checkout" });
+        toast.error(result.error ?? "Error al procesar la venta", {
+          id: "checkout",
+        });
         return;
       }
 
-      toast.success(`Venta procesada — Folio: ${result.saleId?.slice(-6).toUpperCase()}`, {
-        id: "checkout",
-      });
+      toast.success(
+        `Venta procesada — Folio: ${result.saleId?.slice(-6).toUpperCase()}`,
+        {
+          id: "checkout",
+        },
+      );
       resetCart();
     } catch {
       toast.error("Error de conexión", { id: "checkout" });
@@ -651,7 +750,10 @@ export default function PosTerminal({
 
   // ── Handlers: create customer
   const handleCreateCustomer = async () => {
-    if (!newCustomerForm.name) { toast.error("El nombre es obligatorio"); return; }
+    if (!newCustomerForm.name) {
+      toast.error("El nombre es obligatorio");
+      return;
+    }
     setCreatingCustomer(true);
     const result = await createCustomer(newCustomerForm);
     if (result.success && result.customer) {
@@ -671,11 +773,21 @@ export default function PosTerminal({
     if (selectedModelo.requiere_vin && vinStatus !== "valid") return false;
     if (assemblyMode) {
       const allFilled = batterySerialInputs.every((s) => s.length > 0);
-      const allValid = batterySerialInputs.every((_, i) => batteryStatuses[i] === "valid");
+      const allValid = batterySerialInputs.every(
+        (_, i) => batteryStatuses[i] === "valid",
+      );
       if (!allFilled || !allValid) return false;
     }
     return true;
-  }, [selectedModelo, selectedVoltajeId, selectedColorId, vinStatus, assemblyMode, batterySerialInputs, batteryStatuses]);
+  }, [
+    selectedModelo,
+    selectedVoltajeId,
+    selectedColorId,
+    vinStatus,
+    assemblyMode,
+    batterySerialInputs,
+    batteryStatuses,
+  ]);
 
   // ── Derived: can process sale
   const canProcess = useMemo((): boolean => {
@@ -684,10 +796,21 @@ export default function PosTerminal({
     if (isLayaway && !selectedCustomerId) return false;
     if (isSplitPayment && !splitCovered) return false;
     return true;
-  }, [cart.length, isProcessing, discountAmount, discountAuthorized, isLayaway, selectedCustomerId, isSplitPayment, splitCovered]);
+  }, [
+    cart.length,
+    isProcessing,
+    discountAmount,
+    discountAuthorized,
+    isLayaway,
+    selectedCustomerId,
+    isSplitPayment,
+    splitCovered,
+  ]);
 
   const [folio, setFolio] = useState("");
-  useEffect(() => { setFolio(`INV-${Date.now().toString().slice(-6)}`); }, []);
+  useEffect(() => {
+    setFolio(`INV-${Date.now().toString().slice(-6)}`);
+  }, []);
 
   // ── Selected customer
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
@@ -695,7 +818,10 @@ export default function PosTerminal({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex gap-0 h-full overflow-hidden" style={{ background: "var(--surface)" }}>
+    <div
+      className="flex gap-0 h-full overflow-hidden"
+      style={{ background: "var(--surface)" }}
+    >
       {/* ══ LEFT COLUMN ══════════════════════════════════════════════════════════ */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Category pills */}
@@ -708,8 +834,8 @@ export default function PosTerminal({
               style={
                 categoryFilter === cat
                   ? {
-                      background: "linear-gradient(135deg, #1b4332, #2ecc71)",
-                      color: "#fff",
+                      background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                      color: "var(--on-primary)",
                     }
                   : {
                       border: "1.5px solid var(--outline-var)",
@@ -749,7 +875,9 @@ export default function PosTerminal({
               style={{ color: "var(--on-surf-var)" }}
             >
               <Search className="w-10 h-10 opacity-30" />
-              <p className="text-sm">Sin resultados para &ldquo;{search}&rdquo;</p>
+              <p className="text-sm">
+                Sin resultados para &ldquo;{search}&rdquo;
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3 pt-1">
@@ -770,108 +898,210 @@ export default function PosTerminal({
       <div
         className="w-[360px] shrink-0 flex flex-col border-l overflow-hidden"
         style={{
-          background: "#0f0f0e",
-          borderColor: "rgba(46, 204, 113, 0.12)",
+          background: "var(--surf-low)",
+          borderLeft: "1px solid rgba(178,204,192,0.2)",
+          borderColor: "rgba(178,204,192,0.2)",
         }}
       >
         {/* Panel header */}
         <div
           className="px-4 py-3.5 shrink-0 border-b"
           style={{
-            background: "#1a1a18",
-            borderColor: "rgba(46,204,113,0.12)",
+            background: "var(--surf-low)",
+            borderColor: "rgba(178,204,192,0.2)",
           }}
         >
           <div className="flex items-center justify-between mb-1">
             <span
-              className="font-bold text-[16px]"
-              style={{ fontFamily: "var(--font-display)", color: "#f0f0ee" }}
+              className="font-bold text-[20px]"
+              style={{
+                fontFamily: "var(--font-display)",
+                color: "var(--on-surf)",
+              }}
             >
               Transacción
             </span>
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(46,204,113,0.15)", color: "#2ECC71" }}
+              style={{
+                background: "var(--sec-container)",
+                color: "var(--on-sec-container)",
+              }}
             >
               Caja abierta
             </span>
           </div>
-          <p className="text-[11px]" style={{ color: "#8f8f85" }}>
+          <p className="text-[11px]" style={{ color: "var(--on-surf-var)" }}>
             {sellerName} · {branchName}
           </p>
-          <p className="text-[10px] font-mono mt-0.5" style={{ color: "#8f8f85", opacity: 0.6 }}>
+          <p
+            className="text-[10px] font-mono mt-0.5"
+            style={{ color: "var(--on-surf-var)", opacity: 0.6 }}
+          >
             {folio}
           </p>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto", background: "#0f0f0e" }}>
+        <div
+          style={{ flex: 1, overflowY: "auto", background: "var(--surface)" }}
+        >
           <div className="py-2 space-y-2">
             {/* ── Guided config — floating card ────────────────────────────── */}
             {selectedModelo && (
               <div
                 style={{
-                  background: "#1a1a18",
+                  background: "var(--surf-high)",
                   borderRadius: 16,
                   border: "1px solid rgba(46,204,113,0.2)",
-                  padding: 16,
+                  borderLeft: "4px solid var(--p-bright)",
+                  padding: 20,
                   margin: 12,
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  boxShadow: "0 8px 32px var(--shadow)",
                 }}
               >
                 {/* Card header */}
-                <div className="flex items-center gap-2.5" style={{ position: "relative" }}>
+                <div
+                  className="flex items-center gap-2.5"
+                  style={{ position: "relative" }}
+                >
                   {selectedModelo.imageUrl ? (
-                    <div className="relative shrink-0" style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden" }}>
-                      <Image src={selectedModelo.imageUrl} alt={selectedModelo.nombre} fill style={{ objectFit: "cover" }} />
+                    <div
+                      className="relative shrink-0"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Image
+                        src={selectedModelo.imageUrl}
+                        alt={selectedModelo.nombre}
+                        fill
+                        style={{ objectFit: "cover" }}
+                      />
                     </div>
                   ) : (
-                    <div className="shrink-0 flex items-center justify-center" style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.06)" }}>
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: "#8f8f85" }}>
+                    <div
+                      className="shrink-0 flex items-center justify-center"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        background: "var(--surf-highest)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: "var(--on-surf-var)",
+                        }}
+                      >
                         {getInitials(selectedModelo.nombre)}
                       </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0 pr-6">
-                    <p className="truncate" style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "#f0f0ee", lineHeight: 1.2 }}>
+                    <p
+                      className="truncate"
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "var(--on-surf)",
+                        lineHeight: 1.2,
+                      }}
+                    >
                       {selectedModelo.nombre}
                     </p>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: "#2ECC71", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginTop: 2 }}>
+                    <p
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: "var(--p-bright)",
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase" as const,
+                        marginTop: 2,
+                      }}
+                    >
                       SELECCIÓN GUIADA
                     </p>
                   </div>
                   <button
                     onClick={resetGuidedConfig}
                     className="absolute top-0 right-0 flex items-center justify-center"
-                    style={{ width: 20, height: 20, color: "#8f8f85", background: "none", border: "none", cursor: "pointer" }}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      color: "var(--on-surf-var)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {/* Separator */}
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(178,204,192,0.15)",
+                    margin: "12px 0",
+                  }}
+                />
 
                 {/* Step 1: Voltaje */}
                 <div>
-                  <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                  <p
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: "var(--on-surf-var)",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase" as const,
+                      marginBottom: 8,
+                    }}
+                  >
                     1. SYSTEM VOLTAGE
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {voltajeOptions.map((opt) => {
                       const isVoltajeSelected = opt.id === selectedVoltajeId;
                       const hasVoltajeStock = opt.stockInBranch > 0;
-                      const canAssembleOpt = !hasVoltajeStock && opt.canAssemble;
+                      const canAssembleOpt =
+                        !hasVoltajeStock && opt.canAssemble;
                       const noOption = !hasVoltajeStock && !opt.canAssemble;
                       let pillStyle: React.CSSProperties = {};
                       if (noOption) {
-                        pillStyle = { background: "rgba(231,76,60,0.1)", border: "1.5px solid rgba(231,76,60,0.3)", color: "#ff8080", cursor: "not-allowed" };
+                        pillStyle = {
+                          background: "var(--ter-container)",
+                          border: "1px solid var(--ter-container)",
+                          color: "var(--on-ter-container)",
+                          cursor: "not-allowed",
+                        };
                       } else if (isVoltajeSelected) {
-                        pillStyle = { background: "rgba(46,204,113,0.15)", border: "1.5px solid #2ECC71", color: "#2ECC71", fontWeight: 600 };
+                        pillStyle = {
+                          background: "var(--sec-container)",
+                          border: "1px solid var(--p-bright)",
+                          color: "var(--p-bright)",
+                          fontWeight: 700,
+                        };
                       } else if (canAssembleOpt) {
-                        pillStyle = { background: "transparent", border: "1.5px solid rgba(243,156,18,0.5)", color: "#F39C12" };
+                        pillStyle = {
+                          background: "transparent",
+                          border: "1px solid var(--warn)",
+                          color: "var(--warn)",
+                        };
                       } else {
-                        pillStyle = { background: "transparent", border: "1.5px solid rgba(255,255,255,0.15)", color: "#f0f0ee" };
+                        pillStyle = {
+                          background: "transparent",
+                          border: "1px solid var(--outline-var)",
+                          color: "var(--on-surf-var)",
+                        };
                       }
                       return (
                         <button
@@ -879,62 +1109,154 @@ export default function PosTerminal({
                           disabled={noOption}
                           onClick={() => handleSelectVoltaje(opt.id)}
                           className="flex items-center gap-1 transition-all"
-                          style={{ borderRadius: 999, padding: "6px 16px", fontSize: 13, fontWeight: isVoltajeSelected ? 600 : 500, ...pillStyle }}
+                          style={{
+                            borderRadius: 999,
+                            padding: "6px 16px",
+                            fontSize: 13,
+                            fontWeight: isVoltajeSelected ? 600 : 500,
+                            ...pillStyle,
+                          }}
                         >
                           {opt.label}
-                          {canAssembleOpt && <Battery className="w-3 h-3 ml-0.5" />}
+                          {canAssembleOpt && (
+                            <Battery className="w-3 h-3 ml-0.5" />
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                  {selectedVoltajeId && (() => {
-                    const opt = voltajeOptions.find((v) => v.id === selectedVoltajeId);
-                    if (!opt) return null;
-                    if (opt.stockInBranch > 0) return (
-                      <p style={{ fontSize: 11, color: "#2ECC71", marginTop: 6 }}>{opt.stockInBranch} unidades disponibles</p>
-                    );
-                    if (opt.canAssemble) return (
-                      <p style={{ fontSize: 11, color: "#F39C12", marginTop: 6 }}>Sin stock · {availableBatteriesCount} baterías disponibles</p>
-                    );
-                    return <p style={{ fontSize: 11, color: "#ff8080", marginTop: 6 }}>Sin stock</p>;
-                  })()}
+                  {selectedVoltajeId &&
+                    (() => {
+                      const opt = voltajeOptions.find(
+                        (v) => v.id === selectedVoltajeId,
+                      );
+                      if (!opt) return null;
+                      if (opt.stockInBranch > 0)
+                        return (
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: "var(--p-bright)",
+                              marginTop: 6,
+                            }}
+                          >
+                            {opt.stockInBranch} unidades disponibles
+                          </p>
+                        );
+                      if (opt.canAssemble)
+                        return (
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: "var(--warn)",
+                              marginTop: 6,
+                            }}
+                          >
+                            Sin stock · {availableBatteriesCount} baterías
+                            disponibles
+                          </p>
+                        );
+                      return (
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "var(--ter)",
+                            marginTop: 6,
+                          }}
+                        >
+                          Sin stock
+                        </p>
+                      );
+                    })()}
                 </div>
 
                 {/* Separator */}
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(178,204,192,0.15)",
+                    margin: "12px 0",
+                  }}
+                />
 
                 {/* Step 2: Color — always visible */}
-                <div style={{ opacity: !selectedVoltajeId ? 0.4 : 1, pointerEvents: !selectedVoltajeId ? "none" : undefined }}>
-                  <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                <div
+                  style={{
+                    opacity: !selectedVoltajeId ? 0.4 : 1,
+                    pointerEvents: !selectedVoltajeId ? "none" : undefined,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: "var(--on-surf-var)",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase" as const,
+                      marginBottom: 8,
+                    }}
+                  >
                     2. FRAME COLOR
                   </p>
                   <div className="flex flex-wrap" style={{ gap: 8 }}>
-                    {colorOptions.length > 0 ? colorOptions.map((c) => {
-                      const css = colorToCSS(c.nombre);
-                      const isGradient = css.startsWith("conic");
-                      const isColorSelected = c.id === selectedColorId;
-                      return (
-                        <button
-                          key={c.id}
-                          title={c.nombre}
-                          onClick={() => setSelectedColorId(c.id)}
-                          style={{
-                            width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                            ...(isGradient ? { background: css } : { backgroundColor: css }),
-                            border: isColorSelected ? "2px solid #2ECC71" : "2px solid transparent",
-                            transform: isColorSelected ? "scale(1.15)" : undefined,
-                            transition: "all 0.15s",
-                          }}
-                        />
-                      );
-                    }) : [0, 1, 2].map((i) => (
-                      <div key={i} style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px solid transparent" }} />
-                    ))}
+                    {colorOptions.length > 0
+                      ? colorOptions.map((c) => {
+                          const css = colorToCSS(c.nombre);
+                          const isGradient = css.startsWith("conic");
+                          const isColorSelected = c.id === selectedColorId;
+                          return (
+                            <button
+                              key={c.id}
+                              title={c.nombre}
+                              onClick={() => setSelectedColorId(c.id)}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                flexShrink: 0,
+                                ...(isGradient
+                                  ? { background: css }
+                                  : { backgroundColor: css }),
+                                border: isColorSelected
+                                  ? "2px solid var(--p-bright)"
+                                  : "1px solid var(--outline-var)",
+                                boxShadow: isColorSelected
+                                  ? "0 0 0 2px rgba(46,204,113,0.2)"
+                                  : "none",
+                                opacity: isColorSelected ? 1 : 0.5,
+                                transition: "all 0.15s",
+                              }}
+                            />
+                          );
+                        })
+                      : [0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              background: "var(--surf-low)",
+                              border: "1px solid var(--outline-var)",
+                            }}
+                          />
+                        ))}
                   </div>
                   {selectedColorId && (
-                    <p style={{ fontSize: 11, color: "#2ECC71", fontWeight: 500, marginTop: 6 }}>
-                      {colorOptions.find((c) => c.id === selectedColorId)?.nombre}
-                      {selectedVariant ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}` : ""}
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "var(--p-bright)",
+                        fontWeight: 500,
+                        marginTop: 6,
+                      }}
+                    >
+                      {
+                        colorOptions.find((c) => c.id === selectedColorId)
+                          ?.nombre
+                      }
+                      {selectedVariant
+                        ? ` · $${selectedVariant.precio.toLocaleString("es-MX")}`
+                        : ""}
                     </p>
                   )}
                 </div>
@@ -942,51 +1264,136 @@ export default function PosTerminal({
                 {/* Step 3: VIN — always visible when requiere_vin */}
                 {selectedModelo.requiere_vin && (
                   <>
-                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+                    <div
+                      style={{
+                        borderTop: "1px solid rgba(178,204,192,0.15)",
+                        margin: "12px 0",
+                      }}
+                    />
                     <div style={{ opacity: !selectedColorId ? 0.4 : 1 }}>
-                      <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "var(--on-surf-var)",
+                          letterSpacing: "0.12em",
+                          textTransform: "uppercase" as const,
+                          marginBottom: 8,
+                        }}
+                      >
                         3. VIN VERIFICATION
                       </p>
                       <div className="relative">
                         <input
                           disabled={!selectedColorId}
-                          className="w-full focus:outline-none"
+                          className="w-full focus:outline-none focus:ring-1 focus:ring-[var(--p-bright)] placeholder:text-[var(--on-surf-var)]"
                           style={{
-                            background: "rgba(255,255,255,0.05)",
-                            border: vinStatus === "valid"
-                              ? "1px solid #2ECC71"
-                              : vinStatus === "taken"
-                              ? "1px solid #ff8080"
-                              : "1px solid rgba(255,255,255,0.1)",
-                            borderRadius: 10,
-                            color: "#f0f0ee",
+                            background: "var(--surf-lowest)",
+                            border: "none",
+                            borderRadius: 12,
+                            color: "var(--on-surf)",
                             padding: "10px 40px 10px 14px",
                             fontSize: 12,
                           }}
                           placeholder="Escanear o escribir VIN..."
                           value={vinInput}
-                          onChange={(e) => { setVinInput(e.target.value); setVinStatus("idle"); }}
+                          onChange={(e) => {
+                            setVinInput(e.target.value);
+                            setVinStatus("idle");
+                          }}
                           onBlur={() => checkVin(vinInput)}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#8f8f85" }}>
-                          {vinStatus === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                          {vinStatus === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "#2ECC71" }} />}
-                          {vinStatus === "taken" && <X className="w-3.5 h-3.5" style={{ color: "#ff8080" }} />}
+                        <div
+                          className="absolute right-3 top-1/2 -translate-y-1/2"
+                          style={{ color: "var(--on-surf-var)" }}
+                        >
+                          {vinStatus === "checking" && (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          )}
+                          {vinStatus === "valid" && (
+                            <Check
+                              className="w-3.5 h-3.5"
+                              style={{ color: "var(--p-bright)" }}
+                            />
+                          )}
+                          {vinStatus === "taken" && (
+                            <X
+                              className="w-3.5 h-3.5"
+                              style={{ color: "var(--ter)" }}
+                            />
+                          )}
                           {vinStatus === "idle" && (
-                            <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
-                              <rect x="2" y="2" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
-                              <rect x="9" y="2" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
-                              <rect x="2" y="9" width="5" height="5" rx="0.5" stroke="#8f8f85" strokeWidth="1.5"/>
-                              <rect x="3.5" y="3.5" width="2" height="2" fill="#8f8f85"/>
-                              <rect x="10.5" y="3.5" width="2" height="2" fill="#8f8f85"/>
-                              <rect x="3.5" y="10.5" width="2" height="2" fill="#8f8f85"/>
-                              <path d="M9 9h2v2H9zM13 9v4M13 13H9v-2" stroke="#8f8f85" strokeWidth="1.5"/>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              width="16"
+                              height="16"
+                            >
+                              <rect
+                                x="2"
+                                y="2"
+                                width="5"
+                                height="5"
+                                rx="0.5"
+                                stroke="var(--on-surf-var)"
+                                strokeWidth="1.5"
+                              />
+                              <rect
+                                x="9"
+                                y="2"
+                                width="5"
+                                height="5"
+                                rx="0.5"
+                                stroke="var(--on-surf-var)"
+                                strokeWidth="1.5"
+                              />
+                              <rect
+                                x="2"
+                                y="9"
+                                width="5"
+                                height="5"
+                                rx="0.5"
+                                stroke="var(--on-surf-var)"
+                                strokeWidth="1.5"
+                              />
+                              <rect
+                                x="3.5"
+                                y="3.5"
+                                width="2"
+                                height="2"
+                                fill="var(--on-surf-var)"
+                              />
+                              <rect
+                                x="10.5"
+                                y="3.5"
+                                width="2"
+                                height="2"
+                                fill="var(--on-surf-var)"
+                              />
+                              <rect
+                                x="3.5"
+                                y="10.5"
+                                width="2"
+                                height="2"
+                                fill="var(--on-surf-var)"
+                              />
+                              <path
+                                d="M9 9h2v2H9zM13 9v4M13 13H9v-2"
+                                stroke="var(--on-surf-var)"
+                                strokeWidth="1.5"
+                              />
                             </svg>
                           )}
                         </div>
                       </div>
                       {vinStatus === "taken" && (
-                        <p style={{ fontSize: 10, color: "#ff8080", marginTop: 4 }}>
+                        <p
+                          style={{
+                            fontSize: 10,
+                            color: "var(--ter)",
+                            marginTop: 4,
+                          }}
+                        >
                           Este VIN ya está registrado en esta sucursal
                         </p>
                       )}
@@ -997,10 +1404,30 @@ export default function PosTerminal({
                 {/* Step 4: Battery serials — only when assembly mode */}
                 {selectedColorId && assemblyMode && (
                   <>
-                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
+                    <div
+                      style={{
+                        borderTop: "1px solid rgba(178,204,192,0.15)",
+                        margin: "12px 0",
+                      }}
+                    />
                     <div>
-                      <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 8 }}>
-                        4. BATTERY SERIALS ({batterySerialInputs.filter((_, i) => batteryStatuses[i] === "valid").length}/{requiredBatteries})
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "var(--on-surf-var)",
+                          letterSpacing: "0.12em",
+                          textTransform: "uppercase" as const,
+                          marginBottom: 8,
+                        }}
+                      >
+                        4. BATTERY SERIALS (
+                        {
+                          batterySerialInputs.filter(
+                            (_, i) => batteryStatuses[i] === "valid",
+                          ).length
+                        }
+                        /{requiredBatteries})
                       </p>
                       <div className="space-y-2">
                         {batterySerialInputs.map((serial, idx) => (
@@ -1008,14 +1435,15 @@ export default function PosTerminal({
                             <input
                               className="w-full focus:outline-none"
                               style={{
-                                background: "rgba(255,255,255,0.05)",
-                                border: batteryStatuses[idx] === "valid"
-                                  ? "1px solid #2ECC71"
-                                  : batteryStatuses[idx] === "invalid"
-                                  ? "1px solid #ff8080"
-                                  : "1px solid rgba(255,255,255,0.1)",
+                                background: "var(--surf-low)",
+                                border:
+                                  batteryStatuses[idx] === "valid"
+                                    ? "1px solid var(--p-bright)"
+                                    : batteryStatuses[idx] === "invalid"
+                                      ? "1px solid var(--ter)"
+                                      : "1px solid rgba(178,204,192,0.2)",
                                 borderRadius: 10,
-                                color: "#f0f0ee",
+                                color: "var(--on-surf)",
                                 padding: "10px 40px 10px 14px",
                                 fontSize: 12,
                               }}
@@ -1025,14 +1453,32 @@ export default function PosTerminal({
                                 const newInputs = [...batterySerialInputs];
                                 newInputs[idx] = e.target.value;
                                 setBatterySerialInputs(newInputs);
-                                setBatteryStatuses((prev) => ({ ...prev, [idx]: "idle" }));
+                                setBatteryStatuses((prev) => ({
+                                  ...prev,
+                                  [idx]: "idle",
+                                }));
                               }}
                               onBlur={() => checkBatterySerial(serial, idx)}
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {batteryStatuses[idx] === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#8f8f85" }} />}
-                              {batteryStatuses[idx] === "valid" && <Check className="w-3.5 h-3.5" style={{ color: "#2ECC71" }} />}
-                              {batteryStatuses[idx] === "invalid" && <X className="w-3.5 h-3.5" style={{ color: "#ff8080" }} />}
+                              {batteryStatuses[idx] === "checking" && (
+                                <Loader2
+                                  className="w-3.5 h-3.5 animate-spin"
+                                  style={{ color: "var(--on-surf-var)" }}
+                                />
+                              )}
+                              {batteryStatuses[idx] === "valid" && (
+                                <Check
+                                  className="w-3.5 h-3.5"
+                                  style={{ color: "var(--p-bright)" }}
+                                />
+                              )}
+                              {batteryStatuses[idx] === "invalid" && (
+                                <X
+                                  className="w-3.5 h-3.5"
+                                  style={{ color: "var(--ter)" }}
+                                />
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1048,10 +1494,17 @@ export default function PosTerminal({
                   className="w-full transition-all"
                   style={{
                     marginTop: 12,
-                    padding: 12,
+                    padding: 14,
                     borderRadius: 999,
-                    background: canCompleteConfig ? "#2ECC71" : "rgba(255,255,255,0.06)",
-                    color: canCompleteConfig ? "#0f0f0e" : "#8f8f85",
+                    background: canCompleteConfig
+                      ? "var(--p-bright)"
+                      : "var(--surf-highest)",
+                    boxShadow: canCompleteConfig
+                      ? "0 8px 24px rgba(46,204,113,0.15)"
+                      : "none",
+                    color: canCompleteConfig
+                      ? "var(--on-p)"
+                      : "var(--on-surf-var)",
                     fontFamily: "var(--font-display)",
                     fontSize: 13,
                     fontWeight: 700,
@@ -1067,7 +1520,7 @@ export default function PosTerminal({
             {cart.length === 0 && !selectedModelo && (
               <div
                 className="flex flex-col items-center justify-center py-8 gap-2"
-                style={{ color: "#8f8f85" }}
+                style={{ color: "var(--on-surf-var)" }}
               >
                 <ShoppingBag className="w-8 h-8 opacity-20" />
                 <p className="text-[11px]">Selecciona un producto</p>
@@ -1075,9 +1528,16 @@ export default function PosTerminal({
             )}
 
             {cart.length > 0 && (
-              <div>
+              <div style={{ opacity: selectedModelo ? 0.6 : 1 }}>
                 <p
-                  style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, padding: "8px 16px 4px" }}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "var(--on-surf-var)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase" as const,
+                    padding: "8px 16px 4px",
+                  }}
                 >
                   ARTÍCULOS ({cart.length})
                 </p>
@@ -1086,48 +1546,67 @@ export default function PosTerminal({
                     key={`${item.variantId}-${idx}`}
                     className="flex items-start gap-2"
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      borderRadius: 10,
                       padding: "10px 14px",
                       margin: "4px 12px",
-                      border: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
                     <div className="flex-1 min-w-0">
                       <p
                         className="font-bold text-[13px] truncate"
-                        style={{ fontFamily: "var(--font-display)", color: "#f0f0ee" }}
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          color: "var(--on-surf)",
+                        }}
                       >
                         {item.modeloNombre}
                       </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "#8f8f85" }}>
+                      <p
+                        className="text-[11px] mt-0.5"
+                        style={{ color: "var(--on-surf-var)" }}
+                      >
                         {item.colorNombre} / {item.voltajeLabel}
                       </p>
                       {item.serialNumber && (
-                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "#8f8f85" }}>
+                        <p
+                          className="text-[10px] font-mono mt-0.5"
+                          style={{ color: "var(--on-surf-var)" }}
+                        >
                           VIN: {item.serialNumber}
                         </p>
                       )}
-                      {item.assemblyMode && item.batterySerials && item.batterySerials.length > 0 && (
-                        <p className="text-[10px] mt-0.5" style={{ color: "#F39C12" }}>
-                          ⚡ {item.batterySerials.length} bat. ensambladas
-                        </p>
-                      )}
+                      {item.assemblyMode &&
+                        item.batterySerials &&
+                        item.batterySerials.length > 0 && (
+                          <p
+                            className="text-[10px] mt-0.5"
+                            style={{ color: "var(--warn)" }}
+                          >
+                            ⚡ {item.batterySerials.length} bat. ensambladas
+                          </p>
+                        )}
                       <p
                         className="font-bold text-[14px] mt-1"
-                        style={{ color: "#2ECC71" }}
+                        style={{ color: "var(--p-bright)" }}
                       >
                         ${(item.price * item.quantity).toLocaleString("es-MX")}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                      <span className="text-[11px] w-5 text-center" style={{ color: "#f0f0ee" }}>
+                      <span
+                        className="text-[11px] w-5 text-center"
+                        style={{ color: "var(--on-surf)" }}
+                      >
                         ×{item.quantity}
                       </span>
                       <button
-                        onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
+                        onClick={() =>
+                          setCart((prev) => prev.filter((_, i) => i !== idx))
+                        }
                         className="w-6 h-6 rounded-lg flex items-center justify-center"
-                        style={{ color: "#ff8080", background: "rgba(231,76,60,0.1)" }}
+                        style={{
+                          color: "var(--ter)",
+                          background: "var(--ter-container)",
+                        }}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1139,39 +1618,64 @@ export default function PosTerminal({
 
             {/* ── Discount section ─────────────────────────────────────────── */}
             {cart.length > 0 && (
-              <div className="space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "10px 14px", margin: "4px 12px" }}>
+              <div
+                className="space-y-1.5"
+                style={{
+                  background: "var(--surf-high)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  margin: "4px 12px",
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <p
-                    style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const }}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: "var(--on-surf-var)",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase" as const,
+                    }}
                   >
                     DESCUENTO
                   </p>
                   {discountAuthorized ? (
                     <span
                       className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: "rgba(46,204,113,0.15)", color: "#2ECC71" }}
+                      style={{
+                        background: "var(--sec-container)",
+                        color: "var(--p-bright)",
+                      }}
                     >
                       Aut. {discountAuthorized.name.split(" ")[0]}
                     </span>
                   ) : (
                     <span
                       className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: "rgba(243,156,18,0.15)", color: "#F39C12" }}
+                      style={{
+                        background: "var(--warn-container)",
+                        color: "var(--warn)",
+                      }}
                     >
                       Req. Manager
                     </span>
                   )}
                 </div>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: "#8f8f85" }}>$</span>
+                  <span
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]"
+                    style={{ color: "var(--on-surf-var)" }}
+                  >
+                    $
+                  </span>
                   <input
                     type="number"
                     min={0}
                     className="w-full pl-5 pr-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                     style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#f0f0ee",
+                      background: "var(--surf-low)",
+                      border: "1px solid rgba(178,204,192,0.2)",
+                      color: "var(--on-surf)",
                     }}
                     placeholder="0.00"
                     value={discountAmount || ""}
@@ -1188,9 +1692,9 @@ export default function PosTerminal({
                       type="text"
                       className="w-full px-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                       style={{
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        color: "#f0f0ee",
+                        background: "var(--surf-low)",
+                        border: "1px solid rgba(178,204,192,0.2)",
+                        color: "var(--on-surf)",
                       }}
                       placeholder="Motivo del descuento..."
                       value={discountReason}
@@ -1201,30 +1705,44 @@ export default function PosTerminal({
                         type="password"
                         className={`flex-1 px-2 py-1.5 text-[10px] rounded-lg focus:outline-none ${pinError ? "animate-pulse" : ""}`}
                         style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: pinError ? "1px solid #ff8080" : "1px solid rgba(255,255,255,0.1)",
-                          color: "#f0f0ee",
+                          background: "var(--surf-low)",
+                          border: pinError
+                            ? "1px solid var(--ter)"
+                            : "1px solid rgba(178,204,192,0.2)",
+                          color: "var(--on-surf)",
                         }}
                         placeholder="PIN Manager..."
                         value={discountPin}
-                        onChange={(e) => { setDiscountPin(e.target.value); setPinError(false); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleValidatePin(); }}
+                        onChange={(e) => {
+                          setDiscountPin(e.target.value);
+                          setPinError(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleValidatePin();
+                        }}
                       />
                       <button
                         onClick={handleValidatePin}
                         disabled={validatingPin || !discountPin}
                         className="px-2 py-1.5 rounded-lg text-[9px] font-medium"
                         style={{
-                          background: "linear-gradient(135deg, #1b4332, #2ecc71)",
-                          color: "#fff",
+                          background:
+                            "linear-gradient(135deg, #1B4332, #2ECC71)",
+                          color: "var(--on-primary)",
                           opacity: validatingPin || !discountPin ? 0.6 : 1,
                         }}
                       >
-                        {validatingPin ? <Loader2 className="w-3 h-3 animate-spin" /> : "OK"}
+                        {validatingPin ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          "OK"
+                        )}
                       </button>
                     </div>
                     {pinError && (
-                      <p className="text-[9px]" style={{ color: "#ff8080" }}>PIN incorrecto</p>
+                      <p className="text-[9px]" style={{ color: "var(--ter)" }}>
+                        PIN incorrecto
+                      </p>
                     )}
                   </>
                 )}
@@ -1234,16 +1752,25 @@ export default function PosTerminal({
             {/* ── Internal note ────────────────────────────────────────────── */}
             {cart.length > 0 && (
               <div style={{ margin: "0 12px" }}>
-                <p style={{ fontSize: 10, fontWeight: 500, color: "#8f8f85", letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "var(--on-surf-var)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase" as const,
+                    marginBottom: 6,
+                  }}
+                >
                   NOTA INTERNA — SOLO GERENCIA
                 </p>
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 text-[10px] rounded-lg resize-none focus:outline-none"
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#f0f0ee",
+                    background: "var(--surf-low)",
+                    border: "1px solid rgba(178,204,192,0.2)",
+                    color: "var(--on-surf)",
                   }}
                   placeholder="Observaciones para gerencia..."
                   value={internalNote}
@@ -1256,27 +1783,44 @@ export default function PosTerminal({
             {cart.length > 0 && (
               <div className="space-y-2 mx-3">
                 <div className="flex gap-1.5 items-center">
-                  <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                  <Select
+                    value={selectedCustomerId}
+                    onValueChange={setSelectedCustomerId}
+                  >
                     <SelectTrigger
                       className="flex-1 h-7 text-[10px]"
-                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0ee" }}
+                      style={{
+                        background: "var(--surf-low)",
+                        border: "1px solid rgba(178,204,192,0.2)",
+                        color: "var(--on-surf)",
+                      }}
                     >
                       <SelectValue placeholder="Cliente (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sin cliente (Mostrador)</SelectItem>
+                      <SelectItem value="none">
+                        Sin cliente (Mostrador)
+                      </SelectItem>
                       {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
+                  <Dialog
+                    open={isNewCustomerOpen}
+                    onOpenChange={setIsNewCustomerOpen}
+                  >
                     <DialogTrigger asChild>
                       <button
                         className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ background: "rgba(255,255,255,0.08)" }}
+                        style={{ background: "var(--surf-low)" }}
                       >
-                        <Plus className="w-3.5 h-3.5" style={{ color: "#f0f0ee" }} />
+                        <Plus
+                          className="w-3.5 h-3.5"
+                          style={{ color: "var(--on-surf)" }}
+                        />
                       </button>
                     </DialogTrigger>
                     <DialogContent>
@@ -1288,20 +1832,34 @@ export default function PosTerminal({
                       </DialogHeader>
                       <div className="grid gap-3 py-2">
                         <div>
-                          <Label htmlFor="nc-name" className="text-xs">Nombre *</Label>
+                          <Label htmlFor="nc-name" className="text-xs">
+                            Nombre *
+                          </Label>
                           <Input
                             id="nc-name"
                             value={newCustomerForm.name}
-                            onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                            onChange={(e) =>
+                              setNewCustomerForm({
+                                ...newCustomerForm,
+                                name: e.target.value,
+                              })
+                            }
                             placeholder="Juan Pérez"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="nc-phone" className="text-xs">Teléfono</Label>
+                          <Label htmlFor="nc-phone" className="text-xs">
+                            Teléfono
+                          </Label>
                           <Input
                             id="nc-phone"
                             value={newCustomerForm.phone}
-                            onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                            onChange={(e) =>
+                              setNewCustomerForm({
+                                ...newCustomerForm,
+                                phone: e.target.value,
+                              })
+                            }
                             placeholder="10 dígitos"
                           />
                         </div>
@@ -1309,7 +1867,10 @@ export default function PosTerminal({
                       <DialogFooter>
                         <button
                           className="px-3 py-1.5 rounded-lg text-sm"
-                          style={{ background: "rgba(255,255,255,0.08)", color: "#f0f0ee" }}
+                          style={{
+                            background: "var(--surf-low)",
+                            color: "var(--on-surf)",
+                          }}
                           onClick={() => setIsNewCustomerOpen(false)}
                         >
                           Cancelar
@@ -1318,7 +1879,10 @@ export default function PosTerminal({
                           disabled={creatingCustomer}
                           onClick={handleCreateCustomer}
                           className="px-3 py-1.5 rounded-lg text-sm text-white"
-                          style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #1B4332, #2ECC71)",
+                          }}
                         >
                           {creatingCustomer ? "Guardando..." : "Crear"}
                         </button>
@@ -1332,7 +1896,7 @@ export default function PosTerminal({
                   <Label
                     htmlFor="layaway-toggle"
                     className="text-[10px] cursor-pointer"
-                    style={{ color: "#8f8f85" }}
+                    style={{ color: "var(--on-surf-var)" }}
                   >
                     Modo apartado
                   </Label>
@@ -1344,12 +1908,19 @@ export default function PosTerminal({
                 </div>
 
                 {isLayaway && (
-                  <div className="space-y-1.5 p-2 rounded-lg" style={{ background: "rgba(243,156,18,0.08)", border: "1px solid rgba(243,156,18,0.2)" }}>
+                  <div
+                    className="space-y-1.5 p-2 rounded-lg"
+                    style={{
+                      background: "var(--warn-container)",
+                      border: "1px solid var(--warn)",
+                    }}
+                  >
                     <p
                       className="text-[9px] font-medium"
-                      style={{ color: "#F39C12" }}
+                      style={{ color: "var(--warn)" }}
                     >
-                      Anticipo: {layawayPercent}% = ${layawayDownPayment.toLocaleString("es-MX")}
+                      Anticipo: {layawayPercent}% = $
+                      {layawayDownPayment.toLocaleString("es-MX")}
                     </p>
                     <input
                       type="range"
@@ -1357,8 +1928,10 @@ export default function PosTerminal({
                       max={100}
                       step={5}
                       value={layawayPercent}
-                      onChange={(e) => setLayawayPercent(parseInt(e.target.value))}
-                      className="w-full accent-[#2ecc71]"
+                      onChange={(e) =>
+                        setLayawayPercent(parseInt(e.target.value))
+                      }
+                      className="w-full accent-[var(--p-bright)]"
                     />
                   </div>
                 )}
@@ -1370,30 +1943,67 @@ export default function PosTerminal({
         {/* ── Fixed footer: totals + payment + CTA ──────────────────────────── */}
         {cart.length > 0 && (
           <div
-            className="px-4 pt-3.5 pb-4 border-t shrink-0"
+            className="px-4 pt-3.5 pb-6 border-t shrink-0"
             style={{
-              background: "#0f0f0e",
-              borderColor: "rgba(255,255,255,0.06)",
+              background: "var(--surf-low)",
+              borderTop: "1px solid rgba(178,204,192,0.15)",
             }}
           >
             {/* Totals */}
             <div className="space-y-1 mb-3">
-              <div className="flex justify-between" style={{ fontSize: 12, color: "#8f8f85" }}>
+              <div
+                className="flex justify-between"
+                style={{ fontSize: 12, color: "var(--on-surf-var)" }}
+              >
                 <span>Subtotal</span>
-                <span style={{ color: "#f0f0ee" }}>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+                <span style={{ color: "var(--on-surf)" }}>
+                  $
+                  {subtotal.toLocaleString("es-MX", {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
               </div>
               {discountAmount > 0 && discountAuthorized && (
-                <div className="flex justify-between" style={{ fontSize: 12, color: "#ff8080" }}>
+                <div
+                  className="flex justify-between"
+                  style={{ fontSize: 12, color: "var(--ter)" }}
+                >
                   <span>Descuento</span>
-                  <span>-${discountAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+                  <span>
+                    -$
+                    {discountAmount.toLocaleString("es-MX", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
                 </div>
               )}
-              <div className="flex justify-between items-baseline pt-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <span style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "#f0f0ee" }}>
-                  {isLayaway ? "Anticipo" : "Total"}
+              <div
+                className="flex justify-between items-baseline pt-1.5"
+                style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "var(--on-surf)",
+                  }}
+                >
+                  {isLayaway ? "Anticipo" : "Total Due"}
                 </span>
-                <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "#2ECC71" }}>
-                  ${(isLayaway ? layawayDownPayment : totalAfterDiscount).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                <span
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "var(--p-bright)",
+                  }}
+                >
+                  $
+                  {(isLayaway
+                    ? layawayDownPayment
+                    : totalAfterDiscount
+                  ).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -1402,148 +2012,233 @@ export default function PosTerminal({
             {(() => {
               const paymentSvgIcons: Record<string, React.ReactNode> = {
                 CASH: (
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                    <rect x="1" y="4" width="14" height="8" rx="1.5"/>
-                    <circle cx="8" cy="8" r="2"/>
-                    <path d="M4 8h.01M12 8h.01"/>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    width="16"
+                    height="16"
+                  >
+                    <rect x="1" y="4" width="14" height="8" rx="1.5" />
+                    <circle cx="8" cy="8" r="2" />
+                    <path d="M4 8h.01M12 8h.01" />
                   </svg>
                 ),
                 CARD: (
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                    <rect x="1" y="3" width="14" height="10" rx="1.5"/>
-                    <path d="M1 6h14"/>
-                    <path d="M4 10h3"/>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    width="16"
+                    height="16"
+                  >
+                    <rect x="1" y="3" width="14" height="10" rx="1.5" />
+                    <path d="M1 6h14" />
+                    <path d="M4 10h3" />
                   </svg>
                 ),
                 TRANSFER: (
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                    <path d="M2 8h12M10 5l3 3-3 3M6 5L3 8l3 3"/>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    width="16"
+                    height="16"
+                  >
+                    <path d="M2 8h12M10 5l3 3-3 3M6 5L3 8l3 3" />
                   </svg>
                 ),
                 ATRATO: (
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                    <circle cx="8" cy="8" r="6"/>
-                    <path d="M8 5v3l2 2"/>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    width="16"
+                    height="16"
+                  >
+                    <circle cx="8" cy="8" r="6" />
+                    <path d="M8 5v3l2 2" />
                   </svg>
                 ),
               };
-              const methodLabels: Record<string, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transfer", ATRATO: "Atrato" };
+              const methodLabels: Record<string, string> = {
+                CASH: "Efectivo",
+                CARD: "Tarjeta",
+                TRANSFER: "Transfer",
+                ATRATO: "Atrato",
+              };
 
               return (
                 <>
                   <div className="grid grid-cols-2 mb-2" style={{ gap: 6 }}>
-                    {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((method) => {
-                      const isActive = primaryMethod === method;
-                      return (
-                        <button
-                          key={method}
-                          onClick={() => setPrimaryMethod(method)}
-                          className="flex flex-col items-center justify-center transition-all"
-                          style={{
-                            position: "relative",
-                            padding: "10px 8px",
-                            borderRadius: 10,
-                            border: isActive ? "1px solid #2ECC71" : "1px solid rgba(255,255,255,0.1)",
-                            background: isActive ? "rgba(46,204,113,0.1)" : "rgba(255,255,255,0.04)",
-                            color: isActive ? "#2ECC71" : "#8f8f85",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            gap: 5,
-                          }}
-                        >
-                          {method === "ATRATO" && (
-                            <span
-                              style={{
-                                position: "absolute",
-                                top: 4,
-                                right: 4,
-                                fontSize: 7,
-                                fontWeight: 600,
-                                padding: "1px 4px",
-                                borderRadius: 999,
-                                background: "rgba(243,156,18,0.2)",
-                                color: "#F39C12",
-                                lineHeight: 1.4,
-                              }}
-                            >
-                              Pend.
-                            </span>
-                          )}
-                          {paymentSvgIcons[method]}
-                          <span>{methodLabels[method]}</span>
-                        </button>
-                      );
-                    })}
+                    {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map(
+                      (method) => {
+                        const isActive = primaryMethod === method;
+                        return (
+                          <button
+                            key={method}
+                            onClick={() => setPrimaryMethod(method)}
+                            className={`flex flex-col items-center justify-center transition-all rounded-xl p-[14px] text-[12px] font-bold gap-[5px] relative ${
+                              isActive
+                                ? "bg-[var(--sec-container)] text-[var(--p-bright)]"
+                                : "bg-[var(--surf-highest)] text-[var(--on-surf-var)] hover:bg-[var(--sec-container)] hover:text-[var(--p-bright)]"
+                            }`}
+                            style={{ border: "none" }}
+                          >
+                            {method === "ATRATO" && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: 4,
+                                  right: 4,
+                                  fontSize: 7,
+                                  fontWeight: 600,
+                                  padding: "1px 4px",
+                                  borderRadius: 999,
+                                  background: "rgba(243,156,18,0.2)",
+                                  color: "var(--warn)",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                Pend.
+                              </span>
+                            )}
+                            {paymentSvgIcons[method]}
+                            <span>{methodLabels[method]}</span>
+                          </button>
+                        );
+                      },
+                    )}
                   </div>
 
                   {/* Credit balance option */}
-                  {selectedCustomer && selectedCustomer.balance > 0 && !isLayaway && (
-                    <button
-                      onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
-                      className="w-full mb-2 transition-all"
-                      style={{
-                        padding: "8px",
-                        borderRadius: 10,
-                        border: primaryMethod === "CREDIT_BALANCE" ? "1px solid #2ECC71" : "1px solid rgba(255,255,255,0.1)",
-                        background: primaryMethod === "CREDIT_BALANCE" ? "rgba(46,204,113,0.1)" : "rgba(255,255,255,0.04)",
-                        color: primaryMethod === "CREDIT_BALANCE" ? "#2ECC71" : "#8f8f85",
-                        fontSize: 11,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Saldo a favor (${selectedCustomer.balance.toFixed(2)})
-                    </button>
-                  )}
+                  {selectedCustomer &&
+                    selectedCustomer.balance > 0 &&
+                    !isLayaway && (
+                      <button
+                        onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
+                        className="w-full mb-2 transition-all"
+                        style={{
+                          padding: "8px",
+                          borderRadius: 10,
+                          border:
+                            primaryMethod === "CREDIT_BALANCE"
+                              ? "1px solid var(--p-bright)"
+                              : "1px solid rgba(178,204,192,0.2)",
+                          background:
+                            primaryMethod === "CREDIT_BALANCE"
+                              ? "var(--sec-container)"
+                              : "var(--surf-high)",
+                          color:
+                            primaryMethod === "CREDIT_BALANCE"
+                              ? "var(--p-bright)"
+                              : "var(--on-surf-var)",
+                          fontSize: 11,
+                          fontWeight: 500,
+                        }}
+                      >
+                        Saldo a favor (${selectedCustomer.balance.toFixed(2)})
+                      </button>
+                    )}
 
                   {/* Split payment toggle */}
-                  <div className="flex items-center justify-between" style={{ marginBottom: isSplitPayment ? 8 : 0 }}>
-                    <span style={{ fontSize: 11, color: "#8f8f85" }}>Dividir pago</span>
-                    <Switch checked={isSplitPayment} onCheckedChange={setIsSplitPayment} />
+                  <div
+                    className="flex items-center justify-between"
+                    style={{ marginBottom: isSplitPayment ? 8 : 0 }}
+                  >
+                    <span style={{ fontSize: 11, color: "var(--on-surf-var)" }}>
+                      Dividir pago
+                    </span>
+                    <Switch
+                      checked={isSplitPayment}
+                      onCheckedChange={setIsSplitPayment}
+                    />
                   </div>
 
                   {isSplitPayment && (
-                    <div className="space-y-1.5 p-2.5 rounded-xl mb-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div
+                      className="space-y-1.5 p-2.5 rounded-xl mb-2"
+                      style={{
+                        background: "var(--surf-high)",
+                        border: "1px solid rgba(178,204,192,0.15)",
+                      }}
+                    >
                       <div className="flex gap-1.5 items-center">
-                        <span className="text-[9px] w-16 shrink-0" style={{ color: "#8f8f85" }}>
+                        <span
+                          className="text-[9px] w-16 shrink-0"
+                          style={{ color: "var(--on-surf-var)" }}
+                        >
                           {methodLabels[primaryMethod] ?? primaryMethod}
                         </span>
                         <input
                           type="number"
                           className="flex-1 px-2 py-1 text-[10px] rounded-lg focus:outline-none"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0ee" }}
+                          style={{
+                            background: "var(--surf-low)",
+                            border: "1px solid rgba(178,204,192,0.2)",
+                            color: "var(--on-surf)",
+                          }}
                           placeholder="Monto..."
                           value={primaryAmount}
                           onChange={(e) => setPrimaryAmount(e.target.value)}
                         />
                       </div>
                       <div className="flex gap-1.5 items-center">
-                        <Select value={secondaryMethod} onValueChange={(v) => setSecondaryMethod(v as typeof secondaryMethod)}>
+                        <Select
+                          value={secondaryMethod}
+                          onValueChange={(v) =>
+                            setSecondaryMethod(v as typeof secondaryMethod)
+                          }
+                        >
                           <SelectTrigger
                             className="w-16 h-6 text-[9px] shrink-0 px-1"
-                            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                            style={{
+                              background: "var(--surf-low)",
+                              border: "1px solid rgba(178,204,192,0.2)",
+                            }}
                           >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {(["CASH", "CARD", "TRANSFER", "ATRATO"] as const).map((m) => (
-                              <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                            {(
+                              ["CASH", "CARD", "TRANSFER", "ATRATO"] as const
+                            ).map((m) => (
+                              <SelectItem key={m} value={m} className="text-xs">
+                                {m}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <div
                           className="flex-1 px-2 py-1 text-[10px] rounded-lg text-right"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#8f8f85" }}
+                          style={{
+                            background: "var(--surf-low)",
+                            border: "1px solid rgba(178,204,192,0.2)",
+                            color: "var(--on-surf-var)",
+                          }}
                         >
                           ${secondaryAmountNum.toFixed(2)}
                         </div>
                       </div>
                       {splitCovered ? (
-                        <p className="text-[10px]" style={{ color: "#2ECC71" }}>
-                          <Check className="inline w-3 h-3 mr-0.5" />Cubierto
+                        <p
+                          className="text-[10px]"
+                          style={{ color: "var(--p-bright)" }}
+                        >
+                          <Check className="inline w-3 h-3 mr-0.5" />
+                          Cubierto
                         </p>
                       ) : (
-                        <p className="text-[10px]" style={{ color: "#F39C12" }}>
-                          Falta ${(totalAfterDiscount - primaryAmountNum).toFixed(2)}
+                        <p
+                          className="text-[10px]"
+                          style={{ color: "var(--warn)" }}
+                        >
+                          Falta $
+                          {(totalAfterDiscount - primaryAmountNum).toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -1559,18 +2254,21 @@ export default function PosTerminal({
               className="w-full transition-all"
               style={{
                 marginTop: 10,
-                padding: 14,
+                padding: 18,
                 borderRadius: 999,
                 background: canProcess
-                  ? "linear-gradient(135deg, #1B4332, #2ECC71)"
-                  : "rgba(255,255,255,0.06)",
-                color: canProcess ? "#ffffff" : "#8f8f85",
+                  ? "var(--p-bright)"
+                  : "var(--surf-highest)",
+                color: canProcess ? "var(--on-p)" : "var(--on-surf-var)",
                 fontFamily: "var(--font-display)",
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: "0.06em",
+                fontSize: 16,
+                fontWeight: 800,
+                letterSpacing: "-0.01em",
                 textTransform: "uppercase" as const,
                 border: "none",
+                boxShadow: canProcess
+                  ? "0 16px 40px rgba(46,204,113,0.2)"
+                  : "none",
               }}
             >
               {isProcessing ? (
