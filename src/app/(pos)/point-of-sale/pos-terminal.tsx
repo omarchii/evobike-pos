@@ -129,9 +129,26 @@ function colorToCSS(nombre: string): string {
     TORNASOL: "conic-gradient(from 0deg, #ff6b6b, #a8edea, #fed6e3, #ff6b6b)",
     LILA: "#b794f4",
   };
+  
+  const upper = nombre.toUpperCase();
+  const foundColors: string[] = [];
+  
   for (const [key, val] of Object.entries(map)) {
-    if (nombre.toUpperCase().includes(key)) return val;
+    if (upper.includes(key)) {
+      foundColors.push(val);
+    }
   }
+
+  if (foundColors.length === 1) return foundColors[0];
+  if (foundColors.length >= 2) {
+    const c1 = foundColors[0];
+    const c2 = foundColors[1];
+    if (c1.startsWith("conic") || c2.startsWith("conic")) {
+      return c1.startsWith("conic") ? c1 : c2;
+    }
+    return `linear-gradient(135deg, ${c1} 50%, ${c2} 50%)`;
+  }
+  
   return "#94a3b8";
 }
 
@@ -719,15 +736,15 @@ export default function PosTerminal({
     try {
       const paymentMethods: PaymentMethodInput[] = isSplitPayment
         ? [
-            { method: primaryMethod, amount: primaryAmountNum },
-            { method: secondaryMethod, amount: secondaryAmountNum },
-          ]
+          { method: primaryMethod, amount: primaryAmountNum },
+          { method: secondaryMethod, amount: secondaryAmountNum },
+        ]
         : [
-            {
-              method: primaryMethod,
-              amount: isLayaway ? layawayDownPayment : totalAfterDiscount,
-            },
-          ];
+          {
+            method: primaryMethod,
+            amount: isLayaway ? layawayDownPayment : totalAfterDiscount,
+          },
+        ];
 
       const result = await processSaleAction({
         items: cart.map((ci) => ({
@@ -870,14 +887,14 @@ export default function PosTerminal({
               style={
                 categoryFilter === cat
                   ? {
-                      background: "linear-gradient(135deg, #1B4332, #2ECC71)",
-                      color: "var(--on-primary)",
-                    }
+                    background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                    color: "var(--on-primary)",
+                  }
                   : {
-                      border: "1.5px solid var(--outline-var)",
-                      color: "var(--on-surf-var)",
-                      background: "transparent",
-                    }
+                    border: "1.5px solid var(--outline-var)",
+                    color: "var(--on-surf-var)",
+                    background: "transparent",
+                  }
               }
             >
               {cat}
@@ -1253,50 +1270,50 @@ export default function PosTerminal({
                   <div className="flex flex-wrap" style={{ gap: 8 }}>
                     {colorOptions.length > 0
                       ? colorOptions.map((c) => {
-                          const css = colorToCSS(c.nombre);
-                          const isGradient = css.startsWith("conic");
-                          const isColorSelected = c.id === selectedColorId;
-                          const hasColorStock = c.stockInBranch > 0;
-                          return (
-                            <button
-                              key={c.id}
-                              title={c.nombre + (hasColorStock ? "" : " — Sin stock")}
-                              onClick={() => hasColorStock && setSelectedColorId(c.id)}
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: "50%",
-                                flexShrink: 0,
-                                ...(isGradient
-                                  ? { background: css }
-                                  : { backgroundColor: css }),
-                                border: isColorSelected
-                                  ? "2px solid var(--p-bright)"
-                                  : "1px solid var(--outline-var)",
-                                boxShadow: isColorSelected
-                                  ? "0 0 0 2px rgba(46,204,113,0.2)"
-                                  : "none",
-                                opacity: !hasColorStock ? 0.35 : isColorSelected ? 1 : 0.8,
-                                filter: !hasColorStock ? "grayscale(100%)" : "none",
-                                cursor: !hasColorStock ? "not-allowed" : "pointer",
-                                pointerEvents: !hasColorStock ? "none" : undefined,
-                                transition: "all 0.15s",
-                              }}
-                            />
-                          );
-                        })
-                      : [0, 1, 2].map((i) => (
-                          <div
-                            key={i}
+                        const css = colorToCSS(c.nombre);
+                        const isGradient = css.includes("gradient");
+                        const isColorSelected = c.id === selectedColorId;
+                        const hasColorStock = c.stockInBranch > 0;
+                        return (
+                          <button
+                            key={c.id}
+                            title={c.nombre + (hasColorStock ? "" : " — Sin stock")}
+                            onClick={() => hasColorStock && setSelectedColorId(c.id)}
                             style={{
                               width: 32,
                               height: 32,
                               borderRadius: "50%",
-                              background: "var(--surf-low)",
-                              border: "1px solid var(--outline-var)",
+                              flexShrink: 0,
+                              ...(isGradient
+                                ? { background: css }
+                                : { backgroundColor: css }),
+                              border: isColorSelected
+                                ? "2px solid var(--p-bright)"
+                                : "1px solid var(--outline-var)",
+                              boxShadow: isColorSelected
+                                ? "0 0 0 2px rgba(46,204,113,0.2)"
+                                : "none",
+                              opacity: !hasColorStock ? 0.5 : isColorSelected ? 1 : 0.8,
+                              filter: !hasColorStock ? "blur(1.5px)" : "none",
+                              cursor: !hasColorStock ? "not-allowed" : "pointer",
+                              pointerEvents: !hasColorStock ? "none" : undefined,
+                              transition: "all 0.15s",
                             }}
                           />
-                        ))}
+                        );
+                      })
+                      : [0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background: "var(--surf-low)",
+                            border: "1px solid var(--outline-var)",
+                          }}
+                        />
+                      ))}
                   </div>
                   {selectedColorId && (
                     <p
@@ -2046,7 +2063,7 @@ export default function PosTerminal({
                     color: "var(--on-surf)",
                   }}
                 >
-                  {isLayaway ? "Anticipo" : "Total Due"}
+                  {isLayaway ? "Anticipo" : "Total"}
                 </span>
                 <span
                   style={{
@@ -2125,7 +2142,7 @@ export default function PosTerminal({
               const methodLabels: Record<string, string> = {
                 CASH: "Efectivo",
                 CARD: "Tarjeta",
-                TRANSFER: "Transfer",
+                TRANSFER: "Transferencia",
                 ATRATO: "Atrato",
               };
 
@@ -2139,11 +2156,10 @@ export default function PosTerminal({
                           <button
                             key={method}
                             onClick={() => setPrimaryMethod(method)}
-                            className={`flex flex-col items-center justify-center transition-all rounded-xl p-[14px] text-[12px] font-bold gap-[5px] relative ${
-                              isActive
-                                ? "bg-[var(--sec-container)] text-[var(--p-bright)]"
-                                : "bg-[var(--surf-highest)] text-[var(--on-surf-var)] hover:bg-[var(--sec-container)] hover:text-[var(--p-bright)]"
-                            }`}
+                            className={`flex flex-col items-center justify-center transition-all rounded-xl p-[14px] text-[12px] font-bold gap-[5px] relative ${isActive
+                              ? "bg-[var(--sec-container)] text-[var(--p-bright)]"
+                              : "bg-[var(--surf-highest)] text-[var(--on-surf-var)] hover:bg-[var(--sec-container)] hover:text-[var(--p-bright)]"
+                              }`}
                             style={{ border: "none" }}
                           >
                             {method === "ATRATO" && (
