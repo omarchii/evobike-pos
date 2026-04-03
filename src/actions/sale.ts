@@ -10,9 +10,10 @@ interface SessionUser {
   branchId: string;
 }
 
-interface PaymentMethodInput {
+export interface PaymentMethodInput {
   method: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE" | "ATRATO";
   amount: number;
+  reference?: string;
 }
 
 interface SaleItemInput {
@@ -203,6 +204,7 @@ export async function processSaleAction(input: SaleInput) {
             type: "PAYMENT_IN",
             method: pm.method,
             amount: pm.amount,
+            reference: pm.reference,
             collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
           },
         });

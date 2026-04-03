@@ -81,6 +81,7 @@ interface CustomerData {
 interface PaymentMethodInput {
   method: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE" | "ATRATO";
   amount: number;
+  reference?: string;
 }
 
 interface CartItem {
@@ -435,6 +436,17 @@ export default function PosTerminal({
   const [primaryAmount, setPrimaryAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ── Modals state
+  const [paymentModalStep, setPaymentModalStep] = useState<"idle" | "primary" | "secondary">("idle");
+  const [cashReceived, setCashReceived] = useState("");
+  const [cardLast4, setCardLast4] = useState("");
+  const [cardAuth, setCardAuth] = useState("");
+  const [transferRef, setTransferRef] = useState("");
+  const [transferBank, setTransferBank] = useState("");
+  const [atratoReq, setAtratoReq] = useState("");
+  const [atratoApproved, setAtratoApproved] = useState(false);
+  const [finalPaymentMethods, setFinalPaymentMethods] = useState<PaymentMethodInput[]>([]);
+
   // ── Derived: filtered modelos
   const filteredModelos = useMemo(() => {
     return modelos.filter((m) => {
@@ -716,36 +728,38 @@ export default function PosTerminal({
     setBatteryStatuses({});
   };
 
-  // ── Handlers: checkout
-  const handleCheckout = async () => {
+  // ── Handlers: start checkout sequence
+  const handleStartProcess = () => {
     if (cart.length === 0) return;
-
     if (discountAmount > 0 && !discountAuthorized) {
       toast.error("El descuento requiere autorización de Manager");
       return;
     }
-
     if (isLayaway && !selectedCustomerId) {
       toast.error("Un apartado requiere seleccionar un cliente");
       return;
     }
 
+    setCashReceived("");
+    setCardLast4("");
+    setCardAuth("");
+    setTransferRef("");
+    setTransferBank("");
+    setAtratoReq("");
+    setAtratoApproved(false);
+    setFinalPaymentMethods([]);
+
+    // Calculate actual required amount if they pay with CASH and need suggestions
+    // But modal handles its own input so we just open primary step
+    setPaymentModalStep("primary");
+  };
+
+  const handleCheckout = async (methodsToSubmit: PaymentMethodInput[], totalChange: number = 0) => {
+    setPaymentModalStep("idle");
     setIsProcessing(true);
     toast.loading("Procesando venta...", { id: "checkout" });
 
     try {
-      const paymentMethods: PaymentMethodInput[] = isSplitPayment
-        ? [
-          { method: primaryMethod, amount: primaryAmountNum },
-          { method: secondaryMethod, amount: secondaryAmountNum },
-        ]
-        : [
-          {
-            method: primaryMethod,
-            amount: isLayaway ? layawayDownPayment : totalAfterDiscount,
-          },
-        ];
-
       const result = await processSaleAction({
         items: cart.map((ci) => ({
           productVariantId: ci.variantId,
@@ -759,7 +773,7 @@ export default function PosTerminal({
         })),
         total: totalAfterDiscount,
         discount: discountAmount > 0 && discountAuthorized ? discountAmount : 0,
-        paymentMethods,
+        paymentMethods: methodsToSubmit,
         isLayaway,
         customerId: selectedCustomerId || undefined,
         downPayment: isLayaway ? layawayDownPayment : undefined,
@@ -781,6 +795,23 @@ export default function PosTerminal({
         `Venta registrada · Folio: ${result.folio}`,
         { id: "checkout", duration: 6000 },
       );
+
+      if (totalChange > 0) {
+        toast("ATENCIÓN: Cambio pendiente", {
+          description: `Dar cambio al cliente: $${totalChange.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
+          duration: Infinity,
+          style: {
+            background: "var(--warn-container)",
+            border: "1px solid var(--warn)",
+            color: "var(--warn)",
+          },
+          action: {
+            label: "Cambio entregado ✓",
+            onClick: () => {}
+          }
+        });
+      }
+
       resetCart();
     } catch {
       toast.error("Error de conexión", { id: "checkout" });
@@ -2323,7 +2354,7 @@ export default function PosTerminal({
             {/* Process button */}
             <button
               disabled={!canProcess}
-              onClick={handleCheckout}
+              onClick={handleStartProcess}
               className="w-full transition-all"
               style={{
                 marginTop: 10,
@@ -2361,6 +2392,275 @@ export default function PosTerminal({
           </div>
         )}
       </div>
+
+      {/* ══ OVERLAY: PAYMENT CONFIRMATION MODALS ════════════════════════════════════ */}
+      {paymentModalStep !== "idle" && (() => {
+        const method = paymentModalStep === "primary" ? primaryMethod : secondaryMethod;
+        const amountNum = paymentModalStep === "primary"
+          ? (isLayaway && !isSplitPayment ? layawayDownPayment : (isSplitPayment ? primaryAmountNum : totalAfterDiscount))
+          : secondaryAmountNum;
+        
+        const isCash = method === "CASH";
+        const isCard = method === "CARD";
+        const isTransfer = method === "TRANSFER";
+        const isAtrato = method === "ATRATO";
+        const isCreditBalance = method === "CREDIT_BALANCE";
+        
+        let headerTitle = "Confirmar pago";
+        if (isCash) headerTitle = "Pago en efectivo";
+        if (isCard) headerTitle = "Pago con tarjeta";
+        if (isTransfer) headerTitle = "Pago por transferencia";
+        if (isAtrato) headerTitle = "Financiamiento Atrato";
+        if (isCreditBalance) headerTitle = "Uso de saldo a favor";
+
+        const handleModalConfirm = () => {
+           let reference: string | undefined = undefined;
+           
+           if (isCard) {
+             const parts = [];
+             if (cardLast4) parts.push(`*${cardLast4}`);
+             if (cardAuth) parts.push(cardAuth);
+             reference = parts.join(" | ");
+             if (!reference) reference = undefined;
+           } else if (isTransfer) {
+             reference = transferRef;
+             if (transferBank) reference = `${transferBank} - ${transferRef}`;
+           } else if (isAtrato) {
+             reference = atratoReq;
+           }
+
+           const newMethod: PaymentMethodInput = {
+             method: method,
+             amount: amountNum,
+             reference
+           };
+
+           const updatedMethods = [...finalPaymentMethods, newMethod];
+
+           if (paymentModalStep === "primary" && isSplitPayment) {
+             setFinalPaymentMethods(updatedMethods);
+             setPaymentModalStep("secondary");
+           } else {
+             // Sequence complete, process
+             let totalChange = 0;
+             if (updatedMethods.some(m => m.method === "CASH")) {
+                const totalCashReceived = Number(cashReceived) || amountNum; 
+                if (method === "CASH" && totalCashReceived > amountNum) {
+                  totalChange = totalCashReceived - amountNum;
+                }
+             }
+             handleCheckout(updatedMethods, totalChange);
+           }
+        };
+
+        const handleCancel = () => {
+           setPaymentModalStep("idle");
+        };
+
+        let canConfirm = true;
+        if (isCash) {
+          const receivedNum = Number(cashReceived);
+          if (!cashReceived || receivedNum < amountNum) canConfirm = false;
+        } else if (isTransfer) {
+          if (!transferRef.trim()) canConfirm = false;
+        } else if (isAtrato) {
+          if (!atratoReq.trim() || !atratoApproved) canConfirm = false;
+        }
+
+        // dynamic quick cash amounts
+        const c100 = Math.ceil(amountNum / 100) * 100;
+        const c500 = Math.ceil(amountNum / 500) * 500;
+        const c1000 = Math.ceil(amountNum / 1000) * 1000;
+        const quickAmounts = Array.from(new Set([amountNum, c100, c500, c1000])).filter(v => v >= amountNum).slice(0, 4);
+
+        return (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}>
+            <div style={{
+              background: "var(--surf-lowest)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "var(--shadow)",
+              border: "1px solid rgba(178,204,192,0.15)",
+              width: 380,
+              padding: 24,
+            }}>
+              {isSplitPayment && paymentModalStep === "secondary" && (
+                <div style={{ fontSize: 11, color: "var(--p-bright)", fontWeight: 600, marginBottom: 8 }}>
+                  <Check className="inline w-3 h-3 mr-1" />
+                  Método 1 confirmado — ahora el método 2
+                </div>
+              )}
+
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "var(--on-surf)" }}>
+                {headerTitle}
+              </h2>
+              <div style={{ marginTop: 12, marginBottom: 20 }}>
+                <p style={{ fontSize: 12, color: "var(--on-surf-var)" }}>Total a cobrar</p>
+                <p style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 800, color: "var(--p-bright)" }}>
+                  ${amountNum.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              {isCash && (
+                <div className="space-y-4">
+                  <div>
+                    <Label style={{ color: "var(--on-surf-var)", fontSize: 11 }}>Recibido del cliente</Label>
+                    <Input 
+                      type="number"
+                      placeholder="$0.00"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      style={{
+                        fontSize: 20, textAlign: "center", height: 48, marginTop: 4,
+                        background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)",
+                        color: "var(--on-surf)"
+                      }}
+                    />
+                    <div className="flex gap-2 mt-2">
+                       {quickAmounts.map(val => (
+                          <button key={val} 
+                            onClick={() => setCashReceived(val.toString())}
+                            style={{ 
+                              flex: 1, padding: "6px", fontSize: 12, borderRadius: 8,
+                              background: "var(--surf-high)", border: "1px solid rgba(178,204,192,0.2)",
+                              color: "var(--on-surf)", fontWeight: 600, transition: "background 0.2s"
+                            }}
+                          >
+                            ${val === amountNum ? "Exacto" : val}
+                          </button>
+                       ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label style={{ color: "var(--on-surf-var)", fontSize: 11 }}>Cambio a entregar</Label>
+                    {(() => {
+                      const rec = Number(cashReceived);
+                      const missing = amountNum - rec;
+                      if (!cashReceived) return <p style={{ fontSize: 28, fontWeight: 700, color: "var(--on-surf-var)" }}>—</p>
+                      if (missing > 0) return <p style={{ fontSize: 14, fontWeight: 600, color: "var(--warn)", marginTop: 4 }}>Falta: ${missing.toFixed(2)}</p>
+                      return <p style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "var(--p-bright)", marginTop: 4 }}>
+                        ${Math.abs(missing).toFixed(2)}
+                      </p>
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {isCard && (
+                <div className="space-y-4">
+                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                    <p style={{ fontSize: 12, color: "var(--on-surf-var)" }}>
+                      Procesa el pago en el datáfono y confirma cuando el terminal indique APROBADO.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label style={{ fontSize: 11, color: "var(--on-surf-var)" }}>Últimos 4 dígitos</Label>
+                      <Input 
+                        maxLength={4} placeholder="0000"
+                        value={cardLast4} onChange={e => setCardLast4(e.target.value.replace(/\D/g, ''))}
+                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                      />
+                    </div>
+                    <div>
+                      <Label style={{ fontSize: 11, color: "var(--on-surf-var)" }}>Referencia (opc)</Label>
+                      <Input 
+                        placeholder="Autorización"
+                        value={cardAuth} onChange={e => setCardAuth(e.target.value)}
+                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isTransfer && (
+                <div className="space-y-4">
+                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                    <p style={{ fontSize: 12, color: "var(--on-surf-var)" }}>
+                      Verifica que la transferencia se haya recibido antes de confirmar.
+                    </p>
+                  </div>
+                  <div>
+                    <Label style={{ fontSize: 11, color: "var(--on-surf-var)" }}>Número de referencia <span style={{color: "var(--warn)"}}>*</span></Label>
+                    <Input 
+                      placeholder="Folio o número de operación"
+                      value={transferRef} onChange={e => setTransferRef(e.target.value)}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                    />
+                  </div>
+                  <div>
+                    <Label style={{ fontSize: 11, color: "var(--on-surf-var)" }}>Banco emisor (opcional)</Label>
+                    <Input 
+                      placeholder="BBVA, Banorte, SPEI..."
+                      value={transferBank} onChange={e => setTransferBank(e.target.value)}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {isAtrato && (
+                <div className="space-y-4">
+                  <div style={{ background: "var(--warn-container)", color: "var(--warn)", padding: "8px 12px", borderRadius: "var(--r-md)" }}>
+                    <p style={{ fontSize: 11, fontWeight: 500 }}>
+                      La financiera transferirá el monto posteriormente.
+                    </p>
+                  </div>
+                  <div>
+                    <Label style={{ fontSize: 11, color: "var(--on-surf-var)" }}>Número de solicitud <span style={{color: "var(--warn)"}}>*</span></Label>
+                    <Input 
+                      placeholder="AT-XXXXXXXX"
+                      value={atratoReq} onChange={e => setAtratoReq(e.target.value)}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 mt-4" style={{ background: "var(--surf-high)", padding: 12, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                    <Switch checked={atratoApproved} onCheckedChange={setAtratoApproved} />
+                    <Label style={{ fontSize: 11, color: "var(--on-surf)" }}>Confirmo que Atrato aprobó esta solicitud</Label>
+                  </div>
+                </div>
+              )}
+
+              {isCreditBalance && (
+                <div style={{ color: "var(--on-surf-var)", fontSize: 12 }}>
+                  Se descontarán ${amountNum.toFixed(2)} del saldo a favor del cliente.
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-6">
+                <button 
+                  onClick={handleCancel}
+                  style={{
+                    flex: 1, padding: "12px", borderRadius: 999,
+                    background: "var(--surf-high)", color: "var(--on-surf)",
+                    border: "1px solid rgba(178,204,192,0.2)", fontSize: 13, fontWeight: 600
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleModalConfirm}
+                  disabled={!canConfirm}
+                  style={{
+                    flex: 1, padding: "12px", borderRadius: 999, border: "none",
+                    background: canConfirm ? "linear-gradient(135deg, #1B4332, #2ECC71)" : "var(--surf-highest)", 
+                    color: canConfirm ? "white" : "var(--on-surf-var)", 
+                    fontSize: 13, fontWeight: 600,
+                    cursor: canConfirm ? "pointer" : "not-allowed",
+                    boxShadow: canConfirm ? "0 4px 14px rgba(46,204,113,0.2)" : "none"
+                  }}
+                >
+                  Confirmar {isCash ? "y cobrar" : (isAtrato ? "Atrato" : "pago")}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

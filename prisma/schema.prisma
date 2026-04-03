@@ -229,6 +229,7 @@ model CashTransaction {
   type             String           // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
   method           PaymentMethod
   amount           Decimal          @db.Decimal(10, 2)
+  reference        String?
   collectionStatus CollectionStatus @default(COLLECTED)
   createdAt        DateTime         @default(now())
 
