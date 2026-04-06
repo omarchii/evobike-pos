@@ -9,9 +9,13 @@ import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+interface SessionUser {
+    branchId: string;
+}
+
 export default async function InventoryPage() {
     const session = await getServerSession(authOptions);
-    const branchId = (session?.user as any)?.branchId;
+    const branchId = (session?.user as SessionUser)?.branchId;
 
     // Get products with their stocks in this branch
     const rawProducts = await prisma.productVariant.findMany({

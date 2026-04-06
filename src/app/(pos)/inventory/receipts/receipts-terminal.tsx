@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Plus, Minus, Trash2, PackagePlus, ArrowDownToLine, Package } from "lucide-react";
+import { Search, Trash2, PackagePlus, ArrowDownToLine, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,15 +11,33 @@ import { toast } from "sonner";
 import { receiveInventoryAction } from "@/actions/inventory";
 import { useSession } from "next-auth/react";
 
+interface SessionUser {
+    branchId: string;
+}
+
+interface ProductStock {
+    branchId: string;
+    quantity: number;
+}
+
+interface Product {
+    id: string;
+    sku: string;
+    name: string;
+    price: number;
+    cost: number;
+    stocks: ProductStock[];
+}
+
 interface ReceiptItem {
-    product: any;
+    product: Product;
     quantity: number;
     cost: number;
 }
 
-export default function ReceiptsTerminal({ initialProducts }: { initialProducts: any[] }) {
+export default function ReceiptsTerminal({ initialProducts }: { initialProducts: Product[] }) {
     const { data: session } = useSession();
-    const branchId = (session?.user as any)?.branchId;
+    const branchId = (session?.user as SessionUser)?.branchId;
 
     const [search, setSearch] = useState("");
     const [cart, setCart] = useState<ReceiptItem[]>([]);
@@ -35,7 +53,7 @@ export default function ReceiptsTerminal({ initialProducts }: { initialProducts:
         );
     }, [search, initialProducts]);
 
-    const addToList = (product: any) => {
+    const addToList = (product: Product) => {
         setCart((prev) => {
             const existing = prev.find((item) => item.product.id === product.id);
             if (existing) {
@@ -112,7 +130,7 @@ export default function ReceiptsTerminal({ initialProducts }: { initialProducts:
                 <ScrollArea className="flex-1 p-4">
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredProducts.map((product) => {
-                            const localStock = product.stocks.find((s: any) => s.branchId === branchId)?.quantity || 0;
+                            const localStock = product.stocks.find((s) => s.branchId === branchId)?.quantity || 0;
                             return (
                                 <div
                                     key={product.id}

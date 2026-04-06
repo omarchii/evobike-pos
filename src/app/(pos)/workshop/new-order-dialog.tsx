@@ -17,7 +17,7 @@ import {
 import { PlusCircle } from "lucide-react";
 import { createServiceOrder } from "@/actions/workshop";
 import { useDebouncedCallback } from "use-debounce";
-import { Search, Info, CarFront, Bike } from "lucide-react";
+import { Search, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";

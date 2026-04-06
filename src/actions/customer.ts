@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
+
+interface SessionUser {
+    id: string;
+    branchId: string;
+    role: string;
+}
 
 interface AddBalanceInput {
     customerId: string;
@@ -16,8 +23,7 @@ export async function addCustomerBalance(input: AddBalanceInput) {
         const session = await getServerSession(authOptions);
         if (!session?.user) return { success: false, error: "No autorizado" };
 
-        const userId = (session.user as any).id;
-        const branchId = (session.user as any).branchId;
+        const { id: userId, branchId } = session.user as SessionUser;
 
         // Ensure there is an active cash session
         const activeSession = await prisma.cashRegisterSession.findFirst({
@@ -54,8 +60,8 @@ export async function addCustomerBalance(input: AddBalanceInput) {
 
         revalidatePath("/customers");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -88,10 +94,13 @@ export async function createCustomer(input: CreateCustomerInput) {
         revalidatePath("/point-of-sale");
 
         return { success: true, customer: newCustomer };
-    } catch (error: any) {
-        if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
-            return { success: false, error: "El teléfono ya está registrado" };
+    } catch (error: unknown) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            const target = error.meta?.target;
+            if (Array.isArray(target) && target.includes("phone")) {
+                return { success: false, error: "El teléfono ya está registrado" };
+            }
         }
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }

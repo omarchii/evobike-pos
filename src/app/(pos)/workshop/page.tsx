@@ -48,7 +48,7 @@ export default async function WorkshopPage() {
             </div>
 
             {/* Client Component Kanban Board */}
-            <WorkshopBoard initialOrders={serializedOrders as any} />
+            <WorkshopBoard initialOrders={serializedOrders} />
         </div>
     );
 }

@@ -19,10 +19,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addCustomerBalance } from "@/actions/customer";
 
-export default function CustomerList({ initialCustomers }: { initialCustomers: any[] }) {
+interface CustomerItem {
+    id: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+    balance: number;
+    creditLimit: number;
+    _count?: { sales: number };
+}
+
+export default function CustomerList({ initialCustomers }: { initialCustomers: CustomerItem[] }) {
     const router = useRouter();
     const [search, setSearch] = useState("");
-    const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
     const [topupAmount, setTopupAmount] = useState("");
     const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
     const [isTopupOpen, setIsTopupOpen] = useState(false);
@@ -33,13 +43,15 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
         (c.phone && c.phone.includes(search))
     );
 
-    const openTopup = (customer: any) => {
+    const openTopup = (customer: CustomerItem) => {
         setSelectedCustomer(customer);
         setTopupAmount("");
         setIsTopupOpen(true);
     };
 
     const submitTopup = async () => {
+        if (!selectedCustomer) return;
+
         const amt = parseFloat(topupAmount);
         if (isNaN(amt) || amt <= 0) {
             toast.error("Monto inválido para recarga");

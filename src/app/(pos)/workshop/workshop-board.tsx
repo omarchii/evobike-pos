@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { ServiceOrder, Customer, ServiceOrderItem, User } from "@prisma/client";
+import React, { useState } from "react";
+import { ServiceOrder, Customer, ServiceOrderItem, User, ServiceOrderStatus } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Wrench, Clock, CheckCircle2, Bike, User as UserIcon, Calendar, ArrowRight } from "lucide-react";
+import { Wrench, Clock, CheckCircle2, Bike, User as UserIcon, ArrowRight } from "lucide-react";
 import { updateServiceOrderStatus } from "@/actions/workshop";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-type FullServiceOrder = ServiceOrder & {
-    customer: Customer;
-    items: ServiceOrderItem[];
+type FullServiceOrder = Omit<ServiceOrder, "subtotal" | "total"> & {
+    subtotal: number;
+    total: number;
+    customer: Omit<Customer, "creditLimit" | "balance"> & {
+        creditLimit: number;
+        balance: number;
+    };
+    items: (Omit<ServiceOrderItem, "price"> & { price: number })[];
     user: User;
 };
 
-const COLUMNS = [
+const COLUMNS: { id: ServiceOrderStatus; title: string; icon: React.ElementType; color: string; bg: string; borderColor: string }[] = [
     { id: "PENDING", title: "En Espera", icon: Clock, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30", borderColor: "border-amber-200" },
     { id: "IN_PROGRESS", title: "En Reparación", icon: Wrench, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/30", borderColor: "border-blue-200" },
     { id: "COMPLETED", title: "Listo p/ Entrega", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/30", borderColor: "border-emerald-200" },
@@ -29,7 +34,7 @@ export default function WorkshopBoard({ initialOrders }: { initialOrders: FullSe
     const [orders, setOrders] = useState<FullServiceOrder[]>(initialOrders);
     const [movingId, setMovingId] = useState<string | null>(null);
 
-    const moveOrder = async (orderId: string, currentStatus: any) => {
+    const moveOrder = async (orderId: string, currentStatus: ServiceOrderStatus) => {
         setMovingId(orderId);
         toast.loading("Avanzando orden...", { id: `move-${orderId}` });
 
@@ -86,7 +91,7 @@ export default function WorkshopBoard({ initialOrders }: { initialOrders: FullSe
                                             </div>
                                             {order.diagnosis && (
                                                 <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded text-xs line-clamp-2 italic">
-                                                    "{order.diagnosis}"
+                                                    &quot;{order.diagnosis}&quot;
                                                 </div>
                                             )}
                                         </CardContent>

@@ -2,19 +2,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, CreditCard, Landmark, Wallet, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Banknote, CreditCard, Landmark, Wallet } from "lucide-react";
 import CloseRegisterButton from "./close-register-button";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
+interface SessionUser {
+    id: string;
+    branchId: string;
+    role: string;
+}
+
 export default async function CashRegisterPage() {
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect("/login");
 
-    const userId = (session.user as any).id;
-    const branchId = (session.user as any).branchId;
+    const userId = (session.user as SessionUser).id;
+    const branchId = (session.user as SessionUser).branchId;
 
     // Obtener sesión activa de este usuario
     const activeSession = await prisma.cashRegisterSession.findFirst({
@@ -44,12 +50,10 @@ export default async function CashRegisterPage() {
     let cashSales = 0;
     let cardSales = 0;
     let transferSales = 0;
-    let totalIncome = 0;
 
     activeSession.transactions.forEach(tx => {
         if (tx.type === "PAYMENT_IN") {
             const amt = Number(tx.amount);
-            totalIncome += amt;
             if (tx.method === "CASH") cashSales += amt;
             if (tx.method === "CARD") cardSales += amt;
             if (tx.method === "TRANSFER") transferSales += amt;

@@ -33,7 +33,7 @@ export default async function ReceiptsPage() {
                 <p className="text-slate-500 text-sm mt-1">Ingresa nuevos productos al inventario de tu sucursal.</p>
             </div>
 
-            <ReceiptsTerminal initialProducts={products as any} />
+            <ReceiptsTerminal initialProducts={products} />
         </div>
     );
 }

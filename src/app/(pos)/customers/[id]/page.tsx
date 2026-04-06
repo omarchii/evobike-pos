@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
+
+type CustomerWithRelations = Prisma.CustomerGetPayload<{
+    include: {
+        sales: { include: { user: true } };
+        serviceOrders: { include: { user: true } };
+        bikes: true;
+    };
+}>;
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,14 +38,13 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                 orderBy: { createdAt: "desc" }
             }
         }
-    }) as any; // Bypass TS check due to cached Prisma Client in editor
+    }) as CustomerWithRelations | null;
 
     if (!customer) {
         notFound();
     }
 
     const balance = Number(customer.balance);
-    const creditLimit = Number(customer.creditLimit);
 
     return (
         <div className="space-y-6">
@@ -135,7 +142,7 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {customer.sales.map((sale: any) => (
+                                    {customer.sales.map((sale) => (
                                         <TableRow key={sale.id}>
                                             <TableCell>{new Date(sale.createdAt).toLocaleDateString()}</TableCell>
                                             <TableCell className="font-mono text-xs">{sale.folio.slice(0, 8)}</TableCell>
@@ -180,7 +187,7 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {customer.serviceOrders.map((so: any) => (
+                                    {customer.serviceOrders.map((so) => (
                                         <TableRow key={so.id}>
                                             <TableCell>{new Date(so.createdAt).toLocaleDateString()}</TableCell>
                                             <TableCell className="font-mono text-xs">{so.folio.slice(0, 8)}</TableCell>
@@ -229,7 +236,7 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {customer.bikes.map((bike: any) => (
+                                    {customer.bikes.map((bike) => (
                                         <TableRow key={bike.id} className="bg-amber-50/10">
                                             <TableCell>{new Date(bike.createdAt).toLocaleDateString()}</TableCell>
                                             <TableCell className="font-semibold">{bike.brand} {bike.model}</TableCell>

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { openCashSession, getActiveCashSession, closeCashSession } from "@/actions/cash-register";
 import { useRouter } from "next/navigation";
-import { Banknote, LockKeyholeOpen, Wallet } from "lucide-react";
+import { Banknote, Wallet } from "lucide-react";
 
 export function CashSessionManager() {
     const router = useRouter();
@@ -16,7 +16,7 @@ export function CashSessionManager() {
     const [isClosing, setIsClosing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [amount, setAmount] = useState<string>("");
-    const [hasActiveSession, setHasActiveSession] = useState(false);
+    const [, setHasActiveSession] = useState(false);
 
     // Check on mount if the user has an open session
     useEffect(() => {
