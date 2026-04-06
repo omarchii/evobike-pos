@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -26,16 +26,7 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { processSaleAction } from "@/actions/sale";
-import { createCustomer } from "@/actions/customer";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import CustomerSelectorModal, { type CustomerOption } from "./customer-selector-modal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -69,14 +60,7 @@ interface BatteryConfig {
   quantity: number;
 }
 
-interface CustomerData {
-  id: string;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  balance: number;
-  creditLimit: number;
-}
+type CustomerData = CustomerOption;
 
 interface PaymentMethodInput {
   method: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE" | "ATRATO";
@@ -420,12 +404,8 @@ export default function PosTerminal({
 
   // ── Customer state
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
-  const [creatingCustomer, setCreatingCustomer] = useState(false);
-  const [newCustomerForm, setNewCustomerForm] = useState({
-    name: "",
-    phone: "",
-  });
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [localCustomers, setLocalCustomers] = useState<CustomerData[]>(customers);
 
   // ── Payment state
   const [isSplitPayment, setIsSplitPayment] = useState(false);
@@ -735,8 +715,8 @@ export default function PosTerminal({
       toast.error("El descuento requiere autorización de Manager");
       return;
     }
-    if (isLayaway && !selectedCustomerId) {
-      toast.error("Un apartado requiere seleccionar un cliente");
+    if (!selectedCustomerId) {
+      toast.error("Debes seleccionar un cliente para continuar");
       return;
     }
 
@@ -835,23 +815,14 @@ export default function PosTerminal({
     setPrimaryAmount("");
   };
 
-  // ── Handlers: create customer
-  const handleCreateCustomer = async () => {
-    if (!newCustomerForm.name) {
-      toast.error("El nombre es obligatorio");
-      return;
-    }
-    setCreatingCustomer(true);
-    const result = await createCustomer(newCustomerForm);
-    if (result.success && result.customer) {
-      setSelectedCustomerId(result.customer.id);
-      setIsNewCustomerOpen(false);
-      setNewCustomerForm({ name: "", phone: "" });
-      router.refresh();
-    } else {
-      toast.error(result.error ?? "No se pudo crear el cliente");
-    }
-    setCreatingCustomer(false);
+  // ── Handlers: customer modal
+  const handleCustomerSelect = (customer: CustomerData) => {
+    setSelectedCustomerId(customer.id);
+  };
+
+  const handleCustomerCreated = (customer: CustomerData) => {
+    setLocalCustomers((prev) => [...prev, customer]);
+    router.refresh();
   };
 
   // ── Derived: can complete config
@@ -879,8 +850,8 @@ export default function PosTerminal({
   // ── Derived: can process sale
   const canProcess = useMemo((): boolean => {
     if (cart.length === 0 || isProcessing) return false;
+    if (!selectedCustomerId) return false;
     if (discountAmount > 0 && !discountAuthorized) return false;
-    if (isLayaway && !selectedCustomerId) return false;
     if (isSplitPayment && !splitCovered) return false;
     return true;
   }, [
@@ -888,7 +859,6 @@ export default function PosTerminal({
     isProcessing,
     discountAmount,
     discountAuthorized,
-    isLayaway,
     selectedCustomerId,
     isSplitPayment,
     splitCovered,
@@ -897,7 +867,7 @@ export default function PosTerminal({
   // Folio is generated server-side on sale creation — nothing to derive here
 
   // ── Selected customer
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+  const selectedCustomer = localCustomers.find((c) => c.id === selectedCustomerId);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1887,114 +1857,91 @@ export default function PosTerminal({
             {/* ── Customer + Layaway ───────────────────────────────────────── */}
             {cart.length > 0 && (
               <div className="space-y-2 mx-3">
-                <div className="flex gap-1.5 items-center">
-                  <Select
-                    value={selectedCustomerId}
-                    onValueChange={setSelectedCustomerId}
+                {/* Customer selector button */}
+                {selectedCustomer ? (
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                    style={{ background: "var(--surf-low)" }}
                   >
-                    <SelectTrigger
-                      className="flex-1 h-7 text-[10px]"
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(46,204,113,0.15)" }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--p-bright)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className="text-xs font-medium truncate"
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          color: "var(--on-surf)",
+                        }}
+                      >
+                        {selectedCustomer.name}
+                      </div>
+                      {selectedCustomer.phone && (
+                        <div
+                          className="text-[10px]"
+                          style={{ color: "var(--on-surf-var)" }}
+                        >
+                          {selectedCustomer.phone}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setIsCustomerModalOpen(true)}
+                      className="text-[10px] px-2 py-0.5 rounded-md"
                       style={{
-                        background: "var(--surf-low)",
-                        border: "1px solid rgba(178,204,192,0.2)",
-                        color: "var(--on-surf)",
+                        background: "var(--surf-highest)",
+                        color: "var(--on-surf-var)",
                       }}
                     >
-                      <SelectValue placeholder="Cliente (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        Sin cliente (Mostrador)
-                      </SelectItem>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Dialog
-                    open={isNewCustomerOpen}
-                    onOpenChange={setIsNewCustomerOpen}
+                      Cambiar
+                    </button>
+                    <button
+                      onClick={() => setSelectedCustomerId("")}
+                      className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                      style={{ color: "var(--on-surf-var)" }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsCustomerModalOpen(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
+                    style={{
+                      background: "var(--surf-low)",
+                      border: "1.5px dashed rgba(46,204,113,0.35)",
+                      color: "var(--p-bright)",
+                    }}
                   >
-                    <DialogTrigger asChild>
-                      <button
-                        className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ background: "var(--surf-low)" }}
-                      >
-                        <Plus
-                          className="w-3.5 h-3.5"
-                          style={{ color: "var(--on-surf)" }}
-                        />
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Alta Rápida de Cliente</DialogTitle>
-                        <DialogDescription>
-                          Agrega un cliente al CRM para asignarle esta venta.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-3 py-2">
-                        <div>
-                          <Label htmlFor="nc-name" className="text-xs">
-                            Nombre *
-                          </Label>
-                          <Input
-                            id="nc-name"
-                            value={newCustomerForm.name}
-                            onChange={(e) =>
-                              setNewCustomerForm({
-                                ...newCustomerForm,
-                                name: e.target.value,
-                              })
-                            }
-                            placeholder="Juan Pérez"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="nc-phone" className="text-xs">
-                            Teléfono
-                          </Label>
-                          <Input
-                            id="nc-phone"
-                            value={newCustomerForm.phone}
-                            onChange={(e) =>
-                              setNewCustomerForm({
-                                ...newCustomerForm,
-                                phone: e.target.value,
-                              })
-                            }
-                            placeholder="10 dígitos"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <button
-                          className="px-3 py-1.5 rounded-lg text-sm"
-                          style={{
-                            background: "var(--surf-low)",
-                            color: "var(--on-surf)",
-                          }}
-                          onClick={() => setIsNewCustomerOpen(false)}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          disabled={creatingCustomer}
-                          onClick={handleCreateCustomer}
-                          className="px-3 py-1.5 rounded-lg text-sm text-white"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #1B4332, #2ECC71)",
-                          }}
-                        >
-                          {creatingCustomer ? "Guardando..." : "Crear"}
-                        </button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                    <Plus className="w-4 h-4" />
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>
+                      Seleccionar cliente
+                    </span>
+                    <span
+                      className="ml-auto text-[10px] px-1.5 py-0.5 rounded"
+                      style={{
+                        background: "rgba(46,204,113,0.1)",
+                        color: "var(--p-bright)",
+                      }}
+                    >
+                      Requerido
+                    </span>
+                  </button>
+                )}
+
+                <CustomerSelectorModal
+                  open={isCustomerModalOpen}
+                  onClose={() => setIsCustomerModalOpen(false)}
+                  customers={localCustomers}
+                  onSelect={handleCustomerSelect}
+                  onCustomerCreated={handleCustomerCreated}
+                />
 
                 {/* Layaway toggle */}
                 <div className="flex items-center justify-between">
@@ -2381,7 +2328,7 @@ export default function PosTerminal({
                 </span>
               ) : !canProcess && discountAmount > 0 && !discountAuthorized ? (
                 "AUTORIZAR DESCUENTO"
-              ) : !canProcess && isLayaway && !selectedCustomerId ? (
+              ) : !canProcess && !selectedCustomerId ? (
                 "SELECCIONAR CLIENTE"
               ) : !canProcess && cart.length === 0 ? (
                 "CARRITO VACÍO"

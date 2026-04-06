@@ -15,9 +15,13 @@ export default async function CustomersPage() {
     });
 
     const customers = rawCustomers.map(c => ({
-        ...c,
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
         creditLimit: Number(c.creditLimit),
         balance: Number(c.balance),
+        _count: { sales: c._count.sales },
     }));
 
     return (

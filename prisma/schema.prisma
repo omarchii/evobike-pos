@@ -154,6 +154,11 @@ model InventoryMovement {
 }
 
 // === SALES ===
+enum OrderType {
+  LAYAWAY
+  BACKORDER
+}
+
 enum SaleStatus {
   COMPLETED
   CANCELLED
@@ -171,8 +176,10 @@ model Sale {
   total      Decimal    @db.Decimal(10, 2)
   status     SaleStatus
   notes        String?
-  internalNote String?  // Visible para MANAGER; no aparece en el ticket del cliente
-  createdAt    DateTime @default(now())
+  internalNote         String?  // Visible para MANAGER; no aparece en el ticket del cliente
+  orderType            OrderType?
+  expectedDeliveryDate DateTime?
+  createdAt            DateTime @default(now())
 
   branch            Branch             @relation(fields: [branchId], references: [id])
   user              User               @relation(fields: [userId], references: [id])
@@ -242,9 +249,29 @@ model Customer {
   id            String         @id @default(uuid())
   name          String
   phone         String?        @unique
+  phone2        String?
   email         String?
   creditLimit   Decimal        @default(0) @db.Decimal(10, 2)
   balance       Decimal        @default(0) @db.Decimal(10, 2)
+
+  // Dirección para flete (todos opcionales)
+  shippingStreet  String?
+  shippingExtNum  String?
+  shippingIntNum  String?
+  shippingColonia String?
+  shippingCity    String?
+  shippingState   String?
+  shippingZip     String?
+  shippingRefs    String?
+
+  // Datos de facturación (todos opcionales)
+  rfc             String?
+  razonSocial     String?
+  regimenFiscal   String?
+  usoCFDI         String?
+  emailFiscal     String?
+  direccionFiscal String?
+
   sales         Sale[]
   serviceOrders ServiceOrder[]
   bikes         CustomerBike[]

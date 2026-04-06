@@ -18,10 +18,12 @@ export default async function ReceiptsPage() {
 
     // Serialize Decimals for Client Component
     const products = rawProducts.map(p => ({
-        ...p,
+        id: p.id,
+        sku: p.sku,
         name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
         price: Number(p.precioPublico),
-        cost: Number(p.costo)
+        cost: Number(p.costo),
+        stocks: p.stocks.map(s => ({ branchId: s.branchId, quantity: s.quantity })),
     }));
 
     return (

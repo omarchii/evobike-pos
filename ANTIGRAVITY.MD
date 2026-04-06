@@ -1,15 +1,15 @@
 # ANTIGRAVITY.MD - Contexto Técnico del Proyecto
 
 ## Información General
-**Nombre del Proyecto:** evobike-pos2
-**Descripción:** Sistema de Punto de Venta (POS) integral para EvoBike, diseñado para gestionar ventas, inventario multicanal (sucursales), administración de clientes y órdenes de servicio en taller. El sistema pone un fuerte énfasis en la precisión técnica y un diseño "premium" editorial.
+**Nombre del Proyecto:** evobike-pos
+**Descripción:** Sistema de Punto de Venta (POS) integral para EvoBike, diseñado para gestionar ventas, inventario multicanal (sucursales), administración de clientes, apartados/pedidos, trazabilidad de baterías y órdenes de servicio en taller. El sistema pone un fuerte énfasis en la precisión técnica y un diseño "premium" editorial.
 
 ## Stack Tecnológico
 - **Framework:** Next.js 16.1.6 (App Router)
 - **Lenguaje:** TypeScript 5.9
 - **Frontend Core:** React 19.2.3
 - **Estilos:** Tailwind CSS v4 (Alpha/Configuración nueva)
-- **Base de Datos:** PostgreSQL (vía Docker)
+- **Base de Datos:** PostgreSQL 15+ (vía Docker)
 - **ORM:** Prisma 6.19.2
 - **Autenticación:** NextAuth 4.24.13 (Estrategia JWT, CredentialsProvider)
 - **UI Components:** shadcn/ui (Radix UI)
@@ -17,47 +17,72 @@
 - **Formularios:** React Hook Form
 - **Notificaciones:** Sonner (Toast)
 
+## Estado de Fases y Roadmap
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| **0** | Setup inicial, auth, estructura | ✅ Completo |
+| **1A** | Catálogo & variantes (`ProductVariant`) | ✅ Completo |
+| **1B** | POS Terminal básico + flujo de venta | ✅ Completo |
+| **1.5** | Sistema de diseño EvoFlow aplicado | ✅ Completo |
+| **1C** | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
+| **2 (parcial)** | Módulos de inventario, taller, clientes | ✅ Parcial |
+| **2F** | **Modales de pago avanzados** | 🔄 En progreso (fix migración) |
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente |
+| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos (teléfono, dirección flete, datos de facturación) | ⏳ Pendiente |
+| **2G** | **Módulo Pedidos** (Layaway + Backorder) | ⏳ Pendiente |
+| **2H** | **Módulo de montaje** (requiere Opus) | ⏳ Pendiente |
+| **3** | Cotizaciones | ⏳ Pendiente |
+| **4** | Taller completo (cobro + stock) | ⏳ Pendiente |
+| **5** | Reportes y comisiones | ⏳ Pendiente |
+| **6** | Cierre / producción | ⏳ Pendiente |
+
 ## Arquitectura y Patrones
 - **Organización de Rutas:**
   - `(auth)/`: Rutas públicas de autenticación (Login).
   - `(pos)/`: Rutas protegidas para la operación diaria. El layout principal verifica la sesión y redirige si no es válida.
 - **Acceso a Datos:**
   - Los Server Components consumen Prisma directamente para lecturas.
-  - Todas las mutaciones se realizan exclusivamente a través de **Server Actions** ubicados en `src/actions/`.
+  - Todas las mutaciones se realizan usando **API Routes (`src/app/api/`)** consumidas vía `fetch` desde componentes cliente, lo que garantiza el aislamiento adecuado, reemplazando el uso de Server Actions.
+  - El proceso de migrar los *Server Actions a API routes* constituye *deuda técnica a saldar para la Fase 2H*.
 - **Aislamiento por Sucursal:** La mayoría de las entidades (`Sale`, `Stock`, `ServiceOrder`, `CashRegisterSession`) están vinculadas a un `branchId`. Las consultas deben filtrarse siempre por la sucursal del usuario en sesión, excepto para el rol `ADMIN`.
 - **Estado de Sesión de Caja:** Un componente persistente `CashSessionManager` en el layout principal asegura que las operaciones de venta solo ocurran si hay una sesión de caja abierta.
+- **Transaccionalidad:** Se aplica `prisma.$transaction()` en todas las mutaciones que involucran múltiples tablas para asegurar consistencia ACID (ej. stock y caja en una venta).
+
+## Decisiones Arquitectónicas Recientes
+- **Folios secuenciales ($transaction):** Las ventas utilizan un folio secuencial generado por sucursal (ej. `LEO-0001`). Esto se hace utilizando un campo `lastSaleFolioNumber` atómico en el modelo `Branch`.
+- **Mapeo de ProductVariant (`@@map`):** Prisma `ProductVariant` interactúa con la base de datos bajo el nombre `ModeloConfiguracion` a través del mapeo `@@map` evitando migraciones de renombre destructivas.
+- **Pedidos unificados (Fase 2G):** Apartado (Layaway) y Pedido por encargo (Backorder sin stock) pasan a ser agrupados en un solo submódulo con pagos parciales y abonos para simplificación de UX.
+- **Módulo de montaje con Opus (Fase 2H):** El ensamblaje de la bicicleta con la batería requiere integraciones complejas entre inventario, trazabilidad de voltaje y órdenes de ensamblaje. Su diseño deberá ser tratado de la mano con Claude Opus.
 
 ## Estructura de Carpetas
-- `prisma/`: Esquema de la base de datos y scripts de sembrado (`seed.ts`).
+- `prisma/`: Esquema de la base de datos y scripts de sembrado (`seed.ts`, carpetas CSV `data/`).
 - `src/app/`: Estructura de rutas (Next.js App Router).
   - `(auth)/`: Flujo de login.
-  - `(pos)/`: Dashboard, terminal de venta, inventario, clientes, taller, apartados.
-- `src/actions/`: Lógica de negocio encapsulada en Server Actions (ej. `sale.ts`, `inventory.ts`).
+  - `(pos)/`: Dashboard, terminal de venta, inventario, clientes, taller, layaways/pedidos.
+  - `api/`: API Routes consumidas para mutaciones (en progreso de migración) y validación de NextAuth.
+- `src/actions/`: *(Legacy, en proceso de migración)* Lógica de negocio de mutaciones.
 - `src/components/`:
   - `ui/`: Componentes base de shadcn/ui.
   - `pos/`: Componentes específicos de la lógica de negocio del POS.
 - `src/lib/`: Utilidades compartidas, configuración de Prisma (`prisma.ts`) y Auth (`auth.ts`).
 - `public/`: Assets estáticos e imágenes de productos.
 
-## Módulos Principales
-1. **Punto de Venta (Terminal):** Interfaz para realizar ventas rápidas sincronizadas con la sesión de caja.
-2. **Gestión de Inventario:** Control de productos (`ModeloConfiguracion`) con variantes por color y voltaje. Seguimiento de movimientos de stock.
-3. **Taller (Workshop):** Gestión de órdenes de servicio con estados (PENDING → COMPLETED → DELIVERED).
-4. **CRM / Clientes:** Registro de clientes, saldos a favor (crédito) y unidades (bicicletas/scooters) vinculadas mediante VIN.
-5. **Caja (Cash Register):** Control de turnos, arqueos, entradas y salidas de efectivo.
-6. **Apartados (Layaways):** Gestión de ventas con pagos parciales y reserva de productos.
+## Módulos Principales del Schema (Prisma)
+1. **Catálogo & Inventario:** `Modelo`, `Color`, `Voltaje`, `ProductVariant` (antes `ModeloConfiguracion`), `Stock` e `InventoryMovement`.
+2. **Ventas y Caja:** `Sale` (status `SaleType`, `LAYAWAY`, etc.), `SaleItem`, `CashRegisterSession` y `CashTransaction` (Múltiples métodos, incluyendo `ATRATO`).
+3. **CRM / Clientes:** Registro de `Customer` con `balance` (crédito), `CustomerBike` (Vehículos por `VIN`) y logs de cambios `VoltageChangeLog`.
+4. **Taller y Servicios:** `ServiceOrder`, `ServiceOrderItem` Kanban (PENDING → IN_PROGRESS → COMPLETED → DELIVERED → CANCELLED) y `ServiceCatalog` (refacciones / mano de obra).
+5. **Comisiones:** `CommissionRule` y los registros `CommissionRecord` para cada vendedor/técnico.
+6. **Baterías y Ensamblaje (Fase 1C):** Trazabilidad completa con `BatteryConfiguration`, `BatteryLot`, `Battery`, registro de asignaciones `BatteryAssignment` en bicis, y órdenes `AssemblyOrder`.
 
-## Estado Actual
-- **Funcional:** Autenticación, estructura de sucursales, catálogo de productos, registro de ventas básicas, CRM de clientes, gestión de sesiones de caja.
-- **En Progreso:** Integración profunda del flujo de taller con el inventario de refacciones, reportes de KPI en el dashboard.
-- **Falta:** Sistema de alertas de stock mínimo automático, integraciones de pago externas (tarjetas crédito/débitp vía API), suite de pruebas automatizadas.
-
-## Lógica de Negocio / Flujo de Datos
-1. El usuario inicia sesión y se le asigna una sucursal (`branchId`).
-2. Para vender, debe abrir una `CashRegisterSession`.
-3. Una `Sale` descuenta automáticamente de `Stock` y genera un `InventoryMovement`.
-4. Los pagos se registran como `CashTransaction` vinculadas a la sesión de caja y la venta.
-5. En taller, una `ServiceOrder` puede consumir productos del inventario, lo que dispara movimientos de tipo `WORKSHOP_USAGE`.
+## Diseño visual: EvoFlow Green Edition
+- El proyecto utiliza **EvoFlow Green Edition**, un sistema dual (light/dark mode).
+- Estilos base mediante tokens CSS var/custom properties en `globals.css` (`--color-*`).
+- **Verde Principal:** `oklch(0.55 0.18 145)` (dark), `oklch(0.40 0.18 145)` (light).
+- **Tipografías:** `Inter` (cuerpo de texto) y `Space Grotesk` (encabezados y números).
+- Superficies y modales usan efectos *glassmorphism* cuidando contraste, logrando diferencias en elevación sin utilizar bordes sólidos estáticos de 1px.
+- Actualmente se puede ver implementado principalmente en `pos-terminal.tsx`.
 
 ## Variables de Entorno
 - `DATABASE_URL`: Conexión a PostgreSQL.
@@ -71,18 +96,12 @@
 - `npx prisma db seed`: Poblar base de datos inicial.
 - `npm run build`: Generar build de producción.
 
-## Decisiones Técnicas y Convenciones
-- **Idioma:** Todos los textos de cara al usuario final deben estar estrictamente en Español.
-- **Diseño "Kinetic Precision":** Dark mode por defecto, tipografía Space Grotesk para títulos, prohibido el uso de bordes sólidos de 1px (usar cambios de tono en superficies).
-- **Mutaciones:** Prohibido el uso de rutas de API tradicionales para cambios de estado; usar siempre Server Actions.
-- **React Compiler:** Habilitado para optimizar renderizados automáticamente.
+## Deuda Técnica Conocida
+- **Migración a API Routes:** Server actions legacy en el repositorio necesitan migrarse al estandar acordado (API Routes via fetch) antes de empezar la fase de ensamble (Fase 2H).
+- **Pruebas:** Ausencia total de Unit, Integration o E2E tests, un riesgo alto en datos financieros.
+- **Validación Cruzada en Taller:** La entrega actual de una orden de taller no descuenta productos de refacción en el inventario final, ni genera un `CashTransaction` al pagar (Fase 4 programada).
 
-## Deuda Técnica
-- **Pruebas:** Ausencia total de Unit, Integration o E2E tests.
-- **Validación Cruzada:** Riesgo de inconsistencias en saldos si fallan las transacciones de Prisma (se requiere mayor uso de `$transaction`).
-- **Escalabilidad de Archivos:** Las acciones en `src/actions/` están creciendo agresivamente por módulo.
-
-## Próximas Tareas
-- Implementar validación de VIN única por sucursal.
-- Refactorizar el flujo de pagos para soportar múltiples métodos en una sola transacción.
-- Añadir sección de reportes de rentabilidad por sucursal.
+## Próximas Tareas Inmediatas
+- Resolver el bug / drift en la migración de la base de datos necesario para los modales avanzados de pago (Fase 2F).
+- Rediseño modular para habilitar múltiples métodos de pago en una sola compra.
+- Crear módulo visual de pedidos (Backorders + Apartados LAYAWAY) en la Fase 2G.

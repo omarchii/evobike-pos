@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "Customer" ADD COLUMN     "direccionFiscal" TEXT,
+ADD COLUMN     "emailFiscal" TEXT,
+ADD COLUMN     "phone2" TEXT,
+ADD COLUMN     "razonSocial" TEXT,
+ADD COLUMN     "regimenFiscal" TEXT,
+ADD COLUMN     "rfc" TEXT,
+ADD COLUMN     "shippingCity" TEXT,
+ADD COLUMN     "shippingColonia" TEXT,
+ADD COLUMN     "shippingExtNum" TEXT,
+ADD COLUMN     "shippingIntNum" TEXT,
+ADD COLUMN     "shippingRefs" TEXT,
+ADD COLUMN     "shippingState" TEXT,
+ADD COLUMN     "shippingStreet" TEXT,
+ADD COLUMN     "shippingZip" TEXT,
+ADD COLUMN     "usoCFDI" TEXT;

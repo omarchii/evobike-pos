@@ -31,7 +31,7 @@ const routes = [
     { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
     { label: "Inventario", icon: Package, href: "/inventory" },
-    { label: "Apartados", icon: ArchiveRestore, href: "/layaways" },
+    { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Clientes", icon: Users, href: "/customers" },
     { label: "Configuración", icon: Settings, href: "/settings" },
 ];

@@ -73,13 +73,22 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 
 ## Modelos de dominio clave (Prisma)
 
-- **Modelo / Color / Voltaje / ModeloConfiguracion** — catálogo de productos con variantes. `ModeloConfiguracion` es único por `(modelo_id, color_id, voltaje_id)`.
+- **Modelo / Color / Voltaje / ProductVariant** — catálogo de productos. `ProductVariant` (mapeado como `ModeloConfiguracion` en DB via `@@map`) es único por `(modelo_id, color_id, voltaje_id)`.
 - **Stock** — inventario por producto por sucursal. Se actualiza via `InventoryMovement` (tipos: `SALE`, `RETURN`, `TRANSFER_OUT/IN`, `ADJUSTMENT`, `PURCHASE_RECEIPT`, `WORKSHOP_USAGE`).
-- **Sale / SaleItem** — ventas con folio y status (`COMPLETED | CANCELLED | LAYAWAY`). Requiere `CashRegisterSession` abierta.
-- **CashRegisterSession / CashTransaction** — turno de caja por usuario. Métodos de pago: `CASH | CARD | TRANSFER | CREDIT_BALANCE`.
-- **ServiceOrder / ServiceOrderItem** — órdenes de taller, Kanban: `PENDING → IN_PROGRESS → COMPLETED → DELIVERED`.
-- **Customer / CustomerBike** — CRM con saldo de crédito y registro de bicicletas por VIN.
-- **Layaway** — Sale con status `LAYAWAY`; pagos parciales en tabla separada.
+- **Sale / SaleItem** — ventas con folio secuencial por sucursal (`LEO-0001`), enum `SaleType` y status (`COMPLETED | CANCELLED | LAYAWAY`). Requiere `CashRegisterSession` abierta.
+- **CashRegisterSession / CashTransaction** — turno de caja por usuario. Métodos de pago: `CASH | CARD | TRANSFER | CREDIT_BALANCE | ATRATO`. `CollectionStatus`: `COLLECTED | PENDING`.
+- **ServiceOrder / ServiceOrderItem** — órdenes de taller, Kanban: `PENDING → IN_PROGRESS → COMPLETED → DELIVERED → CANCELLED`. Items pueden referenciar `ProductVariant` o `ServiceCatalog`.
+- **ServiceCatalog** — catálogo de servicios por sucursal (mano de obra, refacciones estándar).
+- **Customer / CustomerBike** — CRM con saldo de crédito y bicicletas por VIN. `CustomerBike` único por `(serialNumber, branchId)`.
+- **VoltageChangeLog** — historial de cambios de voltaje en `CustomerBike`.
+- **Layaway / Pedido** — Sale con status `LAYAWAY` o tipo backorder; pagos parciales. Fusionados en módulo Pedidos (Fase 2G).
+- **CommissionRule / CommissionRecord** — reglas de comisión por rol/modelo y registros generados en cada venta.
+- **BatteryConfiguration** — cuántas baterías (y de qué `ProductVariant`) requiere cada combinación `(Modelo, Voltaje)`.
+- **BatteryLot** — lote de recepción de baterías (proveedor, referencia, fecha).
+- **Battery** — unidad individual con serial único. Estados: `IN_STOCK | INSTALLED | DEFECTIVE | WARRANTY_REVIEW`.
+- **BatteryAssignment** — historial de instalaciones/desinstalaciones de batería en `CustomerBike`.
+- **AssemblyOrder** — orden de ensamble vehículo+batería. Estados: `PENDING | COMPLETED | CANCELLED`.
+- **Branch.lastSaleFolioNumber** — contador secuencial de folios por sucursal (atómico via `$transaction`).
 
 ---
 
@@ -133,6 +142,12 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 
 - Tailwind utility-first. `cn()` de `@/lib/utils` para clases condicionales.
 - No crear archivos `.css` custom salvo `globals.css`.
+- Sistema de diseño: **EvoFlow Green Edition** (dual mode — light/dark).
+  - Tokens en `globals.css` como CSS custom properties (`--color-*`, `--radius-*`).
+  - Verde primario: `oklch(0.55 0.18 145)` en dark, `oklch(0.40 0.18 145)` en light.
+  - Tipografía: Inter (body) + Space Grotesk (headings).
+  - Sin bordes sólidos de 1px; usar diferencia de fondos para separar secciones.
+  - Glassmorphism para elementos flotantes/modales.
 
 ### Imports
 
@@ -154,6 +169,38 @@ import { prisma } from "../../lib/prisma";
 
 - Está habilitado. **No usar `useMemo` ni `useCallback` manualmente**
   salvo que un profiling lo justifique explícitamente.
+
+---
+
+## Decisiones arquitectónicas clave
+
+- **`ProductVariant` via `@@map`** — el modelo Prisma se llama `ProductVariant` en TypeScript pero la tabla en DB sigue siendo `ModeloConfiguracion`. Usar siempre el nombre TypeScript en el código.
+- **Folio secuencial por sucursal** — folios tipo `LEO-0001` generados con `Branch.lastSaleFolioNumber` incrementado atómicamente dentro de `prisma.$transaction()`.
+- **Layaway + Backorder → módulo Pedidos** — ambos flujos se fusionan en la misma UI (Fase 2G). No crear módulos separados.
+- **Server Actions → API Routes (deuda técnica)** — actualmente las mutaciones viven en `src/actions/`. La migración a API Routes es deuda técnica programada para Fase 2H. **No migrar antes de tiempo.**
+- **Módulo de montaje (Fase 2H) requiere Opus** — el diseño e implementación del módulo de ensamble batería+vehículo debe planificarse con Claude Opus por su complejidad.
+
+---
+
+## Roadmap de fases
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| 0 | Setup inicial, auth, estructura | ✅ Completo |
+| 1A | Catálogo & variantes (`ProductVariant`) | ✅ Completo |
+| 1B | POS Terminal básico + flujo de venta | ✅ Completo |
+| 1.5 | Sistema de diseño EvoFlow aplicado | ✅ Completo |
+| 1C | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
+| 2 (parcial) | Módulos de inventario, taller, clientes | ✅ Parcial |
+| 2F | Modales de pago avanzados (múltiples métodos, ATRATO) | ✅ Completo |
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente |
+| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos (teléfono, dirección flete, datos de facturación) | ⏳ Pendiente |
+| **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ⏳ Pendiente |
+| **2H** | **Módulo de montaje** (battery+vehículo UI) — requiere Opus + migrar a API Routes | ⏳ Pendiente |
+| 3 | Cotizaciones | ⏳ Pendiente |
+| 4 | Taller completo (cobro al entregar + descuento automático de stock) | ⏳ Pendiente |
+| 5 | Reportes y comisiones (incluye desglose COLLECTED vs PENDING en caja) | ⏳ Pendiente |
+| 6 | Cierre / producción (tests, hardening, deploy, config Prisma v7) | ⏳ Pendiente |
 
 ---
 

@@ -95,6 +95,7 @@ export default async function PointOfSalePage() {
     id: c.id,
     name: c.name,
     phone: c.phone,
+    phone2: c.phone2,
     email: c.email,
     balance: Number(c.balance),
     creditLimit: Number(c.creditLimit),

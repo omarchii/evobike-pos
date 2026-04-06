@@ -1,13 +1,13 @@
-# CONTEXT.md — evobike-pos2
+# CONTEXT.md — evobike-pos
 
-> Documento de contexto para retomar el trabajo sin fricción. Generado el 2026-03-27.
+> Documento de contexto para retomar el trabajo sin fricción. Actualizado 2026-04-03.
 > Lee este archivo en su totalidad antes de tocar código.
 
 ---
 
 ## 1. Descripción general
 
-**evobike-pos2** es un sistema de punto de venta (POS) para una cadena de tiendas de vehículos eléctricos (bicicletas y scooters eléctricos). Gestiona ventas, inventario, taller mecánico, clientes con crédito, apartados y control de caja por turno.
+**evobike-pos** es un sistema de punto de venta (POS) para una cadena de tiendas de vehículos eléctricos (bicicletas y scooters eléctricos). Gestiona ventas, inventario, taller mecánico, clientes con crédito, apartados/pedidos, trazabilidad de baterías y control de caja por turno.
 
 **Para quién:** Personal de tienda en roles SELLER, TECHNICIAN, MANAGER y ADMIN que trabajan en múltiples sucursales (actualmente: LEO y AV135). Cada usuario está asignado a una sucursal y sus operaciones quedan aisladas a ella por defecto.
 
@@ -50,7 +50,11 @@ Browser
         └── Server Actions (src/actions/) → Prisma $transaction (escrituras)
 ```
 
-No hay una capa de API REST para mutaciones. Todo pasa por **Server Actions** con `"use server"`. Los pocos endpoints en `src/app/api/` son solo para NextAuth y búsquedas especiales (serial-search, cascada de modelos→colores→voltajes).
+> ⚠️ **Deuda técnica programada:** Las mutaciones actualmente viven en `src/actions/` (Server Actions).
+> La migración a API Routes en `src/app/api/` es deuda técnica planificada para la **Fase 2H**.
+> **No migrar antes de esa fase.** Ver sección de decisiones arquitectónicas.
+
+Los pocos endpoints en `src/app/api/` son solo para NextAuth y búsquedas especiales (serial-search, cascada de modelos→colores→voltajes).
 
 ### Grupos de rutas
 
@@ -67,12 +71,29 @@ Stateless JWT. El token lleva: `id`, `role`, `branchId`, `branchName`. Los Serve
 
 ---
 
-## 4. Estructura de carpetas
+## 4. Sistema de diseño: EvoFlow Green Edition
+
+**Modo:** Dual (light/dark), controlado por `next-themes` + `theme-toggle.tsx`.
+
+**Tokens principales** (definidos en `src/app/globals.css` como CSS variables):
+- Verde primario dark: `oklch(0.55 0.18 145)`
+- Verde primario light: `oklch(0.40 0.18 145)`
+- Tipografía: **Inter** (body, pesos 300–600) + **Space Grotesk** (headings, monospace de datos)
+- Sin bordes sólidos de 1px — separar secciones con diferencia de tonos de fondo
+- Glassmorphism para modales y elementos flotantes
+
+**Aplicación actual:**
+- `globals.css` — tokens completos del sistema
+- `pos-terminal.tsx` — primer módulo migrado al nuevo sistema visual
+
+---
+
+## 5. Estructura de carpetas
 
 ```
-evobike-pos2/
+evobike-pos/
 ├── src/
-│   ├── actions/                    # Server Actions (mutaciones, ACID)
+│   ├── actions/                    # Server Actions (mutaciones, ACID) — deuda técnica → API Routes en Fase 2H
 │   │   ├── cash-register.ts        # Apertura/cierre de turno de caja
 │   │   ├── customer.ts             # Crear cliente, agregar saldo de crédito
 │   │   ├── inventory.ts            # Recepción de mercancía (entrada de stock)
@@ -87,18 +108,19 @@ evobike-pos2/
 │   │   ├── (pos)/
 │   │   │   ├── layout.tsx          # Shell protegido: valida sesión + sidebar
 │   │   │   ├── sidebar.tsx         # Navegación lateral izquierda
+│   │   │   ├── theme-toggle.tsx    # Toggle light/dark (EvoFlow)
 │   │   │   ├── dashboard/
 │   │   │   │   └── page.tsx        # KPIs del día + recientes (force-dynamic)
 │   │   │   ├── point-of-sale/
 │   │   │   │   ├── page.tsx        # Carga productos/clientes → PosTerminal
-│   │   │   │   ├── pos-terminal.tsx # UI interactiva del carrito y cobro
+│   │   │   │   ├── pos-terminal.tsx # UI interactiva del carrito y cobro (EvoFlow)
 │   │   │   │   └── guided-catalog.tsx # Catálogo guiado (modelo→color→voltaje)
 │   │   │   ├── inventory/
 │   │   │   │   ├── page.tsx        # Vista de stock por producto
 │   │   │   │   └── receipts/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── receipts-terminal.tsx # UI para recepción de compras
-│   │   │   ├── layaways/
+│   │   │   ├── layaways/           # (será renombrado a pedidos/ en Fase 2G)
 │   │   │   │   ├── page.tsx        # Lista de apartados activos
 │   │   │   │   └── layaway-list.tsx
 │   │   │   ├── customers/
@@ -124,6 +146,7 @@ evobike-pos2/
 │   │   │   ├── modelos/[id]/colores/[colorId]/voltajes/route.ts  # Cascada catálogo
 │   │   │   └── serial-search/route.ts       # Búsqueda de bicicleta por serial/VIN
 │   │   │
+│   │   ├── globals.css             # Tokens EvoFlow Green Edition
 │   │   ├── layout.tsx              # Root layout (html, body, providers)
 │   │   └── page.tsx                # Redirige a /dashboard
 │   │
@@ -141,7 +164,7 @@ evobike-pos2/
 │       └── utils.ts                # cn() helper (clsx + tailwind-merge)
 │
 ├── prisma/
-│   ├── schema.prisma               # 17 modelos de DB + enums
+│   ├── schema.prisma               # 24+ modelos de DB + enums
 │   ├── seed.ts                     # Seed basado en CSV (modelos, colores, voltajes, stock)
 │   └── data/                       # Archivos CSV para el seed
 │       ├── modelos.csv
@@ -153,103 +176,111 @@ evobike-pos2/
 ├── docs/
 │   └── superpowers/
 │       ├── plans/
-│       │   └── 2026-03-27-dashboard-redesign.md    # Plan de implementación del rediseño
 │       └── specs/
-│           └── 2026-03-27-dashboard-redesign-design.md  # Spec visual del rediseño
 │
 ├── public/                         # Assets estáticos (logo, imágenes de login)
-├── CLAUDE.md                       # Instrucciones para Claude Code
-├── DESIGN.md                       # Sistema de diseño "Kinetic Precision"
+├── CLAUDE.md                       # Instrucciones para el agente de código
+├── DESIGN.md                       # Sistema de diseño (referencia visual)
 ├── ANTIGRAVITY.MD                  # Documento técnico general del proyecto
 ├── CONTEXT.md                      # Este archivo
 ├── docker-compose.yml              # PostgreSQL en puerto 5434
-├── seed-inventory.js               # Seed legacy (JS, hardcodeado, probablemente obsoleto)
-├── tmp_query.js                    # Script temporal de consulta (ignorar)
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-├── components.json                 # Config de shadcn/ui (new-york style)
-└── next.config.ts
+└── package.json
 ```
 
 ---
 
-## 5. Módulos y componentes principales
+## 6. Modelos de dominio
 
-### 5.1 POS Terminal (`point-of-sale/pos-terminal.tsx`)
+### 6.1 Catálogo & Inventario
+
+| Modelo | Descripción |
+|--------|-------------|
+| `Modelo` | Categoría de producto (ej. "Evo Cargo"). Tiene `requiere_vin`, `imageUrl`. |
+| `Color` | Colores disponibles. `isGeneric` marca colores no específicos de modelo. |
+| `Voltaje` | Voltajes disponibles (valor Int + label String). |
+| `ProductVariant` | Variante única por `(modelo_id, color_id, voltaje_id)`. Tabla DB: `ModeloConfiguracion` (via `@@map`). Campos: `sku`, `precioPublico`, `costo`, `precioDistribuidor`. |
+| `Stock` | Cantidad disponible por `(ProductVariant, Branch)`. |
+| `InventoryMovement` | Kardex de movimientos. Tipos: `SALE`, `RETURN`, `TRANSFER_OUT`, `TRANSFER_IN`, `ADJUSTMENT`, `PURCHASE_RECEIPT`, `WORKSHOP_USAGE`. |
+
+### 6.2 Ventas & Caja
+
+| Modelo | Descripción |
+|--------|-------------|
+| `Sale` | Venta. Folio secuencial por sucursal (`LEO-0001`). Status: `COMPLETED`, `CANCELLED`, `LAYAWAY`. Tiene `notes` e `internalNote`. |
+| `SaleItem` | Ítem de venta. Precio y descuento por ítem. |
+| `CashRegisterSession` | Turno de caja por usuario. Status: `OPEN`, `CLOSED`. |
+| `CashTransaction` | Transacción de caja. Métodos: `CASH`, `CARD`, `TRANSFER`, `CREDIT_BALANCE`, `ATRATO`. `CollectionStatus`: `COLLECTED`, `PENDING`. |
+
+### 6.3 CRM & Taller
+
+| Modelo | Descripción |
+|--------|-------------|
+| `Customer` | Cliente con `balance` (crédito a favor) y `creditLimit`. |
+| `CustomerBike` | Vehículo del cliente. Único por `(serialNumber, branchId)`. |
+| `VoltageChangeLog` | Historial de cambios de voltaje de una bicicleta. Vinculado a `BatteryAssignment`. |
+| `ServiceOrder` | Orden de taller. Kanban: `PENDING → IN_PROGRESS → COMPLETED → DELIVERED → CANCELLED`. |
+| `ServiceOrderItem` | Ítem de orden. Puede referenciar `ProductVariant` o `ServiceCatalog`. |
+| `ServiceCatalog` | Catálogo de servicios por sucursal (mano de obra, refacciones estándar). |
+
+### 6.4 Comisiones
+
+| Modelo | Descripción |
+|--------|-------------|
+| `CommissionRule` | Regla por rol+modelo. Tipo: `PERCENTAGE` o `FIXED_AMOUNT`. |
+| `CommissionRecord` | Registro generado por venta. Status: `PENDING`, `APPROVED`, `PAID`. |
+
+### 6.5 Trazabilidad de Baterías (Fase 1C — Schema completo)
+
+| Modelo | Descripción |
+|--------|-------------|
+| `BatteryConfiguration` | Cuántas baterías (de qué `ProductVariant`) requiere cada `(Modelo, Voltaje)`. |
+| `BatteryLot` | Lote de recepción: proveedor, referencia, fecha, usuario. |
+| `Battery` | Unidad individual con `serialNumber` único. Status: `IN_STOCK`, `INSTALLED`, `DEFECTIVE`, `WARRANTY_REVIEW`. |
+| `BatteryAssignment` | Historial de instalaciones en `CustomerBike`. Campos: `isCurrent`, `assignedAt`, `unassignedAt`, vínculos a `VoltageChangeLog`. |
+| `AssemblyOrder` | Orden de ensamble vehículo+batería. Status: `PENDING`, `COMPLETED`, `CANCELLED`. La UI se implementa en Fase 2H. |
+
+---
+
+## 7. Módulos y componentes principales
+
+### 7.1 POS Terminal (`point-of-sale/pos-terminal.tsx`)
 El componente cliente más complejo del sistema. Gestiona:
 - Carrito de compras (agregar/quitar productos)
 - Selección de cliente (búsqueda inline)
-- Métodos de pago: CASH, CARD, TRANSFER, CREDIT_BALANCE
+- Métodos de pago: CASH, CARD, TRANSFER, CREDIT_BALANCE, ATRATO
 - Modo apartado (layaway) con pago inicial
 - Validación de número de serie (VIN) para bicicletas
+- Folio secuencial por sucursal (`LEO-0001`)
 - Llama a `processSaleAction()` en `src/actions/sale.ts`
+- **Migrado al sistema visual EvoFlow (Fase 1.5)**
 
-**Dependencias clave:** `guided-catalog.tsx` para seleccionar variantes, `cash-session-manager.tsx` como prerequisito.
+### 7.2 Cash Session Manager (`components/pos/cash-session-manager.tsx`)
+Modal **no-dismissable** que bloquea el POS hasta que se abre un turno de caja. Llama a `openCashSession()` y `closeCashSession()`.
 
-### 5.2 Cash Session Manager (`components/pos/cash-session-manager.tsx`)
-Modal **no-dismissable** que bloquea el POS hasta que se abre un turno de caja. Punto de entrada para cada sesión de trabajo. Llama a `openCashSession()` y `closeCashSession()`.
+### 7.3 Workshop Board (`workshop/workshop-board.tsx`)
+Tablero Kanban con columnas: `PENDING → IN_PROGRESS → COMPLETED → DELIVERED`. Llama a `updateServiceOrderStatus()`.
+**Pendiente (Fase 4):** crear vínculo de cobro al entregar + descuento automático de stock.
 
-### 5.3 Workshop Board (`workshop/workshop-board.tsx`)
-Tablero Kanban con columnas: `PENDING → IN_PROGRESS → COMPLETED → DELIVERED`. Llama a `updateServiceOrderStatus()`. **Pendiente:** crear vínculo de cobro al entregar.
-
-### 5.4 Receipts Terminal (`inventory/receipts/receipts-terminal.tsx`)
+### 7.4 Receipts Terminal (`inventory/receipts/receipts-terminal.tsx`)
 UI para registrar entradas de mercancía. Llama a `receiveInventoryAction()` que hace upsert de Stock y registra `InventoryMovement(PURCHASE_RECEIPT)`.
 
-### 5.5 Server Actions (núcleo de negocio)
+### 7.5 Server Actions (núcleo de negocio actual)
 
 | Archivo | Función principal | Notas críticas |
 |---|---|---|
-| `sale.ts` | `processSaleAction()` | Transacción ACID completa: stock→venta→movimiento→pago |
-| `workshop.ts` | `createServiceOrder()`, `updateServiceOrderStatus()`, `addServiceOrderItem()` | TODO en entrega |
+| `sale.ts` | `processSaleAction()` | Transacción ACID completa: stock→venta→folio secuencial→movimiento→pago |
+| `workshop.ts` | `createServiceOrder()`, `updateServiceOrderStatus()`, `addServiceOrderItem()` | Cobro al entregar: pendiente Fase 4 |
 | `inventory.ts` | `receiveInventoryAction()` | Upsert stock + actualiza costo |
 | `cash-register.ts` | `openCashSession()`, `closeCashSession()` | Prerequisito de todas las ventas |
 | `layaway.ts` | `registerLayawayPayment()` | Auto-completa si pago >= total |
 | `customer.ts` | `createCustomer()`, `addCustomerBalance()` | CRM + saldo de crédito |
 
-### 5.6 Catálogo guiado (`point-of-sale/guided-catalog.tsx`)
-Flujo en 3 pasos: elige Modelo → elige Color → elige Voltaje. Usa las rutas API en cascada (`/api/modelos`, `/api/modelos/[id]/colores/[colorId]/voltajes`).
+### 7.6 Catálogo guiado (`point-of-sale/guided-catalog.tsx`)
+Flujo en 3 pasos: elige Modelo → elige Color → elige Voltaje. Usa las rutas API en cascada.
 
 ---
 
-## 6. Estado actual del desarrollo
-
-### ✅ Completamente funcional
-- Autenticación y manejo de sesión (NextAuth JWT)
-- Multi-sucursal con aislamiento de datos por `branchId`
-- Ventas completas (contado, tarjeta, transferencia, crédito)
-- Apartados con pagos parciales
-- Gestión de inventario (stock + movimientos + kardex)
-- Recepción de mercancía
-- Taller (Kanban: crear orden, agregar ítems, cambiar estado)
-- CRM básico (clientes, bicicletas, historial de compras)
-- Registro de caja por turno (apertura/cierre)
-- Dashboard con KPIs del día
-
-### 🔄 En progreso / parcialmente implementado
-- **Rediseño de dashboard/sidebar/topbar:** Existe spec detallada en `docs/superpowers/specs/2026-03-27-dashboard-redesign-design.md` y plan en `docs/superpowers/plans/2026-03-27-dashboard-redesign.md`. El dashboard fue migrado a light mode recientemente (commits dc44236, 12f2e5e, 6cc587d).
-- **Gráfica de tendencia de ingresos:** El panel existe en el dashboard pero muestra un placeholder "activará en v2".
-- **Integración taller-inventario:** `addServiceOrderItem()` puede referenciar un `modeloConfiguracionId` pero no descuenta stock automáticamente. La entrega de órdenes tampoco genera cobro.
-
-### ❌ Pendiente / no implementado
-- Validación de VIN único por sucursal
-- Pagos con múltiples métodos en una sola venta
-- Alertas automáticas de stock bajo
-- Integración con procesadores de pago externos
-- Suite de tests (no existe ningún test)
-- Reportes de rentabilidad por sucursal
-- Transferencias de stock entre sucursales (el enum `TRANSFER_OUT/IN` existe, la UI no)
-
-### 🐛 Deuda técnica conocida
-- No hay tests automatizados de ningún tipo
-- Los archivos de Server Actions están creciendo (podrían dividirse)
-- `seed-inventory.js` es redundante con el seed CSV-based nuevo
-- `tmp_query.js` en raíz es un archivo temporal que debe eliminarse
-- `NEXTAUTH_SECRET` en `.env` es un valor simple; en producción necesita rotación
-
----
-
-## 7. Flujo de datos principal
+## 8. Flujo de datos principal
 
 **Flujo: Venta contado**
 
@@ -268,14 +299,15 @@ Flujo en 3 pasos: elige Modelo → elige Color → elige Voltaje. Usa las rutas 
    b. Verifica CashRegisterSession activa para userId+branchId
    c. Si CREDIT_BALANCE: verifica customer.balance >= total
    d. Para cada item:
-      - Stock.find(modeloConfiguracionId, branchId) → verifica quantity
+      - Stock.find(productVariantId, branchId) → verifica quantity
       - Stock.update(-quantity)
-   e. Sale.create(status: COMPLETED, folio: "V-{timestamp}")
-   f. SaleItem.createMany(items)
-   g. InventoryMovement.createMany(type: SALE, qty negativo)
-   h. CashTransaction.create(type: PAYMENT_IN, method, amount)
-   i. Si producto requiere VIN: CustomerBike.create(serialNumber)
-   j. Si CREDIT_BALANCE: Customer.update(balance -= total)
+   e. Branch.update(lastSaleFolioNumber++) → genera folio "LEO-0001"
+   f. Sale.create(status: COMPLETED, folio generado)
+   g. SaleItem.createMany(items)
+   h. InventoryMovement.createMany(type: SALE, qty negativo)
+   i. CashTransaction.create(type: PAYMENT_IN, method, amount)
+   j. Si producto requiere VIN: CustomerBike.create(serialNumber)
+   k. Si CREDIT_BALANCE: Customer.update(balance -= total)
 
 4. revalidatePath('/point-of-sale') → Next.js invalida caché
 
@@ -284,13 +316,13 @@ Flujo en 3 pasos: elige Modelo → elige Color → elige Voltaje. Usa las rutas 
 
 ---
 
-## 8. Variables de entorno y configuración
+## 9. Variables de entorno y configuración
 
-Archivo: `.env` en la raíz (no está en `.gitignore`, ojo en producción)
+Archivo: `.env` en la raíz
 
 ```env
 # Conexión a PostgreSQL (Docker en puerto 5434)
-DATABASE_URL="postgresql://user:password@localhost:5434/evobike_pos2?schema=public"
+DATABASE_URL="postgresql://user:password@localhost:5434/evobike_pos?schema=public"
 
 # URL pública de la app (NextAuth la usa para callbacks)
 NEXTAUTH_URL="http://localhost:3000"
@@ -299,11 +331,9 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="valor-secreto-aqui"
 ```
 
-No hay variables adicionales. El sistema no usa APIs externas, CDN, ni servicios de correo por ahora.
-
 ---
 
-## 9. Comandos importantes
+## 10. Comandos importantes
 
 ```bash
 # Infraestructura
@@ -332,35 +362,78 @@ npx shadcn add [component-name]   # Genera en src/components/ui/ (NO editar manu
 
 ---
 
-## 10. Decisiones técnicas relevantes
+## 11. Decisiones técnicas y arquitectónicas
 
-### ¿Por qué Server Actions en vez de API routes?
-Reducción de boilerplate, tipado end-to-end sin codegen, acceso directo al contexto de sesión del servidor. Todas las mutaciones viven en `src/actions/` y son invocadas directamente desde los Client Components.
+### ProductVariant via `@@map`
+El modelo Prisma se llama `ProductVariant` en TypeScript pero la tabla en DB sigue siendo `ModeloConfiguracion`. Esto permite mantener la DB sin migraciones destructivas mientras el código TypeScript usa un nombre más semántico. **Siempre usar `ProductVariant` en el código.**
 
-### ¿Por qué JWT (stateless) en vez de database sessions?
-Escalabilidad y simplicidad. El token lleva `branchId` y `role`, lo que elimina un round-trip a la DB en cada verificación de permisos.
+### Folio secuencial por sucursal
+Los folios se generan con `Branch.lastSaleFolioNumber` incrementado atómicamente dentro de `prisma.$transaction()`. Formato: `{BRANCH_CODE}-{número con padding}` → `LEO-0001`, `AV135-0042`.
 
-### ¿Por qué Tailwind CSS v4 (alpha)?
-El proyecto usa características del alpha (nueva sintaxis de config). Esto puede traer breaking changes con actualizaciones. Se acepta la deuda como trade-off por features más modernas.
+### Layaway + Backorder → módulo Pedidos (Fase 2G)
+Ambos flujos (apartado con pago inicial + pedido/backorder sin stock) se fusionan en un único módulo "Pedidos". No crear módulos separados.
 
-### ¿Por qué React Compiler habilitado?
-Optimización automática de re-renders sin `useMemo`/`useCallback` manuales. Evitar usar estos hooks manualmente a menos que profiling lo justifique.
+### Server Actions → API Routes (deuda técnica programada)
+Las mutaciones actualmente viven en `src/actions/` y funcionan correctamente. La migración a API Routes está programada para **Fase 2H** para habilitar el módulo de montaje. **No migrar antes.** Migrar módulo por módulo, no todo a la vez.
 
-### ¿Por qué Prisma $transaction en todas las mutaciones?
-Consistencia ACID. Una venta que falla a mitad no debe decrementar stock sin crear el registro de venta. Todas las operaciones multi-tabla usan transacciones.
+### Módulo de montaje (Fase 2H) requiere sesión con Opus
+El diseño e implementación del flujo de ensamble batería+vehículo es complejo (asocia `AssemblyOrder`, `BatteryAssignment`, `VoltageChangeLog`, `CustomerBike`, stock de baterías). Debe planificarse en una sesión dedicada con Claude Opus.
 
-### Patrón de folio único
-Los folios se generan con timestamp en el Server Action (`"V-${Date.now()}"`, `"TS-${Date.now()}"`). No es secuencial, pero garantiza unicidad sin un counter de base de datos.
+### JWT stateless
+El token lleva `branchId` y `role`, eliminando un round-trip a DB en cada verificación de permisos.
 
-### Deuda técnica conocida
-1. No hay tests: riesgo alto para un sistema financiero
-2. `workshop.ts` necesita lógica de cobro al entregar órdenes (TODO en línea 26)
-3. El transferencia de stock entre sucursales tiene el enum pero no la UI
-4. `seed-inventory.js` es redundante con el seed TypeScript nuevo
+### React Compiler habilitado
+Optimización automática de re-renders. **Evitar `useMemo`/`useCallback` manuales** salvo que profiling lo justifique.
+
+### Prisma `$transaction` en todas las mutaciones
+Consistencia ACID. Una venta que falla a mitad no debe decrementar stock sin crear la venta. Todas las operaciones multi-tabla usan transacciones.
 
 ---
 
-## 11. Convenciones del proyecto
+## 12. Estado actual del desarrollo
+
+### ✅ Fases completadas
+
+| Fase | Contenido |
+|------|-----------|
+| **0** | Setup inicial: Next.js, Prisma, NextAuth, Docker, estructura de carpetas |
+| **1A** | Catálogo: Modelo/Color/Voltaje/ProductVariant, guiado por pasos, cascada de variantes |
+| **1B** | POS Terminal básico: carrito, cobro, validación VIN, apartados, sesión de caja |
+| **1.5** | Sistema de diseño EvoFlow Green Edition aplicado en `globals.css` y `pos-terminal.tsx` |
+| **1C** | Schema extendido: BatteryConfiguration, BatteryLot, Battery, BatteryAssignment, AssemblyOrder, VoltageChangeLog, CommissionRule/Record, ServiceCatalog, SaleType enum, folios secuenciales |
+| **2 (parcial)** | Módulos: inventory, receipts, customers, workshop, cash-register, layaways |
+| **2F** | Modales de pago avanzados: múltiples métodos por venta, ATRATO con CollectionStatus PENDING, split de pagos, validación de saldo a favor |
+
+### ⏳ Pendiente
+
+| Fase | Contenido | Notas |
+|------|-----------|-------|
+| **2F.5** | Historial de Ventas — consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta | Baja urgencia |
+| **2F.6** | Cliente obligatorio en POS — modal de selección/creación, campos: nombre, teléfono principal/secundario, dirección (flete) y datos de facturación opcionales. Requiere migración de schema `Customer` | Antes de 2G |
+| **2G** | Módulo Pedidos (Layaway + Backorder fusionados) con abonos parciales | Después de 2F.6 |
+| **2H** | Módulo de montaje (battery+vehículo UI) | Requiere Opus + migrar Server Actions a API Routes |
+| **3** | Cotizaciones | — |
+| **4** | Taller completo: cobro al entregar + descuento automático de stock | — |
+| **5** | Reportes y comisiones — KPIs, rentabilidad por sucursal, desglose COLLECTED vs PENDING | — |
+| **6** | Cierre / producción — tests, hardening, deploy, migrar config Prisma v7 | — |
+
+---
+
+## 13. Deuda técnica conocida
+
+1. **Server Actions → API Routes:** funciona pero es deuda programada para Fase 2H.
+2. **No hay tests:** riesgo alto para sistema financiero.
+3. **`workshop.ts` línea TODO:** entrega de orden no genera CashTransaction ni descuenta stock.
+4. **Transferencias de stock entre sucursales:** el enum `TRANSFER_OUT/IN` existe, la UI no.
+5. **Múltiples métodos de pago por venta:** el schema soportaría múltiples CashTransactions, la UI está en Fase 2F.
+6. **`tmp_query.js`** en raíz: archivo temporal, eliminar.
+7. **`seed-inventory.js`** en raíz: redundante con el seed TypeScript, eliminar.
+8. **`NEXTAUTH_SECRET`** en `.env`: valor simple, rotar en producción.
+9. **`AssemblyOrder` UI:** el schema está completo desde Fase 1C, la interfaz queda para Fase 2H.
+
+---
+
+## 14. Convenciones del proyecto
 
 ### Lenguaje
 Todo el código de UI y strings de usuario **en español**. Variables y funciones en inglés/camelCase.
@@ -376,7 +449,7 @@ import { processSaleAction } from "@/actions/sale";
 ### Componentes
 - **UI genéricos:** `src/components/ui/` (shadcn, no editar)
 - **Componentes de negocio reutilizables:** `src/components/pos/`
-- **Componentes específicos de una ruta:** colocados junto al `page.tsx` (ej: `pos-terminal.tsx` junto a `point-of-sale/page.tsx`)
+- **Componentes específicos de una ruta:** colocados junto al `page.tsx`
 
 ### Server Actions
 - Primera línea: `"use server"`
@@ -389,40 +462,10 @@ import { processSaleAction } from "@/actions/sale";
 - Tailwind utility-first
 - `cn()` de `@/lib/utils` para clases condicionales
 - No crear archivos CSS custom salvo `globals.css`
-- Sistema de diseño "Kinetic Precision": sin bordes de 1px, usar diferencia de fondos para separar secciones, glassmorphism para elementos flotantes
+- Sistema EvoFlow: tokens como CSS variables en `globals.css`
 
 ### Formularios
 `react-hook-form` + `@hookform/resolvers/zod` + schema Zod. No usar `useState` para estado de formulario.
 
 ### Toast notifications
 `import { toast } from "sonner"` — nunca `alert()` ni `console.log` en producción.
-
----
-
-## 12. Lo que sigue
-
-### Prioridad alta (bloqueante para operaciones reales)
-1. **Vincular entrega de orden de taller con cobro** (`src/actions/workshop.ts` línea 26)
-   - Cuando status → DELIVERED, generar un CashTransaction o vincular a una Sale
-2. **Descuento de stock en servicio de taller**
-   - `addServiceOrderItem()` con `modeloConfiguracionId` debe decrementar Stock y crear InventoryMovement(WORKSHOP_USAGE)
-3. **Validación VIN único por sucursal**
-   - Actualmente se acepta cualquier serial number sin validar duplicados por branch
-
-### Prioridad media
-4. **Rediseño visual dashboard/sidebar/topbar**
-   - Spec completa en `docs/superpowers/specs/2026-03-27-dashboard-redesign-design.md`
-   - Plan de implementación en `docs/superpowers/plans/2026-03-27-dashboard-redesign.md`
-   - Archivos afectados: `(pos)/layout.tsx`, `(pos)/sidebar.tsx`, `(pos)/dashboard/page.tsx`
-5. **Gráfica de tendencia de ingresos en dashboard**
-   - El contenedor ya existe como placeholder en `dashboard/page.tsx`
-6. **Pagos con múltiples métodos en una venta**
-   - Actualmente solo 1 método por venta; el esquema soportaría múltiples CashTransactions
-7. **Transferencias de stock entre sucursales**
-   - El enum `TRANSFER_OUT/IN` ya existe en InventoryMovement; falta la UI y lógica
-
-### Prioridad baja
-8. **Suite de tests** (Jest o Vitest + React Testing Library)
-9. **Alertas de stock bajo** (email/push cuando quantity < threshold)
-10. **Reportes de rentabilidad por sucursal** (margen por producto, costo vs precio)
-11. **Integración con procesador de pago externo** (terminal bancaria, Stripe, etc.)
