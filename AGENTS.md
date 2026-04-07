@@ -1,40 +1,3 @@
-# CLAUDE.md
-
-Guía de trabajo para Claude Code en este repositorio.
-Lee este archivo completo antes de tocar cualquier código.
-
----
-
-## Comandos
-
-```bash
-# Infraestructura (requiere Docker)
-docker-compose up -d        # PostgreSQL en puerto 5434
-
-# Desarrollo
-npm run dev                 # Dev server en http://localhost:3000
-
-# Base de datos
-npx prisma migrate dev      # Aplicar migraciones pendientes
-npx prisma db seed          # Seed inicial (usuarios, sucursales, catálogo)
-npx prisma studio           # UI visual de la DB en http://localhost:5555
-
-# Build y calidad
-npm run build
-npm run lint
-```
-
-No hay suite de tests configurada.
-
----
-
-## Stack
-
-Next.js 16 (App Router) · React 19 · TypeScript 5 · Prisma 6 + PostgreSQL
-NextAuth 4 · shadcn/ui (new-york) · Tailwind CSS 4 · react-hook-form + Zod · sonner
-
----
-
 ## Arquitectura y flujo de datos
 
 **Grupos de rutas:**
@@ -193,9 +156,9 @@ import { prisma } from "../../lib/prisma";
 | 1C | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
 | 2 (parcial) | Módulos de inventario, taller, clientes | ✅ Parcial |
 | 2F | Modales de pago avanzados (múltiples métodos, ATRATO) | ✅ Completo |
-| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente |
-| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos (teléfono, dirección flete, datos de facturación) | ⏳ Pendiente |
-| **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ⏳ Pendiente |
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente | 
+| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos (teléfono, dirección flete, datos de facturación) | ✅ Completo |
+| **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ✅ Completo |
 | **2H** | **Módulo de montaje** (battery+vehículo UI) — requiere Opus + migrar a API Routes | ⏳ Pendiente |
 | 3 | Cotizaciones | ⏳ Pendiente |
 | 4 | Taller completo (cobro al entregar + descuento automático de stock) | ⏳ Pendiente |
@@ -234,3 +197,14 @@ import { prisma } from "../../lib/prisma";
 1. Revisar que no queden `console.log`, `any`, ni `TODO` sin documentar.
 2. Confirmar que `lint` y `build` pasan.
 3. Solo entonces proceder al commit.
+
+## 🎨 Frontend y UI
+- **Sistema de Diseño (EvoFlow):** Para cualquier trabajo de UI, creación de vistas o modificación visual, **es OBLIGATORIO leer el archivo `DESIGN.md`** (allí están las reglas de tipografías, ausencia de bordes sólidos, glassmorphism y tokens de color). Si trabajas en backend, ignora ese archivo.
+- **Componentes Base:** Ubicados en `src/components/ui/` (shadcn/ui). **NUNCA los edites manualmente.**
+- **Estilos:** Tailwind utility-first. Usa `cn()` para clases condicionales. No crees archivos `.css` (usa los tokens EvoFlow de `globals.css`).
+- **Formularios y Alertas:** Obligatorio usar `react-hook-form` + Zod. Obligatorio usar `toast` de `sonner` (Cero `alert()` o `console.log` en producción).
+- **Idioma y Rutas:** Textos visibles al usuario en **español**. Variables/archivos en español. Usa siempre el alias `@/*` para imports.
+
+
+
+

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { openCashSession, getActiveCashSession, closeCashSession } from "@/actions/cash-register";
 import { useRouter } from "next/navigation";
 import { Banknote, Wallet } from "lucide-react";
 
@@ -21,9 +20,11 @@ export function CashSessionManager() {
     // Check on mount if the user has an open session
     useEffect(() => {
         const checkSession = async () => {
-            const { success, session } = await getActiveCashSession();
-            if (success) {
-                if (session) {
+            const res = await fetch("/api/cash-register/session").then(
+                (r) => r.json() as Promise<{ success: boolean; data?: { id: string } | null }>
+            );
+            if (res.success) {
+                if (res.data) {
                     setHasActiveSession(true);
                 } else {
                     setIsOpen(true); // Force them to open one
@@ -42,7 +43,11 @@ export function CashSessionManager() {
         }
 
         toast.loading("Abriendo turno...", { id: "cash-action" });
-        const { success, error } = await openCashSession(amt);
+        const { success, error } = await fetch("/api/cash-register/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ openingAmt: amt }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (success) {
             toast.success("Turno abierto exitosamente", { id: "cash-action" });
@@ -62,7 +67,11 @@ export function CashSessionManager() {
         }
 
         toast.loading("Cerrando turno...", { id: "cash-action" });
-        const { success, error } = await closeCashSession(amt);
+        const { success, error } = await fetch("/api/cash-register/session", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ closingAmt: amt }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (success) {
             toast.success("Turno cerrado. Ya no puedes operar ventas.", { id: "cash-action" });

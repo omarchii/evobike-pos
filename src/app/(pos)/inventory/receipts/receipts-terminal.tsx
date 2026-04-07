@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { receiveInventoryAction } from "@/actions/inventory";
 import { useSession } from "next-auth/react";
 
 interface SessionUser {
@@ -96,10 +95,11 @@ export default function ReceiptsTerminal({ initialProducts }: { initialProducts:
             cost: i.cost
         }));
 
-        const res = await receiveInventoryAction({
-            items: formattedItems,
-            reference: reference || "Ingreso Manual"
-        });
+        const res = await fetch("/api/inventory/receipts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: formattedItems, reference: reference || "Ingreso Manual" }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (res.success) {
             toast.success("Mercancía ingresada correctamente", { id: "receipt" });

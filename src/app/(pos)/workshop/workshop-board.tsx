@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Wrench, Clock, CheckCircle2, Bike, User as UserIcon, ArrowRight } from "lucide-react";
-import { updateServiceOrderStatus } from "@/actions/workshop";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -38,12 +37,16 @@ export default function WorkshopBoard({ initialOrders }: { initialOrders: FullSe
         setMovingId(orderId);
         toast.loading("Avanzando orden...", { id: `move-${orderId}` });
 
-        const result = await updateServiceOrderStatus(orderId, currentStatus);
+        const result = await fetch(`/api/workshop/orders/${orderId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentStatus }),
+        }).then((r) => r.json() as Promise<{ success: boolean; data?: { newStatus: ServiceOrderStatus }; error?: string }>);
 
         if (result.success) {
             toast.success("Bicicleta avanzada", { id: `move-${orderId}` });
             // Optimistic update
-            setOrders(orders.map(o => o.id === orderId ? { ...o, status: result.newStatus! } : o));
+            setOrders(orders.map(o => o.id === orderId ? { ...o, status: result.data!.newStatus } : o));
             router.refresh();
         } else {
             toast.error(result.error || "No se pudo avanzar", { id: `move-${orderId}` });

@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+interface SessionUser {
+  id: string;
+  branchId: string;
+}
+
+const balanceSchema = z.object({
+  amount: z.number().positive("Monto inválido"),
+  method: z.enum(["CASH", "CARD", "TRANSFER"]),
+});
+
+// POST /api/customers/[id]/balance — agregar saldo a favor al cliente
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
+  }
+
+  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: customerId } = await params;
+
+  const body: unknown = await req.json();
+  const parsed = balanceSchema.safeParse(body);
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]?.message ?? "Datos inválidos";
+    return NextResponse.json({ success: false, error: firstError }, { status: 400 });
+  }
+
+  const { amount, method } = parsed.data;
+
+  try {
+    const activeSession = await prisma.cashRegisterSession.findFirst({
+      where: { userId, branchId, status: "OPEN" },
+    });
+
+    if (!activeSession) {
+      return NextResponse.json(
+        { success: false, error: "Caja cerrada. Debes abrir tu turno para recibir dinero." },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.cashTransaction.create({
+        data: {
+          sessionId: activeSession.id,
+          type: "PAYMENT_IN",
+          method,
+          amount,
+        },
+      });
+
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { balance: { increment: amount } },
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error interno";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}

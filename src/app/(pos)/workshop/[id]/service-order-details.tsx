@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Bike, Wrench, User as UserIcon, Calendar, Trash2, Plus, ArrowRight, CheckCircle2, Check, ChevronsUpDown, DollarSign } from "lucide-react";
-import { addServiceOrderItem, removeServiceOrderItem, updateServiceOrderStatus } from "@/actions/workshop";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ServiceOrderStatus } from "@prisma/client";
 import { toast } from "sonner";
@@ -87,12 +86,11 @@ export function ServiceOrderDetailsView({
         setLoading(true);
         toast.loading("Agregando servicio...", { id: "add-item" });
 
-        const result = await addServiceOrderItem({
-            serviceOrderId: order.id,
-            description: manualDescription,
-            quantity: 1,
-            price: parseFloat(manualPrice)
-        });
+        const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ description: manualDescription, quantity: 1, price: parseFloat(manualPrice) }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (result.success) {
             toast.success("Servicio agregado", { id: "add-item" });
@@ -112,13 +110,16 @@ export function ServiceOrderDetailsView({
         setLoading(true);
         toast.loading("Agregando producto...", { id: "add-item" });
 
-        const result = await addServiceOrderItem({
-            serviceOrderId: order.id,
-            productVariantId: prod.id,
-            description: prod.name,
-            quantity: parseInt(productQty) || 1,
-            price: prod.price
-        });
+        const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                productVariantId: prod.id,
+                description: prod.name,
+                quantity: parseInt(productQty) || 1,
+                price: prod.price,
+            }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (result.success) {
             toast.success("Producto agregado", { id: "add-item" });
@@ -135,7 +136,11 @@ export function ServiceOrderDetailsView({
 
         setLoading(true);
         toast.loading("Eliminando...", { id: "remove-item" });
-        const result = await removeServiceOrderItem(itemId, order.id);
+        const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ itemId }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (result.success) {
             toast.success("Concepto eliminado", { id: "remove-item" });
@@ -169,7 +174,11 @@ export function ServiceOrderDetailsView({
 
     const handleAdvanceStatus = async () => {
         setIsAdvancing(true);
-        const result = await updateServiceOrderStatus(order.id, order.status);
+        const result = await fetch(`/api/workshop/orders/${order.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentStatus: order.status }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
         if (result.success) {
             toast.success("Estatus actualizado");
             router.refresh();

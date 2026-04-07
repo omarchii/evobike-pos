@@ -15,7 +15,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlusCircle } from "lucide-react";
-import { createServiceOrder } from "@/actions/workshop";
 import { useDebouncedCallback } from "use-debounce";
 import { Search, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -62,10 +61,14 @@ export function NewOrderDialog() {
         setLoading(true);
         toast.loading("Creando orden...", { id: "new-order" });
 
-        const result = await createServiceOrder(formData);
+        const result = await fetch("/api/workshop/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+        }).then((r) => r.json() as Promise<{ success: boolean; data?: { orderId: string; folio: string }; error?: string }>);
 
         if (result.success) {
-            toast.success(`Orden ${result.folio} creada exitosamente`, { id: "new-order" });
+            toast.success(`Orden ${result.data!.folio} creada exitosamente`, { id: "new-order" });
             setOpen(false);
             resetForm();
             router.refresh();

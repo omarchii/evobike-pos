@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Banknote, CreditCard, Landmark, Plus } from "lucide-react";
-import { addCustomerBalance } from "@/actions/customer";
 import { useRouter } from "next/navigation";
 
 export function AddBalanceDialog({ customerId, customerName, currentBalance }: { customerId: string, customerName: string, currentBalance: number }) {
@@ -26,11 +25,11 @@ export function AddBalanceDialog({ customerId, customerName, currentBalance }: {
         setLoading(true);
         toast.loading("Procesando recarga...", { id: "topup" });
 
-        const res = await addCustomerBalance({
-            customerId: customerId,
-            amount: amt,
-            method: paymentMethod
-        });
+        const res = await fetch(`/api/customers/${customerId}/balance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: amt, method: paymentMethod }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (res.success) {
             toast.success("Saldo recargado exitosamente", { id: "topup" });

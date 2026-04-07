@@ -25,7 +25,6 @@ import {
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { processSaleAction } from "@/actions/sale";
 import CustomerSelectorModal, { type CustomerOption } from "./customer-selector-modal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -740,29 +739,33 @@ export default function PosTerminal({
     toast.loading("Procesando venta...", { id: "checkout" });
 
     try {
-      const result = await processSaleAction({
-        items: cart.map((ci) => ({
-          productVariantId: ci.variantId,
-          quantity: ci.quantity,
-          price: ci.price,
-          name: `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
-          isSerialized: ci.isSerialized,
-          serialNumber: ci.serialNumber,
-          batterySerials: ci.batterySerials,
-          assemblyMode: ci.assemblyMode,
-        })),
-        total: totalAfterDiscount,
-        discount: discountAmount > 0 && discountAuthorized ? discountAmount : 0,
-        paymentMethods: methodsToSubmit,
-        isLayaway,
-        customerId: selectedCustomerId || undefined,
-        downPayment: isLayaway ? layawayDownPayment : undefined,
-        internalNote,
-        discountAmount:
-          discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
-        discountAuthorizedByUserId: discountAuthorized?.userId,
-        discountAuthorizedByName: discountAuthorized?.name,
-      });
+      const result = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((ci) => ({
+            productVariantId: ci.variantId,
+            quantity: ci.quantity,
+            price: ci.price,
+            name: `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
+            isSerialized: ci.isSerialized,
+            serialNumber: ci.serialNumber,
+            batterySerials: ci.batterySerials,
+            assemblyMode: ci.assemblyMode,
+          })),
+          total: totalAfterDiscount,
+          discount: discountAmount > 0 && discountAuthorized ? discountAmount : 0,
+          paymentMethods: methodsToSubmit,
+          isLayaway,
+          customerId: selectedCustomerId || undefined,
+          downPayment: isLayaway ? layawayDownPayment : undefined,
+          internalNote,
+          discountAmount:
+            discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
+          discountAuthorizedByUserId: discountAuthorized?.userId,
+          discountAuthorizedByName: discountAuthorized?.name,
+        }),
+      }).then((r) => r.json() as Promise<{ success: boolean; data?: { saleId: string; folio: string }; error?: string }>);
 
       if (!result.success) {
         toast.error(result.error ?? "Error al procesar la venta", {
@@ -772,7 +775,7 @@ export default function PosTerminal({
       }
 
       toast.success(
-        `Venta registrada · Folio: ${result.folio}`,
+        `Venta registrada · Folio: ${result.data!.folio}`,
         { id: "checkout", duration: 6000 },
       );
 

@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { closeCashSession } from "@/actions/cash-register";
 import { useRouter } from "next/navigation";
 import { LockKeyholeOpen } from "lucide-react";
 
@@ -23,7 +22,11 @@ export default function CloseRegisterButton() {
         }
 
         toast.loading("Cerrando turno...", { id: "cash-action" });
-        const { success, error } = await closeCashSession(amt);
+        const { success, error } = await fetch("/api/cash-register/session", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ closingAmt: amt }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (success) {
             toast.success("Turno cerrado. Ya no puedes operar ventas.", { id: "cash-action" });

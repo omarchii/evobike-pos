@@ -17,7 +17,6 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addCustomerBalance } from "@/actions/customer";
 
 interface CustomerItem {
     id: string;
@@ -61,11 +60,11 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
         setLoading(true);
         toast.loading("Procesando recarga...", { id: "topup" });
 
-        const res = await addCustomerBalance({
-            customerId: selectedCustomer.id,
-            amount: amt,
-            method: paymentMethod
-        });
+        const res = await fetch(`/api/customers/${selectedCustomer.id}/balance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: amt, method: paymentMethod }),
+        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
         if (res.success) {
             toast.success("Saldo recargado exitosamente", { id: "topup" });
