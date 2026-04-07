@@ -140,8 +140,8 @@ import { prisma } from "../../lib/prisma";
 - **`ProductVariant` via `@@map`** — el modelo Prisma se llama `ProductVariant` en TypeScript pero la tabla en DB sigue siendo `ModeloConfiguracion`. Usar siempre el nombre TypeScript en el código.
 - **Folio secuencial por sucursal** — folios tipo `LEO-0001` generados con `Branch.lastSaleFolioNumber` incrementado atómicamente dentro de `prisma.$transaction()`.
 - **Layaway + Backorder → módulo Pedidos** — ambos flujos se fusionan en la misma UI (Fase 2G). No crear módulos separados.
-- **Server Actions → API Routes (deuda técnica)** — actualmente las mutaciones viven en `src/actions/`. La migración a API Routes es deuda técnica programada para Fase 2H. **No migrar antes de tiempo.**
-- **Módulo de montaje (Fase 2H) requiere Opus** — el diseño e implementación del módulo de ensamble batería+vehículo debe planificarse con Claude Opus por su complejidad.
+- **Server Actions → API Routes ✅** — migración completada en Fase 2H-A. `src/actions/` eliminado. Todas las mutaciones viven en `src/app/api/`.
+- **Módulo de montaje (Fase 2H)** — diseñado con Opus. `CustomerBike.customerId` es nullable para soportar vehículos pre-venta (sin cliente asignado). El montaje ocurre antes de la venta. La integración con POS se difiere a Fase 4 por riesgo.
 
 ---
 
@@ -156,14 +156,26 @@ import { prisma } from "../../lib/prisma";
 | 1C | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
 | 2 (parcial) | Módulos de inventario, taller, clientes | ✅ Parcial |
 | 2F | Modales de pago avanzados (múltiples métodos, ATRATO) | ✅ Completo |
-| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente | 
-| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos (teléfono, dirección flete, datos de facturación) | ✅ Completo |
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente |
+| **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos | ✅ Completo |
 | **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ✅ Completo |
-| **2H** | **Módulo de montaje** (battery+vehículo UI) — requiere Opus + migrar a API Routes | ⏳ Pendiente |
+| **2H** | **Módulo de Montaje** — ensamble batería+vehículo, trazabilidad para garantía | 🔧 En curso |
+| 2H-0 | Schema: `CustomerBike.customerId` → nullable (vehículos pre-venta) | ⏳ Pendiente |
+| 2H-1 | Recepción de baterías (BatteryLot + Battery CRUD, UI de lotes) | ⏳ Pendiente |
+| 2H-2 | Backend de montaje (API Routes: crear, completar, cancelar) | ⏳ Pendiente |
+| 2H-3 | UI de montaje (Kanban + modal multi-paso, sidebar entry) | ⏳ Pendiente |
+| 2H-4 | Desinstalación de baterías (flujo inverso: desasignar batería → IN_STOCK) | ⏳ Pendiente |
 | 3 | Cotizaciones | ⏳ Pendiente |
-| 4 | Taller completo (cobro al entregar + descuento automático de stock) | ⏳ Pendiente |
+| 4 | Taller completo (cobro al entregar + descuento automático de stock + **integración POS-montaje**: buscar `CustomerBike` por VIN al vender, upgrade voltaje) | ⏳ Pendiente |
 | 5 | Reportes y comisiones (incluye desglose COLLECTED vs PENDING en caja) | ⏳ Pendiente |
 | 6 | Cierre / producción (tests, hardening, deploy, config Prisma v7) | ⏳ Pendiente |
+
+### Reglas del módulo de montaje (2H)
+
+- **Permisos**: Todos los roles pueden crear órdenes de montaje. Solo TECHNICIAN, MANAGER y ADMIN pueden completarlas.
+- **Baterías**: Permanecen `IN_STOCK` al crear la orden (PENDING). Se cambian a `INSTALLED` solo al completar el montaje, dentro de `$transaction`.
+- **Desinstalación (2H-4)**: Flujo inverso — desasigna baterías de un vehículo, regresándolas a `IN_STOCK`. Marca `BatteryAssignment.isCurrent = false` y actualiza `Battery.status`.
+- **Integración POS**: Fuera del scope de 2H. Se implementará en Fase 4 junto con taller completo. `pos-terminal.tsx` es el archivo de mayor riesgo del proyecto.
 
 ---
 

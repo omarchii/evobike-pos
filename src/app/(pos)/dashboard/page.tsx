@@ -495,7 +495,7 @@ export default async function DashboardPage() {
                     bikeId: bike.id,
                     bikeModel: bike.model ?? null,
                     bikeVoltaje: bike.voltaje ?? null,
-                    customerName: bike.customer.name,
+                    customerName: bike.customer?.name ?? "Sin cliente",
                     lastServiceDate: lastOrder?.createdAt ?? null,
                     diasDesdeServicio: lastOrder
                         ? Math.floor((now.getTime() - lastOrder.createdAt.getTime()) / 86400000)

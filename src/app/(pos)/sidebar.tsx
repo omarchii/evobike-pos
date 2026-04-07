@@ -12,7 +12,8 @@ import {
     LogOut,
     Settings,
     ArchiveRestore,
-    Vault
+    Vault,
+    Cog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const routes = [
     { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
     { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
+    { label: "Montaje", icon: Cog, href: "/assembly" },
     { label: "Inventario", icon: Package, href: "/inventory" },
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Clientes", icon: Users, href: "/customers" },

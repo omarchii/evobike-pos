@@ -279,7 +279,7 @@ model Customer {
 
 model CustomerBike {
   id           String   @id @default(uuid())
-  customerId   String
+  customerId   String?
   branchId     String
   serialNumber String
   brand        String?
@@ -289,7 +289,7 @@ model CustomerBike {
   notes        String?
   createdAt    DateTime @default(now())
 
-  customer       Customer          @relation(fields: [customerId], references: [id])
+  customer       Customer?         @relation(fields: [customerId], references: [id])
   branch         Branch            @relation(fields: [branchId], references: [id])
   serviceOrders  ServiceOrder[]
   voltageChanges VoltageChangeLog[]
