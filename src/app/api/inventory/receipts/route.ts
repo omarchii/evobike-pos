@@ -82,6 +82,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
+
     await prisma.$transaction(async (tx) => {
       for (const item of items) {
         if (item.quantity <= 0) continue;

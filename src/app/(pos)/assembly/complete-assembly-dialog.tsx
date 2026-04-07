@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,24 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Loader2, Zap, AlertCircle } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type BatteryValidationState = "idle" | "checking" | "valid" | "invalid";
-
 interface BatteryInput {
   serial: string;
-  state: BatteryValidationState;
-  message: string;
-  lotReference: string | null;
-}
-
-interface BatteryCheckResult {
-  found: boolean;
-  status: string | null;
-  message: string;
-  lot?: { id: string; reference: string | null; supplier: string | null } | null;
+  isDuplicate: boolean;
 }
 
 interface Props {
@@ -44,6 +33,20 @@ interface Props {
   onSuccess: () => void;
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function computeDuplicates(inputs: BatteryInput[]): BatteryInput[] {
+  const counts = new Map<string, number>();
+  inputs.forEach((b) => {
+    const s = b.serial.trim();
+    if (s) counts.set(s, (counts.get(s) ?? 0) + 1);
+  });
+  return inputs.map((b) => ({
+    ...b,
+    isDuplicate: b.serial.trim().length > 0 && (counts.get(b.serial.trim()) ?? 0) > 1,
+  }));
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function CompleteAssemblyDialog({
@@ -54,25 +57,21 @@ export function CompleteAssemblyDialog({
   modelName,
   voltajeLabel,
   requiredQuantity,
-  branchId,
   onSuccess,
 }: Props): React.JSX.Element {
   const requiresVin = vin === null;
   const [vinInput, setVinInput] = useState("");
+  const [lotReference, setLotReference] = useState("");
   const [batteryInputs, setBatteryInputs] = useState<BatteryInput[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Init states when dialog opens
+  // Init on open
   useEffect(() => {
     if (open) {
       setVinInput("");
+      setLotReference("");
       setBatteryInputs(
-        Array.from({ length: requiredQuantity }, () => ({
-          serial: "",
-          state: "idle" as const,
-          message: "",
-          lotReference: null,
-        }))
+        Array.from({ length: requiredQuantity }, () => ({ serial: "", isDuplicate: false }))
       );
     }
   }, [open, requiredQuantity]);
@@ -80,97 +79,37 @@ export function CompleteAssemblyDialog({
   useEffect(() => {
     if (!open) {
       setVinInput("");
+      setLotReference("");
       setBatteryInputs([]);
     }
   }, [open]);
 
-  const checkBatterySerial = useCallback(
-    async (index: number, serial: string) => {
-      if (!serial.trim() || !branchId) return;
+  const handleSerialChange = (index: number, value: string) => {
+    const upper = value.toUpperCase();
+    const next = batteryInputs.map((b, i) =>
+      i === index ? { ...b, serial: upper } : b
+    );
+    setBatteryInputs(computeDuplicates(next));
+  };
 
-      setBatteryInputs((prev) =>
-        prev.map((b, i) => (i === index ? { ...b, state: "checking" as const } : b))
-      );
-
-      try {
-        const res = await fetch(
-          `/api/batteries/check?serial=${encodeURIComponent(serial.trim())}&branchId=${branchId}`
-        );
-        const data = (await res.json()) as BatteryCheckResult;
-
-        setBatteryInputs((prev) =>
-          prev.map((b, i) => {
-            if (i !== index) return b;
-            if (data.found && data.status === "IN_STOCK") {
-              return {
-                ...b,
-                state: "valid" as const,
-                message: "Disponible",
-                lotReference: data.lot?.reference ?? null,
-              };
-            }
-            return {
-              ...b,
-              state: "invalid" as const,
-              message: data.message,
-              lotReference: null,
-            };
-          })
-        );
-      } catch {
-        setBatteryInputs((prev) =>
-          prev.map((b, i) =>
-            i === index ? { ...b, state: "invalid" as const, message: "Error de conexión" } : b
-          )
-        );
-      }
-    },
-    [branchId]
-  );
-
-  const handleSerialChange = useCallback(
-    (index: number, value: string) => {
-      const upper = value.toUpperCase();
-      setBatteryInputs((prev) =>
-        prev.map((b, i) =>
-          i === index
-            ? { ...b, serial: upper, state: "idle" as const, message: "", lotReference: null }
-            : b
-        )
-      );
-
-      const timer = setTimeout(() => {
-        if (upper.trim().length >= 3) {
-          checkBatterySerial(index, upper.trim());
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    },
-    [checkBatterySerial]
-  );
-
+  // ── Validación local (sin API check) ─────────────────────────────────────────
   const vinTrimmed = vinInput.trim().toUpperCase();
   const vinValid = !requiresVin || vinTrimmed.length >= 3;
-  const allBatteriesValid =
-    batteryInputs.length > 0 && batteryInputs.every((b) => b.state === "valid");
-  const canSubmit = vinValid && allBatteriesValid;
+  const lotValid = lotReference.trim().length >= 1;
+  const allSerialsFilled = batteryInputs.length > 0 && batteryInputs.every((b) => b.serial.trim().length >= 1);
+  const hasDuplicates = batteryInputs.some((b) => b.isDuplicate);
+  const canSubmit = vinValid && lotValid && allSerialsFilled && !hasDuplicates;
 
   const handleComplete = async () => {
     if (!canSubmit) return;
-
-    const serials = batteryInputs.map((b) => b.serial.trim());
-    const unique = new Set(serials);
-    if (unique.size !== serials.length) {
-      toast.error("Hay números de serie duplicados");
-      return;
-    }
 
     setSubmitting(true);
     toast.loading("Completando montaje...", { id: "complete-assembly" });
 
     try {
-      const payload: { batterySerials: string[]; vin?: string } = {
-        batterySerials: serials,
+      const payload: { batterySerials: string[]; lotReference: string; vin?: string } = {
+        batterySerials: batteryInputs.map((b) => b.serial.trim()),
+        lotReference: lotReference.trim(),
       };
       if (requiresVin) payload.vin = vinTrimmed;
 
@@ -228,95 +167,86 @@ export function CompleteAssemblyDialog({
               "Ingresa el VIN del vehículo y los seriales de las baterías"
             )}
             {modelName && voltajeLabel && (
-              <span>
-                {" "}
-                · {modelName} {voltajeLabel}
-              </span>
+              <span> · {modelName} {voltajeLabel}</span>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Campo VIN — solo cuando la orden no tiene VIN (generada por recepción) */}
-        {requiresVin && (
+        <div className="space-y-4">
+          {/* VIN — solo para órdenes sin VIN (generadas por recepción) */}
+          {requiresVin && (
+            <div className="space-y-1">
+              <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+                Número de serie del vehículo (VIN)
+              </label>
+              <Input
+                value={vinInput}
+                onChange={(e) => setVinInput(e.target.value.toUpperCase())}
+                placeholder="Ej. EVOBIKE-2024-001"
+                className="font-mono"
+                style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem" }}
+              />
+            </div>
+          )}
+
+          {/* Número de lote */}
           <div className="space-y-1">
-            <label
-              style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}
-            >
-              Número de serie del vehículo (VIN)
+            <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+              Número de lote de baterías
             </label>
             <Input
-              value={vinInput}
-              onChange={(e) => setVinInput(e.target.value.toUpperCase())}
-              placeholder="Ej. EVOBIKE-2024-001"
+              value={lotReference}
+              onChange={(e) => setLotReference(e.target.value.toUpperCase())}
+              placeholder="Ej. LOTE-2024-001"
               className="font-mono"
-              style={{
-                background: "var(--surf-high)",
-                border: "none",
-                borderRadius: "0.75rem",
-              }}
+              style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem" }}
             />
           </div>
-        )}
 
-        {/* Required batteries indicator */}
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{ background: "var(--surf-high)" }}
-        >
-          <Zap className="h-4 w-4 shrink-0" style={{ color: "var(--p-bright)" }} />
-          <span style={{ fontSize: "0.78rem", color: "var(--on-surf)" }}>
-            {requiredQuantity} bater{requiredQuantity === 1 ? "ía requerida" : "ías requeridas"}
-          </span>
-        </div>
+          {/* Indicador de cantidad */}
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ background: "var(--surf-high)" }}
+          >
+            <Zap className="h-4 w-4 shrink-0" style={{ color: "var(--p-bright)" }} />
+            <span style={{ fontSize: "0.78rem", color: "var(--on-surf)" }}>
+              {requiredQuantity} bater{requiredQuantity === 1 ? "ía requerida" : "ías requeridas"}
+            </span>
+          </div>
 
-        {/* Battery serial inputs */}
-        <div className="space-y-3">
-          {batteryInputs.map((b, i) => (
-            <div key={i} className="space-y-1">
-              <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
-                Batería {i + 1} de {batteryInputs.length}
-              </label>
-              <div className="relative">
-                <Input
-                  value={b.serial}
-                  onChange={(e) => handleSerialChange(i, e.target.value)}
-                  placeholder={`Serial batería ${i + 1}`}
-                  className="font-mono pr-10"
-                  style={{
-                    background:
-                      b.state === "valid"
-                        ? "var(--sec-container)"
-                        : b.state === "invalid"
-                        ? "var(--ter-container)"
-                        : "var(--surf-high)",
-                    border: "none",
-                    borderRadius: "0.75rem",
-                  }}
-                />
-                <div className="absolute right-3 top-2.5">
-                  {b.state === "checking" && (
-                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--on-surf-var)" }} />
-                  )}
-                  {b.state === "valid" && (
-                    <CheckCircle className="h-4 w-4" style={{ color: "var(--sec)" }} />
-                  )}
-                  {b.state === "invalid" && (
-                    <AlertCircle className="h-4 w-4" style={{ color: "var(--ter)" }} />
+          {/* Seriales de baterías */}
+          <div className="space-y-3">
+            {batteryInputs.map((b, i) => (
+              <div key={i} className="space-y-1">
+                <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+                  Batería {i + 1} de {batteryInputs.length}
+                </label>
+                <div className="relative">
+                  <Input
+                    value={b.serial}
+                    onChange={(e) => handleSerialChange(i, e.target.value)}
+                    placeholder={`Serial batería ${i + 1}`}
+                    className="font-mono pr-8"
+                    style={{
+                      background: b.isDuplicate ? "var(--ter-container)" : "var(--surf-high)",
+                      border: "none",
+                      borderRadius: "0.75rem",
+                    }}
+                  />
+                  {b.isDuplicate && (
+                    <div className="absolute right-3 top-2.5">
+                      <AlertCircle className="h-4 w-4" style={{ color: "var(--ter)" }} />
+                    </div>
                   )}
                 </div>
+                {b.isDuplicate && (
+                  <p style={{ fontSize: "0.7rem", color: "var(--ter)", paddingLeft: "0.5rem" }}>
+                    Serial duplicado
+                  </p>
+                )}
               </div>
-              {b.state === "valid" && b.lotReference && (
-                <p style={{ fontSize: "0.7rem", color: "var(--sec)", paddingLeft: "0.5rem" }}>
-                  Lote: {b.lotReference}
-                </p>
-              )}
-              {b.state === "invalid" && (
-                <p style={{ fontSize: "0.7rem", color: "var(--ter)", paddingLeft: "0.5rem" }}>
-                  {b.message}
-                </p>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

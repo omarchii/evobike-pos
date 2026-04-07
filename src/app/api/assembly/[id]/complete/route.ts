@@ -16,7 +16,8 @@ const completeSchema = z.object({
   batterySerials: z
     .array(z.string().min(1))
     .min(1, "Se requiere al menos un número de serie"),
-  // vin es requerido cuando la orden no tiene customerBike (generada por recepción)
+  lotReference: z.string().min(1, "El número de lote es requerido"),
+  // vin requerido cuando la orden no tiene customerBike (generada por recepción)
   vin: z
     .string()
     .min(3, "El VIN debe tener al menos 3 caracteres")
@@ -52,11 +53,20 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { batterySerials, vin } = parsed.data;
+  const { batterySerials, lotReference, vin } = parsed.data;
+
+  // Validar duplicados antes de entrar a la transacción
+  const uniqueSerials = new Set(batterySerials);
+  if (uniqueSerials.size !== batterySerials.length) {
+    return NextResponse.json(
+      { success: false, error: "Hay números de serie duplicados en el listado" },
+      { status: 400 }
+    );
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Cargar la orden con sus relaciones
+      // 1. Cargar la orden
       const order = await tx.assemblyOrder.findUnique({
         where: { id },
         select: {
@@ -78,42 +88,28 @@ export async function PATCH(
         },
       });
 
-      if (!order) {
-        throw new Error("Orden de montaje no encontrada");
-      }
-
-      if (role !== "ADMIN" && order.branchId !== branchId) {
-        throw new Error("No tienes acceso a esta orden de montaje");
-      }
-
+      if (!order) throw new Error("Orden de montaje no encontrada");
+      if (role !== "ADMIN" && order.branchId !== branchId) throw new Error("No tienes acceso a esta orden de montaje");
       if (order.status !== "PENDING") {
         throw new Error(
           `No se puede completar una orden con status "${order.status}". Solo se pueden completar órdenes PENDING.`
         );
       }
 
-      // 2. Resolver customerBikeId — puede ser existente o crear uno nuevo
+      // 2. Resolver customerBikeId
       let resolvedCustomerBikeId: string;
 
       if (order.customerBikeId) {
-        // Orden creada manualmente (ya tiene CustomerBike)
         resolvedCustomerBikeId = order.customerBikeId;
       } else {
-        // Orden generada por recepción — necesita VIN y productVariant
-        if (!vin) {
-          throw new Error("Se requiere el VIN para completar esta orden de montaje");
-        }
-        if (!order.productVariant) {
-          throw new Error("La orden no tiene variante de producto asociada");
-        }
+        if (!vin) throw new Error("Se requiere el VIN para completar esta orden de montaje");
+        if (!order.productVariant) throw new Error("La orden no tiene variante de producto asociada");
 
         const vinExists = await tx.customerBike.findFirst({
           where: { serialNumber: vin, branchId: order.branchId },
           select: { id: true },
         });
-        if (vinExists) {
-          throw new Error(`El VIN ${vin} ya está registrado en esta sucursal`);
-        }
+        if (vinExists) throw new Error(`El VIN ${vin} ya está registrado en esta sucursal`);
 
         const newBike = await tx.customerBike.create({
           data: {
@@ -135,8 +131,10 @@ export async function PATCH(
         resolvedCustomerBikeId = newBike.id;
       }
 
-      // 3. Obtener BatteryConfiguration — usar productVariantId si está disponible
+      // 3. Obtener BatteryConfiguration (cantidad requerida + variante de batería)
+      const orderBranchId = order.branchId;
       let requiredQuantity: number | null = null;
+      let batteryVariantId: string | null = null;
 
       if (order.productVariant) {
         const batteryConfig = await tx.batteryConfiguration.findFirst({
@@ -144,9 +142,10 @@ export async function PATCH(
             modeloId: order.productVariant.modelo_id,
             voltajeId: order.productVariant.voltaje_id,
           },
-          select: { quantity: true },
+          select: { quantity: true, batteryVariantId: true },
         });
         requiredQuantity = batteryConfig?.quantity ?? null;
+        batteryVariantId = batteryConfig?.batteryVariantId ?? null;
       }
 
       if (requiredQuantity !== null && batterySerials.length !== requiredQuantity) {
@@ -155,28 +154,18 @@ export async function PATCH(
         );
       }
 
-      // 4. Validar duplicados
-      const uniqueSerials = new Set(batterySerials);
-      if (uniqueSerials.size !== batterySerials.length) {
-        throw new Error("Hay números de serie duplicados en el listado");
-      }
-
-      // 5. Cargar y validar baterías
-      const batteries = await tx.battery.findMany({
+      // 4. Separar seriales existentes vs. nuevos
+      const existingBatteries = await tx.battery.findMany({
         where: { serialNumber: { in: batterySerials } },
         select: { id: true, serialNumber: true, status: true, branchId: true },
       });
 
-      if (batteries.length !== batterySerials.length) {
-        const found = new Set(batteries.map((b) => b.serialNumber));
-        const missing = batterySerials.filter((s) => !found.has(s));
-        throw new Error(
-          `Los siguientes seriales no están registrados: ${missing.join(", ")}`
-        );
-      }
+      const existingSerialSet = new Set(existingBatteries.map((b) => b.serialNumber));
+      const newSerials = batterySerials.filter((s) => !existingSerialSet.has(s));
 
-      for (const battery of batteries) {
-        if (role !== "ADMIN" && battery.branchId !== branchId) {
+      // 5. Validar baterías existentes
+      for (const battery of existingBatteries) {
+        if (role !== "ADMIN" && battery.branchId !== orderBranchId) {
           throw new Error(`La batería ${battery.serialNumber} pertenece a otra sucursal`);
         }
         if (battery.status !== "IN_STOCK") {
@@ -186,10 +175,49 @@ export async function PATCH(
         }
       }
 
-      // 6. Crear BatteryAssignments
+      // 6. Auto-crear BatteryLot + Battery para seriales nuevos
+      let newBatteryIds: string[] = [];
+
+      if (newSerials.length > 0) {
+        if (!batteryVariantId) {
+          throw new Error("No se puede registrar baterías nuevas: falta la configuración de variante de batería para este modelo");
+        }
+
+        const lot = await tx.batteryLot.create({
+          data: {
+            productVariantId: batteryVariantId,
+            branchId: orderBranchId,
+            reference: lotReference,
+            userId,
+          },
+        });
+
+        await tx.battery.createMany({
+          data: newSerials.map((serial) => ({
+            serialNumber: serial,
+            lotId: lot.id,
+            branchId: orderBranchId,
+            status: "IN_STOCK" as const,
+          })),
+        });
+
+        const createdBatteries = await tx.battery.findMany({
+          where: { serialNumber: { in: newSerials } },
+          select: { id: true },
+        });
+        newBatteryIds = createdBatteries.map((b) => b.id);
+      }
+
+      // 7. Reunir todos los IDs de baterías
+      const allBatteryIds = [
+        ...existingBatteries.map((b) => b.id),
+        ...newBatteryIds,
+      ];
+
+      // 8. Crear BatteryAssignments
       await tx.batteryAssignment.createMany({
-        data: batteries.map((battery) => ({
-          batteryId: battery.id,
+        data: allBatteryIds.map((batteryId) => ({
+          batteryId,
           customerBikeId: resolvedCustomerBikeId,
           assemblyOrderId: order.id,
           assignedByUserId: userId,
@@ -197,21 +225,17 @@ export async function PATCH(
         })),
       });
 
-      // 7. Actualizar Battery.status → INSTALLED
+      // 9. Marcar todas las baterías como INSTALLED
       await tx.battery.updateMany({
-        where: { id: { in: batteries.map((b) => b.id) } },
+        where: { id: { in: allBatteryIds } },
         data: { status: "INSTALLED" },
       });
 
-      // 8. Completar la orden
+      // 10. Completar la orden
       const completedAt = new Date();
       await tx.assemblyOrder.update({
         where: { id: order.id },
-        data: {
-          status: "COMPLETED",
-          assembledByUserId: userId,
-          completedAt,
-        },
+        data: { status: "COMPLETED", assembledByUserId: userId, completedAt },
       });
 
       return { id: order.id, status: "COMPLETED" as const, completedAt: completedAt.toISOString() };
@@ -227,11 +251,11 @@ export async function PATCH(
         message.includes("disponible") ||
         message.includes("sucursal") ||
         message.includes("duplicados") ||
-        message.includes("registrados") ||
         message.includes("no encontrada") ||
         message.includes("acceso") ||
         message.includes("VIN") ||
-        message.includes("variante"));
+        message.includes("variante") ||
+        message.includes("lote"));
     return NextResponse.json(
       { success: false, error: message },
       { status: isBusinessError ? 422 : 500 }
