@@ -16,6 +16,12 @@ const completeSchema = z.object({
   batterySerials: z
     .array(z.string().min(1))
     .min(1, "Se requiere al menos un número de serie"),
+  // vin es requerido cuando la orden no tiene customerBike (generada por recepción)
+  vin: z
+    .string()
+    .min(3, "El VIN debe tener al menos 3 caracteres")
+    .transform((v) => v.trim().toUpperCase())
+    .optional(),
 });
 
 // PATCH /api/assembly/[id]/complete — Completar montaje pendiente
@@ -30,7 +36,6 @@ export async function PATCH(
 
   const { id: userId, role, branchId } = session.user as unknown as SessionUser;
 
-  // Solo TECHNICIAN, MANAGER y ADMIN pueden completar montajes
   if (!ALLOWED_ROLES.includes(role)) {
     return NextResponse.json(
       { success: false, error: "No tienes permisos para completar órdenes de montaje" },
@@ -47,7 +52,7 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { batterySerials } = parsed.data;
+  const { batterySerials, vin } = parsed.data;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -59,12 +64,15 @@ export async function PATCH(
           status: true,
           branchId: true,
           customerBikeId: true,
-          customerBike: {
+          productVariantId: true,
+          productVariant: {
             select: {
               id: true,
-              model: true,
-              voltaje: true,
-              // Para obtener modeloId y voltajeId necesitamos el productVariant
+              modelo_id: true,
+              voltaje_id: true,
+              modelo: { select: { nombre: true } },
+              voltaje: { select: { label: true } },
+              color: { select: { nombre: true } },
             },
           },
         },
@@ -74,40 +82,68 @@ export async function PATCH(
         throw new Error("Orden de montaje no encontrada");
       }
 
-      // 2. Validar que pertenece a la sucursal del usuario (excepto ADMIN)
       if (role !== "ADMIN" && order.branchId !== branchId) {
         throw new Error("No tienes acceso a esta orden de montaje");
       }
 
-      // 3. Validar status PENDING
       if (order.status !== "PENDING") {
         throw new Error(
           `No se puede completar una orden con status "${order.status}". Solo se pueden completar órdenes PENDING.`
         );
       }
 
-      // 4. Obtener la BatteryConfiguration para saber cuántas baterías se requieren
-      // Buscamos via el modelo y voltaje del CustomerBike (guardados como strings)
-      // Necesitamos encontrar el Voltaje por label
-      const voltajeRecord = order.customerBike.voltaje
-        ? await tx.voltaje.findFirst({
-            where: { label: order.customerBike.voltaje },
-            select: { id: true },
-          })
-        : null;
+      // 2. Resolver customerBikeId — puede ser existente o crear uno nuevo
+      let resolvedCustomerBikeId: string;
 
-      const modeloRecord = order.customerBike.model
-        ? await tx.modelo.findUnique({
-            where: { nombre: order.customerBike.model },
-            select: { id: true },
-          })
-        : null;
+      if (order.customerBikeId) {
+        // Orden creada manualmente (ya tiene CustomerBike)
+        resolvedCustomerBikeId = order.customerBikeId;
+      } else {
+        // Orden generada por recepción — necesita VIN y productVariant
+        if (!vin) {
+          throw new Error("Se requiere el VIN para completar esta orden de montaje");
+        }
+        if (!order.productVariant) {
+          throw new Error("La orden no tiene variante de producto asociada");
+        }
 
+        const vinExists = await tx.customerBike.findFirst({
+          where: { serialNumber: vin, branchId: order.branchId },
+          select: { id: true },
+        });
+        if (vinExists) {
+          throw new Error(`El VIN ${vin} ya está registrado en esta sucursal`);
+        }
+
+        const newBike = await tx.customerBike.create({
+          data: {
+            branchId: order.branchId,
+            productVariantId: order.productVariant.id,
+            serialNumber: vin,
+            brand: "EVOBIKE",
+            model: order.productVariant.modelo.nombre,
+            voltaje: order.productVariant.voltaje.label,
+            color: order.productVariant.color.nombre,
+          },
+        });
+
+        await tx.assemblyOrder.update({
+          where: { id: order.id },
+          data: { customerBikeId: newBike.id },
+        });
+
+        resolvedCustomerBikeId = newBike.id;
+      }
+
+      // 3. Obtener BatteryConfiguration — usar productVariantId si está disponible
       let requiredQuantity: number | null = null;
 
-      if (voltajeRecord && modeloRecord) {
+      if (order.productVariant) {
         const batteryConfig = await tx.batteryConfiguration.findFirst({
-          where: { modeloId: modeloRecord.id, voltajeId: voltajeRecord.id },
+          where: {
+            modeloId: order.productVariant.modelo_id,
+            voltajeId: order.productVariant.voltaje_id,
+          },
           select: { quantity: true },
         });
         requiredQuantity = batteryConfig?.quantity ?? null;
@@ -119,13 +155,13 @@ export async function PATCH(
         );
       }
 
-      // 5. Validar duplicados en el input
+      // 4. Validar duplicados
       const uniqueSerials = new Set(batterySerials);
       if (uniqueSerials.size !== batterySerials.length) {
         throw new Error("Hay números de serie duplicados en el listado");
       }
 
-      // 6. Cargar baterías de DB y validar
+      // 5. Cargar y validar baterías
       const batteries = await tx.battery.findMany({
         where: { serialNumber: { in: batterySerials } },
         select: { id: true, serialNumber: true, status: true, branchId: true },
@@ -150,24 +186,24 @@ export async function PATCH(
         }
       }
 
-      // 7. Crear BatteryAssignment × N
+      // 6. Crear BatteryAssignments
       await tx.batteryAssignment.createMany({
         data: batteries.map((battery) => ({
           batteryId: battery.id,
-          customerBikeId: order.customerBikeId,
+          customerBikeId: resolvedCustomerBikeId,
           assemblyOrderId: order.id,
           assignedByUserId: userId,
           isCurrent: true,
         })),
       });
 
-      // 8. Actualizar Battery.status → INSTALLED
+      // 7. Actualizar Battery.status → INSTALLED
       await tx.battery.updateMany({
         where: { id: { in: batteries.map((b) => b.id) } },
         data: { status: "INSTALLED" },
       });
 
-      // 9. Actualizar AssemblyOrder → COMPLETED
+      // 8. Completar la orden
       const completedAt = new Date();
       await tx.assemblyOrder.update({
         where: { id: order.id },
@@ -193,7 +229,9 @@ export async function PATCH(
         message.includes("duplicados") ||
         message.includes("registrados") ||
         message.includes("no encontrada") ||
-        message.includes("acceso"));
+        message.includes("acceso") ||
+        message.includes("VIN") ||
+        message.includes("variante"));
     return NextResponse.json(
       { success: false, error: message },
       { status: isBusinessError ? 422 : 500 }

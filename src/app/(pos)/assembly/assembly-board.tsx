@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Wrench, Plus, AlertTriangle } from "lucide-react";
+import { Wrench, Plus, AlertTriangle, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ export interface AssemblyOrderRow {
   notes: string | null;
   createdAt: string;
   completedAt: string | null;
+  // null para órdenes generadas por recepción de inventario (sin VIN todavía)
   customerBike: {
     id: string;
     serialNumber: string;
@@ -33,13 +34,33 @@ export interface AssemblyOrderRow {
     color: string | null;
     voltaje: string | null;
     customer: { id: string; name: string } | null;
-  };
+  } | null;
+  // Presente cuando la orden fue generada por recepción
+  productVariant: {
+    id: string;
+    sku: string;
+    modeloId: string;
+    voltajeId: string;
+    modeloNombre: string;
+    colorNombre: string;
+    voltajeLabel: string;
+  } | null;
   assembledBy: { id: string; name: string } | null;
   batteryAssignments: {
     serialNumber: string;
     status: string;
     lotReference: string | null;
   }[];
+}
+
+// Grupo de órdenes sin VIN del mismo productVariant
+interface PendingGroup {
+  productVariantId: string;
+  modeloNombre: string;
+  colorNombre: string;
+  voltajeLabel: string;
+  sku: string;
+  orders: AssemblyOrderRow[];
 }
 
 interface AssemblyConfigData {
@@ -68,6 +89,8 @@ export function AssemblyBoard({
 }: Props): React.JSX.Element {
   const [orders, setOrders] = useState<AssemblyOrderRow[]>(initialOrders);
   const [config, setConfig] = useState<AssemblyConfigData | null>(null);
+  // Fijo en el render para evitar re-renders por Date.now impuro
+  const [now] = useState(() => Date.now());
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [completeTarget, setCompleteTarget] = useState<AssemblyOrderRow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<AssemblyOrderRow | null>(null);
@@ -75,8 +98,31 @@ export function AssemblyBoard({
   const [cancelLoading, setCancelLoading] = useState(false);
   const [uninstallLoading, setUninstallLoading] = useState(false);
 
-  const pending = orders.filter((o) => o.status === "PENDING");
+  // Separar pendientes con VIN (creadas manualmente) y sin VIN (de recepción)
+  const pendingWithVin = orders.filter((o) => o.status === "PENDING" && o.customerBike !== null);
+  const pendingWithoutVin = orders.filter((o) => o.status === "PENDING" && o.customerBike === null);
   const completed = orders.filter((o) => o.status === "COMPLETED");
+
+  // Agrupar pendientes sin VIN por productVariantId
+  const pendingGroups = pendingWithoutVin.reduce<PendingGroup[]>((groups, order) => {
+    if (!order.productVariant) return groups;
+    const existing = groups.find((g) => g.productVariantId === order.productVariant!.id);
+    if (existing) {
+      existing.orders.push(order);
+    } else {
+      groups.push({
+        productVariantId: order.productVariant.id,
+        modeloNombre: order.productVariant.modeloNombre,
+        colorNombre: order.productVariant.colorNombre,
+        voltajeLabel: order.productVariant.voltajeLabel,
+        sku: order.productVariant.sku,
+        orders: [order],
+      });
+    }
+    return groups;
+  }, []);
+
+  const totalPending = pendingWithVin.length + pendingWithoutVin.length;
 
   // ── Load config on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -106,13 +152,22 @@ export function AssemblyBoard({
   const getRequiredQuantity = useCallback(
     (order: AssemblyOrderRow): number => {
       if (!config) return 1;
-      // Match by model nombre + voltaje label → find modeloId and voltajeId
+      // Preferir lookup por ID (órdenes con productVariant)
+      if (order.productVariant) {
+        const cfg = config.configurations.find(
+          (c) =>
+            c.modeloId === order.productVariant!.modeloId &&
+            c.voltajeId === order.productVariant!.voltajeId
+        );
+        return cfg?.quantity ?? 1;
+      }
+      // Fallback: texto para órdenes manuales legacy
       const modeloEntry = config.modelos.find(
-        (m) => m.nombre === order.customerBike.model
+        (m) => m.nombre === order.customerBike?.model
       );
       if (!modeloEntry) return 1;
       const voltajeEntry = modeloEntry.voltajes.find(
-        (v) => v.label === order.customerBike.voltaje
+        (v) => v.label === order.customerBike?.voltaje
       );
       if (!voltajeEntry) return 1;
       const cfg = config.configurations.find(
@@ -156,7 +211,7 @@ export function AssemblyBoard({
       const res = await fetch("/api/batteries/uninstall", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerBikeId: uninstallTarget.customerBike.id }),
+        body: JSON.stringify({ customerBikeId: uninstallTarget.customerBike?.id }),
       }).then(
         (r) =>
           r.json() as Promise<{
@@ -183,6 +238,14 @@ export function AssemblyBoard({
       setUninstallLoading(false);
     }
   }, [uninstallTarget, refetch]);
+
+  // ── Nombre para mostrar en diálogos ───────────────────────────────────────
+  const getOrderDisplayName = (order: AssemblyOrderRow): string => {
+    if (order.customerBike) return order.customerBike.serialNumber;
+    if (order.productVariant)
+      return `${order.productVariant.modeloNombre} ${order.productVariant.voltajeLabel} / ${order.productVariant.colorNombre}`;
+    return order.id;
+  };
 
   return (
     <div className="space-y-4">
@@ -219,11 +282,11 @@ export function AssemblyBoard({
                 color: "var(--on-surf-var)",
               }}
             >
-              Pendientes ({pending.length})
+              Pendientes ({totalPending})
             </span>
           </div>
 
-          {pending.length === 0 ? (
+          {totalPending === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-10 rounded-2xl"
               style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
@@ -234,16 +297,31 @@ export function AssemblyBoard({
               </p>
             </div>
           ) : (
-            pending.map((order) => (
-              <AssemblyCard
-                key={order.id}
-                order={order}
-                canComplete={canComplete}
-                onComplete={() => setCompleteTarget(order)}
-                onCancel={() => setCancelTarget(order)}
-                onUninstall={() => setUninstallTarget(order)}
-              />
-            ))
+            <>
+              {/* Grupos de órdenes de recepción (sin VIN) */}
+              {pendingGroups.map((group) => (
+                <ReceiptGroupCard
+                  key={group.productVariantId}
+                  group={group}
+                  canComplete={canComplete}
+                  onMountNext={() => setCompleteTarget(group.orders[0])}
+                  onCancelAll={() => setCancelTarget(group.orders[0])}
+                />
+              ))}
+
+              {/* Órdenes manuales (con VIN) */}
+              {pendingWithVin.map((order) => (
+                <AssemblyCard
+                  key={order.id}
+                  order={order}
+                  canComplete={canComplete}
+                  onComplete={() => setCompleteTarget(order)}
+                  onCancel={() => setCancelTarget(order)}
+                  onUninstall={() => setUninstallTarget(order)}
+                  now={now}
+                />
+              ))}
+            </>
           )}
         </div>
 
@@ -282,6 +360,7 @@ export function AssemblyBoard({
                 onComplete={() => setCompleteTarget(order)}
                 onCancel={() => setCancelTarget(order)}
                 onUninstall={() => setUninstallTarget(order)}
+                now={now}
               />
             ))
           )}
@@ -303,9 +382,18 @@ export function AssemblyBoard({
             if (!open) setCompleteTarget(null);
           }}
           orderId={completeTarget.id}
-          vin={completeTarget.customerBike.serialNumber}
-          modelName={completeTarget.customerBike.model}
-          voltajeLabel={completeTarget.customerBike.voltaje}
+          // Para órdenes sin VIN: vin es null y el diálogo pide ingresarlo
+          vin={completeTarget.customerBike?.serialNumber ?? null}
+          modelName={
+            completeTarget.customerBike?.model ??
+            completeTarget.productVariant?.modeloNombre ??
+            null
+          }
+          voltajeLabel={
+            completeTarget.customerBike?.voltaje ??
+            completeTarget.productVariant?.voltajeLabel ??
+            null
+          }
           requiredQuantity={getRequiredQuantity(completeTarget)}
           branchId={config?.branchId ?? null}
           onSuccess={refetch}
@@ -340,7 +428,7 @@ export function AssemblyBoard({
                 className="font-mono font-semibold"
                 style={{ color: "var(--on-surf)" }}
               >
-                {cancelTarget?.customerBike.serialNumber}
+                {cancelTarget ? getOrderDisplayName(cancelTarget) : ""}
               </span>{" "}
               quedará cancelada. Esta acción no se puede deshacer.
             </AlertDialogDescription>
@@ -399,7 +487,7 @@ export function AssemblyBoard({
                 className="font-mono font-semibold"
                 style={{ color: "var(--on-surf)" }}
               >
-                {uninstallTarget?.customerBike.serialNumber}
+                {uninstallTarget?.customerBike?.serialNumber ?? ""}
               </span>{" "}
               y regresarán a inventario como IN_STOCK. ¿Confirmar?
             </AlertDialogDescription>
@@ -427,7 +515,120 @@ export function AssemblyBoard({
   );
 }
 
-// ── Card ───────────────────────────────────────────────────────────────────────
+// ── ReceiptGroupCard — Agrupa N órdenes del mismo modelo sin VIN ───────────────
+
+function ReceiptGroupCard({
+  group,
+  canComplete,
+  onMountNext,
+  onCancelAll,
+}: {
+  group: PendingGroup;
+  canComplete: boolean;
+  onMountNext: () => void;
+  onCancelAll: () => void;
+}): React.JSX.Element {
+  const count = group.orders.length;
+
+  return (
+    <div
+      className="rounded-2xl p-4 space-y-3 transition-all"
+      style={{
+        background: "var(--surf-lowest)",
+        boxShadow: "var(--shadow)",
+        outline: "1px solid rgba(243,156,18,0.2)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 shrink-0" style={{ color: "var(--warn)" }} />
+          <div>
+            <p
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: "var(--on-surf)",
+              }}
+            >
+              {group.modeloNombre} {group.voltajeLabel}
+            </p>
+            <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)", marginTop: "0.1rem" }}>
+              {group.colorNombre} · {group.sku}
+            </p>
+          </div>
+        </div>
+        <span
+          className="shrink-0"
+          style={{
+            fontSize: "0.6rem",
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            padding: "0.2rem 0.65rem",
+            borderRadius: 999,
+            background: "var(--warn-container)",
+            color: "var(--warn)",
+          }}
+        >
+          {count} pendiente{count !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)" }}>
+        Sin VIN asignado — recibidos por recepción de inventario
+      </p>
+
+      {/* Footer */}
+      {canComplete && (
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            onClick={onCancelAll}
+            style={{
+              fontSize: "0.72rem",
+              color: "var(--ter)",
+              fontWeight: 500,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "0.2rem 0.5rem",
+            }}
+          >
+            Cancelar una
+          </button>
+          <button
+            onClick={onMountNext}
+            style={{
+              fontSize: "0.72rem",
+              color: "#fff",
+              fontWeight: 600,
+              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              border: "none",
+              borderRadius: "0.75rem",
+              cursor: "pointer",
+              padding: "0.35rem 0.85rem",
+            }}
+          >
+            Montar siguiente
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string, now: number): string {
+  const mins = Math.floor((now - new Date(iso).getTime()) / 60000);
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  return `hace ${Math.floor(hrs / 24)} días`;
+}
+
+// ── AssemblyCard — Orden individual con VIN ────────────────────────────────────
 
 function AssemblyCard({
   order,
@@ -435,12 +636,14 @@ function AssemblyCard({
   onComplete,
   onCancel,
   onUninstall,
+  now,
 }: {
   order: AssemblyOrderRow;
   canComplete: boolean;
   onComplete: () => void;
   onCancel: () => void;
   onUninstall: () => void;
+  now: number;
 }): React.JSX.Element {
   const isPending = order.status === "PENDING";
   const isCompleted = order.status === "COMPLETED";
@@ -448,13 +651,7 @@ function AssemblyCard({
   const statusBg = isPending ? "var(--warn-container)" : "var(--sec-container)";
   const statusLabel = isPending ? "Pendiente" : "Completada";
 
-  const timeAgo = (iso: string): string => {
-    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-    if (mins < 60) return `hace ${mins} min`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `hace ${hrs}h`;
-    return `hace ${Math.floor(hrs / 24)} días`;
-  };
+  const bike = order.customerBike;
 
   return (
     <div
@@ -472,12 +669,10 @@ function AssemblyCard({
               color: "var(--on-surf)",
             }}
           >
-            VIN: {order.customerBike.serialNumber}
+            VIN: {bike?.serialNumber ?? "—"}
           </p>
           <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)", marginTop: "0.1rem" }}>
-            {[order.customerBike.model, order.customerBike.voltaje, order.customerBike.color]
-              .filter(Boolean)
-              .join(" · ")}
+            {[bike?.model, bike?.voltaje, bike?.color].filter(Boolean).join(" · ")}
           </p>
         </div>
         <span
@@ -523,14 +718,14 @@ function AssemblyCard({
 
       {isPending && order.batteryAssignments.length === 0 && (
         <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)" }}>
-          🔋 Sin baterías asignadas aún
+          Sin baterías asignadas aún
         </p>
       )}
 
       {/* Customer */}
-      {order.customerBike.customer && (
+      {bike?.customer && (
         <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)" }}>
-          Cliente: {order.customerBike.customer.name}
+          Cliente: {bike.customer.name}
         </p>
       )}
 
@@ -538,8 +733,8 @@ function AssemblyCard({
       <div className="flex items-center justify-between pt-1">
         <p style={{ fontSize: "0.68rem", color: "var(--on-surf-var)" }}>
           {isPending
-            ? `Creada ${timeAgo(order.createdAt)}`
-            : `Completada ${order.completedAt ? timeAgo(order.completedAt) : "—"} · ${order.assembledBy?.name ?? "—"}`}
+            ? `Creada ${timeAgo(order.createdAt, now)}`
+            : `Completada ${order.completedAt ? timeAgo(order.completedAt, now) : "—"} · ${order.assembledBy?.name ?? "—"}`}
         </p>
 
         <div className="flex items-center gap-2">

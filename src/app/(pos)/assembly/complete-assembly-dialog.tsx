@@ -35,7 +35,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderId: string;
-  vin: string;
+  // null cuando la orden fue generada por recepción y aún no tiene VIN
+  vin: string | null;
   modelName: string | null;
   voltajeLabel: string | null;
   requiredQuantity: number;
@@ -56,12 +57,15 @@ export function CompleteAssemblyDialog({
   branchId,
   onSuccess,
 }: Props): React.JSX.Element {
+  const requiresVin = vin === null;
+  const [vinInput, setVinInput] = useState("");
   const [batteryInputs, setBatteryInputs] = useState<BatteryInput[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Init battery inputs when dialog opens
+  // Init states when dialog opens
   useEffect(() => {
     if (open) {
+      setVinInput("");
       setBatteryInputs(
         Array.from({ length: requiredQuantity }, () => ({
           serial: "",
@@ -73,9 +77,9 @@ export function CompleteAssemblyDialog({
     }
   }, [open, requiredQuantity]);
 
-  // Reset on close
   useEffect(() => {
     if (!open) {
+      setVinInput("");
       setBatteryInputs([]);
     }
   }, [open]);
@@ -145,11 +149,14 @@ export function CompleteAssemblyDialog({
     [checkBatterySerial]
   );
 
+  const vinTrimmed = vinInput.trim().toUpperCase();
+  const vinValid = !requiresVin || vinTrimmed.length >= 3;
   const allBatteriesValid =
     batteryInputs.length > 0 && batteryInputs.every((b) => b.state === "valid");
+  const canSubmit = vinValid && allBatteriesValid;
 
   const handleComplete = async () => {
-    if (!allBatteriesValid) return;
+    if (!canSubmit) return;
 
     const serials = batteryInputs.map((b) => b.serial.trim());
     const unique = new Set(serials);
@@ -162,10 +169,15 @@ export function CompleteAssemblyDialog({
     toast.loading("Completando montaje...", { id: "complete-assembly" });
 
     try {
+      const payload: { batterySerials: string[]; vin?: string } = {
+        batterySerials: serials,
+      };
+      if (requiresVin) payload.vin = vinTrimmed;
+
       const res = await fetch(`/api/assembly/${orderId}/complete`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ batterySerials: serials }),
+        body: JSON.stringify(payload),
       }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
 
       if (res.success) {
@@ -205,10 +217,16 @@ export function CompleteAssemblyDialog({
             Completar Montaje
           </DialogTitle>
           <DialogDescription style={{ fontSize: "0.8rem", color: "var(--on-surf-var)" }}>
-            VIN:{" "}
-            <span className="font-mono font-semibold" style={{ color: "var(--on-surf)" }}>
-              {vin}
-            </span>
+            {vin ? (
+              <>
+                VIN:{" "}
+                <span className="font-mono font-semibold" style={{ color: "var(--on-surf)" }}>
+                  {vin}
+                </span>
+              </>
+            ) : (
+              "Ingresa el VIN del vehículo y los seriales de las baterías"
+            )}
             {modelName && voltajeLabel && (
               <span>
                 {" "}
@@ -217,6 +235,28 @@ export function CompleteAssemblyDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Campo VIN — solo cuando la orden no tiene VIN (generada por recepción) */}
+        {requiresVin && (
+          <div className="space-y-1">
+            <label
+              style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}
+            >
+              Número de serie del vehículo (VIN)
+            </label>
+            <Input
+              value={vinInput}
+              onChange={(e) => setVinInput(e.target.value.toUpperCase())}
+              placeholder="Ej. EVOBIKE-2024-001"
+              className="font-mono"
+              style={{
+                background: "var(--surf-high)",
+                border: "none",
+                borderRadius: "0.75rem",
+              }}
+            />
+          </div>
+        )}
 
         {/* Required batteries indicator */}
         <div
@@ -290,7 +330,7 @@ export function CompleteAssemblyDialog({
           </Button>
           <Button
             onClick={handleComplete}
-            disabled={!allBatteriesValid || submitting}
+            disabled={!canSubmit || submitting}
             style={{
               background: "linear-gradient(135deg, #1b4332, #2ecc71)",
               color: "#fff",

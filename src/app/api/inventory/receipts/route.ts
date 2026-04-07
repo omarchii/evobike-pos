@@ -40,6 +40,48 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { items, reference } = parsed.data;
 
   try {
+    // Pre-cargar info de variantes para clasificar (fuera de tx para eficiencia)
+    const variantIds = items.map((i) => i.productVariantId);
+    const variantInfoList = await prisma.productVariant.findMany({
+      where: { id: { in: variantIds } },
+      select: {
+        id: true,
+        modelo_id: true,
+        voltaje_id: true,
+        modelo: { select: { requiere_vin: true } },
+      },
+    });
+
+    // Para variantes con requiere_vin=true, verificar si tienen BatteryConfiguration
+    const vinRequiredIds = variantInfoList
+      .filter((v) => v.modelo.requiere_vin)
+      .map((v) => v.id);
+
+    type AssembleableMap = Map<string, boolean>;
+    const assembleableMap: AssembleableMap = new Map();
+
+    if (vinRequiredIds.length > 0) {
+      const batteryConfigs = await prisma.batteryConfiguration.findMany({
+        where: {
+          OR: variantInfoList
+            .filter((v) => v.modelo.requiere_vin)
+            .map((v) => ({ modeloId: v.modelo_id, voltajeId: v.voltaje_id })),
+        },
+        select: { modeloId: true, voltajeId: true },
+      });
+
+      // Construir set de combinaciones ensamblables
+      const assembleableKeys = new Set(
+        batteryConfigs.map((c) => `${c.modeloId}:${c.voltajeId}`)
+      );
+
+      for (const v of variantInfoList) {
+        if (v.modelo.requiere_vin) {
+          assembleableMap.set(v.id, assembleableKeys.has(`${v.modelo_id}:${v.voltaje_id}`));
+        }
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const item of items) {
         if (item.quantity <= 0) continue;
@@ -74,6 +116,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             referenceId: reference || "RECEIPT_BATCH",
           },
         });
+
+        // Crear AssemblyOrders para vehículos ensamblables
+        if (assembleableMap.get(item.productVariantId) === true) {
+          const ordersData = Array.from({ length: item.quantity }, () => ({
+            productVariantId: item.productVariantId,
+            branchId,
+            status: "PENDING" as const,
+            receiptReference: reference ?? null,
+          }));
+
+          await tx.assemblyOrder.createMany({ data: ordersData });
+        }
       }
     });
 

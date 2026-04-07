@@ -41,6 +41,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         notes: true,
         createdAt: true,
         completedAt: true,
+        // customerBike es ahora nullable (órdenes de recepción sin VIN)
         customerBike: {
           select: {
             id: true,
@@ -63,6 +64,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             },
           },
         },
+        // productVariant para órdenes generadas por recepción (sin customerBike)
+        productVariant: {
+          select: {
+            id: true,
+            sku: true,
+            modelo_id: true,
+            voltaje_id: true,
+            modelo: { select: { nombre: true } },
+            color: { select: { nombre: true } },
+            voltaje: { select: { label: true } },
+          },
+        },
         assembledBy: { select: { id: true, name: true } },
       },
     });
@@ -73,16 +86,29 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       notes: o.notes,
       createdAt: o.createdAt.toISOString(),
       completedAt: o.completedAt?.toISOString() ?? null,
-      customerBike: {
-        id: o.customerBike.id,
-        serialNumber: o.customerBike.serialNumber,
-        model: o.customerBike.model,
-        color: o.customerBike.color,
-        voltaje: o.customerBike.voltaje,
-        customer: o.customerBike.customer ?? null,
-      },
+      customerBike: o.customerBike
+        ? {
+            id: o.customerBike.id,
+            serialNumber: o.customerBike.serialNumber,
+            model: o.customerBike.model,
+            color: o.customerBike.color,
+            voltaje: o.customerBike.voltaje,
+            customer: o.customerBike.customer ?? null,
+          }
+        : null,
+      productVariant: o.productVariant
+        ? {
+            id: o.productVariant.id,
+            sku: o.productVariant.sku,
+            modeloId: o.productVariant.modelo_id,
+            voltajeId: o.productVariant.voltaje_id,
+            modeloNombre: o.productVariant.modelo.nombre,
+            colorNombre: o.productVariant.color.nombre,
+            voltajeLabel: o.productVariant.voltaje.label,
+          }
+        : null,
       assembledBy: o.assembledBy ?? null,
-      batteryAssignments: o.customerBike.batteryAssignments.map((ba) => ({
+      batteryAssignments: (o.customerBike?.batteryAssignments ?? []).map((ba) => ({
         serialNumber: ba.battery.serialNumber,
         status: ba.battery.status,
         lotReference: ba.battery.lot.reference,
@@ -117,7 +143,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId } = session.user as unknown as SessionUser;
 
   if (!branchId) {
     return NextResponse.json(
@@ -154,7 +180,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         throw new Error(`El VIN ${vin} ya está registrado en esta sucursal`);
       }
 
-      // 2. Obtener labels del ProductVariant para el CustomerBike
+      // 2. Obtener ProductVariant
       const productVariant = await tx.productVariant.findFirst({
         where: { modelo_id: modeloId, voltaje_id: voltajeId, color_id: colorId },
         select: {
@@ -187,13 +213,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const customerBike = await tx.customerBike.create({
         data: {
           branchId,
+          productVariantId: productVariant.id,
           serialNumber: vin,
           brand: "EVOBIKE",
           model: productVariant.modelo.nombre,
           voltaje: productVariant.voltaje.label,
           color: productVariant.color.nombre,
           notes: notes ?? null,
-          // customerId queda null intencionalmente (pre-venta)
         },
       });
 
@@ -201,26 +227,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (completeNow) {
         const serials = batterySerials!;
 
-        // 5a. Validar cantidad
         if (serials.length !== requiredQuantity) {
           throw new Error(
             `Se requieren ${requiredQuantity} baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}, pero se proporcionaron ${serials.length}`
           );
         }
 
-        // 5b. Validar duplicados en el input
         const uniqueSerials = new Set(serials);
         if (uniqueSerials.size !== serials.length) {
           throw new Error("Hay números de serie duplicados en el listado");
         }
 
-        // 5c. Cargar baterías de DB
         const batteries = await tx.battery.findMany({
           where: { serialNumber: { in: serials } },
           select: { id: true, serialNumber: true, status: true, branchId: true },
         });
 
-        // 5d. Validar que todas existen
         if (batteries.length !== serials.length) {
           const found = new Set(batteries.map((b) => b.serialNumber));
           const missing = serials.filter((s) => !found.has(s));
@@ -229,12 +251,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           );
         }
 
-        // 5e. Validar status y sucursal
         for (const battery of batteries) {
           if (battery.branchId !== branchId) {
-            throw new Error(
-              `La batería ${battery.serialNumber} pertenece a otra sucursal`
-            );
+            throw new Error(`La batería ${battery.serialNumber} pertenece a otra sucursal`);
           }
           if (battery.status !== "IN_STOCK") {
             throw new Error(
@@ -243,10 +262,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
-        // 5f. Crear AssemblyOrder COMPLETED
         const assemblyOrder = await tx.assemblyOrder.create({
           data: {
             customerBikeId: customerBike.id,
+            productVariantId: productVariant.id,
             branchId,
             status: "COMPLETED",
             assembledByUserId: userId,
@@ -255,7 +274,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           },
         });
 
-        // 5g. Crear BatteryAssignment × N
         await tx.batteryAssignment.createMany({
           data: batteries.map((battery) => ({
             batteryId: battery.id,
@@ -266,7 +284,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           })),
         });
 
-        // 5h. Actualizar Battery.status → INSTALLED
         await tx.battery.updateMany({
           where: { id: { in: batteries.map((b) => b.id) } },
           data: { status: "INSTALLED" },
@@ -279,11 +296,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           vin,
         };
       } else {
-        // 6. Crear AssemblyOrder PENDING (sin baterías)
-        // Validar que no exista otra PENDING para este customerBike (aunque es nuevo, por si acaso)
         const assemblyOrder = await tx.assemblyOrder.create({
           data: {
             customerBikeId: customerBike.id,
+            productVariantId: productVariant.id,
             branchId,
             status: "PENDING",
             notes: notes ?? null,
@@ -302,7 +318,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al crear la orden de montaje";
-    // Errores de negocio → 422, errores inesperados → 500
     const isBusinessError =
       error instanceof Error &&
       (message.includes("VIN") ||

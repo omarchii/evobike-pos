@@ -142,6 +142,9 @@ import { prisma } from "../../lib/prisma";
 - **Layaway + Backorder → módulo Pedidos** — ambos flujos se fusionan en la misma UI (Fase 2G). No crear módulos separados.
 - **Server Actions → API Routes ✅** — migración completada en Fase 2H-A. `src/actions/` eliminado. Todas las mutaciones viven en `src/app/api/`.
 - **Módulo de montaje (Fase 2H)** — diseñado con Opus. `CustomerBike.customerId` es nullable para soportar vehículos pre-venta (sin cliente asignado). El montaje ocurre antes de la venta. La integración con POS se difiere a Fase 4 por riesgo.
+- **Integración Inventario ↔ Montaje (Fase 2H-C)** — Al recibir mercancía (`PURCHASE_RECEIPT`), se crean automáticamente `AssemblyOrder` PENDING para cada unidad de vehículo ensamblable. Un vehículo es ensamblable si `modelo.requiere_vin === true` AND existe `BatteryConfiguration` para `(modeloId, voltajeId)`. La `AssemblyOrder` se crea SIN `customerBikeId` (null) — el VIN se captura durante el montaje físico, no en la recepción. `Stock` sube en la recepción y baja en la venta (el montaje no cambia Stock). Las baterías usan flujo dual: `Stock` + `InventoryMovement` para contabilidad, `BatteryLot` + `Battery` para trazabilidad por serial.
+- **`AssemblyOrder.productVariantId`** — FK nullable a `ProductVariant`. Permite crear órdenes de montaje sin VIN. También elimina el lookup frágil por nombre de modelo en el flujo de completar montaje.
+- **`CustomerBike.productVariantId`** — FK nullable a `ProductVariant`. Vincula la bici al catálogo estructuralmente, reemplazando los textos libres `model`/`color`/`voltaje` para vehículos EVOBIKE.
 
 ---
 

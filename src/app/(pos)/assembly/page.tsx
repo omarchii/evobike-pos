@@ -2,8 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { BatteryLotsPanel } from "./battery-lots-panel";
-import { AssemblyBoard, type AssemblyOrderRow } from "./assembly-board";
+import type { AssemblyOrderRow } from "./assembly-board";
 import { AssemblyTabsClient } from "./assembly-tabs-client";
 import { Zap } from "lucide-react";
 
@@ -62,7 +61,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
       orderBy: { sku: "asc" },
     }),
 
-    // ── Órdenes de montaje (sin batteryAssignments directo — están en CustomerBike) ─
+    // ── Órdenes de montaje ─────────────────────────────────────────────────────
     prisma.assemblyOrder.findMany({
       where: {
         ...branchFilter,
@@ -76,6 +75,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
         notes: true,
         createdAt: true,
         completedAt: true,
+        // customerBike es nullable (órdenes de recepción sin VIN todavía)
         customerBike: {
           select: {
             id: true,
@@ -84,7 +84,6 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
             color: true,
             voltaje: true,
             customer: { select: { id: true, name: true } },
-            // BatteryAssignments viven en CustomerBike, no en AssemblyOrder
             batteryAssignments: {
               where: { isCurrent: true },
               select: {
@@ -97,6 +96,18 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
                 },
               },
             },
+          },
+        },
+        // productVariant presente en órdenes generadas por recepción
+        productVariant: {
+          select: {
+            id: true,
+            sku: true,
+            modelo_id: true,
+            voltaje_id: true,
+            modelo: { select: { nombre: true } },
+            color: { select: { nombre: true } },
+            voltaje: { select: { label: true } },
           },
         },
         assembledBy: { select: { id: true, name: true } },
@@ -131,20 +142,33 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
     notes: o.notes,
     createdAt: o.createdAt.toISOString(),
     completedAt: o.completedAt?.toISOString() ?? null,
-    customerBike: {
-      id: o.customerBike.id,
-      serialNumber: o.customerBike.serialNumber,
-      model: o.customerBike.model,
-      color: o.customerBike.color,
-      voltaje: o.customerBike.voltaje,
-      customer: o.customerBike.customer
-        ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
-        : null,
-    },
+    customerBike: o.customerBike
+      ? {
+          id: o.customerBike.id,
+          serialNumber: o.customerBike.serialNumber,
+          model: o.customerBike.model,
+          color: o.customerBike.color,
+          voltaje: o.customerBike.voltaje,
+          customer: o.customerBike.customer
+            ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
+            : null,
+        }
+      : null,
+    productVariant: o.productVariant
+      ? {
+          id: o.productVariant.id,
+          sku: o.productVariant.sku,
+          modeloId: o.productVariant.modelo_id,
+          voltajeId: o.productVariant.voltaje_id,
+          modeloNombre: o.productVariant.modelo.nombre,
+          colorNombre: o.productVariant.color.nombre,
+          voltajeLabel: o.productVariant.voltaje.label,
+        }
+      : null,
     assembledBy: o.assembledBy
       ? { id: o.assembledBy.id, name: o.assembledBy.name }
       : null,
-    batteryAssignments: o.customerBike.batteryAssignments.map((ba) => ({
+    batteryAssignments: (o.customerBike?.batteryAssignments ?? []).map((ba) => ({
       serialNumber: ba.battery.serialNumber,
       status: ba.battery.status,
       lotReference: ba.battery.lot.reference,
