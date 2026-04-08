@@ -103,8 +103,14 @@
   --font-body: "Inter", -apple-system, sans-serif;
 }
 
+/* Ghost border token for field inputs (outline-variant @ correct alpha per mode) */
+:root {
+  --ghost-border: rgba(178, 204, 192, 0.15);
+}
+
 /* EvoFlow Green Edition — Dark mode tokens */
 .dark {
+  --ghost-border: rgba(45, 74, 58, 0.30);
   --p: #a5d0b9;
   --p-mid: #7ab89a;
   --p-bright: #2ecc71;
@@ -210,3 +216,4 @@
     font-family: var(--font-body);
   }
 }
+

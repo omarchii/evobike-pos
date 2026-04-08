@@ -11,9 +11,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, AlertCircle } from "lucide-react";
+import { Loader2, Zap, AlertCircle, ChevronDown, Package, PencilLine } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface AvailableLot {
+  lotId: string;
+  reference: string;
+  supplier: string | null;
+  receivedAt: string;
+  inStock: number;
+  serials: string[]; // primeros N seriales IN_STOCK
+}
 
 interface BatteryInput {
   serial: string;
@@ -24,7 +33,6 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderId: string;
-  // null cuando la orden fue generada por recepción y aún no tiene VIN
   vin: string | null;
   modelName: string | null;
   voltajeLabel: string | null;
@@ -32,6 +40,8 @@ interface Props {
   branchId: string | null;
   onSuccess: () => void;
 }
+
+type Mode = "lot" | "manual";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -60,30 +70,66 @@ export function CompleteAssemblyDialog({
   onSuccess,
 }: Props): React.JSX.Element {
   const requiresVin = vin === null;
+
+  const [mode, setMode] = useState<Mode>("lot");
   const [vinInput, setVinInput] = useState("");
-  const [lotReference, setLotReference] = useState("");
+
+  // Modo lote
+  const [lots, setLots] = useState<AvailableLot[]>([]);
+  const [lotsLoading, setLotsLoading] = useState(false);
+  const [selectedLotId, setSelectedLotId] = useState<string>("");
+  const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
+
+  // Modo manual
   const [batteryInputs, setBatteryInputs] = useState<BatteryInput[]>([]);
+  const [lotReference, setLotReference] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
 
-  // Init on open
+  // ── Reset al abrir ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
+      setMode("lot");
       setVinInput("");
-      setLotReference("");
+      setSelectedLotId("");
+      setSelectedSerials([]);
       setBatteryInputs(
         Array.from({ length: requiredQuantity }, () => ({ serial: "", isDuplicate: false }))
       );
-    }
-  }, [open, requiredQuantity]);
-
-  useEffect(() => {
-    if (!open) {
-      setVinInput("");
       setLotReference("");
-      setBatteryInputs([]);
-    }
-  }, [open]);
+      setLotsLoading(true);
 
+      fetch(`/api/assembly/${orderId}/available-batteries`)
+        .then((r) => r.json() as Promise<{ success: boolean; data?: { requiredQuantity: number; lots: AvailableLot[] } }>)
+        .then((res) => {
+          if (res.success && res.data) {
+            setLots(res.data.lots);
+            // Si solo hay un lote disponible, pre-seleccionarlo
+            if (res.data.lots.length === 1) {
+              const l = res.data.lots[0];
+              setSelectedLotId(l.lotId);
+              setSelectedSerials(l.serials);
+            }
+          }
+        })
+        .catch(() => {
+          // Si falla, modo manual de fallback
+          setMode("manual");
+        })
+        .finally(() => setLotsLoading(false));
+    } else {
+      setLots([]);
+    }
+  }, [open, orderId, requiredQuantity]);
+
+  // ── Selección de lote ──────────────────────────────────────────────────────
+  const handleLotSelect = (lotId: string) => {
+    setSelectedLotId(lotId);
+    const lot = lots.find((l) => l.lotId === lotId);
+    setSelectedSerials(lot?.serials ?? []);
+  };
+
+  // ── Manual serial change ───────────────────────────────────────────────────
   const handleSerialChange = (index: number, value: string) => {
     const upper = value.toUpperCase();
     const next = batteryInputs.map((b, i) =>
@@ -92,24 +138,43 @@ export function CompleteAssemblyDialog({
     setBatteryInputs(computeDuplicates(next));
   };
 
-  // ── Validación local (sin API check) ─────────────────────────────────────────
+  // ── Validación ─────────────────────────────────────────────────────────────
   const vinTrimmed = vinInput.trim().toUpperCase();
   const vinValid = !requiresVin || vinTrimmed.length >= 3;
-  const lotValid = lotReference.trim().length >= 1;
-  const allSerialsFilled = batteryInputs.length > 0 && batteryInputs.every((b) => b.serial.trim().length >= 1);
-  const hasDuplicates = batteryInputs.some((b) => b.isDuplicate);
-  const canSubmit = vinValid && lotValid && allSerialsFilled && !hasDuplicates;
 
+  const lotModeReady =
+    mode === "lot" &&
+    selectedLotId !== "" &&
+    selectedSerials.length === requiredQuantity;
+
+  const manualModeReady =
+    mode === "manual" &&
+    lotReference.trim().length >= 1 &&
+    batteryInputs.every((b) => b.serial.trim().length >= 1) &&
+    !batteryInputs.some((b) => b.isDuplicate);
+
+  const canSubmit = vinValid && (lotModeReady || manualModeReady);
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleComplete = async () => {
     if (!canSubmit) return;
-
     setSubmitting(true);
     toast.loading("Completando montaje...", { id: "complete-assembly" });
 
     try {
+      const serials =
+        mode === "lot"
+          ? selectedSerials
+          : batteryInputs.map((b) => b.serial.trim());
+
+      const ref =
+        mode === "lot"
+          ? (lots.find((l) => l.lotId === selectedLotId)?.reference ?? selectedLotId)
+          : lotReference.trim();
+
       const payload: { batterySerials: string[]; lotReference: string; vin?: string } = {
-        batterySerials: batteryInputs.map((b) => b.serial.trim()),
-        lotReference: lotReference.trim(),
+        batterySerials: serials,
+        lotReference: ref,
       };
       if (requiresVin) payload.vin = vinTrimmed;
 
@@ -164,7 +229,7 @@ export function CompleteAssemblyDialog({
                 </span>
               </>
             ) : (
-              "Ingresa el VIN del vehículo y los seriales de las baterías"
+              "Ingresa el VIN del vehículo"
             )}
             {modelName && voltajeLabel && (
               <span> · {modelName} {voltajeLabel}</span>
@@ -173,7 +238,7 @@ export function CompleteAssemblyDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* VIN — solo para órdenes sin VIN (generadas por recepción) */}
+          {/* VIN — solo cuando la orden no tiene VIN */}
           {requiresVin && (
             <div className="space-y-1">
               <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
@@ -184,26 +249,12 @@ export function CompleteAssemblyDialog({
                 onChange={(e) => setVinInput(e.target.value.toUpperCase())}
                 placeholder="Ej. EVOBIKE-2024-001"
                 className="font-mono"
-                style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem" }}
+                style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem" }}
               />
             </div>
           )}
 
-          {/* Número de lote */}
-          <div className="space-y-1">
-            <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
-              Número de lote de baterías
-            </label>
-            <Input
-              value={lotReference}
-              onChange={(e) => setLotReference(e.target.value.toUpperCase())}
-              placeholder="Ej. LOTE-2024-001"
-              className="font-mono"
-              style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem" }}
-            />
-          </div>
-
-          {/* Indicador de cantidad */}
+          {/* Indicador de cantidad requerida */}
           <div
             className="flex items-center gap-2 px-3 py-2 rounded-xl"
             style={{ background: "var(--surf-high)" }}
@@ -214,39 +265,181 @@ export function CompleteAssemblyDialog({
             </span>
           </div>
 
-          {/* Seriales de baterías */}
-          <div className="space-y-3">
-            {batteryInputs.map((b, i) => (
-              <div key={i} className="space-y-1">
-                <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
-                  Batería {i + 1} de {batteryInputs.length}
-                </label>
-                <div className="relative">
-                  <Input
-                    value={b.serial}
-                    onChange={(e) => handleSerialChange(i, e.target.value)}
-                    placeholder={`Serial batería ${i + 1}`}
-                    className="font-mono pr-8"
-                    style={{
-                      background: b.isDuplicate ? "var(--ter-container)" : "var(--surf-high)",
-                      border: "none",
-                      borderRadius: "0.75rem",
-                    }}
-                  />
-                  {b.isDuplicate && (
-                    <div className="absolute right-3 top-2.5">
-                      <AlertCircle className="h-4 w-4" style={{ color: "var(--ter)" }} />
+          {/* Toggle modo */}
+          <div
+            className="flex items-center gap-1 p-0.5 rounded-xl"
+            style={{ background: "var(--surf-high)" }}
+          >
+            <button
+              onClick={() => setMode("lot")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={
+                mode === "lot"
+                  ? { background: "var(--surf-bright)", color: "var(--p)" }
+                  : { color: "var(--on-surf-var)" }
+              }
+            >
+              <Package className="h-3.5 w-3.5" />
+              Elegir del inventario
+            </button>
+            <button
+              onClick={() => setMode("manual")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={
+                mode === "manual"
+                  ? { background: "var(--surf-bright)", color: "var(--p)" }
+                  : { color: "var(--on-surf-var)" }
+              }
+            >
+              <PencilLine className="h-3.5 w-3.5" />
+              Ingresar manualmente
+            </button>
+          </div>
+
+          {/* ── Modo: Selección por lote ───────────────────────────────────── */}
+          {mode === "lot" && (
+            <div className="space-y-3">
+              {lotsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--on-surf-var)" }} />
+                  <span className="ml-2 text-sm" style={{ color: "var(--on-surf-var)" }}>
+                    Buscando baterías disponibles...
+                  </span>
+                </div>
+              ) : lots.length === 0 ? (
+                <div
+                  className="flex flex-col items-center py-5 rounded-xl gap-1"
+                  style={{ background: "var(--surf-high)" }}
+                >
+                  <AlertCircle className="h-5 w-5" style={{ color: "var(--warn)" }} />
+                  <p className="text-xs font-medium" style={{ color: "var(--on-surf)" }}>
+                    Sin lotes disponibles
+                  </p>
+                  <p className="text-xs text-center" style={{ color: "var(--on-surf-var)" }}>
+                    No hay {requiredQuantity} baterías del tipo correcto en inventario.
+                    Usa entrada manual o registra un lote primero.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Selector de lote */}
+                  <div className="space-y-1">
+                    <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+                      Seleccionar lote de baterías
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedLotId}
+                        onChange={(e) => handleLotSelect(e.target.value)}
+                        className="w-full appearance-none font-mono text-sm pr-8"
+                        style={{
+                          background: "var(--surf-lowest)",
+                          border: "none",
+                          borderRadius: "0.75rem",
+                          padding: "0.6rem 0.875rem",
+                          color: "var(--on-surf)",
+                          outline: "1px solid var(--ghost-border)",
+                          outlineOffset: "-1px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">— Elige un lote —</option>
+                        {lots.map((l) => (
+                          <option key={l.lotId} value={l.lotId}>
+                            {l.reference}
+                            {l.supplier ? ` · ${l.supplier}` : ""}
+                            {" "}({l.inStock} disponibles)
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        className="absolute right-3 top-2.5 h-4 w-4 pointer-events-none"
+                        style={{ color: "var(--on-surf-var)" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preview de seriales seleccionados */}
+                  {selectedLotId && selectedSerials.length > 0 && (
+                    <div
+                      className="rounded-xl p-3 space-y-1.5"
+                      style={{ background: "var(--surf-high)" }}
+                    >
+                      <p style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--on-surf-var)" }}>
+                        Seriales a instalar:
+                      </p>
+                      {selectedSerials.map((s) => (
+                        <div key={s} className="flex items-center gap-2">
+                          <div
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: "var(--sec)" }}
+                          />
+                          <span
+                            style={{
+                              fontSize: "0.78rem",
+                              fontFamily: "monospace",
+                              color: "var(--on-surf)",
+                            }}
+                          >
+                            {s}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </div>
-                {b.isDuplicate && (
-                  <p style={{ fontSize: "0.7rem", color: "var(--ter)", paddingLeft: "0.5rem" }}>
-                    Serial duplicado
-                  </p>
-                )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── Modo: Entrada manual ───────────────────────────────────────── */}
+          {mode === "manual" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+                  Número de lote de referencia
+                </label>
+                <Input
+                  value={lotReference}
+                  onChange={(e) => setLotReference(e.target.value.toUpperCase())}
+                  placeholder="Ej. LOTE-2024-001"
+                  className="font-mono"
+                  style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem" }}
+                />
               </div>
-            ))}
-          </div>
+
+              {batteryInputs.map((b, i) => (
+                <div key={i} className="space-y-1">
+                  <label style={{ fontSize: "0.78rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
+                    Batería {i + 1} de {batteryInputs.length}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      value={b.serial}
+                      onChange={(e) => handleSerialChange(i, e.target.value)}
+                      placeholder={`Serial batería ${i + 1}`}
+                      className="font-mono pr-8"
+                      style={{
+                        background: b.isDuplicate ? "var(--ter-container)" : "var(--surf-lowest)",
+                        border: "none",
+                        borderRadius: "0.75rem",
+                      }}
+                    />
+                    {b.isDuplicate && (
+                      <div className="absolute right-3 top-2.5">
+                        <AlertCircle className="h-4 w-4" style={{ color: "var(--ter)" }} />
+                      </div>
+                    )}
+                  </div>
+                  {b.isDuplicate && (
+                    <p style={{ fontSize: "0.7rem", color: "var(--ter)", paddingLeft: "0.5rem" }}>
+                      Serial duplicado
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

@@ -179,7 +179,7 @@ export function NewBatteryLotDialog({
                   </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}>
+                      <SelectTrigger style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}>
                         <SelectValue placeholder="Selecciona tipo" />
                       </SelectTrigger>
                     </FormControl>
@@ -210,7 +210,7 @@ export function NewBatteryLotDialog({
                       <Input
                         placeholder="Ej: Shenzhen Co."
                         {...field}
-                        style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}
+                        style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -229,7 +229,7 @@ export function NewBatteryLotDialog({
                       <Input
                         placeholder="Ej: PED-2024-03"
                         {...field}
-                        style={{ background: "var(--surf-high)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}
+                        style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -257,7 +257,7 @@ export function NewBatteryLotDialog({
                         handleSerialsChange(e.target.value);
                       }}
                       style={{
-                        background: "var(--surf-high)",
+                        background: "var(--surf-lowest)",
                         border: "none",
                         borderRadius: "0.75rem",
                         fontSize: "0.8rem",

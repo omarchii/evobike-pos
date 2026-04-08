@@ -22,7 +22,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
   const { role, branchId } = session.user as unknown as SessionUser;
   const branchFilter = role === "ADMIN" ? {} : { branchId };
 
-  const [rawLots, batteryVariants, assemblyOrders] = await Promise.all([
+  const [rawLots, batteryVariants, allBatteryConfigs, assemblyOrders] = await Promise.all([
     // ── Lotes de baterías ──────────────────────────────────────────────────────
     prisma.batteryLot.findMany({
       where: branchFilter,
@@ -30,6 +30,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
       take: 50,
       select: {
         id: true,
+        productVariantId: true,
         supplier: true,
         reference: true,
         receivedAt: true,
@@ -59,6 +60,11 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
         modelo: { select: { nombre: true } },
       },
       orderBy: { sku: "asc" },
+    }),
+
+    // ── Configuraciones de baterías (para calcular disponibilidad) ────────────
+    prisma.batteryConfiguration.findMany({
+      select: { modeloId: true, voltajeId: true, batteryVariantId: true, quantity: true },
     }),
 
     // ── Órdenes de montaje ─────────────────────────────────────────────────────
@@ -175,6 +181,37 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
     })),
   }));
 
+  // ── Mapa de disponibilidad de baterías por vehicleProductVariantId ───────────
+  // "modeloId:voltajeId" → { batteryVariantId, quantity }
+  const configMap = new Map(
+    allBatteryConfigs.map((c) => [
+      `${c.modeloId}:${c.voltajeId}`,
+      { batteryVariantId: c.batteryVariantId, perUnit: c.quantity },
+    ])
+  );
+
+  // batteryVariantId → count of IN_STOCK batteries (from rawLots, already filtrado por branch)
+  const batteryStockMap = new Map<string, number>();
+  for (const lot of rawLots) {
+    const cur = batteryStockMap.get(lot.productVariantId) ?? 0;
+    batteryStockMap.set(lot.productVariantId, cur + lot.batteries.length);
+  }
+
+  // vehicleProductVariantId → { available, perUnit }
+  const batteryAvailabilityMap: Record<string, { available: number; perUnit: number }> = {};
+  for (const order of assemblyOrders) {
+    if (!order.productVariant) continue;
+    const pvId = order.productVariant.id;
+    if (pvId in batteryAvailabilityMap) continue;
+    const key = `${order.productVariant.modelo_id}:${order.productVariant.voltaje_id}`;
+    const cfg = configMap.get(key);
+    if (!cfg) continue;
+    batteryAvailabilityMap[pvId] = {
+      available: batteryStockMap.get(cfg.batteryVariantId) ?? 0,
+      perUnit: cfg.perUnit,
+    };
+  }
+
   const canComplete = ["TECHNICIAN", "MANAGER", "ADMIN"].includes(role);
   const totalInStock = lots.reduce((s, l) => s + l.inStock, 0);
 
@@ -236,6 +273,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
         variants={variants}
         orders={orders}
         canComplete={canComplete}
+        batteryAvailabilityMap={batteryAvailabilityMap}
         userRole={role}
       />
     </div>

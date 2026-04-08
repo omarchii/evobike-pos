@@ -16,6 +16,7 @@ import {
   CreditCard,
   ArrowRightLeft,
   Clock,
+  PackageCheck,
 } from "lucide-react";
 import { PedidoDetalleData } from "./page";
 import { AbonoModal } from "../abono-modal";
@@ -286,6 +287,118 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
           ))}
         </div>
       </div>
+
+      {/* Estado de recepción — solo BACKORDER con vehículos ensamblables */}
+      {pedido.orderType === "BACKORDER" &&
+        pedido.items.some((i) => i.reception) && (
+          <div
+            className="rounded-[var(--r-xl)] p-6 mb-4"
+            style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
+          >
+            <h2
+              className="text-xs font-semibold uppercase tracking-widest mb-4 flex items-center gap-1.5"
+              style={{ color: "var(--on-surf-var)" }}
+            >
+              <PackageCheck className="w-3.5 h-3.5" />
+              Estado de recepción
+            </h2>
+
+            <div className="space-y-3">
+              {pedido.items
+                .filter((i) => i.reception)
+                .map((item) => {
+                  const r = item.reception!;
+                  const vehiclePct =
+                    r.vehiclesExpected > 0
+                      ? Math.min(100, (r.vehiclesReceived / r.vehiclesExpected) * 100)
+                      : 0;
+                  const batteryPct =
+                    r.batteriesExpected > 0
+                      ? Math.min(100, (r.batteriesReceived / r.batteriesExpected) * 100)
+                      : 0;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="px-4 py-3 rounded-[var(--r-lg)] space-y-2"
+                      style={{ background: "var(--surf-low)" }}
+                    >
+                      <p className="text-sm font-medium" style={{ color: "var(--on-surf)" }}>
+                        {item.productName}
+                      </p>
+
+                      {/* Vehículos */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>
+                            Vehículos recibidos
+                          </span>
+                          <span
+                            className="text-xs font-semibold"
+                            style={{ color: "var(--on-surf)" }}
+                          >
+                            {r.vehiclesReceived}/{r.vehiclesExpected}
+                            {r.vehiclesAssembled > 0 && (
+                              <span style={{ color: "var(--sec)", marginLeft: "0.4rem" }}>
+                                ({r.vehiclesAssembled} montados)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div
+                          className="h-1.5 rounded-full overflow-hidden"
+                          style={{ background: "var(--surf-high)" }}
+                        >
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${vehiclePct}%`,
+                              background:
+                                vehiclePct >= 100
+                                  ? "var(--sec)"
+                                  : "linear-gradient(90deg, var(--p-mid) 0%, var(--p-bright) 100%)",
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Baterías */}
+                      {r.batteriesExpected > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>
+                              Baterías recibidas
+                            </span>
+                            <span
+                              className="text-xs font-semibold"
+                              style={{ color: "var(--on-surf)" }}
+                            >
+                              {r.batteriesReceived}/{r.batteriesExpected}
+                            </span>
+                          </div>
+                          <div
+                            className="h-1.5 rounded-full overflow-hidden"
+                            style={{ background: "var(--surf-high)" }}
+                          >
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${batteryPct}%`,
+                                background:
+                                  batteryPct >= 100
+                                    ? "var(--sec)"
+                                    : "color-mix(in srgb, var(--warn) 80%, transparent)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
       {/* Payment timeline */}
       <div

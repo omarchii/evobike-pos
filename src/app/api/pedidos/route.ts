@@ -11,6 +11,10 @@ const pedidoSchema = z.object({
   unitPrice: z.number().positive(),
   depositAmount: z.number().nonnegative(),
   paymentMethod: z.enum(["CASH", "CARD", "TRANSFER"]),
+  // Split payment (optional)
+  isSplitPayment: z.boolean().optional(),
+  secondaryPaymentMethod: z.enum(["CASH", "CARD", "TRANSFER"]).optional(),
+  secondaryDepositAmount: z.number().nonnegative().optional(),
   orderType: z.enum(["LAYAWAY", "BACKORDER"]),
   expectedDeliveryDate: z.string().optional(),
   notes: z.string().optional(),
@@ -52,6 +56,9 @@ export async function POST(req: NextRequest) {
       unitPrice,
       depositAmount,
       paymentMethod,
+      isSplitPayment,
+      secondaryPaymentMethod,
+      secondaryDepositAmount,
       orderType,
       expectedDeliveryDate,
       notes,
@@ -127,7 +134,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 5. Crear CashTransaction con el depósito inicial
+      // 5. Crear CashTransaction(s) con el depósito inicial
       if (depositAmount > 0) {
         await tx.cashTransaction.create({
           data: {
@@ -136,6 +143,18 @@ export async function POST(req: NextRequest) {
             type: "PAYMENT_IN",
             method: paymentMethod,
             amount: depositAmount,
+          },
+        });
+      }
+      // Segundo pago en pago combinado
+      if (isSplitPayment && secondaryDepositAmount && secondaryDepositAmount > 0 && secondaryPaymentMethod) {
+        await tx.cashTransaction.create({
+          data: {
+            sessionId: activeSession.id,
+            saleId: sale.id,
+            type: "PAYMENT_IN",
+            method: secondaryPaymentMethod,
+            amount: secondaryDepositAmount,
           },
         });
       }

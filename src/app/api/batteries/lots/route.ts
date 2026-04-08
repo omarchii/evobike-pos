@@ -19,6 +19,7 @@ const createLotSchema = z.object({
   serials: z
     .array(z.string().min(1, "Los seriales no pueden estar vacíos"))
     .min(1, "Ingresa al menos un número de serie"),
+  saleItemId: z.string().optional(), // ítem específico del pedido de origen
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { productVariantId, supplier, reference, serials } = parsed.data;
+  const { productVariantId, supplier, reference, serials, saleItemId } = parsed.data;
 
   // Normalizar seriales: trim + deduplicar dentro del input
   const normalizedSerials = serials.map((s) => s.trim()).filter(Boolean);
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Verificar que ningún serial ya existe en DB (sin importar sucursal — seriales son globalmente únicos)
+    // Verificar que ningún serial ya existe en DB (seriales son globalmente únicos)
     const existing = await prisma.battery.findMany({
       where: { serialNumber: { in: uniqueSerials } },
       select: { serialNumber: true },
@@ -95,7 +96,67 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Crear lote + baterías en transacción
+    // ── Validación de saleItemId (si viene) ──────────────────────────────────
+    let quantityWarning: string | undefined;
+
+    if (saleItemId) {
+      const saleItem = await prisma.saleItem.findUnique({
+        where: { id: saleItemId },
+        select: {
+          id: true,
+          quantity: true,
+          productVariant: {
+            select: { modelo_id: true, voltaje_id: true },
+          },
+        },
+      });
+
+      if (!saleItem) {
+        return NextResponse.json(
+          { success: false, error: "Artículo del pedido no encontrado" },
+          { status: 400 }
+        );
+      }
+
+      const batteryConfig = await prisma.batteryConfiguration.findFirst({
+        where: {
+          modeloId: saleItem.productVariant.modelo_id,
+          voltajeId: saleItem.productVariant.voltaje_id,
+        },
+        select: { batteryVariantId: true, quantity: true },
+      });
+
+      if (!batteryConfig) {
+        return NextResponse.json(
+          { success: false, error: "El producto del pedido no requiere baterías" },
+          { status: 422 }
+        );
+      }
+
+      // El tipo de batería del lote debe coincidir con el de la configuración
+      if (batteryConfig.batteryVariantId !== productVariantId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "El tipo de batería no corresponde al configurado para este modelo/voltaje del pedido",
+          },
+          { status: 422 }
+        );
+      }
+
+      // Verificar cantidad ya recibida para este saleItem (WARNING, no bloqueo)
+      const alreadyReceived = await prisma.battery.count({
+        where: { lot: { saleItemId } },
+      });
+
+      const requiredTotal = batteryConfig.quantity * saleItem.quantity;
+      if (alreadyReceived + uniqueSerials.length > requiredTotal) {
+        quantityWarning = `La cantidad excede la esperada para este artículo (${requiredTotal} baterías). Se registrarán ${uniqueSerials.length} baterías adicionales.`;
+      }
+    }
+
+    // ── Crear lote + baterías + movimiento de inventario en transacción ───────
     const result = await prisma.$transaction(async (tx) => {
       const lot = await tx.batteryLot.create({
         data: {
@@ -104,6 +165,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           userId,
           supplier: supplier ?? null,
           reference: reference ?? null,
+          saleItemId: saleItemId ?? null,
         },
       });
 
@@ -116,10 +178,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         })),
       });
 
+      // Fix crítico: registrar movimiento contable de inventario
+      await tx.stock.upsert({
+        where: {
+          productVariantId_branchId: { productVariantId, branchId },
+        },
+        update: { quantity: { increment: uniqueSerials.length } },
+        create: { productVariantId, branchId, quantity: uniqueSerials.length },
+      });
+
+      await tx.inventoryMovement.create({
+        data: {
+          productVariantId,
+          branchId,
+          userId,
+          quantity: uniqueSerials.length,
+          type: "PURCHASE_RECEIPT",
+          referenceId: reference ?? "BATTERY_LOT",
+        },
+      });
+
       return { lotId: lot.id, batteriesCreated: uniqueSerials.length };
     });
 
-    return NextResponse.json({ success: true, data: result });
+    return NextResponse.json({
+      success: true,
+      data: result,
+      ...(quantityWarning ? { warning: quantityWarning } : {}),
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al registrar el lote";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

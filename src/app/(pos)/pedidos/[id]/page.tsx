@@ -31,6 +31,14 @@ export interface DetalleItem {
   price: number;
   discount: number;
   productName: string;
+  // Estado de recepción (solo para BACKORDER con vehículos ensamblables)
+  reception?: {
+    vehiclesExpected: number;
+    vehiclesReceived: number;  // AssemblyOrders creadas
+    vehiclesAssembled: number; // AssemblyOrders COMPLETED
+    batteriesExpected: number; // BatteryConfiguration.quantity × quantity
+    batteriesReceived: number; // Battery records vinculados al SaleItem
+  };
 }
 
 export interface PedidoDetalleData {
@@ -107,10 +115,85 @@ export default async function PedidoDetallePage({ params }: PageProps) {
     redirect("/pedidos");
   }
 
-  const totalPaid = sale.payments.reduce(
-    (acc, p) => acc + Number(p.amount),
-    0
-  );
+  const totalPaid = sale.payments.reduce((acc, p) => acc + Number(p.amount), 0);
+
+  // ── Estado de recepción (solo para BACKORDER) ─────────────────────────────
+  // Estructura: saleItemId → { vehiclesReceived, vehiclesAssembled, batteriesReceived }
+  type ReceptionStats = {
+    vehiclesReceived: number;
+    vehiclesAssembled: number;
+    batteriesReceived: number;
+    batteriesExpected: number;
+  };
+  const receptionByItem = new Map<string, ReceptionStats>();
+
+  if (sale.orderType === "BACKORDER") {
+    const saleItemIds = sale.items.map((i) => i.id);
+
+    const [assemblyOrders, batteryLots, batteryConfigs] = await Promise.all([
+      prisma.assemblyOrder.findMany({
+        where: { saleId: sale.id },
+        select: { productVariantId: true, status: true },
+      }),
+      prisma.batteryLot.findMany({
+        where: { saleItemId: { in: saleItemIds } },
+        select: {
+          saleItemId: true,
+          _count: { select: { batteries: true } },
+        },
+      }),
+      prisma.batteryConfiguration.findMany({
+        where: {
+          OR: sale.items.map((i) => ({
+            modeloId: i.productVariant.modelo.id,
+            voltajeId: i.productVariant.voltaje.id,
+          })),
+        },
+        select: { modeloId: true, voltajeId: true, quantity: true },
+      }),
+    ]);
+
+    // Mapa: "modeloId:voltajeId" → batteries per unit
+    const configMap = new Map(
+      batteryConfigs.map((c) => [`${c.modeloId}:${c.voltajeId}`, c.quantity])
+    );
+
+    // Contar AssemblyOrders por productVariantId
+    const assemblyByVariant = new Map<string, { received: number; assembled: number }>();
+    for (const ao of assemblyOrders) {
+      if (!ao.productVariantId) continue;
+      const cur = assemblyByVariant.get(ao.productVariantId) ?? { received: 0, assembled: 0 };
+      cur.received += 1;
+      if (ao.status === "COMPLETED") cur.assembled += 1;
+      assemblyByVariant.set(ao.productVariantId, cur);
+    }
+
+    // Contar baterías por saleItemId
+    const batteriesByItem = new Map<string, number>();
+    for (const lot of batteryLots) {
+      if (!lot.saleItemId) continue;
+      batteriesByItem.set(
+        lot.saleItemId,
+        (batteriesByItem.get(lot.saleItemId) ?? 0) + lot._count.batteries
+      );
+    }
+
+    for (const item of sale.items) {
+      const pvId = item.productVariant.id;
+      const ao = assemblyByVariant.get(pvId);
+      if (!ao) continue; // no es ensamblable o aún no llegó
+
+      const configKey = `${item.productVariant.modelo.id}:${item.productVariant.voltaje.id}`;
+      const perUnit = configMap.get(configKey) ?? 0;
+
+      receptionByItem.set(item.id, {
+        vehiclesReceived: ao.received,
+        vehiclesAssembled: ao.assembled,
+        batteriesExpected: perUnit * item.quantity,
+        batteriesReceived: batteriesByItem.get(item.id) ?? 0,
+      });
+    }
+  }
 
   const data: PedidoDetalleData = {
     id: sale.id,
@@ -142,6 +225,9 @@ export default async function PedidoDetallePage({ params }: PageProps) {
       productName: item.productVariant
         ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre} ${item.productVariant.voltaje.label}`
         : "Producto",
+      reception: receptionByItem.has(item.id)
+        ? { vehiclesExpected: item.quantity, ...receptionByItem.get(item.id)! }
+        : undefined,
     })),
     payments: sale.payments.map((p) => ({
       id: p.id,

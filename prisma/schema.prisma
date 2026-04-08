@@ -189,6 +189,7 @@ model Sale {
   items             SaleItem[]
   payments          CashTransaction[]
   commissionRecords CommissionRecord[]
+  assemblyOrders    AssemblyOrder[]
 }
 
 model SaleItem {
@@ -200,6 +201,7 @@ model SaleItem {
   discount         Decimal        @default(0) @db.Decimal(10, 2)
   sale             Sale           @relation(fields: [saleId], references: [id])
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  batteryLots      BatteryLot[]
 }
 
 // === PAYMENTS & CASHIER ===
@@ -458,10 +460,12 @@ model BatteryLot {
   reference        String?
   receivedAt       DateTime @default(now())
   userId           String
+  saleItemId       String?
 
   productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
   branch         Branch         @relation(fields: [branchId], references: [id])
   user           User           @relation(fields: [userId], references: [id])
+  saleItem       SaleItem?      @relation(fields: [saleItemId], references: [id])
   batteries      Battery[]
 }
 
@@ -484,6 +488,7 @@ model AssemblyOrder {
   customerBikeId    String?
   productVariantId  String?
   branchId          String
+  saleId            String?
   status            AssemblyStatus @default(PENDING)
   assembledByUserId String?
   completedAt       DateTime?
@@ -492,10 +497,11 @@ model AssemblyOrder {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  customerBike  CustomerBike?  @relation(fields: [customerBikeId], references: [id])
+  customerBike   CustomerBike?   @relation(fields: [customerBikeId], references: [id])
   productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
-  branch        Branch         @relation(fields: [branchId], references: [id])
-  assembledBy   User?          @relation("AssemblyOrders", fields: [assembledByUserId], references: [id])
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  sale           Sale?           @relation(fields: [saleId], references: [id])
+  assembledBy    User?           @relation("AssemblyOrders", fields: [assembledByUserId], references: [id])
 }
 
 model BatteryAssignment {

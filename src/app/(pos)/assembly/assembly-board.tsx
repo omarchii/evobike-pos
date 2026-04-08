@@ -61,6 +61,8 @@ interface PendingGroup {
   voltajeLabel: string;
   sku: string;
   orders: AssemblyOrderRow[];
+  available: number; // baterías IN_STOCK del tipo requerido
+  perUnit: number;   // baterías requeridas por vehículo (de BatteryConfiguration)
 }
 
 interface AssemblyConfigData {
@@ -79,6 +81,7 @@ interface Props {
   canComplete: boolean;
   userRole: string;
   batteryVariants: BatteryVariantOption[];
+  batteryAvailabilityMap: Record<string, { available: number; perUnit: number }>;
 }
 
 // ── Board ──────────────────────────────────────────────────────────────────────
@@ -86,6 +89,7 @@ interface Props {
 export function AssemblyBoard({
   initialOrders,
   canComplete,
+  batteryAvailabilityMap,
 }: Props): React.JSX.Element {
   const [orders, setOrders] = useState<AssemblyOrderRow[]>(initialOrders);
   const [config, setConfig] = useState<AssemblyConfigData | null>(null);
@@ -110,6 +114,7 @@ export function AssemblyBoard({
     if (existing) {
       existing.orders.push(order);
     } else {
+      const avail = batteryAvailabilityMap[order.productVariant.id];
       groups.push({
         productVariantId: order.productVariant.id,
         modeloNombre: order.productVariant.modeloNombre,
@@ -117,6 +122,8 @@ export function AssemblyBoard({
         voltajeLabel: order.productVariant.voltajeLabel,
         sku: order.productVariant.sku,
         orders: [order],
+        available: avail?.available ?? 0,
+        perUnit: avail?.perUnit ?? 1,
       });
     }
     return groups;
@@ -529,6 +536,19 @@ function ReceiptGroupCard({
   onCancelAll: () => void;
 }): React.JSX.Element {
   const count = group.orders.length;
+  const required = group.perUnit * count;
+  const available = group.available;
+
+  // Chip de disponibilidad: verde / amarillo / rojo
+  const batteryChip = (() => {
+    if (available >= required) {
+      return { label: `${available}/${required} baterías listas`, color: "var(--sec)", bg: "var(--sec-container)" };
+    }
+    if (available > 0) {
+      return { label: `${available}/${required} baterías disponibles`, color: "var(--warn)", bg: "var(--warn-container)" };
+    }
+    return { label: `Sin baterías (necesita ${required})`, color: "var(--ter)", bg: "color-mix(in srgb, var(--ter) 15%, transparent)" };
+  })();
 
   return (
     <div
@@ -573,6 +593,22 @@ function ReceiptGroupCard({
           }}
         >
           {count} pendiente{count !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Chip disponibilidad de baterías — OBLIGATORIO */}
+      <div className="flex items-center gap-1.5">
+        <span
+          style={{
+            fontSize: "0.68rem",
+            fontWeight: 600,
+            padding: "0.2rem 0.7rem",
+            borderRadius: 999,
+            background: batteryChip.bg,
+            color: batteryChip.color,
+          }}
+        >
+          {batteryChip.label}
         </span>
       </div>
 

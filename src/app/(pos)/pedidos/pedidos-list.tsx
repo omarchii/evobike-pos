@@ -11,9 +11,11 @@ import {
   ShoppingBag,
   Repeat2,
   Truck,
+  Plus,
 } from "lucide-react";
-import { SerializedPedido } from "./page";
+import { SerializedPedido, CustomerOption, VariantOption } from "./page";
 import { AbonoModal } from "./abono-modal";
+import { NuevoPedidoModal } from "./nuevo-pedido-modal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,8 @@ function ProgressBar({ pct }: { pct: number }) {
 
 interface PedidosListProps {
   pedidos: SerializedPedido[];
+  customers: CustomerOption[];
+  variants: VariantOption[];
 }
 
 const FILTER_LABELS: Record<FilterType, string> = {
@@ -99,10 +103,11 @@ const FILTER_LABELS: Record<FilterType, string> = {
   BACKORDER: "Backorders",
 };
 
-export default function PedidosList({ pedidos }: PedidosListProps) {
+export default function PedidosList({ pedidos, customers, variants }: PedidosListProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterType>("ALL");
   const [abonoTarget, setAbonoTarget] = useState<SerializedPedido | null>(null);
+  const [nuevoPedidoOpen, setNuevoPedidoOpen] = useState(false);
 
   const filtered = pedidos.filter((p) => {
     if (filter === "ALL") return true;
@@ -117,53 +122,88 @@ export default function PedidosList({ pedidos }: PedidosListProps) {
   // ── Empty state ──
   if (pedidos.length === 0) {
     return (
-      <div
-        className="flex-1 flex flex-col items-center justify-center rounded-[var(--r-xl)] p-12"
-        style={{ background: "var(--surf-low)" }}
-      >
-        <PackageSearch
-          className="w-16 h-16 mb-4"
-          style={{ color: "var(--on-surf-var)", opacity: 0.4 }}
-        />
-        <h3
-          className="text-lg font-semibold mb-1"
-          style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+      <>
+        <div
+          className="flex-1 flex flex-col items-center justify-center rounded-[var(--r-xl)] p-12"
+          style={{ background: "var(--surf-low)" }}
         >
-          Sin pedidos activos
-        </h3>
-        <p className="text-sm text-center max-w-xs" style={{ color: "var(--on-surf-var)" }}>
-          No hay apartados ni backorders pendientes en esta sucursal.
-        </p>
-      </div>
+          <PackageSearch
+            className="w-16 h-16 mb-4"
+            style={{ color: "var(--on-surf-var)", opacity: 0.4 }}
+          />
+          <h3
+            className="text-lg font-semibold mb-1"
+            style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
+          >
+            Sin pedidos activos
+          </h3>
+          <p className="text-sm text-center max-w-xs mb-5" style={{ color: "var(--on-surf-var)" }}>
+            No hay apartados ni backorders pendientes en esta sucursal.
+          </p>
+          <button
+            onClick={() => setNuevoPedidoOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold"
+            style={{
+              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              color: "#fff",
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo Pedido
+          </button>
+        </div>
+        <NuevoPedidoModal
+          open={nuevoPedidoOpen}
+          onOpenChange={setNuevoPedidoOpen}
+          customers={customers}
+          variants={variants}
+        />
+      </>
     );
   }
 
   return (
     <>
-      {/* Filter tabs */}
-      <div
-        className="flex gap-1 p-1 mb-6 rounded-full self-start"
-        style={{ background: "var(--surf-high)" }}
-      >
-        {(["ALL", "LAYAWAY", "BACKORDER"] as FilterType[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all"
-            style={
-              filter === f
-                ? {
-                    background:
-                      "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
-                    color: "var(--on-p)",
-                    fontFamily: "var(--font-display)",
-                  }
-                : { color: "var(--on-surf-var)" }
-            }
-          >
-            {FILTER_LABELS[f]}
-          </button>
-        ))}
+      {/* Header row: filtros + botón nuevo */}
+      <div className="flex items-center justify-between mb-6 gap-4">
+        {/* Filter tabs */}
+        <div
+          className="flex gap-1 p-1 rounded-full self-start"
+          style={{ background: "var(--surf-high)" }}
+        >
+          {(["ALL", "LAYAWAY", "BACKORDER"] as FilterType[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all"
+              style={
+                filter === f
+                  ? {
+                      background:
+                        "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
+                      color: "var(--on-p)",
+                      fontFamily: "var(--font-display)",
+                    }
+                  : { color: "var(--on-surf-var)" }
+              }
+            >
+              {FILTER_LABELS[f]}
+            </button>
+          ))}
+        </div>
+
+        {/* Botón Nuevo Pedido */}
+        <button
+          onClick={() => setNuevoPedidoOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            color: "#fff",
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo Pedido
+        </button>
       </div>
 
       {/* Empty filtered state */}
@@ -335,6 +375,14 @@ export default function PedidosList({ pedidos }: PedidosListProps) {
           onSuccess={handleAbonoSuccess}
         />
       )}
+
+      {/* Nuevo Pedido modal */}
+      <NuevoPedidoModal
+        open={nuevoPedidoOpen}
+        onOpenChange={setNuevoPedidoOpen}
+        customers={customers}
+        variants={variants}
+      />
     </>
   );
 }

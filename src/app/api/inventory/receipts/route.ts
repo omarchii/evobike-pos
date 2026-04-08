@@ -20,6 +20,7 @@ const receiptSchema = z.object({
     )
     .min(1, "No hay productos en esta recepción"),
   reference: z.string().optional(),
+  saleId: z.string().optional(), // pedido BACKORDER de origen (opcional)
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { items, reference } = parsed.data;
+  const { items, reference, saleId } = parsed.data;
 
   try {
     // Pre-cargar info de variantes para clasificar (fuera de tx para eficiencia)
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             branchId,
             status: "PENDING" as const,
             receiptReference: reference ?? null,
+            saleId: saleId ?? null,
           }));
 
           await tx.assemblyOrder.createMany({ data: ordersData });

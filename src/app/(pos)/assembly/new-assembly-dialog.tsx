@@ -417,7 +417,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                       <FormControl>
                         <SelectTrigger
                           style={{
-                            background: "var(--surf-high)",
+                            background: "var(--surf-lowest)",
                             border: "none",
                             borderRadius: "0.75rem",
                           }}
@@ -455,7 +455,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                       <FormControl>
                         <SelectTrigger
                           style={{
-                            background: "var(--surf-high)",
+                            background: "var(--surf-lowest)",
                             border: "none",
                             borderRadius: "0.75rem",
                           }}
@@ -513,7 +513,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                       <FormControl>
                         <SelectTrigger
                           style={{
-                            background: "var(--surf-high)",
+                            background: "var(--surf-lowest)",
                             border: "none",
                             borderRadius: "0.75rem",
                           }}
@@ -550,7 +550,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                           placeholder="EVO-2024-XXXXX"
                           className="font-mono pr-10"
                           style={{
-                            background: "var(--surf-high)",
+                            background: "var(--surf-lowest)",
                             border: "none",
                             borderRadius: "0.75rem",
                             textTransform: "uppercase",
@@ -634,7 +634,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                             ? "var(--sec-container)"
                             : b.state === "invalid"
                             ? "var(--ter-container)"
-                            : "var(--surf-high)",
+                            : "var(--surf-lowest)",
                         border: "none",
                         borderRadius: "0.75rem",
                       }}

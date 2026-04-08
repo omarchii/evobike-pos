@@ -13,6 +13,7 @@ interface Props {
   orders: AssemblyOrderRow[];
   canComplete: boolean;
   userRole: string;
+  batteryAvailabilityMap: Record<string, { available: number; perUnit: number }>;
 }
 
 type Tab = "montaje" | "baterias";
@@ -23,6 +24,7 @@ export function AssemblyTabsClient({
   orders,
   canComplete,
   userRole,
+  batteryAvailabilityMap,
 }: Props): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>("montaje");
 
@@ -71,6 +73,7 @@ export function AssemblyTabsClient({
           canComplete={canComplete}
           userRole={userRole}
           batteryVariants={variants}
+          batteryAvailabilityMap={batteryAvailabilityMap}
         />
       )}
       {activeTab === "baterias" && (
