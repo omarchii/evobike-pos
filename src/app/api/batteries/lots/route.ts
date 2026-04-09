@@ -118,6 +118,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         );
       }
 
+      if (!saleItem.productVariant) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "El artículo del pedido es una línea libre (sin producto del catálogo). No se pueden vincular baterías a líneas libres.",
+          },
+          { status: 422 }
+        );
+      }
+
       const batteryConfig = await prisma.batteryConfiguration.findFirst({
         where: {
           modeloId: saleItem.productVariant.modelo_id,

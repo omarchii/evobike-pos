@@ -130,6 +130,14 @@ export default async function PedidoDetallePage({ params }: PageProps) {
   if (sale.orderType === "BACKORDER") {
     const saleItemIds = sale.items.map((i) => i.id);
 
+    // Solo los ítems con producto del catálogo participan en recepciones de montaje/baterías
+    type ItemConVariant = typeof sale.items[number] & {
+      productVariant: NonNullable<typeof sale.items[number]["productVariant"]>;
+    };
+    const itemsConVariant = sale.items.filter(
+      (i): i is ItemConVariant => i.productVariant !== null
+    );
+
     const [assemblyOrders, batteryLots, batteryConfigs] = await Promise.all([
       prisma.assemblyOrder.findMany({
         where: { saleId: sale.id },
@@ -144,7 +152,7 @@ export default async function PedidoDetallePage({ params }: PageProps) {
       }),
       prisma.batteryConfiguration.findMany({
         where: {
-          OR: sale.items.map((i) => ({
+          OR: itemsConVariant.map((i) => ({
             modeloId: i.productVariant.modelo.id,
             voltajeId: i.productVariant.voltaje.id,
           })),
@@ -178,7 +186,7 @@ export default async function PedidoDetallePage({ params }: PageProps) {
       );
     }
 
-    for (const item of sale.items) {
+    for (const item of itemsConVariant) {
       const pvId = item.productVariant.id;
       const ao = assemblyByVariant.get(pvId);
       if (!ao) continue; // no es ensamblable o aún no llegó
