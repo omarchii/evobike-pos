@@ -10,6 +10,7 @@ import {
   Ban,
   Loader2,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -19,6 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { EffectiveStatus } from "@/lib/quotations";
+import ConvertQuotationDialog from "./convert-quotation-dialog";
+import type { Manager } from "./price-drift-alert";
+import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -36,15 +40,47 @@ const INPUT_STYLE: React.CSSProperties = {
   outline: "none",
 };
 
+interface QuotationForDialog {
+  id: string;
+  folio: string;
+  branchId: string;
+  branchName: string;
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+  customerId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  anonymousCustomerName: string | null;
+  anonymousCustomerPhone: string | null;
+  itemCount: number;
+}
+
 interface Props {
   quotationId: string;
   effectiveStatus: EffectiveStatus;
   dbStatus: string;
+  quotation: QuotationForDialog;
+  managers: Manager[];
+  customers: CustomerOption[];
+  currentUserBranchId: string;
+  currentUserBranchName: string;
 }
 
-export default function QuotationActionsBar({ quotationId, effectiveStatus, dbStatus }: Props) {
+export default function QuotationActionsBar({
+  quotationId,
+  effectiveStatus,
+  dbStatus,
+  quotation,
+  managers,
+  customers,
+  currentUserBranchId,
+  currentUserBranchName,
+}: Props) {
   const router = useRouter();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -139,13 +175,12 @@ export default function QuotationActionsBar({ quotationId, effectiveStatus, dbSt
           />
         )}
 
-        {/* Convert — disabled until 3C */}
+        {/* Convert */}
         {isActionable && (
           <ActionBtn
-            icon={Send}
+            icon={RefreshCw}
             label="Convertir"
-            disabled
-            tooltip="Disponible en Fase 3C"
+            onClick={() => setConvertOpen(true)}
           />
         )}
 
@@ -179,6 +214,20 @@ export default function QuotationActionsBar({ quotationId, effectiveStatus, dbSt
           />
         )}
       </div>
+
+      {/* Convert dialog */}
+      <ConvertQuotationDialog
+        open={convertOpen}
+        onClose={() => {
+          setConvertOpen(false);
+          router.refresh();
+        }}
+        quotation={quotation}
+        managers={managers}
+        customers={customers}
+        currentUserBranchId={currentUserBranchId}
+        currentUserBranchName={currentUserBranchName}
+      />
 
       {/* Cancel modal */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>

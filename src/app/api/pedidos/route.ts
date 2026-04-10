@@ -4,6 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+// Frozen items from quotation conversion (nullable productVariantId for free-form lines)
+const pedidoFrozenItemSchema = z.object({
+  productVariantId: z.string().nullable().optional(),
+  description: z.string(),
+  isFreeForm: z.boolean().default(false),
+  quantity: z.number().int().positive(),
+  unitPrice: z.number().nonnegative(),
+});
+
 const pedidoSchema = z.object({
   customerId: z.string().uuid(),
   productVariantId: z.string().uuid(),
@@ -18,6 +27,10 @@ const pedidoSchema = z.object({
   orderType: z.enum(["LAYAWAY", "BACKORDER"]),
   expectedDeliveryDate: z.string().optional(),
   notes: z.string().optional(),
+  // Optional quotation conversion fields (additive — does not affect existing callers)
+  quotationId: z.string().optional(),
+  frozenItems: z.array(pedidoFrozenItemSchema).optional(),
+  total: z.number().nonnegative().optional(),
 });
 
 interface SessionUser {
@@ -62,6 +75,9 @@ export async function POST(req: NextRequest) {
       orderType,
       expectedDeliveryDate,
       notes,
+      quotationId,
+      frozenItems,
+      total: parsedTotal,
     } = parsed.data;
 
     const activeSession = await prisma.cashRegisterSession.findFirst({
@@ -74,9 +90,96 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const total = unitPrice * quantity;
+    const total = frozenItems && frozenItems.length > 0
+      ? (parsedTotal ?? unitPrice * quantity)
+      : unitPrice * quantity;
 
     const result = await prisma.$transaction(async (tx) => {
+      // ── QUOTATION CONVERSION PATH ──────────────────────────────────────────
+      // When frozenItems is present, create multiple SaleItems from the quotation.
+      if (frozenItems && frozenItems.length > 0) {
+        // Stock check + decrement for catalog items (LAYAWAY only)
+        if (orderType === "LAYAWAY") {
+          for (const item of frozenItems) {
+            if (item.isFreeForm || !item.productVariantId) continue;
+            const stock = await tx.stock.findUnique({
+              where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+            });
+            if (!stock || stock.quantity < item.quantity) {
+              throw new Error(`Stock insuficiente para: ${item.description}`);
+            }
+            await tx.stock.update({
+              where: { id: stock.id },
+              data: { quantity: { decrement: item.quantity } },
+            });
+          }
+        }
+
+        // Folio
+        const updatedBranchFrozen = await tx.branch.update({
+          where: { id: branchId },
+          data: { lastSaleFolioNumber: { increment: 1 } },
+          select: { lastSaleFolioNumber: true, name: true },
+        });
+        const branchPrefixFrozen = updatedBranchFrozen.name
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .substring(0, 3)
+          .toUpperCase();
+        const folioPrefixFrozen = orderType === "LAYAWAY" ? "A" : "B";
+        const frozenFolio = `${branchPrefixFrozen}${folioPrefixFrozen}-${String(updatedBranchFrozen.lastSaleFolioNumber).padStart(4, "0")}`;
+
+        // Compute subtotal from frozen items
+        const frozenSubtotal = frozenItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+        const frozenSale = await tx.sale.create({
+          data: {
+            folio: frozenFolio,
+            branchId,
+            userId,
+            customerId,
+            status: "LAYAWAY",
+            orderType,
+            subtotal: frozenSubtotal,
+            discount: 0,
+            total,
+            notes: notes ?? null,
+            quotationId: quotationId ?? null,
+            expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
+          },
+        });
+
+        // SaleItems
+        for (const item of frozenItems) {
+          await tx.saleItem.create({
+            data: {
+              saleId: frozenSale.id,
+              productVariantId: item.productVariantId ?? null,
+              description: item.description,
+              isFreeForm: item.isFreeForm,
+              quantity: item.quantity,
+              price: item.unitPrice,
+              discount: 0,
+            },
+          });
+        }
+
+        // CashTransactions
+        if (depositAmount > 0) {
+          await tx.cashTransaction.create({
+            data: { sessionId: activeSession.id, saleId: frozenSale.id, type: "PAYMENT_IN", method: paymentMethod, amount: depositAmount },
+          });
+        }
+        if (isSplitPayment && secondaryDepositAmount && secondaryDepositAmount > 0 && secondaryPaymentMethod) {
+          await tx.cashTransaction.create({
+            data: { sessionId: activeSession.id, saleId: frozenSale.id, type: "PAYMENT_IN", method: secondaryPaymentMethod, amount: secondaryDepositAmount },
+          });
+        }
+
+        return { saleId: frozenSale.id, folio: frozenSale.folio };
+      }
+
+      // ── NORMAL PATH (unchanged) ────────────────────────────────────────────
+
       // 1. Stock check and decrement (solo LAYAWAY)
       if (orderType === "LAYAWAY") {
         const stock = await tx.stock.findUnique({

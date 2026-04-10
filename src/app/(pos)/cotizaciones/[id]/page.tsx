@@ -16,8 +16,10 @@ import {
 export const dynamic = "force-dynamic";
 
 interface SessionUser {
+  id: string;
   branchId: string;
   role: string;
+  branchName?: string;
 }
 
 interface RouteParams {
@@ -31,12 +33,34 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
 
   const { id } = await params;
 
+  // Preload managers + customers for the convert dialog
+  const [managers, rawCustomers] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: { in: ["MANAGER", "ADMIN"] } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.customer.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true, phone2: true, email: true, balance: true, creditLimit: true },
+    }),
+  ]);
+  const customers = rawCustomers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone,
+    phone2: c.phone2,
+    email: c.email,
+    balance: Number(c.balance),
+    creditLimit: Number(c.creditLimit),
+  }));
+
   const q = await prisma.quotation.findUnique({
     where: { id },
     include: {
       branch: { select: { name: true, code: true } },
       user: { select: { name: true } },
-      customer: { select: { id: true, name: true, phone: true } },
+      customer: { select: { id: true, name: true, phone: true, email: true } },
       discountAuthorizedBy: { select: { name: true } },
       convertedByUser: { select: { name: true } },
       convertedInBranch: { select: { name: true } },
@@ -371,6 +395,26 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
         quotationId={id}
         effectiveStatus={effectiveStatus}
         dbStatus={q.status}
+        quotation={{
+          id: q.id,
+          folio: q.folio,
+          branchId: q.branchId,
+          branchName: q.branch.name,
+          subtotal,
+          discountAmount: discount,
+          total,
+          customerId: q.customerId ?? null,
+          customerName: q.customer?.name ?? null,
+          customerPhone: q.customer?.phone ?? null,
+          customerEmail: q.customer?.email ?? null,
+          anonymousCustomerName: q.anonymousCustomerName ?? null,
+          anonymousCustomerPhone: q.anonymousCustomerPhone ?? null,
+          itemCount: q.items.length,
+        }}
+        managers={managers}
+        customers={customers}
+        currentUserBranchId={user.branchId}
+        currentUserBranchName={user.branchName ?? ""}
       />
     </div>
   );

@@ -22,6 +22,7 @@ interface PriceCheckItem {
   frozenPrice: number;
   currentPrice: number;
   drift: DriftDirection;
+  difference: number;
 }
 
 // GET /api/cotizaciones/[id]/price-check
@@ -97,6 +98,7 @@ export async function GET(req: NextRequest, { params }: RouteParams): Promise<Ne
       frozenPrice,
       currentPrice,
       drift,
+      difference: currentPrice - frozenPrice,
     };
   });
 

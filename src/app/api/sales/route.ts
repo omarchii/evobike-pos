@@ -26,6 +26,15 @@ const saleItemSchema = z.object({
   assemblyMode: z.boolean().optional(),
 });
 
+// Frozen items from quotation conversion (nullable productVariantId for free-form lines)
+const frozenItemSchema = z.object({
+  productVariantId: z.string().nullable().optional(),
+  description: z.string(),
+  isFreeForm: z.boolean().default(false),
+  quantity: z.number().int().positive(),
+  unitPrice: z.number().nonnegative(),
+});
+
 const saleSchema = z.object({
   items: z.array(saleItemSchema).min(1, "El carrito está vacío"),
   total: z.number().nonnegative(),
@@ -38,6 +47,9 @@ const saleSchema = z.object({
   discountAmount: z.number().nonnegative().optional(),
   discountAuthorizedByUserId: z.string().optional(),
   discountAuthorizedByName: z.string().optional(),
+  // Optional quotation conversion fields (additive — does not affect existing callers)
+  quotationId: z.string().optional(),
+  frozenItems: z.array(frozenItemSchema).optional(),
 });
 
 // POST /api/sales — procesar una venta o apartado
@@ -89,6 +101,121 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      // ── QUOTATION CONVERSION PATH ──────────────────────────────────────────
+      // When frozenItems is present, we use those items (from quotation) instead
+      // of the normal POS items. This path is additive; the existing path below
+      // is untouched and runs when frozenItems is absent.
+      if (input.frozenItems && input.frozenItems.length > 0) {
+        // Credit balance check (same as normal path)
+        const creditPayment = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
+        if (creditPayment) {
+          if (!input.customerId) throw new Error("Se requiere un cliente para pagar con Saldo a Favor");
+          const customer = await tx.customer.findUnique({ where: { id: input.customerId } });
+          if (!customer || Number(customer.balance) < creditPayment.amount) {
+            throw new Error(`Saldo insuficiente. El cliente tiene $${customer?.balance ?? 0} a favor.`);
+          }
+          await tx.customer.update({
+            where: { id: input.customerId },
+            data: { balance: { decrement: creditPayment.amount } },
+          });
+        }
+
+        // Stock check + decrement for catalog items only (skip isFreeForm)
+        for (const item of input.frozenItems) {
+          if (item.isFreeForm || !item.productVariantId) continue;
+          const stock = await tx.stock.findUnique({
+            where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+          });
+          if (!stock || stock.quantity < item.quantity) {
+            throw new Error(`Stock insuficiente para: ${item.description}`);
+          }
+          await tx.stock.update({
+            where: { id: stock.id },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        }
+
+        // Build note
+        let frozenNote = input.internalNote ?? "";
+        if (input.discountAmount && input.discountAmount > 0 && input.discountAuthorizedByName) {
+          const discountLine = `\nDescuento $${input.discountAmount.toFixed(2)} autorizado por ${input.discountAuthorizedByName}`;
+          frozenNote = frozenNote ? `${frozenNote}${discountLine}` : discountLine.trimStart();
+        }
+
+        // Folio
+        const subTotalFrozen = input.total - (input.discount ?? 0);
+        const updatedBranchFrozen = await tx.branch.update({
+          where: { id: branchId },
+          data: { lastSaleFolioNumber: { increment: 1 } },
+          select: { lastSaleFolioNumber: true, name: true },
+        });
+        const branchPrefixFrozen = updatedBranchFrozen.name
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .substring(0, 3)
+          .toUpperCase();
+        const frozenFolio = `${branchPrefixFrozen}V-${String(updatedBranchFrozen.lastSaleFolioNumber).padStart(4, "0")}`;
+
+        const frozenSale = await tx.sale.create({
+          data: {
+            folio: frozenFolio,
+            branchId,
+            userId,
+            customerId: input.customerId ?? null,
+            status: "COMPLETED",
+            subtotal: subTotalFrozen,
+            discount: input.discount ?? 0,
+            total: input.total,
+            internalNote: frozenNote || null,
+            quotationId: input.quotationId ?? null,
+            items: {
+              create: input.frozenItems.map((item) => ({
+                productVariantId: item.productVariantId ?? null,
+                description: item.description,
+                isFreeForm: item.isFreeForm,
+                quantity: item.quantity,
+                price: item.unitPrice,
+                discount: 0,
+              })),
+            },
+          },
+        });
+
+        // Inventory movements (skip free-form items)
+        for (const item of input.frozenItems) {
+          if (item.isFreeForm || !item.productVariantId) continue;
+          await tx.inventoryMovement.create({
+            data: {
+              productVariantId: item.productVariantId,
+              branchId,
+              userId,
+              type: "SALE",
+              quantity: -item.quantity,
+              referenceId: frozenSale.id,
+            },
+          });
+        }
+
+        // Cash transactions
+        for (const pm of input.paymentMethods) {
+          if (pm.amount <= 0) continue;
+          await tx.cashTransaction.create({
+            data: {
+              sessionId: activeSession.id,
+              saleId: frozenSale.id,
+              type: "PAYMENT_IN",
+              method: pm.method,
+              amount: pm.amount,
+              reference: pm.reference,
+              collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
+            },
+          });
+        }
+
+        return frozenSale;
+      }
+
+      // ── NORMAL POS PATH (unchanged) ────────────────────────────────────────
+
       // CREDIT_BALANCE pre-flight check
       const creditPayment = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
       if (creditPayment) {
