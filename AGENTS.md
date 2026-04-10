@@ -163,7 +163,7 @@ import { prisma } from "../../lib/prisma";
 | 1C | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
 | 2 (parcial) | Módulos de inventario, taller, clientes | ✅ Parcial |
 | 2F | Modales de pago avanzados (múltiples métodos, ATRATO) | ✅ Completo |
-| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente |
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente - Lo dejamos para la fase 5|
 | **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos | ✅ Completo |
 | **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ✅ Completo |
 | **2H** | **Módulo de Montaje** — ensamble batería+vehículo, trazabilidad para garantía | ✅ Completo |

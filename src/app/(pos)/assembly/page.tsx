@@ -150,26 +150,26 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
     completedAt: o.completedAt?.toISOString() ?? null,
     customerBike: o.customerBike
       ? {
-          id: o.customerBike.id,
-          serialNumber: o.customerBike.serialNumber,
-          model: o.customerBike.model,
-          color: o.customerBike.color,
-          voltaje: o.customerBike.voltaje,
-          customer: o.customerBike.customer
-            ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
-            : null,
-        }
+        id: o.customerBike.id,
+        serialNumber: o.customerBike.serialNumber,
+        model: o.customerBike.model,
+        color: o.customerBike.color,
+        voltaje: o.customerBike.voltaje,
+        customer: o.customerBike.customer
+          ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
+          : null,
+      }
       : null,
     productVariant: o.productVariant
       ? {
-          id: o.productVariant.id,
-          sku: o.productVariant.sku,
-          modeloId: o.productVariant.modelo_id,
-          voltajeId: o.productVariant.voltaje_id,
-          modeloNombre: o.productVariant.modelo.nombre,
-          colorNombre: o.productVariant.color.nombre,
-          voltajeLabel: o.productVariant.voltaje.label,
-        }
+        id: o.productVariant.id,
+        sku: o.productVariant.sku,
+        modeloId: o.productVariant.modelo_id,
+        voltajeId: o.productVariant.voltaje_id,
+        modeloNombre: o.productVariant.modelo.nombre,
+        colorNombre: o.productVariant.color.nombre,
+        voltajeLabel: o.productVariant.voltaje.label,
+      }
       : null,
     assembledBy: o.assembledBy
       ? { id: o.assembledBy.id, name: o.assembledBy.name }

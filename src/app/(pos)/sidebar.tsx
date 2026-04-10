@@ -14,6 +14,7 @@ import {
     ArchiveRestore,
     Vault,
     Cog,
+    FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const routes = [
     { label: "Montaje", icon: Cog, href: "/assembly" },
     { label: "Inventario", icon: Package, href: "/inventory" },
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
+    { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },
     { label: "Configuración", icon: Settings, href: "/settings" },
 ];
