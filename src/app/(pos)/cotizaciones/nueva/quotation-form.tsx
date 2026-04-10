@@ -102,7 +102,7 @@ const quotationFormSchema = z
     customerMode: z.enum(["existing", "anonymous", "none"]),
     customerId: z.string().optional(),
     anonymousCustomerName: z.string().optional(),
-    anonymousCustomerPhone: z.string().optional(),
+    anonymousCustomerPhone: z.string().regex(/^\d{10}$/, "El teléfono debe ser exactamente 10 dígitos").optional().or(z.literal("")),
     items: z.array(itemSchema).min(1, "Agrega al menos un artículo"),
     discountEnabled: z.boolean(),
     discountAmount: z.number().nonnegative(),
@@ -748,6 +748,8 @@ export default function QuotationForm({
                     <input
                       {...form.register("anonymousCustomerPhone")}
                       placeholder="Teléfono"
+                      maxLength={10}
+                      inputMode="numeric"
                       style={INPUT_STYLE}
                     />
                   </div>

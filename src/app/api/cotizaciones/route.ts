@@ -42,7 +42,7 @@ const itemInputSchema = z
 const createQuotationSchema = z.object({
   customerId: z.string().optional(),
   anonymousCustomerName: z.string().optional(),
-  anonymousCustomerPhone: z.string().optional(),
+  anonymousCustomerPhone: z.string().regex(/^\d{10}$/, "El teléfono debe ser exactamente 10 dígitos").optional().or(z.literal("")),
   items: z.array(itemInputSchema).min(1, "La cotización debe tener al menos un artículo"),
   discountAmount: z.number().nonnegative().default(0),
   discountAuthorizedById: z.string().optional(),
