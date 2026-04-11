@@ -30,7 +30,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { branchId } = session.user as unknown as SessionUser;
 
   if (!branchId) {
     return NextResponse.json({ success: false, error: "Empleado sin sucursal asignada" }, { status: 400 });
@@ -59,38 +59,10 @@ export async function POST(
       );
     }
 
+    // Nota: el descuento de stock ocurre al ENTREGAR la orden (D3 del spec),
+    // no al agregar la refacción. El endpoint deliver valida stock e impacta
+    // inventario atómicamente. Ver /api/service-orders/[id]/deliver.
     await prisma.$transaction(async (tx) => {
-      if (data.productVariantId) {
-        const stock = await tx.stock.findUnique({
-          where: {
-            productVariantId_branchId: {
-              productVariantId: data.productVariantId,
-              branchId,
-            },
-          },
-        });
-
-        if (!stock || stock.quantity < data.quantity) {
-          throw new Error("Stock insuficiente para la refacción seleccionada");
-        }
-
-        await tx.stock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: data.quantity } },
-        });
-
-        await tx.inventoryMovement.create({
-          data: {
-            productVariantId: data.productVariantId,
-            branchId,
-            userId,
-            type: "WORKSHOP_USAGE",
-            quantity: -data.quantity,
-            referenceId: serviceOrderId,
-          },
-        });
-      }
-
       await tx.serviceOrderItem.create({
         data: {
           serviceOrderId,
