@@ -171,7 +171,7 @@ import { prisma } from "../../lib/prisma";
 | 2H-B | Schema + API Routes montaje (crear, completar, cancelar, desinstalación) | ✅ Completo |
 | 2H-C | Integración Inventario ↔ Montaje (auto-crear AssemblyOrders en recepción) | ✅ Completo |
 | **2H-D** | **Vinculación Pedidos ↔ Baterías ↔ Montaje** (BatteryLot.saleItemId, AssemblyOrder.saleId, modal Nuevo Pedido completo, chip Kanban, dialog completar con lotes) | ✅ Completo |
-| 3 | Cotizaciones | ⏳ Pendiente |
+| 3 | Cotizaciones | ✅ Completo |
 | 4 | Taller completo (cobro al entregar + descuento automático de stock + **integración POS-montaje**: buscar `CustomerBike` por VIN al vender, upgrade voltaje) | ⏳ Pendiente |
 | 5 | Reportes y comisiones (incluye desglose COLLECTED vs PENDING en caja) | ⏳ Pendiente |
 | 6 | Cierre / producción (tests, hardening, deploy, config Prisma v7) | ⏳ Pendiente |
@@ -217,6 +217,64 @@ import { prisma } from "../../lib/prisma";
 
 ### Patrón de estilos en modales — CRÍTICO (bug recurrente)
 Ver sección completa más abajo en "Reglas de UI para modales".
+
+---
+
+## Fase 3 — Estado completado (módulo de Cotizaciones)
+
+### Cambios de schema
+
+- `Quotation`, `QuotationItem`, enum `QuotationStatus` (`DRAFT | SENT | CONVERTED | CANCELLED`). Estado efectivo `EXPIRED` se computa en lectura vía `getEffectiveStatus()` — no existe en DB.
+- `Branch.lastQuotationFolioNumber Int @default(0)` — contador atómico de folios de cotización por sucursal.
+- `Quotation.publicShareToken String @unique @default(cuid())` — token para vista pública sin auth.
+- `Sale.quotationId String? @unique` — plain field (sin FK Prisma explícita). La FK real es `Quotation.convertedToSaleId`. Dos relaciones independientes para evitar conflicto de nombres de relación duplicados.
+- `SaleItem.productVariantId` ahora nullable + nuevos campos `description String?`, `isFreeForm Boolean @default(false)` — soporta líneas libres fuera de catálogo.
+
+### Nuevas rutas de API
+
+- `GET /api/cotizaciones` — listado paginado con filtros (estado, sucursal, fecha, folio, cliente).
+- `POST /api/cotizaciones` — crear cotización (DRAFT); genera folio atómico `<CODE>-COT-<NNNN>`.
+- `GET /api/cotizaciones/[id]` — detalle con ítems, cliente, branch.
+- `PATCH /api/cotizaciones/[id]` — editar (solo DRAFT/SENT).
+- `POST /api/cotizaciones/[id]/send` — marcar como SENT.
+- `POST /api/cotizaciones/[id]/cancel` — cancelar con motivo.
+- `POST /api/cotizaciones/[id]/duplicate` — duplicar en DRAFT (sin arrastrar descuento).
+- `GET /api/cotizaciones/[id]/price-check` — detectar drift de precios respecto al catálogo actual.
+- `POST /api/cotizaciones/[id]/convert` — conversión one-shot a SALE / LAYAWAY / BACKORDER dentro de `$transaction`.
+- `GET /api/cotizaciones/search` — búsqueda rápida por folio o cliente.
+
+### Cambios en API Routes existentes (aditivos)
+
+- `POST /api/sales` — acepta `quotationId` y `frozenItems` opcionales. Ruta legacy sin esos params sigue funcionando igual. El path de conversión corre dentro del mismo `$transaction`.
+- `POST /api/pedidos` — ídem con `quotationId`, `frozenItems` y `total` opcionales.
+
+### Decisiones clave
+
+- Folio usa `Branch.code` → formato `LEO-COT-0001`. Contador independiente de ventas.
+- Dos relaciones independientes Sale↔Quotation: `Quotation.convertedToSaleId` (FK Prisma) y `Sale.quotationId` (plain unique). Evita conflicto de nombres de relación duplicados en Prisma.
+- Duplicar cotización **no** arrastra `discountAmount` (requiere nueva autorización de gerente).
+- "Mantener precio original" cuando hay drift higher requiere auth de gerente. Por defecto se usan precios actualizados del catálogo.
+- Comisión al `convertedByUserId`, no al creador original de la cotización.
+- Vista pública sin auth en `src/app/cotizaciones/public/[token]/page.tsx` — fuera del grupo `(pos)` para evitar el redirect de auth del layout.
+- Light mode forzado en vista pública vía CSS custom properties redefinidas en `.evobike-public-doc {}` — los tokens del hijo sobreescriben los del ancestro `html.dark`.
+- Compartir por WhatsApp vía URL `wa.me/52{phone}?text={msg}` — sin dependencias, sin backend. `window.open(..., '_blank', 'noopener,noreferrer')`.
+- `canShare = isActionable || effectiveStatus === "EXPIRED"` — compartir/WhatsApp visible también en cotizaciones expiradas (útil como referencia histórica para el cliente).
+
+### Helpers en `src/lib/quotations.ts`
+
+- `getEffectiveStatus(q)` — calcula `"EXPIRED"` si `status` es DRAFT/SENT y `validUntil < now()`. Sin cron ni write a DB.
+- `getDaysRemaining(validUntil)` — días restantes (negativo si ya expiró).
+- `formatMXN(value)` — formatea como `$XX,XXX.XX` con `Intl.NumberFormat("es-MX", { currency: "MXN" })`.
+- `formatDate(date)` — formatea `"16 abr 2026"` con `toLocaleDateString("es-MX")`.
+
+### Reglas del módulo
+
+- Cotizar **no** requiere caja abierta. Convertir a Venta directa **sí** (heredado del POS).
+- Cotizar **no** toca Stock. La validación de stock ocurre en la conversión.
+- Vigencia: 7 días. La expiración se computa en lectura; no requiere cron.
+- Líneas libres (`isFreeForm = true`) **no** generan `InventoryMovement` ni consultan Stock.
+- Conversión one-shot dentro de `prisma.$transaction()` con revalidación de status al inicio — cierra la race condition de doble conversión.
+- El lock de precio se refleja en la leyenda del PDF: "Los precios mostrados son válidos únicamente el día de emisión de esta cotización. Vigencia: 7 días."
 
 ---
 
