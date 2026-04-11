@@ -22,6 +22,7 @@ const saleItemSchema = z.object({
   name: z.string(),
   isSerialized: z.boolean().optional(),
   serialNumber: z.string().optional(),
+  customerBikeId: z.string().optional(),  // 4-C: select existing assembled bike
   batterySerials: z.array(z.string()).optional(),
   assemblyMode: z.boolean().optional(),
 });
@@ -250,8 +251,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           data: { quantity: { decrement: item.quantity } },
         });
 
-        // VIN registration
-        if (item.isSerialized && item.serialNumber) {
+        // VIN assignment — 4-C: link existing assembled CustomerBike to customer
+        if (item.customerBikeId) {
+          if (!input.customerId) {
+            throw new Error(`Esta unidad requiere asignar un cliente`);
+          }
+          const bike = await tx.customerBike.findUnique({
+            where: { id: item.customerBikeId },
+          });
+          if (!bike) {
+            throw new Error(`Unidad no encontrada: ${item.customerBikeId}`);
+          }
+          if (bike.customerId !== null) {
+            throw new Error(`Esta unidad ya tiene un propietario registrado`);
+          }
+          if (bike.branchId !== branchId) {
+            throw new Error(`Esta unidad no pertenece a esta sucursal`);
+          }
+          await tx.customerBike.update({
+            where: { id: item.customerBikeId },
+            data: { customerId: input.customerId },
+          });
+        } else if (item.isSerialized && item.serialNumber) {
+          // Legacy path: manually typed VIN (backward compat)
           if (!input.customerId) {
             throw new Error(`${item.name} requiere un número de serie — debes seleccionar un cliente.`);
           }

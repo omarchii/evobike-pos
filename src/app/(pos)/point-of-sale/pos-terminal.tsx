@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import CustomerSelectorModal, { type CustomerOption } from "./customer-selector-modal";
+import { VinSelectorDialog, type CustomerBikeOption } from "./vin-selector-dialog";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,7 @@ interface CartItem {
   quantity: number;
   isSerialized: boolean;
   serialNumber?: string;
+  customerBikeId?: string;  // 4-C: selected from VinSelectorDialog
   batterySerials?: string[];
   assemblyMode?: boolean;
 }
@@ -371,10 +373,8 @@ export default function PosTerminal({
   const [selectedVoltajeId, setSelectedVoltajeId] = useState("");
   const [selectedColorId, setSelectedColorId] = useState("");
   const [assemblyMode, setAssemblyMode] = useState(false);
-  const [vinInput, setVinInput] = useState("");
-  const [vinStatus, setVinStatus] = useState<
-    "idle" | "checking" | "valid" | "taken"
-  >("idle");
+  const [selectedCustomerBike, setSelectedCustomerBike] = useState<CustomerBikeOption | null>(null);
+  const [vinDialogOpen, setVinDialogOpen] = useState(false);
   const [batterySerialInputs, setBatterySerialInputs] = useState<string[]>([]);
   const [batteryStatuses, setBatteryStatuses] = useState<
     Record<number, BatteryStatus>
@@ -534,8 +534,8 @@ export default function PosTerminal({
     setSelectedVoltajeId("");
     setSelectedColorId("");
     setAssemblyMode(false);
-    setVinInput("");
-    setVinStatus("idle");
+    setSelectedCustomerBike(null);
+    setVinDialogOpen(false);
     setBatterySerialInputs([]);
     setBatteryStatuses({});
   };
@@ -557,28 +557,6 @@ export default function PosTerminal({
     setBatterySerialInputs(Array(opt.batteriesRequired).fill(""));
     setBatteryStatuses({});
   };
-
-  // ── Handlers: VIN check
-  const checkVin = useCallback(async (vin: string) => {
-    if (vin.length < 3) {
-      setVinStatus("idle");
-      return;
-    }
-    setVinStatus("checking");
-    try {
-      const res = await fetch(
-        `/api/serial-search?q=${encodeURIComponent(vin)}`,
-      );
-      const data: unknown = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setVinStatus("taken");
-      } else {
-        setVinStatus("valid");
-      }
-    } catch {
-      setVinStatus("idle");
-    }
-  }, []);
 
   // ── Handlers: battery serial check
   const checkBatterySerial = useCallback(
@@ -650,8 +628,8 @@ export default function PosTerminal({
       return;
 
     const needsVin = selectedModelo.requiere_vin;
-    if (needsVin && (!vinInput || vinStatus !== "valid")) {
-      toast.error("Ingresa un VIN válido antes de continuar");
+    if (needsVin && !selectedCustomerBike) {
+      toast.error("Selecciona una unidad antes de continuar");
       return;
     }
 
@@ -684,7 +662,8 @@ export default function PosTerminal({
       price: selectedVariant.precio,
       quantity: 1,
       isSerialized: selectedModelo.requiere_vin,
-      serialNumber: needsVin ? vinInput : undefined,
+      serialNumber: needsVin ? selectedCustomerBike!.serialNumber : undefined,
+      customerBikeId: needsVin ? selectedCustomerBike!.id : undefined,
       batterySerials: assemblyMode ? [...batterySerialInputs] : undefined,
       assemblyMode,
     };
@@ -701,8 +680,8 @@ export default function PosTerminal({
     setSelectedVoltajeId("");
     setSelectedColorId("");
     setAssemblyMode(false);
-    setVinInput("");
-    setVinStatus("idle");
+    setSelectedCustomerBike(null);
+    setVinDialogOpen(false);
     setBatterySerialInputs([]);
     setBatteryStatuses({});
   };
@@ -750,6 +729,7 @@ export default function PosTerminal({
             name: `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
             isSerialized: ci.isSerialized,
             serialNumber: ci.serialNumber,
+            customerBikeId: ci.customerBikeId,
             batterySerials: ci.batterySerials,
             assemblyMode: ci.assemblyMode,
           })),
@@ -831,7 +811,7 @@ export default function PosTerminal({
   // ── Derived: can complete config
   const canCompleteConfig = useMemo((): boolean => {
     if (!selectedModelo || !selectedVoltajeId || !selectedColorId) return false;
-    if (selectedModelo.requiere_vin && vinStatus !== "valid") return false;
+    if (selectedModelo.requiere_vin && !selectedCustomerBike) return false;
     if (assemblyMode) {
       const allFilled = batterySerialInputs.every((s) => s.length > 0);
       const allValid = batterySerialInputs.every(
@@ -844,7 +824,7 @@ export default function PosTerminal({
     selectedModelo,
     selectedVoltajeId,
     selectedColorId,
-    vinStatus,
+    selectedCustomerBike,
     assemblyMode,
     batterySerialInputs,
     batteryStatuses,
@@ -1339,7 +1319,7 @@ export default function PosTerminal({
                   )}
                 </div>
 
-                {/* Step 3: VIN — always visible when requiere_vin */}
+                {/* Step 3: Unit selector — only when requiere_vin */}
                 {selectedModelo.requiere_vin && (
                   <>
                     <div
@@ -1348,7 +1328,12 @@ export default function PosTerminal({
                         margin: "12px 0",
                       }}
                     />
-                    <div style={{ opacity: !selectedColorId ? 0.4 : 1 }}>
+                    <div
+                      style={{
+                        opacity: !selectedColorId ? 0.4 : 1,
+                        pointerEvents: !selectedColorId ? "none" : undefined,
+                      }}
+                    >
                       <p
                         style={{
                           fontSize: 10,
@@ -1359,121 +1344,83 @@ export default function PosTerminal({
                           marginBottom: 8,
                         }}
                       >
-                        3. VIN VERIFICATION
+                        3. UNIDAD (VIN)
                       </p>
-                      <div className="relative">
-                        <input
-                          disabled={!selectedColorId}
-                          className="w-full focus:outline-none focus:ring-1 focus:ring-[var(--p-bright)] placeholder:text-[var(--on-surf-var)]"
+
+                      {selectedCustomerBike ? (
+                        /* Selected unit display */
+                        <div
+                          className="flex items-center gap-2"
+                          style={{
+                            background: "var(--sec-container)",
+                            borderRadius: 10,
+                            padding: "8px 12px",
+                          }}
+                        >
+                          <Check
+                            className="w-3.5 h-3.5 shrink-0"
+                            style={{ color: "var(--p-bright)" }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="text-xs font-mono font-semibold truncate"
+                              style={{ color: "var(--on-surf)" }}
+                            >
+                              {selectedCustomerBike.serialNumber}
+                            </p>
+                            <p
+                              className="text-[10px] truncate"
+                              style={{ color: "var(--on-surf-var)" }}
+                            >
+                              {selectedCustomerBike.voltaje ??
+                                selectedCustomerBike.productVariant?.voltaje?.label ??
+                                "—"}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSelectedCustomerBike(null)}
+                            className="shrink-0"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--on-surf-var)",
+                              cursor: "pointer",
+                              padding: 2,
+                            }}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        /* Open selector button */
+                        <button
+                          disabled={!selectedColorId || !selectedVariant}
+                          onClick={() => setVinDialogOpen(true)}
+                          className="w-full flex items-center gap-2 transition-all"
                           style={{
                             background: "var(--surf-lowest)",
                             border: "none",
                             borderRadius: 12,
-                            color: "var(--on-surf)",
-                            padding: "10px 40px 10px 14px",
+                            color: "var(--on-surf-var)",
+                            padding: "10px 14px",
                             fontSize: 12,
+                            cursor: "pointer",
+                            textAlign: "left",
                           }}
-                          placeholder="Escanear o escribir VIN..."
-                          value={vinInput}
-                          onChange={(e) => {
-                            setVinInput(e.target.value);
-                            setVinStatus("idle");
-                          }}
-                          onBlur={() => checkVin(vinInput)}
+                        >
+                          <Search className="w-3.5 h-3.5 shrink-0" />
+                          <span>Seleccionar unidad ensamblada...</span>
+                        </button>
+                      )}
+
+                      {/* VinSelectorDialog */}
+                      {selectedVariant && (
+                        <VinSelectorDialog
+                          open={vinDialogOpen}
+                          onOpenChange={setVinDialogOpen}
+                          productVariantId={selectedVariant.id}
+                          onSelect={(bike) => setSelectedCustomerBike(bike)}
                         />
-                        <div
-                          className="absolute right-3 top-1/2 -translate-y-1/2"
-                          style={{ color: "var(--on-surf-var)" }}
-                        >
-                          {vinStatus === "checking" && (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          )}
-                          {vinStatus === "valid" && (
-                            <Check
-                              className="w-3.5 h-3.5"
-                              style={{ color: "var(--p-bright)" }}
-                            />
-                          )}
-                          {vinStatus === "taken" && (
-                            <X
-                              className="w-3.5 h-3.5"
-                              style={{ color: "var(--ter)" }}
-                            />
-                          )}
-                          {vinStatus === "idle" && (
-                            <svg
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              width="16"
-                              height="16"
-                            >
-                              <rect
-                                x="2"
-                                y="2"
-                                width="5"
-                                height="5"
-                                rx="0.5"
-                                stroke="var(--on-surf-var)"
-                                strokeWidth="1.5"
-                              />
-                              <rect
-                                x="9"
-                                y="2"
-                                width="5"
-                                height="5"
-                                rx="0.5"
-                                stroke="var(--on-surf-var)"
-                                strokeWidth="1.5"
-                              />
-                              <rect
-                                x="2"
-                                y="9"
-                                width="5"
-                                height="5"
-                                rx="0.5"
-                                stroke="var(--on-surf-var)"
-                                strokeWidth="1.5"
-                              />
-                              <rect
-                                x="3.5"
-                                y="3.5"
-                                width="2"
-                                height="2"
-                                fill="var(--on-surf-var)"
-                              />
-                              <rect
-                                x="10.5"
-                                y="3.5"
-                                width="2"
-                                height="2"
-                                fill="var(--on-surf-var)"
-                              />
-                              <rect
-                                x="3.5"
-                                y="10.5"
-                                width="2"
-                                height="2"
-                                fill="var(--on-surf-var)"
-                              />
-                              <path
-                                d="M9 9h2v2H9zM13 9v4M13 13H9v-2"
-                                stroke="var(--on-surf-var)"
-                                strokeWidth="1.5"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                      {vinStatus === "taken" && (
-                        <p
-                          style={{
-                            fontSize: 10,
-                            color: "var(--ter)",
-                            marginTop: 4,
-                          }}
-                        >
-                          Este VIN ya está registrado en esta sucursal
-                        </p>
                       )}
                     </div>
                   </>
