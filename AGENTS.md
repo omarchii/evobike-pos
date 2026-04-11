@@ -3,7 +3,8 @@
 **Grupos de rutas:**
 
 - `(auth)/` — rutas públicas (solo `/login`)
-- `(pos)/` — rutas protegidas; el `layout.tsx` valida sesión server-side
+- `(pos)/` — rutas protegidas; el `layout.tsx` valida sesión server-side con `redirect("/login")`
+- `src/app/<ruta>/` (sin grupo) — páginas públicas que no requieren auth y no deben heredar el layout de `(pos)`. Ejemplo: `src/app/cotizaciones/public/[token]/page.tsx`. **Nunca** meter rutas sin auth dentro de `(pos)` — el layout las redirige a login.
 
 **Patrón de datos:**
 
@@ -309,12 +310,120 @@ Ver sección completa más abajo en "Reglas de UI para modales".
 2. Confirmar que `lint` y `build` pasan.
 3. Solo entonces proceder al commit.
 
+### Verificación de calidad — comandos que funcionan
+
+`npm run lint` puede fallar con `Invalid project directory` en el entorno de herramientas (bug del shell). Usar siempre estas alternativas:
+
+```bash
+npx tsc --noEmit                  # TypeScript — errores de tipo
+node_modules/.bin/next build      # Build completo — incluye type-check + bundle
+```
+
+Ambos comandos son equivalentes o superiores a lint para detectar problemas antes de commitear.
+
 ## 🎨 Frontend y UI
 - **Sistema de Diseño (EvoFlow):** Para cualquier trabajo de UI, creación de vistas o modificación visual, **es OBLIGATORIO leer el archivo `DESIGN.md`** (allí están las reglas de tipografías, ausencia de bordes sólidos, glassmorphism y tokens de color). Si trabajas en backend, ignora ese archivo.
 - **Componentes Base:** Ubicados en `src/components/ui/` (shadcn/ui). **NUNCA los edites manualmente.**
 - **Estilos:** Tailwind utility-first. Usa `cn()` para clases condicionales. No crees archivos `.css` (usa los tokens EvoFlow de `globals.css`).
 - **Formularios y Alertas:** Obligatorio usar `react-hook-form` + Zod. Obligatorio usar `toast` de `sonner` (Cero `alert()` o `console.log` en producción).
 - **Idioma y Rutas:** Textos visibles al usuario en **español**. Variables/archivos en español. Usa siempre el alias `@/*` para imports.
+
+---
+
+## Patrones de UI — páginas públicas y print
+
+### Light mode forzado en páginas públicas
+
+Las páginas fuera de `(pos)` comparten el `RootLayout` que tiene `ThemeProvider` con `attribute="class"`. Si el usuario tiene dark mode, `html` recibe `class="dark"` y los tokens CSS cambian. Para forzar light mode en una página pública:
+
+**Técnica:** redefinir todos los tokens en un wrapper con clase específica. Las CSS custom properties del hijo más cercano ganan sobre el ancestro, independientemente de `html.dark`.
+
+```tsx
+// En el Server Component, inline style block:
+<style>{`
+  .public-page-wrapper {
+    --p: #1b4332;
+    --surf-lowest: #ffffff;
+    --on-surf: #131b2e;
+    /* ... todos los tokens del light mode ... */
+    background: #f8fafa;
+    color: #131b2e;
+  }
+`}</style>
+<div className="public-page-wrapper">
+  {/* contenido — siempre en light mode */}
+</div>
+```
+
+Ver implementación en `src/app/cotizaciones/public/[token]/page.tsx` (clase `.evobike-public-doc`).
+
+### @media print — Reglas para Safari (críticas)
+
+Safari respeta los valores CSS literalmente sin reescalar como Chrome. Para lograr que una página quepa en una sola hoja:
+
+```css
+@media print {
+  @page {
+    margin: 1.5cm;   /* 2cm es demasiado — ajustar según contenido */
+    size: letter;
+  }
+
+  /* OBLIGATORIO: quitar min-height: 100vh del contenedor raíz */
+  /* Safari lo toma literal → página ocupa 2 hojas */
+  .root-wrapper {
+    min-height: auto !important;
+  }
+
+  /* Compactar padding vertical agresivamente */
+  .doc-inner {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  /* Reducir display size de elementos grandes (títulos, folios) */
+  .display-title {
+    font-size: 2.25rem !important;  /* vs 3.5rem en pantalla */
+  }
+
+  /* Evitar que filas de tabla se corten entre páginas */
+  .table-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Evitar que el header de tabla quede huérfano al final de página */
+  .table-header {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Mantener bloque de totales siempre junto */
+  .totals-block {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Desactivar glassmorphism — no se renderiza en papel */
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Eliminar tonal shifts en filas alternas — se ven mal en papel */
+  .row-alt {
+    background: #ffffff !important;
+  }
+
+  /* Ocultar UI no-documento */
+  .no-print {
+    display: none !important;
+  }
+}
+```
+
+**El "EVOBIKE POS / fecha / URL / número de página"** en headers/footers del print NO es CSS tuyo — es el navegador. El usuario lo desactiva en "Más opciones → Headers and footers" del diálogo de impresión. No intentar ocultarlo desde CSS (no es fiable cross-browser).
+
+Ver implementación completa en `src/app/cotizaciones/public/[token]/page.tsx`.
 
 ---
 
