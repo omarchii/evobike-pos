@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { EffectiveStatus } from "@/lib/quotations";
 import ConvertQuotationDialog from "./convert-quotation-dialog";
+import WhatsAppShareButton from "./whatsapp-share-button";
 import type { Manager } from "./price-drift-alert";
 import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
 
@@ -45,6 +46,7 @@ interface QuotationForDialog {
   id: string;
   folio: string;
   publicShareToken: string;
+  validUntil: Date | string;
   branchId: string;
   branchName: string;
   subtotal: number;
@@ -97,6 +99,8 @@ export default function QuotationActionsBar({
   }
 
   const isActionable = effectiveStatus === "DRAFT" || effectiveStatus === "SENT";
+  // Compartir también aplica a cotizaciones expiradas (el cliente puede verlas)
+  const canShare = isActionable || effectiveStatus === "EXPIRED";
   const canEdit = isActionable;
   const canSend = isActionable && dbStatus === "DRAFT";
   const canDuplicate = true;
@@ -197,11 +201,29 @@ export default function QuotationActionsBar({
         )}
 
         {/* Share link */}
-        {isActionable && (
+        {canShare && (
           <ActionBtn
             icon={Link2}
             label="Compartir link"
             onClick={handleShareLink}
+          />
+        )}
+
+        {/* WhatsApp */}
+        {canShare && (
+          <WhatsAppShareButton
+            quotation={{
+              folio: quotation.folio,
+              total: quotation.total,
+              validUntil: quotation.validUntil,
+              publicShareToken: quotation.publicShareToken,
+              customer:
+                quotation.customerId && quotation.customerName
+                  ? { name: quotation.customerName, phone: quotation.customerPhone }
+                  : null,
+              anonymousCustomerName: quotation.anonymousCustomerName,
+              anonymousCustomerPhone: quotation.anonymousCustomerPhone,
+            }}
           />
         )}
 
