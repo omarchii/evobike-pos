@@ -1,5 +1,11 @@
 ## Arquitectura y flujo de datos
 
+- **Migraciones con drift BD-adelantada** 
+— Si `prisma db push` fue usado en algún 
+  momento, el procedimiento de sincronización es: generar SQL con `migrate diff`, 
+  crear el archivo manualmente en `prisma/migrations/`, luego 
+  `prisma migrate resolve --applied <nombre>`. Nunca resetear la BD.
+
 **Grupos de rutas:**
 
 - `(auth)/` — rutas públicas (solo `/login`)
@@ -142,7 +148,7 @@ import { prisma } from "../../lib/prisma";
 - **Folio secuencial por sucursal** — folios tipo `LEO-0001` generados con `Branch.lastSaleFolioNumber` incrementado atómicamente dentro de `prisma.$transaction()`.
 - **Layaway + Backorder → módulo Pedidos** — ambos flujos se fusionan en la misma UI (Fase 2G). No crear módulos separados.
 - **Server Actions → API Routes ✅** — migración completada en Fase 2H-A. `src/actions/` eliminado. Todas las mutaciones viven en `src/app/api/`.
-- **Módulo de montaje (Fase 2H)** — diseñado con Opus. `CustomerBike.customerId` es nullable para soportar vehículos pre-venta (sin cliente asignado). El montaje ocurre antes de la venta. La integración con POS se difiere a Fase 4 por riesgo.
+- **Módulo de montaje (Fase 2H)** — diseñado con Opus. `CustomerBike.customerId` es nullable para soportar vehículos pre-venta (sin cliente asignado). El montaje ocurre antes de la venta. La integración con POS se completó en Fase 4.
 - **Integración Inventario ↔ Montaje (Fase 2H-C)** — Al recibir mercancía (`PURCHASE_RECEIPT`), se crean automáticamente `AssemblyOrder` PENDING para cada unidad de vehículo ensamblable. Un vehículo es ensamblable si `modelo.requiere_vin === true` AND existe `BatteryConfiguration` para `(modeloId, voltajeId)`. La `AssemblyOrder` se crea SIN `customerBikeId` (null) — el VIN se captura durante el montaje físico, no en la recepción. `Stock` sube en la recepción y baja en la venta (el montaje no cambia Stock). Las baterías usan flujo dual: `Stock` + `InventoryMovement` para contabilidad, `BatteryLot` + `Battery` para trazabilidad por serial.
 - **`AssemblyOrder.productVariantId`** — FK nullable a `ProductVariant`. Permite crear órdenes de montaje sin VIN. También elimina el lookup frágil por nombre de modelo en el flujo de completar montaje.
 - **`CustomerBike.productVariantId`** — FK nullable a `ProductVariant`. Vincula la bici al catálogo estructuralmente, reemplazando los textos libres `model`/`color`/`voltaje` para vehículos EVOBIKE.
@@ -173,7 +179,7 @@ import { prisma } from "../../lib/prisma";
 | 2H-C | Integración Inventario ↔ Montaje (auto-crear AssemblyOrders en recepción) | ✅ Completo |
 | **2H-D** | **Vinculación Pedidos ↔ Baterías ↔ Montaje** (BatteryLot.saleItemId, AssemblyOrder.saleId, modal Nuevo Pedido completo, chip Kanban, dialog completar con lotes) | ✅ Completo |
 | 3 | Cotizaciones | ✅ Completo |
-| 4 | Taller completo (cobro al entregar + descuento automático de stock + **integración POS-montaje**: buscar `CustomerBike` por VIN al vender, upgrade voltaje) | ⏳ Pendiente |
+| 4 | Taller completo (cobro de servicios, stock automático al entregar, VIN obligatorio en POS, cambio de voltaje pre-venta, póliza diferida, cancelación con reversión, `/ventas/[id]`) | ✅ Completo |
 | 5 | Reportes y comisiones (incluye desglose COLLECTED vs PENDING en caja) | ⏳ Pendiente |
 | 6 | Cierre / producción (tests, hardening, deploy, config Prisma v7) | ⏳ Pendiente |
 
@@ -182,7 +188,6 @@ import { prisma } from "../../lib/prisma";
 - **Permisos**: Todos los roles pueden crear órdenes de montaje. Solo TECHNICIAN, MANAGER y ADMIN pueden completarlas.
 - **Baterías**: Permanecen `IN_STOCK` al crear la orden (PENDING). Se cambian a `INSTALLED` solo al completar el montaje, dentro de `$transaction`.
 - **Desinstalación (2H-4)**: Flujo inverso — desasigna baterías de un vehículo, regresándolas a `IN_STOCK`. Marca `BatteryAssignment.isCurrent = false` y actualiza `Battery.status`.
-- **Integración POS**: Fuera del scope de 2H. Se implementará en Fase 4 junto con taller completo. `pos-terminal.tsx` es el archivo de mayor riesgo del proyecto.
 - **Chip de disponibilidad de baterías en Kanban (2H-3)**: OBLIGATORIO. El Kanban de montaje debe mostrar en cada AssemblyOrder PENDING si hay baterías suficientes disponibles (verde), parciales (amarillo) o ninguna (rojo). Se implementa como query en el Server Component `assembly/page.tsx` pasada como props — sin endpoint nuevo.
 - **Validación de BatteryLot con saleItemId**: Si se proporciona `saleItemId`, validar que el tipo de batería del lote (`productVariantId`) coincide con el `batteryVariantId` de `BatteryConfiguration` para el `(modelo_id, voltaje_id)` del SaleItem. WARNING (no bloqueo) si la cantidad excede la esperada. Error 422 si el tipo de batería es incorrecto.
 
@@ -276,6 +281,48 @@ Ver sección completa más abajo en "Reglas de UI para modales".
 - Líneas libres (`isFreeForm = true`) **no** generan `InventoryMovement` ni consultan Stock.
 - Conversión one-shot dentro de `prisma.$transaction()` con revalidación de status al inicio — cierra la race condition de doble conversión.
 - El lock de precio se refleja en la leyenda del PDF: "Los precios mostrados son válidos únicamente el día de emisión de esta cotización. Vigencia: 7 días."
+
+---
+
+## Fase 4 — Estado completado (sesión 2026-04-11)
+
+### Cambios de schema (migración `20260411000000_fix_schema_drift_phase4`)
+
+Los campos fueron aplicados vía `db push` antes de crear la migración formal. Para sincronizar el historial se usó `migrate diff` + `migrate resolve --applied` (sin reset, sin pérdida de datos).
+
+- `VoltageChangeLog.reason` — cambió de `TEXT` nullable a enum `VoltageChangeReason NOT NULL` (`PRE_SALE | POST_SALE`).
+- `VoltageChangeLog.saleId String?` — FK nullable a `Sale`. Presente cuando el cambio ocurre en contexto de una venta.
+- `VoltageChangeLog.serviceOrderId String?` — FK nullable a `ServiceOrder`. Para cambios post-venta de taller.
+- `AssemblyOrder.voltageChangeLogId String? @unique` — vincula la orden de reensamble al cambio de voltaje que la originó. `@unique` = solo un reensamble por cambio.
+- `Sale.warrantyDocReady Boolean @default(true)` — `false` mientras haya reensambles PENDING vinculados a la venta. Se pone `true` automáticamente al completar la última `AssemblyOrder` PENDING.
+- `Sale.serviceOrderId String? @unique` — FK a `ServiceOrder` cuando la venta proviene del cobro en taller.
+- `ServiceOrder.prepaid Boolean @default(false)` — marca si la orden fue cobrada anticipadamente (al recibir, no al entregar).
+- `ServiceOrderItem.inventoryMovementId String? @unique` — traza el `InventoryMovement(WORKSHOP_USAGE)` generado al descontar el ítem de stock.
+- `enum SaleType` — definido en schema pero sin columna que lo use aún (enum huérfano, no genera columna en DB).
+
+### Nuevas API Routes
+
+- `POST /api/service-orders/[id]/charge` — cobra una ServiceOrder COMPLETED anticipadamente. Crea `Sale(type=SERVICE)` con folio propio + `CashTransaction`. Marca `ServiceOrder.prepaid = true`.
+- `POST /api/service-orders/[id]/deliver` — entrega la ServiceOrder al cliente. Si `prepaid = true` usa la venta existente; si no, crea la venta y cobra en el acto. Descuenta stock (`WORKSHOP_USAGE`) por cada ítem de inventario dentro de `$transaction`. Marca `ServiceOrder.status = DELIVERED`.
+- `POST /api/service-orders/[id]/cancel` — cancela la orden. Si había venta pre-paga, crea `REFUND_OUT` + revierte stock de ítems ya descontados.
+- `GET /api/customer-bikes/available?productVariantId=X` — lista `CustomerBike` sin dueño asignado (`customerId = null`) del `productVariantId` dado, dentro de la sucursal. Usada por el POS para seleccionar VIN al vender.
+- `POST /api/sales/[id]/cancel` — cancela una venta COMPLETED o LAYAWAY. Solo MANAGER/ADMIN. Dentro de `$transaction`: revierte stock por SaleItems, crea `REFUND_OUT` por cada pago si hay caja abierta, revierte `CustomerBike.voltaje` a `fromVoltage` según `VoltageChangeLog`, cancela `AssemblyOrders` PENDING, marca `Sale.status = CANCELLED`.
+- `GET /api/sales/[id]/warranty-pdf` — retorna datos de la venta para imprimir la póliza. Devuelve `409` con `{ error, pendingAssemblyOrders: N }` si `warrantyDocReady = false`.
+- `POST /api/assembly/[id]/complete` — modificado: tras completar el montaje, verifica si hay otras `AssemblyOrders` PENDING para el mismo `saleId`; si no quedan, pone `Sale.warrantyDocReady = true`.
+
+### Nuevas páginas UI
+
+- `/workshop/[id]` (`page.tsx` + `service-order-details.tsx` + modales) — detalle de orden de taller con acciones Cobrar / Entregar / Cancelar según estado. Link "Ver venta →" a `/ventas/[id]` cuando `status = DELIVERED`.
+- `/ventas/[id]` (`page.tsx` + `sale-detail.tsx`) — detalle de venta: folio, badges de status, artículos con subtotales, sección de reensambles pendientes (solo si hay `AssemblyOrders` con `voltageChangeLogId`), datos del cliente. Botón "Imprimir póliza" si `warrantyDocReady = true`; badge de advertencia si es `false`.
+
+### Decisiones clave
+
+- **VIN obligatorio en POS para vehículos ensamblables**: el vendedor selecciona de un `CustomerBike` ya ensamblado (sin dueño), no tipea el VIN. Bloquea la venta si no hay ninguno disponible del modelo seleccionado. Al confirmar la venta, `CustomerBike.customerId` se asigna dentro del `$transaction` de `POST /api/sales`.
+- **Cambio de voltaje pre-venta inline en POS**: sin costo para el cliente. Crea `VoltageChangeLog(reason: PRE_SALE)`, desinstala baterías actuales atómicamente (sin `AssemblyOrder` de desinstalación), crea una sola `AssemblyOrder PENDING` de reensamble vinculada a `saleId` y `voltageChangeLogId`. La `@unique` en `voltageChangeLogId` previene duplicados.
+- **`warrantyDocReady` flow**: `POST /api/sales` lo pone `false` si hay cambios de voltaje. `POST /api/assembly/[id]/complete` lo pone `true` cuando ya no quedan PENDING para ese `saleId`. El endpoint `warranty-pdf` rechaza con 409 si aún es `false`.
+- **Stock de taller se descuenta al ENTREGAR, no al agregar ítems**: atómico con la creación de la venta en `deliver`. Evita reservas fantasma y stock negativo por cancelaciones.
+- **Cancelación de venta revierte voltaje**: `POST /api/sales/[id]/cancel` lee `VoltageChangeLog.fromVoltage` para restaurar `CustomerBike.voltaje`. Si la migración de reensamble ya se completó (batería nueva instalada), el voltaje queda en el nuevo — el cancel no revierte el montaje físico, solo el registro de la venta.
+- **Cobro anticipado en taller (`prepaid`)**: al cobrar antes de entregar se crea la `Sale` con el folio del taller. Al entregar después, la misma venta se reutiliza — no se crea una segunda. El flag `ServiceOrder.prepaid` evita cobrar dos veces.
 
 ---
 
@@ -492,6 +539,8 @@ const SELECT_STYLE: React.CSSProperties = {
 **Por qué funciona `--surf-low`:**
 - Light: `#f0f7f4` (suave tinte verde) sobre modal `~#fafffe` → campo visible y legible.
 - Dark: `#1b1b1b` sobre modal `#2b2b2b` → campo claramente recesado, buen contraste.
+
+
 
 
 
