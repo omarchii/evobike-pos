@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -126,18 +127,32 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
           Volver a Pedidos
         </button>
 
-        <button
-          type="button"
-          onClick={() => setAbonoOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-90"
-          style={{
-            background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
-            color: "var(--on-p)",
-          }}
-        >
-          Registrar Abono
-          <ArrowUpRight className="w-4 h-4" />
-        </button>
+        {pedido.status === "COMPLETED" ? (
+          <Link
+            href={`/ventas/${pedido.id}`}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-90"
+            style={{
+              background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
+              color: "var(--on-p)",
+            }}
+          >
+            Ver venta
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAbonoOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-90"
+            style={{
+              background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
+              color: "var(--on-p)",
+            }}
+          >
+            Registrar Abono
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Header card */}
