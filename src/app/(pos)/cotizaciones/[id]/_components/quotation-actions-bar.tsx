@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  Link2,
 } from "lucide-react";
 import {
   Dialog,
@@ -43,6 +44,7 @@ const INPUT_STYLE: React.CSSProperties = {
 interface QuotationForDialog {
   id: string;
   folio: string;
+  publicShareToken: string;
   branchId: string;
   branchName: string;
   subtotal: number;
@@ -83,6 +85,16 @@ export default function QuotationActionsBar({
   const [convertOpen, setConvertOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
+
+  async function handleShareLink() {
+    const url = `${window.location.origin}/cotizaciones/public/${quotation.publicShareToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado al portapapeles");
+    } catch {
+      toast.error("No se pudo copiar el link");
+    }
+  }
 
   const isActionable = effectiveStatus === "DRAFT" || effectiveStatus === "SENT";
   const canEdit = isActionable;
@@ -184,13 +196,12 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Share link — disabled until 3D */}
+        {/* Share link */}
         {isActionable && (
           <ActionBtn
-            icon={Send}
+            icon={Link2}
             label="Compartir link"
-            disabled
-            tooltip="Disponible en Fase 3D"
+            onClick={handleShareLink}
           />
         )}
 

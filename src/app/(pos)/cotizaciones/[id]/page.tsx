@@ -398,6 +398,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
         quotation={{
           id: q.id,
           folio: q.folio,
+          publicShareToken: q.publicShareToken,
           branchId: q.branchId,
           branchName: q.branch.name,
           subtotal,
