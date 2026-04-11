@@ -75,6 +75,7 @@ export async function PATCH(
           branchId: true,
           customerBikeId: true,
           productVariantId: true,
+          saleId: true,
           productVariant: {
             select: {
               id: true,
@@ -237,6 +238,19 @@ export async function PATCH(
         where: { id: order.id },
         data: { status: "COMPLETED", assembledByUserId: userId, completedAt },
       });
+
+      // 11. Trigger warrantyDocReady — si todas las AssemblyOrder de esta venta están completas
+      if (order.saleId) {
+        const pendingCount = await tx.assemblyOrder.count({
+          where: { saleId: order.saleId, status: "PENDING" },
+        });
+        if (pendingCount === 0) {
+          await tx.sale.update({
+            where: { id: order.saleId },
+            data: { warrantyDocReady: true },
+          });
+        }
+      }
 
       return { id: order.id, status: "COMPLETED" as const, completedAt: completedAt.toISOString() };
     });

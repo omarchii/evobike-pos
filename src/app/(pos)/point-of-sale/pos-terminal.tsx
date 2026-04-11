@@ -27,6 +27,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import CustomerSelectorModal, { type CustomerOption } from "./customer-selector-modal";
 import { VinSelectorDialog, type CustomerBikeOption } from "./vin-selector-dialog";
+import { VoltageChangeDialog, type VoltajeOptionForDialog } from "./voltage-change-dialog";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ interface PaymentMethodInput {
 
 interface CartItem {
   variantId: string;
+  modeloId: string;  // 4-D: for voltage change option lookup
   modeloNombre: string;
   colorNombre: string;
   voltajeLabel: string;
@@ -79,6 +81,7 @@ interface CartItem {
   isSerialized: boolean;
   serialNumber?: string;
   customerBikeId?: string;  // 4-C: selected from VinSelectorDialog
+  voltageChange?: { targetVoltajeId: string; targetVoltajeLabel: string };  // 4-D
   batterySerials?: string[];
   assemblyMode?: boolean;
 }
@@ -382,6 +385,7 @@ export default function PosTerminal({
 
   // ── Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [voltageChangeTargetIdx, setVoltageChangeTargetIdx] = useState<number | null>(null);
 
   // ── Discount state
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -655,6 +659,7 @@ export default function PosTerminal({
 
     const newItem: CartItem = {
       variantId: selectedVariant.id,
+      modeloId: selectedModelo.id,
       modeloNombre: selectedModelo.nombre,
       colorNombre: selectedVariant.colorNombre,
       voltajeLabel: selectedVariant.voltajeLabel,
@@ -730,6 +735,9 @@ export default function PosTerminal({
             isSerialized: ci.isSerialized,
             serialNumber: ci.serialNumber,
             customerBikeId: ci.customerBikeId,
+            voltageChange: ci.voltageChange
+              ? { targetVoltajeId: ci.voltageChange.targetVoltajeId }
+              : undefined,
             batterySerials: ci.batterySerials,
             assemblyMode: ci.assemblyMode,
           })),
@@ -754,10 +762,17 @@ export default function PosTerminal({
         return;
       }
 
+      const hasVoltageChange = cart.some((ci) => ci.voltageChange);
       toast.success(
         `Venta registrada · Folio: ${result.data!.folio}`,
         { id: "checkout", duration: 6000 },
       );
+      if (hasVoltageChange) {
+        toast("Reensamble pendiente", {
+          description: "La póliza de garantía estará disponible al completar el reensamble en Montaje.",
+          duration: 8000,
+        });
+      }
 
       if (totalChange > 0) {
         toast("ATENCIÓN: Cambio pendiente", {
@@ -796,6 +811,19 @@ export default function PosTerminal({
     setIsSplitPayment(false);
     setPrimaryMethod("CASH");
     setPrimaryAmount("");
+  };
+
+  // ── Helper: voltaje options for a cart item (4-D voltage change) ──────────
+  const getVoltajeOptionsForCartItem = (item: CartItem): VoltajeOptionForDialog[] => {
+    const modelo = modelos.find((m) => m.id === item.modeloId);
+    if (!modelo) return [];
+    const seen = new Map<string, VoltajeOptionForDialog>();
+    for (const v of modelo.variants) {
+      if (!seen.has(v.voltajeId)) {
+        seen.set(v.voltajeId, { id: v.voltajeId, valor: v.voltajeValor, label: v.voltajeLabel });
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => a.valor - b.valor);
   };
 
   // ── Handlers: customer modal
@@ -1599,6 +1627,47 @@ export default function PosTerminal({
                           VIN: {item.serialNumber}
                         </p>
                       )}
+                      {/* Voltage change chip / button (4-D) */}
+                      {item.isSerialized && item.customerBikeId && (
+                        item.voltageChange ? (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                              style={{ background: "var(--ter-container)", color: "var(--on-ter-container)" }}
+                            >
+                              ⚡ {item.voltajeLabel} → {item.voltageChange.targetVoltajeLabel}
+                            </span>
+                            <button
+                              onClick={() =>
+                                setCart((prev) =>
+                                  prev.map((ci, i) =>
+                                    i === idx ? { ...ci, voltageChange: undefined } : ci
+                                  )
+                                )
+                              }
+                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            >
+                              <span className="text-[10px]" style={{ color: "var(--ter)" }}>✕</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setVoltageChangeTargetIdx(idx)}
+                            className="text-[10px] mt-0.5"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "var(--on-surf-var)",
+                              padding: 0,
+                              textDecoration: "underline",
+                              textDecorationStyle: "dashed",
+                            }}
+                          >
+                            Cambiar voltaje
+                          </button>
+                        )
+                      )}
                       {item.assemblyMode &&
                         item.batterySerials &&
                         item.batterySerials.length > 0 && (
@@ -1892,6 +1961,28 @@ export default function PosTerminal({
                   onSelect={handleCustomerSelect}
                   onCustomerCreated={handleCustomerCreated}
                 />
+
+                {/* VoltageChangeDialog — 4-D */}
+                {voltageChangeTargetIdx !== null && cart[voltageChangeTargetIdx] && (
+                  <VoltageChangeDialog
+                    open={voltageChangeTargetIdx !== null}
+                    onOpenChange={(open) => {
+                      if (!open) setVoltageChangeTargetIdx(null);
+                    }}
+                    currentVoltajeLabel={cart[voltageChangeTargetIdx].voltajeLabel}
+                    voltajeOptions={getVoltajeOptionsForCartItem(cart[voltageChangeTargetIdx])}
+                    onConfirm={(targetVoltajeId, targetVoltajeLabel) => {
+                      setCart((prev) =>
+                        prev.map((ci, i) =>
+                          i === voltageChangeTargetIdx
+                            ? { ...ci, voltageChange: { targetVoltajeId, targetVoltajeLabel } }
+                            : ci
+                        )
+                      );
+                      setVoltageChangeTargetIdx(null);
+                    }}
+                  />
+                )}
 
                 {/* Layaway toggle */}
                 <div className="flex items-center justify-between">

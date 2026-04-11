@@ -81,6 +81,8 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
         notes: true,
         createdAt: true,
         completedAt: true,
+        saleId: true,
+        voltageChangeLogId: true,
         // customerBike es nullable (órdenes de recepción sin VIN todavía)
         customerBike: {
           select: {
@@ -148,6 +150,8 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
     notes: o.notes,
     createdAt: o.createdAt.toISOString(),
     completedAt: o.completedAt?.toISOString() ?? null,
+    saleId: o.saleId ?? null,
+    voltageChangeLogId: o.voltageChangeLogId ?? null,
     customerBike: o.customerBike
       ? {
         id: o.customerBike.id,

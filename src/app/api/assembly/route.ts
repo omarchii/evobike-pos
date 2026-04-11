@@ -41,6 +41,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         notes: true,
         createdAt: true,
         completedAt: true,
+        saleId: true,
+        voltageChangeLogId: true,
         // customerBike es ahora nullable (órdenes de recepción sin VIN)
         customerBike: {
           select: {
@@ -86,6 +88,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       notes: o.notes,
       createdAt: o.createdAt.toISOString(),
       completedAt: o.completedAt?.toISOString() ?? null,
+      saleId: o.saleId ?? null,
+      voltageChangeLogId: o.voltageChangeLogId ?? null,
       customerBike: o.customerBike
         ? {
             id: o.customerBike.id,

@@ -26,6 +26,8 @@ export interface AssemblyOrderRow {
   notes: string | null;
   createdAt: string;
   completedAt: string | null;
+  saleId: string | null;          // 4-D: set when order originates from a voltage change on sale
+  voltageChangeLogId: string | null;  // 4-D: set when order originates from voltage change
   // null para órdenes generadas por recepción de inventario (sin VIN todavía)
   customerBike: {
     id: string;
@@ -710,6 +712,25 @@ function AssemblyCard({
           <p style={{ fontSize: "0.72rem", color: "var(--on-surf-var)", marginTop: "0.1rem" }}>
             {[bike?.model, bike?.voltaje, bike?.color].filter(Boolean).join(" · ")}
           </p>
+          {/* 4-D: chip for voltage change orders originating from a sale */}
+          {order.saleId && order.voltageChangeLogId && (
+            <span
+              style={{
+                display: "inline-block",
+                marginTop: "0.2rem",
+                fontSize: "0.58rem",
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase" as const,
+                padding: "0.15rem 0.55rem",
+                borderRadius: 999,
+                background: "var(--ter-container)",
+                color: "var(--on-ter-container)",
+              }}
+            >
+              ⚡ Reensamble por venta
+            </span>
+          )}
         </div>
         <span
           className="shrink-0"

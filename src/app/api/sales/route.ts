@@ -23,6 +23,7 @@ const saleItemSchema = z.object({
   isSerialized: z.boolean().optional(),
   serialNumber: z.string().optional(),
   customerBikeId: z.string().optional(),  // 4-C: select existing assembled bike
+  voltageChange: z.object({ targetVoltajeId: z.string() }).optional(),  // 4-D: pre-sale voltage change
   batterySerials: z.array(z.string()).optional(),
   assemblyMode: z.boolean().optional(),
 });
@@ -233,6 +234,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
       }
 
+      // Pre-flight: collect voltage change data (need sale.id, processed after sale creation)
+      type VcPreFlight = {
+        customerBikeId: string;
+        targetVoltajeId: string;
+        fromVoltage: string;
+        bikeProductVariantId: string | null;
+      };
+      const vcPreFlights: VcPreFlight[] = [];
+
       // A. Verify and decrease stock
       for (const item of input.items) {
         if (item.assemblyMode) continue;
@@ -272,6 +282,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             where: { id: item.customerBikeId },
             data: { customerId: input.customerId },
           });
+          // 4-D: collect voltage change pre-flight data
+          if (item.voltageChange) {
+            vcPreFlights.push({
+              customerBikeId: item.customerBikeId,
+              targetVoltajeId: item.voltageChange.targetVoltajeId,
+              fromVoltage: bike.voltaje ?? "",
+              bikeProductVariantId: bike.productVariantId,
+            });
+          }
         } else if (item.isSerialized && item.serialNumber) {
           // Legacy path: manually typed VIN (backward compat)
           if (!input.customerId) {
@@ -375,6 +394,87 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             reference: pm.reference,
             collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
           },
+        });
+      }
+
+      // H. Voltage changes (4-D) — post-sale, needs sale.id
+      for (const vc of vcPreFlights) {
+        const targetVoltaje = await tx.voltaje.findUnique({
+          where: { id: vc.targetVoltajeId },
+          select: { id: true, label: true },
+        });
+        if (!targetVoltaje) throw new Error(`Voltaje no encontrado: ${vc.targetVoltajeId}`);
+
+        // Create VoltageChangeLog
+        const changeLog = await tx.voltageChangeLog.create({
+          data: {
+            customerBikeId: vc.customerBikeId,
+            fromVoltage: vc.fromVoltage,
+            toVoltage: targetVoltaje.label,
+            reason: "PRE_SALE",
+            saleId: sale.id,
+            userId,
+          },
+        });
+
+        // Update CustomerBike.voltaje
+        await tx.customerBike.update({
+          where: { id: vc.customerBikeId },
+          data: { voltaje: targetVoltaje.label },
+        });
+
+        // Uninstall current batteries (return to stock)
+        const currentAssignments = await tx.batteryAssignment.findMany({
+          where: { customerBikeId: vc.customerBikeId, isCurrent: true },
+          select: { id: true, batteryId: true },
+        });
+        if (currentAssignments.length > 0) {
+          await tx.batteryAssignment.updateMany({
+            where: { id: { in: currentAssignments.map((a) => a.id) } },
+            data: { isCurrent: false, unassignedAt: new Date(), unassignedByUserId: userId },
+          });
+          await tx.battery.updateMany({
+            where: { id: { in: currentAssignments.map((a) => a.batteryId) } },
+            data: { status: "IN_STOCK" },
+          });
+        }
+
+        // Find target productVariant for reensamble (same model, target voltage)
+        let targetProductVariantId: string | null = null;
+        if (vc.bikeProductVariantId) {
+          const currentVariant = await tx.productVariant.findUnique({
+            where: { id: vc.bikeProductVariantId },
+            select: { modelo_id: true },
+          });
+          if (currentVariant) {
+            const targetVariant = await tx.productVariant.findFirst({
+              where: {
+                modelo_id: currentVariant.modelo_id,
+                voltaje_id: vc.targetVoltajeId,
+              },
+              select: { id: true },
+            });
+            targetProductVariantId = targetVariant?.id ?? null;
+          }
+        }
+
+        // Create AssemblyOrder (reensamble) PENDING
+        await tx.assemblyOrder.create({
+          data: {
+            customerBikeId: vc.customerBikeId,
+            productVariantId: targetProductVariantId,
+            branchId,
+            saleId: sale.id,
+            voltageChangeLogId: changeLog.id,
+            notes: `Reensamble por cambio de voltaje — venta ${sale.folio}`,
+          },
+        });
+      }
+
+      if (vcPreFlights.length > 0) {
+        await tx.sale.update({
+          where: { id: sale.id },
+          data: { warrantyDocReady: false },
         });
       }
 
