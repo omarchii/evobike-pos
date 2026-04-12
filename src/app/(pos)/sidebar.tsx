@@ -15,11 +15,18 @@ import {
     Vault,
     Cog,
     FileText,
+    BarChart2,
+    History,
+    Banknote,
+    CircleDollarSign,
+    ChevronDown,
+    ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useState } from "react";
 
 interface UserProp {
     name?: string | null;
@@ -27,7 +34,21 @@ interface UserProp {
     branchName?: string | null;
 }
 
-const routes = [
+interface SubRoute {
+    label: string;
+    href: string;
+    roles?: string[]; // undefined = all roles
+}
+
+interface RouteGroup {
+    label: string;
+    icon: React.ElementType;
+    href?: string; // if set, clicking the item navigates directly (no sub-items)
+    children?: SubRoute[];
+    roles?: string[]; // undefined = all roles
+}
+
+const routes: RouteGroup[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
     { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
@@ -37,11 +58,32 @@ const routes = [
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },
+    {
+        label: "Reportes",
+        icon: BarChart2,
+        children: [
+            { label: "Historial de Ventas", href: "/ventas" },
+            { label: "Caja", href: "/reportes/caja", roles: ["MANAGER", "ADMIN"] },
+            { label: "Comisiones", href: "/reportes/comisiones" },
+        ],
+    },
     { label: "Configuración", icon: Settings, href: "/settings" },
 ];
 
+const SUB_ICONS: Record<string, React.ElementType> = {
+    "/ventas": History,
+    "/reportes/caja": Banknote,
+    "/reportes/comisiones": CircleDollarSign,
+};
+
 export default function Sidebar({ user }: { user: UserProp }) {
     const pathname = usePathname();
+    const role = user.role ?? "";
+
+    // Auto-open Reportes if current path is under /ventas or /reportes
+    const isInReportes =
+        pathname.startsWith("/ventas") || pathname.startsWith("/reportes");
+    const [reportesOpen, setReportesOpen] = useState(isInReportes);
 
     const getInitials = (name?: string | null) => {
         if (!name) return "U";
@@ -67,19 +109,101 @@ export default function Sidebar({ user }: { user: UserProp }) {
             {/* Nav */}
             <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
                 {routes.map((route) => {
+                    // Filter by role if specified
+                    if (route.roles && !route.roles.includes(role)) return null;
+
+                    if (route.children) {
+                        // Group with sub-items
+                        const visibleChildren = route.children.filter(
+                            (child) => !child.roles || child.roles.includes(role),
+                        );
+                        if (visibleChildren.length === 0) return null;
+
+                        const isGroupActive = visibleChildren.some(
+                            (child) => pathname === child.href || pathname.startsWith(child.href + "/"),
+                        );
+
+                        return (
+                            <div key={route.label}>
+                                <button
+                                    onClick={() => setReportesOpen((v) => !v)}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                                        isGroupActive
+                                            ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
+                                    )}
+                                >
+                                    <route.icon
+                                        className={cn(
+                                            "h-5 w-5 shrink-0",
+                                            isGroupActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]",
+                                        )}
+                                    />
+                                    <span className="flex-1 text-left">{route.label}</span>
+                                    {reportesOpen ? (
+                                        <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+                                    ) : (
+                                        <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
+                                    )}
+                                </button>
+                                {reportesOpen && (
+                                    <div className="ml-4 pl-3 mt-0.5 space-y-0.5 border-l border-[rgba(178,204,192,0.2)]">
+                                        {visibleChildren.map((child) => {
+                                            const isActive =
+                                                pathname === child.href ||
+                                                pathname.startsWith(child.href + "/");
+                                            const SubIcon = SUB_ICONS[child.href];
+                                            return (
+                                                <Link
+                                                    key={child.href}
+                                                    href={child.href}
+                                                    className={cn(
+                                                        "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
+                                                        isActive
+                                                            ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
+                                                    )}
+                                                >
+                                                    {SubIcon && (
+                                                        <SubIcon
+                                                            className={cn(
+                                                                "h-4 w-4 shrink-0",
+                                                                isActive
+                                                                    ? "text-[var(--p)]"
+                                                                    : "text-[var(--on-surf-var)]",
+                                                            )}
+                                                        />
+                                                    )}
+                                                    {child.label}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    // Regular flat route
                     const isActive = pathname === route.href;
                     return (
                         <Link
                             key={route.href}
-                            href={route.href}
+                            href={route.href!}
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                                 isActive
                                     ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
-                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
                             )}
                         >
-                            <route.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]")} />
+                            <route.icon
+                                className={cn(
+                                    "h-5 w-5 shrink-0",
+                                    isActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]",
+                                )}
+                            />
                             {route.label}
                         </Link>
                     );
@@ -90,7 +214,10 @@ export default function Sidebar({ user }: { user: UserProp }) {
             <div className="px-3 pb-4 pt-3 space-y-3">
                 <div className="flex items-center gap-3 px-2">
                     <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="text-xs font-medium" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#ffffff" }}>
+                        <AvatarFallback
+                            className="text-xs font-medium"
+                            style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#ffffff" }}
+                        >
                             {getInitials(user?.name)}
                         </AvatarFallback>
                     </Avatar>

@@ -1,3 +1,4 @@
+
 # Spec — Módulo Cotizaciones (Fase 3)
 
 > Ubicación final: `docs/superpowers/specs/cotizaciones.md`

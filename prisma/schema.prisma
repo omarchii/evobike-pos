@@ -165,6 +165,13 @@ model InventoryMovement {
 }
 
 // === SALES ===
+enum SaleType {
+  DIRECT
+  LAYAWAY
+  BACKORDER
+  SERVICE
+}
+
 enum OrderType {
   LAYAWAY
   BACKORDER
@@ -191,6 +198,9 @@ model Sale {
   orderType            OrderType?
   expectedDeliveryDate DateTime?
   quotationId          String?   @unique  // cotización que originó esta venta (sin FK, set manual)
+  serviceOrderId       String?       @unique
+  serviceOrder         ServiceOrder? @relation(fields: [serviceOrderId], references: [id])
+  warrantyDocReady     Boolean       @default(true)
   createdAt            DateTime @default(now())
 
   branch            Branch             @relation(fields: [branchId], references: [id])
@@ -349,6 +359,8 @@ model ServiceOrder {
   customer     Customer           @relation(fields: [customerId], references: [id])
   customerBike CustomerBike?      @relation(fields: [customerBikeId], references: [id])
   items        ServiceOrderItem[]
+  sale         Sale?
+  prepaid      Boolean            @default(false)
 }
 
 model ServiceOrderItem {
@@ -360,6 +372,7 @@ model ServiceOrderItem {
   quantity         Int             @default(1)
   price            Decimal         @db.Decimal(10, 2)
 
+  inventoryMovementId String? @unique
   serviceOrder   ServiceOrder    @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
   serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
@@ -372,9 +385,10 @@ enum CommissionType {
 }
 
 enum CommissionStatus {
-  PENDING  // Comisión generada, pendiente de revisión
-  APPROVED // Aprobada por gerente, lista para pagar
-  PAID     // Pagada al vendedor
+  PENDING   // Comisión generada, pendiente de revisión
+  APPROVED  // Aprobada por gerente, lista para pagar
+  PAID      // Pagada al vendedor
+  CANCELLED // Comisión anulada por cancelación de la venta asociada
 }
 
 model CommissionRule {
@@ -423,14 +437,21 @@ model ServiceCatalog {
 }
 
 // === VOLTAGE CHANGE LOG ===
+enum VoltageChangeReason {
+  PRE_SALE
+  POST_SALE
+}
+
 model VoltageChangeLog {
-  id             String       @id @default(cuid())
+  id             String              @id @default(cuid())
   customerBikeId String
   fromVoltage    String
   toVoltage      String
-  reason         String?
+  reason         VoltageChangeReason
+  saleId         String?
+  serviceOrderId String?
   userId         String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime            @default(now())
 
   customerBike CustomerBike @relation(fields: [customerBikeId], references: [id])
 
@@ -508,6 +529,7 @@ model AssemblyOrder {
   completedAt       DateTime?
   notes             String?
   receiptReference  String?
+  voltageChangeLogId String?      @unique
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

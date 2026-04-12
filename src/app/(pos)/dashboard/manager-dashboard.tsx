@@ -1,6 +1,9 @@
 "use client";
 
-import { TrendingUp, Banknote, Vault, ArchiveRestore, CheckCircle } from "lucide-react";
+import { TrendingUp, Banknote, Vault, ArchiveRestore, CheckCircle, ArrowRight, Users, Bike, DollarSign, Award } from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
 
 type BranchComparisonRow = {
     branchId: string;
@@ -36,6 +39,7 @@ type AtratoRow = {
     id: string;
     amount: number;
     createdAt: Date;
+    saleId: string | null;
     saleForlio: string | null;
     diasPendiente: number;
 };
@@ -46,15 +50,35 @@ type CommissionRow = {
     createdAt: Date;
     userName: string;
     userRole: string;
+    saleId: string;
     saleForlio: string;
     saleTotal: number;
 };
 
+type SalesByModelRow = {
+    name: string;
+    revenue: number;
+    count: number;
+};
+
+type SalesBySellerRow = {
+    name: string;
+    revenue: number;
+    count: number;
+};
+
+type PeriodType = "today" | "week" | "month";
+
 interface ManagerDashboardProps {
     role: string;
     branchName: string;
+    period: PeriodType;
+    periodLabel: string;
+    compLabel: string;
     revenueToday: number;
     transactionsToday: number;
+    revenueYesterday: number;
+    transactionsYesterday: number;
     cashInRegister: number;
     activeLayawaysCount: number;
     pendingLayawayAmount: number;
@@ -65,6 +89,11 @@ interface ManagerDashboardProps {
     atratoTotal: number;
     pendingCommissions: CommissionRow[];
     commissionsTotal: number;
+    attentionAlerts: AttentionPanelProps;
+    salesByModel: SalesByModelRow[];
+    salesBySeller: SalesBySellerRow[];
+    cashFlow: { collected: number; pending: number };
+    commissionsTeam: { pending: number; approved: number };
 }
 
 const METHOD_BADGE: Record<string, string> = {
@@ -102,11 +131,47 @@ function formatMXN(value: number): string {
     return `$${value.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 }
 
+type TrendDir = "up" | "down" | "neutral";
+type TrendResult = { label: string; dir: TrendDir };
+
+function calcPctTrend(today: number, yesterday: number, compLabel: string): TrendResult {
+    if (yesterday === 0) {
+        return today > 0
+            ? { label: "Nuevo", dir: "up" }
+            : { label: "Sin datos previos", dir: "neutral" };
+    }
+    const pct = ((today - yesterday) / yesterday) * 100;
+    const abs = Math.round(Math.abs(pct));
+    return pct >= 0
+        ? { label: `+${abs}% ${compLabel}`, dir: "up" }
+        : { label: `-${abs}% ${compLabel}`, dir: "down" };
+}
+
+function calcCountTrend(today: number, yesterday: number, compLabel: string): TrendResult {
+    const delta = today - yesterday;
+    if (delta === 0 && today === 0) return { label: "Sin datos previos", dir: "neutral" };
+    if (delta === 0) return { label: "Sin cambio", dir: "neutral" };
+    return delta > 0
+        ? { label: `+${delta} ${compLabel}`, dir: "up" }
+        : { label: `${delta} ${compLabel}`, dir: "down" };
+}
+
+const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
+    { value: "today", label: "Hoy" },
+    { value: "week", label: "Semana" },
+    { value: "month", label: "Mes" },
+];
+
 export function ManagerDashboard({
     role,
     branchName,
+    period,
+    periodLabel,
+    compLabel,
     revenueToday,
     transactionsToday,
+    revenueYesterday,
+    transactionsYesterday,
     cashInRegister,
     activeLayawaysCount,
     pendingLayawayAmount,
@@ -117,20 +182,61 @@ export function ManagerDashboard({
     atratoTotal,
     pendingCommissions,
     commissionsTotal,
+    attentionAlerts,
+    salesByModel,
+    salesBySeller,
+    cashFlow,
+    commissionsTeam,
 }: ManagerDashboardProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const maxRevenue = Math.max(...branchComparison.map((b) => b.revenue), 1);
+    const revenueTrend = calcPctTrend(revenueToday, revenueYesterday, compLabel);
+    const txTrend = calcCountTrend(transactionsToday, transactionsYesterday, compLabel);
+    const maxModelRevenue = Math.max(...salesByModel.map((m) => m.revenue), 1);
+    const maxSellerRevenue = Math.max(...salesBySeller.map((s) => s.revenue), 1);
+
+    function handlePeriodChange(newPeriod: PeriodType): void {
+        const params = new URLSearchParams(searchParams.toString());
+        if (newPeriod === "today") {
+            params.delete("period");
+        } else {
+            params.set("period", newPeriod);
+        }
+        router.push(`/dashboard?${params.toString()}`);
+    }
 
     return (
         <div className="space-y-6">
-            {/* Row 0: Page header */}
-            <div>
-                <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
-                    Panel de Control
-                </h1>
-                <p className="text-sm text-[var(--on-surf-var)] mt-0.5">
-                    {role === "ADMIN" ? "Vista global · Todas las sucursales" : `Resumen diario · ${branchName}`}
-                </p>
+            {/* Row 0: Page header + Period selector */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
+                        Panel de Control
+                    </h1>
+                    <p className="text-sm text-[var(--on-surf-var)] mt-0.5">
+                        {role === "ADMIN" ? "Vista global · Todas las sucursales" : `Resumen de ${periodLabel} · ${branchName}`}
+                    </p>
+                </div>
+                <div className="flex gap-1">
+                    {PERIOD_OPTIONS.map((opt) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => handlePeriodChange(opt.value)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                period === opt.value
+                                    ? "text-white"
+                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                            }`}
+                            style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            <AttentionPanel {...attentionAlerts} />
 
             {/* Row 1: 4 KPI cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -138,14 +244,16 @@ export function ManagerDashboard({
                 <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-white/70">
-                            INGRESOS HOY
+                            INGRESOS {periodLabel.toUpperCase()}
                         </span>
                         <TrendingUp className="h-4 w-4 text-white/70" />
                     </div>
                     <p className="text-[2.75rem] font-bold text-white leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
-                    <p className="text-[11px] text-white/60 mt-1">Total facturado hoy</p>
+                    <p className={`text-[11px] mt-1 font-medium ${revenueTrend.dir === "up" ? "text-white/80" : revenueTrend.dir === "down" ? "text-white/60" : "text-white/50"}`}>
+                        {revenueTrend.dir === "up" ? "↑" : revenueTrend.dir === "down" ? "↓" : "—"} {revenueTrend.label}
+                    </p>
                 </div>
 
                 {/* KPI 2: Transacciones */}
@@ -159,7 +267,9 @@ export function ManagerDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {transactionsToday}
                     </p>
-                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Ventas cobradas hoy</p>
+                    <p className={`text-[11px] mt-1 font-medium ${txTrend.dir === "up" ? "text-[var(--sec)]" : txTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
+                        {txTrend.dir === "up" ? "↑" : txTrend.dir === "down" ? "↓" : "—"} {txTrend.label}
+                    </p>
                 </div>
 
                 {/* KPI 3: Efectivo en caja */}
@@ -173,7 +283,13 @@ export function ManagerDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(cashInRegister)}
                     </p>
-                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Sesiones abiertas ahora</p>
+                    <Link
+                        href="/cash-register"
+                        className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[var(--p)] hover:text-[var(--p-mid)] transition-colors"
+                    >
+                        Ver arqueo
+                        <ArrowRight className="h-3 w-3" />
+                    </Link>
                 </div>
 
                 {/* KPI 4: Apartados */}
@@ -261,10 +377,10 @@ export function ManagerDashboard({
             <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)]">
                 <div className="px-5 pt-5 pb-3">
                     <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
-                        Últimas Ventas del Día
+                        Últimas Ventas
                     </h2>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-0.5">
-                        {recentSales.length} {recentSales.length === 1 ? "venta registrada" : "ventas registradas"} hoy
+                        {recentSales.length} {recentSales.length === 1 ? "venta registrada" : "ventas registradas"} {periodLabel}
                     </p>
                 </div>
                 <div className="overflow-x-auto">
@@ -288,8 +404,10 @@ export function ManagerDashboard({
                             ) : (
                                 recentSales.map((sale) => (
                                     <tr key={sale.id} className="hover:bg-[var(--surf-high)] transition-colors">
-                                        <td className="px-5 py-3 font-mono text-xs text-[var(--on-surf-var)]">
-                                            {sale.folio}
+                                        <td className="px-5 py-3">
+                                            <Link href={`/ventas/${sale.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                                {sale.folio}
+                                            </Link>
                                         </td>
                                         <td className="px-5 py-3">
                                             <span className="text-[var(--on-surf)]">
@@ -344,7 +462,9 @@ export function ManagerDashboard({
                                     <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono text-xs text-[var(--on-surf-var)]">{order.folio}</span>
+                                                <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                                    {order.folio}
+                                                </Link>
                                                 <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusInfo.className}`}>
                                                     {statusInfo.label}
                                                 </span>
@@ -390,9 +510,13 @@ export function ManagerDashboard({
                             {atratiPendientes.map((tx) => (
                                 <div key={tx.id} className="flex items-center justify-between py-1.5 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                     <div className="min-w-0">
-                                        <p className="font-mono text-xs text-[var(--on-surf-var)]">
-                                            {tx.saleForlio ?? "—"}
-                                        </p>
+                                        {tx.saleId ? (
+                                            <Link href={`/ventas/${tx.saleId}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                                {tx.saleForlio ?? "—"}
+                                            </Link>
+                                        ) : (
+                                            <p className="font-mono text-xs text-[var(--on-surf-var)]">—</p>
+                                        )}
                                         <p className="text-[10px] text-[var(--on-surf-var)]">
                                             {tx.diasPendiente === 0 ? "Hoy" : `Hace ${tx.diasPendiente}d`}
                                         </p>
@@ -431,9 +555,9 @@ export function ManagerDashboard({
                                         <p className="text-xs font-medium text-[var(--on-surf)] truncate">
                                             {c.userName}
                                         </p>
-                                        <p className="font-mono text-[10px] text-[var(--on-surf-var)]">
+                                        <Link href={`/ventas/${c.saleId}`} className="font-mono text-[10px] text-[var(--p)] hover:underline underline-offset-2 transition-colors">
                                             {c.saleForlio}
-                                        </p>
+                                        </Link>
                                     </div>
                                     <span className="text-sm font-medium text-[var(--warn)] shrink-0">
                                         {formatMXN(c.amount)}
@@ -442,6 +566,173 @@ export function ManagerDashboard({
                             ))}
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Row 5: Ventas por Modelo (col-span-6) + Ventas por Vendedor (col-span-6) */}
+            <div className="grid grid-cols-12 gap-4">
+                {/* Ventas por Modelo */}
+                <div className="col-span-12 lg:col-span-6 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Bike className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Ventas por Modelo
+                        </h2>
+                    </div>
+                    {salesByModel.length === 0 ? (
+                        <p className="text-sm text-[var(--on-surf-var)] text-center py-6">Sin ventas en el período.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {salesByModel.map((model, i) => {
+                                const barWidth = (model.revenue / maxModelRevenue) * 100;
+                                return (
+                                    <div key={model.name}>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-medium text-[var(--on-surf)]">
+                                                {i + 1}. {model.name}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-[var(--on-surf-var)]">
+                                                    {model.count} {model.count === 1 ? "venta" : "ventas"}
+                                                </span>
+                                                <span className="text-xs font-medium text-[var(--sec)]">
+                                                    {formatMXN(model.revenue)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-[var(--surf-high)]">
+                                            <div
+                                                className="h-2 rounded-full"
+                                                style={{ width: `${barWidth}%`, background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Ventas por Vendedor */}
+                <div className="col-span-12 lg:col-span-6 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Users className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Ventas por Vendedor
+                        </h2>
+                    </div>
+                    {salesBySeller.length === 0 ? (
+                        <p className="text-sm text-[var(--on-surf-var)] text-center py-6">Sin ventas en el período.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {salesBySeller.map((seller, i) => {
+                                const barWidth = (seller.revenue / maxSellerRevenue) * 100;
+                                return (
+                                    <div key={seller.name}>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-medium text-[var(--on-surf)]">
+                                                {i + 1}. {seller.name}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-[var(--on-surf-var)]">
+                                                    {seller.count} {seller.count === 1 ? "venta" : "ventas"}
+                                                </span>
+                                                <span className="text-xs font-medium text-[var(--sec)]">
+                                                    {formatMXN(seller.revenue)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-[var(--surf-high)]">
+                                            <div
+                                                className="h-2 rounded-full bg-[var(--p-bright)]"
+                                                style={{ width: `${barWidth}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Row 6: Flujo de Caja (col-span-6) + Comisiones del Equipo (col-span-6) */}
+            <div className="grid grid-cols-12 gap-4">
+                {/* Flujo de Caja */}
+                <div className="col-span-12 lg:col-span-6 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <DollarSign className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Flujo de Caja
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-[var(--r-md)] bg-[var(--sec-container)] p-4">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-sec-container)]">
+                                COBRADO
+                            </span>
+                            <p className="text-2xl font-bold text-[var(--on-sec-container)] mt-1" style={{ fontFamily: "var(--font-display)" }}>
+                                {formatMXN(cashFlow.collected)}
+                            </p>
+                        </div>
+                        <div className="rounded-[var(--r-md)] bg-[var(--warn-container)] p-4">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--warn)]">
+                                PENDIENTE
+                            </span>
+                            <p className="text-2xl font-bold text-[var(--warn)] mt-1" style={{ fontFamily: "var(--font-display)" }}>
+                                {formatMXN(cashFlow.pending)}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-[11px] text-[var(--on-surf-var)]">
+                            Total del período: {formatMXN(cashFlow.collected + cashFlow.pending)}
+                        </span>
+                        <Link
+                            href="/reportes/caja"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--p)] hover:text-[var(--p-mid)] transition-colors"
+                        >
+                            Ver reporte
+                            <ArrowRight className="h-3 w-3" />
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Comisiones del Equipo */}
+                <div className="col-span-12 lg:col-span-6 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Award className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Comisiones del Equipo
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-[var(--r-md)] bg-[var(--warn-container)] p-4">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--warn)]">
+                                POR APROBAR
+                            </span>
+                            <p className="text-2xl font-bold text-[var(--warn)] mt-1" style={{ fontFamily: "var(--font-display)" }}>
+                                {formatMXN(commissionsTeam.pending)}
+                            </p>
+                        </div>
+                        <div className="rounded-[var(--r-md)] bg-[var(--sec-container)] p-4">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-sec-container)]">
+                                APROBADAS
+                            </span>
+                            <p className="text-2xl font-bold text-[var(--on-sec-container)] mt-1" style={{ fontFamily: "var(--font-display)" }}>
+                                {formatMXN(commissionsTeam.approved)}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-end">
+                        <Link
+                            href="/reportes/comisiones"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--p)] hover:text-[var(--p-mid)] transition-colors"
+                        >
+                            Gestionar comisiones
+                            <ArrowRight className="h-3 w-3" />
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>

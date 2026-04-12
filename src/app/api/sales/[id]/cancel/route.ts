@@ -20,7 +20,8 @@ const cancelSchema = z.object({
 // 2. Crea CashTransaction(REFUND_OUT) por cada cobro registrado (si hay sesión abierta)
 // 3. Revierte voltaje de CustomerBike si la venta tenía VoltageChangeLog
 // 4. Cancela AssemblyOrders PENDING vinculadas a esta venta
-// 5. Marca Sale.status = CANCELLED
+// 5. Cancela CommissionRecords PENDING/APPROVED vinculados a esta venta
+// 6. Marca Sale.status = CANCELLED
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -139,7 +140,13 @@ export async function POST(
         data: { status: "CANCELLED" },
       });
 
-      // 5. Mark Sale as CANCELLED with reason in internalNote
+      // 5. Cancel pending/approved commissions
+      await tx.commissionRecord.updateMany({
+        where: { saleId, status: { in: ["PENDING", "APPROVED"] } },
+        data: { status: "CANCELLED" },
+      });
+
+      // 6. Mark Sale as CANCELLED with reason in internalNote
       await tx.sale.update({
         where: { id: saleId },
         data: {

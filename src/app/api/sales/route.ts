@@ -54,6 +54,80 @@ const saleSchema = z.object({
   frozenItems: z.array(frozenItemSchema).optional(),
 });
 
+// ── Commission generation ───────────────────────────────────────────────────
+
+interface SaleItemForCommission {
+  productVariantId: string | null;
+  isFreeForm?: boolean;
+  quantity: number;
+  price: number | { toNumber(): number };
+  discount?: number | { toNumber(): number };
+}
+
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+async function generateCommissions(
+  tx: TxClient,
+  saleId: string,
+  userId: string,
+  branchId: string,
+  items: SaleItemForCommission[],
+): Promise<void> {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  if (!user) return;
+
+  for (const item of items) {
+    if (item.isFreeForm || !item.productVariantId) continue;
+
+    const variant = await tx.productVariant.findUnique({
+      where: { id: item.productVariantId },
+      select: { modelo_id: true },
+    });
+    if (!variant) continue;
+
+    // Match rule: specific modelo first, then generic (modeloId = null)
+    const rule = await tx.commissionRule.findFirst({
+      where: {
+        branchId,
+        role: user.role,
+        isActive: true,
+        OR: [
+          { modeloId: variant.modelo_id },
+          { modeloId: null },
+        ],
+      },
+      orderBy: { modeloId: "desc" }, // not-null (specific) sorts before null (generic)
+    });
+    if (!rule) continue;
+
+    const price = typeof item.price === "number" ? item.price : item.price.toNumber();
+    const discount = item.discount
+      ? typeof item.discount === "number" ? item.discount : item.discount.toNumber()
+      : 0;
+    const lineTotal = price * item.quantity - discount;
+
+    const amount =
+      rule.commissionType === "PERCENTAGE"
+        ? lineTotal * (Number(rule.value) / 100)
+        : Number(rule.value);
+
+    if (amount <= 0) continue;
+
+    await tx.commissionRecord.create({
+      data: {
+        saleId,
+        userId,
+        ruleId: rule.id,
+        amount,
+        status: "PENDING",
+      },
+    });
+  }
+}
+
 // POST /api/sales — procesar una venta o apartado
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
@@ -212,6 +286,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             },
           });
         }
+
+        // G. Commission generation (frozen path)
+        await generateCommissions(tx, frozenSale.id, userId, branchId,
+          input.frozenItems.map((fi) => ({
+            productVariantId: fi.productVariantId ?? null,
+            isFreeForm: fi.isFreeForm,
+            quantity: fi.quantity,
+            price: fi.unitPrice,
+            discount: 0,
+          })),
+        );
 
         return frozenSale;
       }
@@ -511,6 +596,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             data: { status: "INSTALLED" },
           });
         }
+      }
+
+      // I. Commission generation (normal POS path)
+      if (!input.isLayaway) {
+        await generateCommissions(tx, sale.id, userId, branchId,
+          input.items.map((it) => ({
+            productVariantId: it.productVariantId,
+            quantity: it.quantity,
+            price: it.price,
+            discount: 0,
+          })),
+        );
       }
 
       return sale;

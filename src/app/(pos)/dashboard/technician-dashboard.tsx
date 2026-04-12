@@ -1,7 +1,10 @@
 "use client";
 
-import { Wrench, CheckCircle, AlertTriangle } from "lucide-react";
+import { Wrench, CheckCircle, AlertTriangle, Package } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
 
 type TechOrderRow = {
     id: string;
@@ -21,6 +24,17 @@ type ReadyOrderRow = {
     bikeInfo: string | null;
 };
 
+type AssemblyPendingRow = {
+    id: string;
+    productName: string | null;
+    imageUrl: string | null;
+    sku: string | null;
+    color: string | null;
+    folio: string | null;
+    saleId: string | null;
+    minutesPending: number;
+};
+
 type MaintenanceAlertRow = {
     bikeId: string;
     bikeModel: string | null;
@@ -38,12 +52,27 @@ interface TechnicianDashboardProps {
     activeOrders: TechOrderRow[];
     readyOrders: ReadyOrderRow[];
     maintenanceAlerts: MaintenanceAlertRow[];
+    attentionAlerts: AttentionPanelProps;
+    deliveredYesterdayCount: number;
+    assemblyPendingCount: number;
+    assemblyPending: AssemblyPendingRow[];
 }
 
 const ORDER_STATUS: Record<string, { label: string; className: string }> = {
     PENDING: { label: "Pendiente", className: "bg-[var(--warn-container)] text-[var(--warn)]" },
     IN_PROGRESS: { label: "En Proceso", className: "bg-[var(--warn-container)] text-[var(--warn)]" },
 };
+
+type TrendDir = "up" | "down" | "neutral";
+
+function calcCountTrend(today: number, yesterday: number): { label: string; dir: TrendDir } {
+    const delta = today - yesterday;
+    if (delta === 0 && today === 0) return { label: "Sin entregas ayer", dir: "neutral" };
+    if (delta === 0) return { label: "Igual que ayer", dir: "neutral" };
+    return delta > 0
+        ? { label: `+${delta} vs ayer`, dir: "up" }
+        : { label: `${delta} vs ayer`, dir: "down" };
+}
 
 function formatTiempo(minutos: number): string {
     if (minutos < 60) return `${minutos}m`;
@@ -61,7 +90,12 @@ export function TechnicianDashboard({
     activeOrders,
     readyOrders,
     maintenanceAlerts,
+    attentionAlerts,
+    deliveredYesterdayCount,
+    assemblyPendingCount,
+    assemblyPending,
 }: TechnicianDashboardProps): React.JSX.Element {
+    const deliveredTrend = calcCountTrend(deliveredTodayCount, deliveredYesterdayCount);
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -72,8 +106,10 @@ export function TechnicianDashboard({
                 <p className="text-sm text-[var(--on-surf-var)] mt-0.5">Taller · {branchName}</p>
             </div>
 
-            {/* Panel 1: 3 KPI cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <AttentionPanel {...attentionAlerts} />
+
+            {/* Panel 1: 4 KPI cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* KPI 1: Activas — accent */}
                 <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
                     <div className="flex items-center justify-between mb-3">
@@ -111,7 +147,25 @@ export function TechnicianDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
                         {deliveredTodayCount}
                     </p>
-                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Completadas hoy</p>
+                    <p className={`text-[11px] mt-1 font-medium ${deliveredTrend.dir === "up" ? "text-[var(--sec)]" : deliveredTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
+                        {deliveredTrend.dir === "up" ? "↑" : deliveredTrend.dir === "down" ? "↓" : "—"} {deliveredTrend.label}
+                    </p>
+                </div>
+
+                {/* KPI 4: Reensambles */}
+                <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">
+                            REENSAMBLES
+                        </span>
+                        <Wrench className="h-4 w-4 text-[var(--on-surf-var)]" />
+                    </div>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                        {assemblyPendingCount}
+                    </p>
+                    <p className="text-[11px] text-[var(--on-surf-var)] mt-1">
+                        {assemblyPendingCount === 0 ? "Sin reensambles pendientes" : "Pendientes de completar"}
+                    </p>
                 </div>
             </div>
 
@@ -135,7 +189,9 @@ export function TechnicianDashboard({
                                     <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono text-xs text-[var(--on-surf-var)]">{order.folio}</span>
+                                                <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                                    {order.folio}
+                                                </Link>
                                                 <span className={cn(
                                                     "text-[10px] font-medium px-2 py-0.5 rounded-full",
                                                     statusInfo.className
@@ -180,7 +236,9 @@ export function TechnicianDashboard({
                             {readyOrders.map((order) => (
                                 <div key={order.id} className="flex items-start gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-mono text-xs text-[var(--on-surf-var)]">{order.folio}</p>
+                                        <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                            {order.folio}
+                                        </Link>
                                         <p className="text-sm font-medium text-[var(--on-surf)] truncate">
                                             {order.customerName}
                                         </p>
@@ -198,7 +256,85 @@ export function TechnicianDashboard({
                 </div>
             </div>
 
-            {/* Panel 4: Alertas de Mantenimiento */}
+            {/* Panel 4: Cola de Reensambles */}
+            {assemblyPending.length > 0 && (
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-[var(--on-surf-var)]" />
+                            <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                                Cola de Reensambles
+                            </h2>
+                        </div>
+                        <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-[var(--warn-container)] text-[var(--warn)]">
+                            {assemblyPendingCount} pendientes
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {assemblyPending.map((a) => {
+                            const isLate = a.minutesPending > 4320;
+                            return (
+                                <div
+                                    key={a.id}
+                                    className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)] overflow-hidden flex flex-col"
+                                >
+                                    {/* Product image */}
+                                    <div className="relative w-full aspect-square bg-[var(--surf-low)]">
+                                        {a.imageUrl ? (
+                                            <Image
+                                                src={a.imageUrl}
+                                                alt={a.productName ?? "Producto"}
+                                                fill
+                                                className="object-contain p-2"
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <Package className="h-10 w-10 text-[var(--on-surf-var)] opacity-30" />
+                                            </div>
+                                        )}
+                                        {/* Time badge */}
+                                        <span className={cn(
+                                            "absolute top-2 right-2 text-[10px] font-medium px-2 py-0.5 rounded-full",
+                                            isLate
+                                                ? "bg-[var(--ter-container)] text-[var(--on-ter-container)]"
+                                                : "bg-[var(--surf-lowest)]/80 text-[var(--on-surf-var)] backdrop-blur-sm"
+                                        )}>
+                                            {formatTiempo(a.minutesPending)}
+                                        </span>
+                                    </div>
+
+                                    {/* Card body */}
+                                    <div className="p-3 flex-1 flex flex-col gap-1">
+                                        <p className="text-sm font-medium text-[var(--on-surf)] leading-tight line-clamp-2">
+                                            {a.productName ?? "Producto sin asignar"}
+                                        </p>
+                                        {a.color && (
+                                            <p className="text-[10px] text-[var(--on-surf-var)]">{a.color}</p>
+                                        )}
+                                        {a.sku && (
+                                            <p className="font-mono text-[10px] text-[var(--on-surf-var)] opacity-60">{a.sku}</p>
+                                        )}
+                                        {a.folio && (
+                                            <div className="mt-auto pt-2">
+                                                {a.saleId ? (
+                                                    <Link href={`/ventas/${a.saleId}`} className="font-mono text-[11px] text-[var(--p)] hover:underline underline-offset-2 transition-colors">
+                                                        {a.folio}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="font-mono text-[11px] text-[var(--on-surf-var)]">{a.folio}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Panel 5: Alertas de Mantenimiento */}
             <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
                 <div className="flex items-center gap-2 mb-4">
                     <AlertTriangle className="h-4 w-4 text-[var(--warn)]" />
