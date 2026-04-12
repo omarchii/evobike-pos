@@ -39,6 +39,7 @@ export default async function PointOfSalePage() {
       descripcion: string | null;
       imageUrl: string | null;
       requiere_vin: boolean;
+      categoria: "BICICLETA" | "TRICICLO" | "SCOOTER" | "JUGUETE" | "CARGA";
       variants: {
         id: string;
         sku: string;
@@ -62,6 +63,7 @@ export default async function PointOfSalePage() {
         descripcion: v.modelo.descripcion,
         imageUrl: v.modelo.imageUrl,
         requiere_vin: v.modelo.requiere_vin,
+        categoria: v.modelo.categoria,
         variants: [],
       });
     }

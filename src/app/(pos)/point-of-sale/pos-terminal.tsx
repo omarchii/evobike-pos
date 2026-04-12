@@ -44,12 +44,15 @@ interface VariantInfo {
   voltajeLabel: string;
 }
 
+type ModeloCategoria = "BICICLETA" | "TRICICLO" | "SCOOTER" | "JUGUETE" | "CARGA";
+
 interface ModeloData {
   id: string;
   nombre: string;
   descripcion: string | null;
   imageUrl: string | null;
   requiere_vin: boolean;
+  categoria: ModeloCategoria;
   variants: VariantInfo[];
   minPrice: number;
   totalStockInBranch: number;
@@ -150,28 +153,13 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function deriveCategory(nombre: string): string {
-  const upper = nombre.toUpperCase();
-  if (
-    upper.startsWith("SCOOTER") ||
-    upper === "EVOTANK 160" ||
-    upper === "EVOTANK 180"
-  )
-    return "Scooters";
-  if (upper === "BATERÍA" || upper === "BATERIA") return "Baterías";
-  if (upper.includes("ACCESORIO") || upper.includes("CASCO"))
-    return "Accesorios";
-  if (upper.includes("REFACCION") || upper.includes("REFACCIÓN"))
-    return "Refacciones";
-  return "Bicicletas";
-}
-
-const CATEGORIES = [
-  "Todos",
-  "Bicicletas",
-  "Scooters",
-  "Baterías",
-  "Accesorios",
+const CATEGORIES: { key: "Todos" | ModeloCategoria; label: string }[] = [
+  { key: "Todos", label: "Todos" },
+  { key: "BICICLETA", label: "Bicicletas" },
+  { key: "TRICICLO", label: "Triciclos" },
+  { key: "SCOOTER", label: "Scooters" },
+  { key: "JUGUETE", label: "Juguetes" },
+  { key: "CARGA", label: "Carga" },
 ];
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -368,7 +356,7 @@ export default function PosTerminal({
     (session?.user as { branchId?: string } | undefined)?.branchId ?? branchId;
 
   // ── Catalog state
-  const [categoryFilter, setCategoryFilter] = useState("Todos");
+  const [categoryFilter, setCategoryFilter] = useState<"Todos" | ModeloCategoria>("Todos");
   const [search, setSearch] = useState("");
   const [selectedModelo, setSelectedModelo] = useState<ModeloData | null>(null);
 
@@ -434,8 +422,7 @@ export default function PosTerminal({
   const filteredModelos = useMemo(() => {
     return modelos.filter((m) => {
       const matchesCategory =
-        categoryFilter === "Todos" ||
-        deriveCategory(m.nombre) === categoryFilter;
+        categoryFilter === "Todos" || m.categoria === categoryFilter;
       const matchesSearch =
         !search || m.nombre.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
@@ -893,11 +880,11 @@ export default function PosTerminal({
         <div className="px-4 pt-3 pb-2 flex items-center gap-2 overflow-x-auto shrink-0">
           {CATEGORIES.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
+              key={cat.key}
+              onClick={() => setCategoryFilter(cat.key)}
               className="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all"
               style={
-                categoryFilter === cat
+                categoryFilter === cat.key
                   ? {
                     background: "linear-gradient(135deg, #1B4332, #2ECC71)",
                     color: "var(--on-primary)",
@@ -909,7 +896,7 @@ export default function PosTerminal({
                   }
               }
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
           {/* Search */}
