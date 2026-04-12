@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 import { normalizeModeloAplicable } from '../src/lib/products';
+import { seedTransactional } from './seed-transactional';
 
 const prisma = new PrismaClient();
 
@@ -626,6 +627,9 @@ async function main() {
   console.log(
     `✅ Stock SimpleProducts: ${stockEntriesCreated} entradas creadas, ${stockEntriesSkipped} preexistentes.`,
   );
+
+  // ── 8. Datos transaccionales (Fase P2 Sesión 2) ─────────────────────────────
+  await seedTransactional(prisma);
 
   console.log('\n🎉 Seed completado exitosamente.\n');
   console.log('─── Usuarios disponibles ───────────────────────────');
