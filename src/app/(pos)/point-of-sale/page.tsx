@@ -120,6 +120,29 @@ export default async function PointOfSalePage() {
     ? await prisma.battery.count({ where: { status: "IN_STOCK", branchId } })
     : 0;
 
+  // SimpleProducts (accesorios, cargadores, refacciones, baterías standalone) + stock por sucursal
+  const rawSimpleProducts = await prisma.simpleProduct.findMany({
+    where: { isActive: true },
+    include: { stocks: true },
+    orderBy: { nombre: "asc" },
+  });
+  const simpleProducts = rawSimpleProducts.map((sp) => {
+    const stockInBranch = branchId
+      ? (sp.stocks.find((s) => s.branchId === branchId)?.quantity ?? 0)
+      : sp.stocks.reduce((a, s) => a + s.quantity, 0);
+    return {
+      id: sp.id,
+      codigo: sp.codigo,
+      nombre: sp.nombre,
+      descripcion: sp.descripcion,
+      categoria: sp.categoria,
+      modeloAplicable: sp.modeloAplicable,
+      precioPublico: Number(sp.precioPublico),
+      imageUrl: sp.imageUrl,
+      stockInBranch,
+    };
+  });
+
   const sellerName = authUser?.name ?? "";
   const branchName = authUser?.branchName ?? "";
 
@@ -130,6 +153,7 @@ export default async function PointOfSalePage() {
         customers={customers}
         batteryConfigs={batteryConfigs}
         availableBatteriesCount={availableBatteriesCount}
+        simpleProducts={simpleProducts}
         branchId={branchId}
         sellerName={sellerName}
         branchName={branchName}

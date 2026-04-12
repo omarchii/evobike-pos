@@ -47,6 +47,27 @@ interface VariantInfo {
 
 type ModeloCategoria = "BICICLETA" | "TRICICLO" | "SCOOTER" | "JUGUETE" | "CARGA";
 
+type SimpleCategoria = "ACCESORIO" | "CARGADOR" | "REFACCION" | "BATERIA_STANDALONE";
+
+interface SimpleProductData {
+  id: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: SimpleCategoria;
+  modeloAplicable: string | null;
+  precioPublico: number;
+  imageUrl: string | null;
+  stockInBranch: number;
+}
+
+const SIMPLE_CATEGORIA_LABELS: Record<SimpleCategoria, string> = {
+  ACCESORIO: "Accesorio",
+  CARGADOR: "Cargador",
+  REFACCION: "Refacción",
+  BATERIA_STANDALONE: "Batería",
+};
+
 interface ModeloData {
   id: string;
   nombre: string;
@@ -90,6 +111,8 @@ interface CartItem {
   assemblyMode?: boolean;
   isFreeForm?: boolean;  // P3.5: línea libre (descripción + precio manual)
   description?: string;  // P3.5: texto del concepto libre
+  simpleProductId?: string;  // P3.4: línea de SimpleProduct (accesorio/refacción/cargador/batería)
+  simpleCategoria?: SimpleCategoria;  // P3.4: para render en cart
 }
 
 type BatteryStatus = "idle" | "valid" | "invalid" | "checking";
@@ -156,13 +179,16 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-const CATEGORIES: { key: "Todos" | ModeloCategoria; label: string }[] = [
+type CategoryFilterKey = "Todos" | ModeloCategoria | "ACCESORIOS";
+
+const CATEGORIES: { key: CategoryFilterKey; label: string }[] = [
   { key: "Todos", label: "Todos" },
   { key: "BICICLETA", label: "Bicicletas" },
   { key: "TRICICLO", label: "Triciclos" },
   { key: "SCOOTER", label: "Scooters" },
   { key: "JUGUETE", label: "Juguetes" },
   { key: "CARGA", label: "Carga" },
+  { key: "ACCESORIOS", label: "Accesorios" },
 ];
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -334,6 +360,115 @@ function ModelCard({
   );
 }
 
+function SimpleProductCard({
+  sp,
+  onAdd,
+}: {
+  sp: SimpleProductData;
+  onAdd: (sp: SimpleProductData) => void;
+}) {
+  const hasStock = sp.stockInBranch > 0;
+  return (
+    <div
+      role="button"
+      tabIndex={hasStock ? 0 : -1}
+      onClick={() => hasStock && onAdd(sp)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && hasStock && onAdd(sp)}
+      className={`relative text-left transition-all group overflow-hidden ${hasStock ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
+      style={{
+        background: "var(--surf-lowest)",
+        boxShadow: "var(--shadow)",
+        borderRadius: "2rem",
+        border: "2px solid transparent",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          background: "var(--surf-high)",
+          borderRadius: "inherit",
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          overflow: "hidden",
+        }}
+      >
+        {sp.imageUrl ? (
+          <Image src={sp.imageUrl} alt={sp.nombre} fill style={{ objectFit: "contain", padding: "8px" }} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingBag className="w-8 h-8" style={{ color: "var(--on-surf-var)" }} />
+          </div>
+        )}
+        <div className="absolute" style={{ top: 10, left: 10 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "3px 10px",
+              borderRadius: 999,
+              background: hasStock ? "var(--sec-container)" : "var(--ter-container)",
+              color: hasStock ? "var(--on-sec-container)" : "var(--on-ter-container)",
+            }}
+          >
+            {hasStock ? `${sp.stockInBranch} uds` : "Sin stock"}
+          </span>
+        </div>
+        <div className="absolute" style={{ top: 10, right: 10 }}>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 600,
+              padding: "3px 8px",
+              borderRadius: 999,
+              background: "var(--surf-lowest)",
+              color: "var(--on-surf-var)",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {SIMPLE_CATEGORIA_LABELS[sp.categoria]}
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: "14px 16px" }}>
+        <p
+          className="leading-tight truncate"
+          style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--on-surf)" }}
+        >
+          {sp.nombre}
+        </p>
+        <p style={{ fontSize: 11, marginTop: 2, color: "var(--on-surf-var)" }}>
+          {sp.modeloAplicable ?? "Universal"}
+        </p>
+        <div className="flex items-center justify-between" style={{ marginTop: 10 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--p-bright)" }}>
+            ${sp.precioPublico.toLocaleString("es-MX")}
+          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasStock) onAdd(sp);
+            }}
+            className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+              color: "#fff",
+              border: "none",
+            }}
+            aria-label={`Agregar ${sp.nombre}`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function PosTerminal({
@@ -341,6 +476,7 @@ export default function PosTerminal({
   customers = [],
   batteryConfigs = [],
   availableBatteriesCount = 0,
+  simpleProducts = [],
   branchId,
   sellerName,
   branchName,
@@ -349,6 +485,7 @@ export default function PosTerminal({
   customers?: CustomerData[];
   batteryConfigs?: BatteryConfig[];
   availableBatteriesCount?: number;
+  simpleProducts?: SimpleProductData[];
   branchId: string;
   sellerName: string;
   branchName: string;
@@ -359,7 +496,8 @@ export default function PosTerminal({
     (session?.user as { branchId?: string } | undefined)?.branchId ?? branchId;
 
   // ── Catalog state
-  const [categoryFilter, setCategoryFilter] = useState<"Todos" | ModeloCategoria>("Todos");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterKey>("Todos");
+  const [simpleModeloFilter, setSimpleModeloFilter] = useState<string>("__all__");
   const [search, setSearch] = useState("");
   const [selectedModelo, setSelectedModelo] = useState<ModeloData | null>(null);
 
@@ -432,6 +570,65 @@ export default function PosTerminal({
       return matchesCategory && matchesSearch;
     });
   }, [modelos, categoryFilter, search]);
+
+  // ── Derived: modeloAplicable options (unique non-null values from simpleProducts)
+  const modeloAplicableOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const sp of simpleProducts) {
+      if (sp.modeloAplicable) set.add(sp.modeloAplicable);
+    }
+    return Array.from(set).sort();
+  }, [simpleProducts]);
+
+  // ── Derived: filtered simple products (tab Accesorios)
+  const filteredSimpleProducts = useMemo(() => {
+    return simpleProducts.filter((sp) => {
+      const matchesModelo =
+        simpleModeloFilter === "__all__" ||
+        (simpleModeloFilter === "__global__" ? sp.modeloAplicable === null : sp.modeloAplicable === simpleModeloFilter);
+      const matchesSearch =
+        !search ||
+        sp.nombre.toLowerCase().includes(search.toLowerCase()) ||
+        sp.codigo.toLowerCase().includes(search.toLowerCase());
+      return matchesModelo && matchesSearch;
+    });
+  }, [simpleProducts, simpleModeloFilter, search]);
+
+  // ── Handler: add SimpleProduct to cart
+  const handleAddSimpleProduct = useCallback((sp: SimpleProductData) => {
+    if (sp.stockInBranch <= 0) {
+      toast.error(`Sin stock disponible para ${sp.nombre}`);
+      return;
+    }
+    setCart((prev) => {
+      // Si ya está en el cart, incrementar cantidad (respeta stock)
+      const existingIdx = prev.findIndex((ci) => ci.simpleProductId === sp.id);
+      if (existingIdx >= 0) {
+        const existing = prev[existingIdx];
+        if (existing.quantity >= sp.stockInBranch) {
+          toast.error(`Stock máximo alcanzado (${sp.stockInBranch})`);
+          return prev;
+        }
+        return prev.map((ci, i) => (i === existingIdx ? { ...ci, quantity: ci.quantity + 1 } : ci));
+      }
+      return [
+        ...prev,
+        {
+          variantId: `simple-${sp.id}`,
+          modeloId: "",
+          modeloNombre: sp.nombre,
+          colorNombre: "",
+          voltajeLabel: "",
+          sku: sp.codigo,
+          price: sp.precioPublico,
+          quantity: 1,
+          isSerialized: false,
+          simpleProductId: sp.id,
+          simpleCategoria: sp.categoria,
+        },
+      ];
+    });
+  }, []);
 
   // ── Derived: voltaje options for selected model
   const voltajeOptions = useMemo((): VoltajeOption[] => {
@@ -719,12 +916,15 @@ export default function PosTerminal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: cart.map((ci) => ({
-            productVariantId: ci.isFreeForm ? null : ci.variantId,
+            productVariantId: ci.isFreeForm || ci.simpleProductId ? null : ci.variantId,
+            simpleProductId: ci.simpleProductId,
             quantity: ci.quantity,
             price: ci.price,
             name: ci.isFreeForm
               ? (ci.description ?? "Concepto libre")
-              : `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
+              : ci.simpleProductId
+                ? ci.modeloNombre
+                : `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
             isFreeForm: ci.isFreeForm,
             isSerialized: ci.isSerialized,
             serialNumber: ci.serialNumber,
@@ -928,7 +1128,68 @@ export default function PosTerminal({
 
         {/* Product grid */}
         <div style={{ flex: 1, overflowY: "auto", padding: "0 14px 14px" }}>
-          {filteredModelos.length === 0 ? (
+          {categoryFilter === "ACCESORIOS" ? (
+            <>
+              {/* Sub-filtro: modeloAplicable */}
+              <div className="flex items-center gap-2 pt-1 pb-3 flex-wrap">
+                <span className="text-[10px]" style={{ color: "var(--on-surf-var)" }}>
+                  Compatible con:
+                </span>
+                <button
+                  onClick={() => setSimpleModeloFilter("__all__")}
+                  className="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+                  style={
+                    simpleModeloFilter === "__all__"
+                      ? { background: "var(--p-bright)", color: "var(--on-primary)" }
+                      : { border: "1px solid var(--outline-var)", color: "var(--on-surf-var)", background: "transparent" }
+                  }
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setSimpleModeloFilter("__global__")}
+                  className="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+                  style={
+                    simpleModeloFilter === "__global__"
+                      ? { background: "var(--p-bright)", color: "var(--on-primary)" }
+                      : { border: "1px solid var(--outline-var)", color: "var(--on-surf-var)", background: "transparent" }
+                  }
+                >
+                  Universal
+                </button>
+                {modeloAplicableOptions.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setSimpleModeloFilter(m)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+                    style={
+                      simpleModeloFilter === m
+                        ? { background: "var(--p-bright)", color: "var(--on-primary)" }
+                        : { border: "1px solid var(--outline-var)", color: "var(--on-surf-var)", background: "transparent" }
+                    }
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              {filteredSimpleProducts.length === 0 ? (
+                <div
+                  className="flex flex-col items-center justify-center py-20 gap-3"
+                  style={{ color: "var(--on-surf-var)" }}
+                >
+                  <ShoppingBag className="w-10 h-10 opacity-30" />
+                  <p className="text-sm">Sin accesorios disponibles</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-3 pt-1">
+                  {filteredSimpleProducts.map((sp) => (
+                    <SimpleProductCard key={sp.id} sp={sp} onAdd={handleAddSimpleProduct} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : filteredModelos.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-20 gap-3"
               style={{ color: "var(--on-surf-var)" }}
@@ -1662,6 +1923,17 @@ export default function PosTerminal({
                           }}
                         >
                           Concepto libre
+                        </p>
+                      ) : item.simpleProductId ? (
+                        <p
+                          className="text-[10px] mt-0.5 font-semibold"
+                          style={{
+                            color: "var(--on-surf-var)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {item.simpleCategoria ? SIMPLE_CATEGORIA_LABELS[item.simpleCategoria] : "Producto"} · {item.sku}
                         </p>
                       ) : (
                         <p
