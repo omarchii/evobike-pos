@@ -115,31 +115,41 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 
 ---
 
-## FASE P2 — Datos de prueba realistas
+## FASE P2 — Datos de prueba realistas ✅ Completa (2026-04-12)
 **Modelo: Sonnet | Dependencias: P0 + P1**
 
-Sin esto no se puede probar la UI con datos reales.
+### Implementado
 
-### Tareas
-- Enriquecer `prisma/seed.ts` con:
-  - Clientes con historial de compras variado
-  - Ventas completadas en distintos estados
-  - Apartados con múltiples abonos en distintos métodos de pago
-  - Pedidos backorder en distintos estados de recepción
-  - Órdenes de taller: PENDING, IN_PROGRESS, COMPLETED, DELIVERED
-  - Lotes de batería con seriales
-  - Órdenes de montaje: completas e incompletas
-  - `SimpleProduct` cargados desde CSV:
-    - `prisma/data/accesorios.csv` — 35 productos (accesorios, cargadores, baterías, refacciones básicas)
-    - `prisma/data/refacciones.csv` — 2,632 refacciones por modelo
-  - Stock inicial de SimpleProducts por sucursal
-- Verificar que `npm run build` pasa limpio después del seed
+**Sesión 1 — SimpleProducts + stock**
+- `prisma/seed.ts` carga `accesorios.csv` (39 productos) y `refacciones.csv` (2,622 refacciones) vía upsert por `codigo`.
+- `normalizeModeloAplicable()` aplicado a cada fila. `"GLOBAL"` → `null` para mantener la convención de P1-E.
+- Stock inicial de SimpleProducts por sucursal (5,322 entradas) con `InventoryMovement(PURCHASE_RECEIPT)` dentro de la misma `$transaction`.
+
+**Sesión 2 — Datos transaccionales**
+- Nuevo módulo `prisma/seed-transactional.ts` (~1,500 líneas) invocado desde `seed.ts`.
+- 30 Customers (15 completos con datos fiscales, 10 básicos, 5 con `balance > 0`).
+- Stock de ProductVariants de vehículos (758 entradas) con su InventoryMovement.
+- 6 BatteryLots con 72 baterías (`IN_STOCK` por defecto, `INSTALLED` tras montaje).
+- 3 CashRegisterSessions cerradas históricas + 1 abierta por sucursal.
+- CommissionRules genéricas por sucursal (SELLER 3%, MANAGER 1%).
+- AssemblyOrders: ~17 globales (60% COMPLETED con CustomerBike + BatteryAssignment, 40% PENDING).
+- Sales directas: ~87 globales en 6 meses, mix de métodos de pago (CASH/CARD/TRANSFER/ATRATO), 5% CANCELLED con REFUND_OUT + reversión de stock + commissions `CANCELLED`.
+- Pedidos: 30 globales (60% LAYAWAY, 40% BACKORDER) con 1-3 abonos adicionales por pedido; algunos completan a status `COMPLETED` cuando se liquidan.
+- ServiceOrders: 40 globales distribuidos en los 4 estados (PENDING/IN_PROGRESS/COMPLETED/DELIVERED), con cobro anticipado (`prepaid=true`) para algunos COMPLETED y descuento de stock vía `WORKSHOP_USAGE` al entregar.
+- Cotizaciones: 20 globales (DRAFT/SENT/CONVERTED/EXPIRED).
+
+### Decisiones de implementación
+- **Folio en seed usa `branch.code`** (no `branch.name` como la API real) porque "Sucursal Leo" y "Sucursal Av 135" normalizan ambos a prefix `"SUC"` → colisión. El cambio es local al seed y no afecta la lógica de producción.
+- **Idempotencia** por marcadores: cada tarea chequea existencia (cuenta o sentinela) y skipea si ya corrió. Para re-seedear, truncar las tablas transaccionales manualmente.
+- **Comisiones**: replican la cascade strategy de Fase 5-E (regla específica por `modeloId` → fallback genérica). Solo ventas directas generan comisión; pedidos y servicios no (consistente con `POST /api/pedidos` y service-orders).
+- **Ensamblable** se define por existencia de `BatteryConfiguration` para `(modelo_id, voltaje_id)`, no por `Modelo.requiere_vin`, porque el seed de catálogo original deja `requiere_vin=false` por un upsert-drift. Evita tocar ese seed.
 
 ### Archivos clave
 - `prisma/seed.ts`
+- `prisma/seed-transactional.ts`
 - `prisma/data/accesorios.csv`
 - `prisma/data/refacciones.csv`
-- `prisma/data/refacciones_revisar.csv` (revisar manualmente, agregar al limpio)
+- `prisma/data/refacciones_revisar.csv` (pendiente de revisión manual en Fase 6)
 
 ---
 
