@@ -59,8 +59,10 @@ export function VoltageChangeDialog({
             Cambio de voltaje pre-venta
           </DialogTitle>
           <p style={{ color: "var(--on-surf-var)", fontSize: "0.75rem" }}>
-            Sin costo para el cliente. Se genera reensamble y la póliza se emite
-            al completarlo.
+            Esta unidad ya está ensamblada a {currentVoltajeLabel}. Al elegir
+            otro voltaje se creará una orden de montaje automáticamente, sin
+            costo para el cliente. La póliza se emite al completar el
+            reensamble.
           </p>
         </DialogHeader>
 
@@ -100,7 +102,7 @@ export function VoltageChangeDialog({
                   color: "var(--on-surf-var)",
                 }}
               >
-                Cambiar a
+                Confirmar reensamble a
               </p>
               {targets.map((v) => (
                 <button

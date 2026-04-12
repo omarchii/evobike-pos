@@ -1219,9 +1219,14 @@ export default function PosTerminal({
                               color: "var(--warn)",
                               marginTop: 6,
                               fontFamily: "var(--font-body)",
+                              lineHeight: 1.4,
                             }}
                           >
-                            Requiere ensamblaje · {availableBatteriesCount} baterías
+                            Esta unidad requiere ensamble a {opt.label}. Se
+                            creará una orden de montaje automáticamente.
+                            <br />
+                            {availableBatteriesCount} baterías disponibles en
+                            sucursal.
                           </p>
                         );
                       return (
