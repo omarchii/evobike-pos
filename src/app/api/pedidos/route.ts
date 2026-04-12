@@ -7,6 +7,7 @@ import { z } from "zod";
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
 const pedidoFrozenItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
+  simpleProductId: z.string().nullable().optional(),
   description: z.string(),
   isFreeForm: z.boolean().default(false),
   quantity: z.number().int().positive(),
@@ -98,20 +99,27 @@ export async function POST(req: NextRequest) {
       // ── QUOTATION CONVERSION PATH ──────────────────────────────────────────
       // When frozenItems is present, create multiple SaleItems from the quotation.
       if (frozenItems && frozenItems.length > 0) {
-        // Stock check + decrement for catalog items (LAYAWAY only)
+        // Stock check + decrement for catalog items (LAYAWAY only) — polimórfico
         if (orderType === "LAYAWAY") {
           for (const item of frozenItems) {
-            if (item.isFreeForm || !item.productVariantId) continue;
-            const stock = await tx.stock.findUnique({
-              where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
-            });
-            if (!stock || stock.quantity < item.quantity) {
-              throw new Error(`Stock insuficiente para: ${item.description}`);
+            if (item.isFreeForm) continue;
+            if (item.productVariantId) {
+              const stock = await tx.stock.findUnique({
+                where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+              });
+              if (!stock || stock.quantity < item.quantity) {
+                throw new Error(`Stock insuficiente para: ${item.description}`);
+              }
+              await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+            } else if (item.simpleProductId) {
+              const stock = await tx.stock.findUnique({
+                where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+              });
+              if (!stock || stock.quantity < item.quantity) {
+                throw new Error(`Stock insuficiente para: ${item.description}`);
+              }
+              await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
             }
-            await tx.stock.update({
-              where: { id: stock.id },
-              data: { quantity: { decrement: item.quantity } },
-            });
           }
         }
 
@@ -154,6 +162,7 @@ export async function POST(req: NextRequest) {
             data: {
               saleId: frozenSale.id,
               productVariantId: item.productVariantId ?? null,
+              simpleProductId: item.simpleProductId ?? null,
               description: item.description,
               isFreeForm: item.isFreeForm,
               quantity: item.quantity,

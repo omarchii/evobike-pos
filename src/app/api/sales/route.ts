@@ -17,6 +17,7 @@ const paymentMethodSchema = z.object({
 
 const saleItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
+  simpleProductId: z.string().nullable().optional(),
   quantity: z.number().int().positive(),
   price: z.number().nonnegative(),
   name: z.string(),
@@ -27,13 +28,18 @@ const saleItemSchema = z.object({
   batterySerials: z.array(z.string()).optional(),
   assemblyMode: z.boolean().optional(),
   isFreeForm: z.boolean().optional(),
-}).refine((v) => v.isFreeForm || !!v.productVariantId, {
-  message: "productVariantId requerido para líneas no free-form",
+}).superRefine((v, ctx) => {
+  // Exactamente uno de: productVariantId | simpleProductId | isFreeForm
+  const kinds = [v.productVariantId ? 1 : 0, v.simpleProductId ? 1 : 0, v.isFreeForm ? 1 : 0].reduce((a, b) => a + b, 0);
+  if (kinds !== 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cada línea debe ser productVariantId, simpleProductId o isFreeForm (exactamente uno)" });
+  }
 });
 
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
 const frozenItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
+  simpleProductId: z.string().nullable().optional(),
   description: z.string(),
   isFreeForm: z.boolean().default(false),
   quantity: z.number().int().positive(),
@@ -83,6 +89,7 @@ async function generateCommissions(
   if (!user) return;
 
   for (const item of items) {
+    // Comisiones solo por venta de vehículo (ProductVariant). SimpleProduct y free-form no comisionan.
     if (item.isFreeForm || !item.productVariantId) continue;
 
     const variant = await tx.productVariant.findUnique({
@@ -199,19 +206,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
         }
 
-        // Stock check + decrement for catalog items only (skip isFreeForm)
+        // Stock check + decrement for catalog items only (skip isFreeForm) — polimórfico
         for (const item of input.frozenItems) {
-          if (item.isFreeForm || !item.productVariantId) continue;
-          const stock = await tx.stock.findUnique({
-            where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
-          });
-          if (!stock || stock.quantity < item.quantity) {
-            throw new Error(`Stock insuficiente para: ${item.description}`);
+          if (item.isFreeForm) continue;
+          if (item.productVariantId) {
+            const stock = await tx.stock.findUnique({
+              where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+            });
+            if (!stock || stock.quantity < item.quantity) {
+              throw new Error(`Stock insuficiente para: ${item.description}`);
+            }
+            await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+          } else if (item.simpleProductId) {
+            const stock = await tx.stock.findUnique({
+              where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+            });
+            if (!stock || stock.quantity < item.quantity) {
+              throw new Error(`Stock insuficiente para: ${item.description}`);
+            }
+            await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
           }
-          await tx.stock.update({
-            where: { id: stock.id },
-            data: { quantity: { decrement: item.quantity } },
-          });
         }
 
         // Build note
@@ -249,6 +263,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             items: {
               create: input.frozenItems.map((item) => ({
                 productVariantId: item.productVariantId ?? null,
+                simpleProductId: item.simpleProductId ?? null,
                 description: item.description,
                 isFreeForm: item.isFreeForm,
                 quantity: item.quantity,
@@ -259,12 +274,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           },
         });
 
-        // Inventory movements (skip free-form items)
+        // Inventory movements (skip free-form items) — polimórfico
         for (const item of input.frozenItems) {
-          if (item.isFreeForm || !item.productVariantId) continue;
+          if (item.isFreeForm) continue;
+          if (!item.productVariantId && !item.simpleProductId) continue;
           await tx.inventoryMovement.create({
             data: {
-              productVariantId: item.productVariantId,
+              productVariantId: item.productVariantId ?? null,
+              simpleProductId: item.simpleProductId ?? null,
               branchId,
               userId,
               type: "SALE",
@@ -331,10 +348,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       };
       const vcPreFlights: VcPreFlight[] = [];
 
-      // A. Verify and decrease stock
+      // A. Verify and decrease stock (polimórfico: variant | simple)
       for (const item of input.items) {
         if (item.assemblyMode) continue;
-        if (item.isFreeForm || !item.productVariantId) continue;
+        if (item.isFreeForm) continue;
+
+        if (item.simpleProductId) {
+          const stock = await tx.stock.findUnique({
+            where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+          });
+          if (!stock || stock.quantity < item.quantity) {
+            throw new Error(`Stock insuficiente para: ${item.name}`);
+          }
+          await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+          continue;
+        }
+
+        if (!item.productVariantId) continue;
 
         const stock = await tx.stock.findUnique({
           where: {
@@ -444,7 +474,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           items: {
             create: input.items.map((item) => ({
               productVariantId: item.productVariantId ?? null,
-              description: item.isFreeForm ? item.name : null,
+              simpleProductId: item.simpleProductId ?? null,
+              description: item.isFreeForm ? item.name : item.simpleProductId ? item.name : null,
               isFreeForm: !!item.isFreeForm,
               quantity: item.quantity,
               price: item.price,
@@ -453,13 +484,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
       });
 
-      // D. Inventory movements (skip assembly-mode and free-form items)
+      // D. Inventory movements (skip assembly-mode and free-form items) — polimórfico
       for (const item of input.items) {
         if (item.assemblyMode) continue;
-        if (item.isFreeForm || !item.productVariantId) continue;
+        if (item.isFreeForm) continue;
+        if (!item.productVariantId && !item.simpleProductId) continue;
         await tx.inventoryMovement.create({
           data: {
-            productVariantId: item.productVariantId,
+            productVariantId: item.productVariantId ?? null,
+            simpleProductId: item.simpleProductId ?? null,
             branchId,
             userId,
             type: "SALE",
