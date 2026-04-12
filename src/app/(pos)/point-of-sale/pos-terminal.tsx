@@ -1131,7 +1131,7 @@ export default function PosTerminal({
                       marginBottom: 8,
                     }}
                   >
-                    1. SYSTEM VOLTAGE
+                    1. Voltaje del sistema
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {voltajeOptions.map((opt) => {
@@ -1277,7 +1277,7 @@ export default function PosTerminal({
                       fontFamily: "var(--font-body)",
                     }}
                   >
-                    2. FRAME COLOR
+                    2. Color del cuadro
                   </p>
                   <div className="flex flex-wrap" style={{ gap: 8 }}>
                     {colorOptions.length > 0
@@ -1474,7 +1474,7 @@ export default function PosTerminal({
                           marginBottom: 8,
                         }}
                       >
-                        4. BATTERY SERIALS (
+                        4. Series de baterías (
                         {
                           batterySerialInputs.filter(
                             (_, i) => batteryStatuses[i] === "valid",
