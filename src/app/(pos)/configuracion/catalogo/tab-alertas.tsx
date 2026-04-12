@@ -132,7 +132,9 @@ export function TabAlertas({
               )}
               {alerts.map((a) => {
                 const sev = severity(a);
-                const productId = a.variant?.id ?? a.simple?.id ?? "";
+                const recepcionHref = a.variant?.id
+                  ? `/inventario/recepciones/nuevo?variantId=${a.variant.id}`
+                  : `/inventario/recepciones/nuevo?simpleProductId=${a.simple!.id}`;
                 const label = a.variant
                   ? `${a.variant.modelo} · ${a.variant.color} · ${a.variant.voltaje}`
                   : a.simple?.nombre ?? "—";
@@ -173,7 +175,7 @@ export function TabAlertas({
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Link
-                        href={`/inventario/recepciones/nuevo?productId=${productId}`}
+                        href={recepcionHref}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs"
                         style={{ background: "var(--p)", color: "#ffffff" }}
                       >

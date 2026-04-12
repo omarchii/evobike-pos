@@ -54,7 +54,7 @@ const routes: RouteGroup[] = [
     { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
     { label: "Montaje", icon: Cog, href: "/assembly" },
-    { label: "Inventario", icon: Package, href: "/inventory" },
+    { label: "Inventario", icon: Package, href: "/inventario" },
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },

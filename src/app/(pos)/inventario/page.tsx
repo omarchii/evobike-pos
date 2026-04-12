@@ -51,7 +51,7 @@ export default async function InventoryPage() {
                     <Button variant="outline" className="text-slate-600">
                         <ArrowRightLeft className="h-4 w-4 mr-2" /> Traslados
                     </Button>
-                    <Link href="/inventory/receipts">
+                    <Link href="/inventario/recepciones/nuevo">
                         <Button className="bg-emerald-600 hover:bg-emerald-700">
                             <PackagePlus className="h-4 w-4 mr-2" /> Ingresar Mercancía
                         </Button>
