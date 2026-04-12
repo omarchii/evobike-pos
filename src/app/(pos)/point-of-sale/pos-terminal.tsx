@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import CustomerSelectorModal, { type CustomerOption } from "./customer-selector-modal";
 import { VinSelectorDialog, type CustomerBikeOption } from "./vin-selector-dialog";
 import { VoltageChangeDialog, type VoltajeOptionForDialog } from "./voltage-change-dialog";
+import { FreeFormDialog } from "./free-form-dialog";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,8 @@ interface CartItem {
   voltageChange?: { targetVoltajeId: string; targetVoltajeLabel: string };  // 4-D
   batterySerials?: string[];
   assemblyMode?: boolean;
+  isFreeForm?: boolean;  // P3.5: línea libre (descripción + precio manual)
+  description?: string;  // P3.5: texto del concepto libre
 }
 
 type BatteryStatus = "idle" | "valid" | "invalid" | "checking";
@@ -374,6 +377,7 @@ export default function PosTerminal({
   // ── Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [voltageChangeTargetIdx, setVoltageChangeTargetIdx] = useState<number | null>(null);
+  const [freeFormOpen, setFreeFormOpen] = useState(false);
 
   // ── Discount state
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -715,10 +719,13 @@ export default function PosTerminal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: cart.map((ci) => ({
-            productVariantId: ci.variantId,
+            productVariantId: ci.isFreeForm ? null : ci.variantId,
             quantity: ci.quantity,
             price: ci.price,
-            name: `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
+            name: ci.isFreeForm
+              ? (ci.description ?? "Concepto libre")
+              : `${ci.modeloNombre} ${ci.colorNombre} ${ci.voltajeLabel}`,
+            isFreeForm: ci.isFreeForm,
             isSerialized: ci.isSerialized,
             serialNumber: ci.serialNumber,
             customerBikeId: ci.customerBikeId,
@@ -1564,11 +1571,29 @@ export default function PosTerminal({
             {/* ── Cart items ──────────────────────────────────────────────── */}
             {cart.length === 0 && !selectedModelo && (
               <div
-                className="flex flex-col items-center justify-center py-8 gap-2"
+                className="flex flex-col items-center justify-center py-8 gap-3"
                 style={{ color: "var(--on-surf-var)" }}
               >
                 <ShoppingBag className="w-8 h-8 opacity-20" />
                 <p className="text-[11px]">Selecciona un producto</p>
+                <button
+                  onClick={() => setFreeFormOpen(true)}
+                  className="flex items-center gap-1.5"
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    background: "transparent",
+                    border: "1.5px solid var(--p-mid)",
+                    color: "var(--p)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus className="w-3 h-3" />
+                  Agregar concepto libre
+                </button>
               </div>
             )}
 
@@ -1586,6 +1611,28 @@ export default function PosTerminal({
                 >
                   ARTÍCULOS ({cart.length})
                 </p>
+                {!selectedModelo && (
+                  <div style={{ padding: "0 12px 6px" }}>
+                    <button
+                      onClick={() => setFreeFormOpen(true)}
+                      className="w-full flex items-center justify-center gap-1.5"
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        background: "transparent",
+                        border: "1.5px dashed var(--outline-var)",
+                        color: "var(--on-surf-var)",
+                        fontFamily: "var(--font-body)",
+                        fontSize: 11,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Plus className="w-3 h-3" />
+                      Agregar concepto libre
+                    </button>
+                  </div>
+                )}
                 {cart.map((item, idx) => (
                   <div
                     key={`${item.variantId}-${idx}`}
@@ -1603,14 +1650,27 @@ export default function PosTerminal({
                           color: "var(--on-surf)",
                         }}
                       >
-                        {item.modeloNombre}
+                        {item.isFreeForm ? (item.description ?? "Concepto libre") : item.modeloNombre}
                       </p>
-                      <p
-                        className="text-[11px] mt-0.5"
-                        style={{ color: "var(--on-surf-var)" }}
-                      >
-                        {item.colorNombre} / {item.voltajeLabel}
-                      </p>
+                      {item.isFreeForm ? (
+                        <p
+                          className="text-[10px] mt-0.5 font-semibold"
+                          style={{
+                            color: "var(--on-surf-var)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Concepto libre
+                        </p>
+                      ) : (
+                        <p
+                          className="text-[11px] mt-0.5"
+                          style={{ color: "var(--on-surf-var)" }}
+                        >
+                          {item.colorNombre} / {item.voltajeLabel}
+                        </p>
+                      )}
                       {item.serialNumber && (
                         <p
                           className="text-[10px] font-mono mt-0.5"
@@ -1975,6 +2035,30 @@ export default function PosTerminal({
                     }}
                   />
                 )}
+
+                {/* Free-form line dialog (P3.5) */}
+                <FreeFormDialog
+                  open={freeFormOpen}
+                  onOpenChange={setFreeFormOpen}
+                  onAdd={({ description, price, quantity }) => {
+                    setCart((prev) => [
+                      ...prev,
+                      {
+                        variantId: `freeform-${Date.now()}-${prev.length}`,
+                        modeloId: "",
+                        modeloNombre: description,
+                        colorNombre: "",
+                        voltajeLabel: "",
+                        sku: "",
+                        price,
+                        quantity,
+                        isSerialized: false,
+                        isFreeForm: true,
+                        description,
+                      },
+                    ]);
+                  }}
+                />
 
                 {/* Layaway toggle */}
                 <div className="flex items-center justify-between">

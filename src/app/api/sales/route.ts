@@ -16,7 +16,7 @@ const paymentMethodSchema = z.object({
 });
 
 const saleItemSchema = z.object({
-  productVariantId: z.string().min(1),
+  productVariantId: z.string().nullable().optional(),
   quantity: z.number().int().positive(),
   price: z.number().nonnegative(),
   name: z.string(),
@@ -26,6 +26,9 @@ const saleItemSchema = z.object({
   voltageChange: z.object({ targetVoltajeId: z.string() }).optional(),  // 4-D: pre-sale voltage change
   batterySerials: z.array(z.string()).optional(),
   assemblyMode: z.boolean().optional(),
+  isFreeForm: z.boolean().optional(),
+}).refine((v) => v.isFreeForm || !!v.productVariantId, {
+  message: "productVariantId requerido para líneas no free-form",
 });
 
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
@@ -331,6 +334,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // A. Verify and decrease stock
       for (const item of input.items) {
         if (item.assemblyMode) continue;
+        if (item.isFreeForm || !item.productVariantId) continue;
 
         const stock = await tx.stock.findUnique({
           where: {
@@ -439,7 +443,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           internalNote: finalNote || null,
           items: {
             create: input.items.map((item) => ({
-              productVariantId: item.productVariantId,
+              productVariantId: item.productVariantId ?? null,
+              description: item.isFreeForm ? item.name : null,
+              isFreeForm: !!item.isFreeForm,
               quantity: item.quantity,
               price: item.price,
             })),
@@ -447,9 +453,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
       });
 
-      // D. Inventory movements (skip assembly-mode items)
+      // D. Inventory movements (skip assembly-mode and free-form items)
       for (const item of input.items) {
         if (item.assemblyMode) continue;
+        if (item.isFreeForm || !item.productVariantId) continue;
         await tx.inventoryMovement.create({
           data: {
             productVariantId: item.productVariantId,
@@ -602,7 +609,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (!input.isLayaway) {
         await generateCommissions(tx, sale.id, userId, branchId,
           input.items.map((it) => ({
-            productVariantId: it.productVariantId,
+            productVariantId: it.productVariantId ?? null,
+            isFreeForm: it.isFreeForm,
             quantity: it.quantity,
             price: it.price,
             discount: 0,
