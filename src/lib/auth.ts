@@ -60,6 +60,10 @@ export const authOptions: AuthOptions = {
                     throw new Error("Usuario no encontrado");
                 }
 
+                if (user.isActive === false) {
+                    throw new Error("Usuario desactivado");
+                }
+
                 // Compare hashed password
                 const isPasswordValid = bcrypt.compareSync(credentials.password, user.password);
 

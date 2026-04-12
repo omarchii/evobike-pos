@@ -1,0 +1,18 @@
+-- AlterTable
+ALTER TABLE "Branch" ADD COLUMN     "city" TEXT,
+ADD COLUMN     "colonia" TEXT,
+ADD COLUMN     "email" TEXT,
+ADD COLUMN     "extNum" TEXT,
+ADD COLUMN     "intNum" TEXT,
+ADD COLUMN     "phone" TEXT,
+ADD COLUMN     "razonSocial" TEXT,
+ADD COLUMN     "regimenFiscal" TEXT,
+ADD COLUMN     "rfc" TEXT,
+ADD COLUMN     "sealImageUrl" TEXT,
+ADD COLUMN     "state" TEXT,
+ADD COLUMN     "street" TEXT,
+ADD COLUMN     "terminosCotizacion" TEXT,
+ADD COLUMN     "terminosPedido" TEXT,
+ADD COLUMN     "terminosPoliza" TEXT,
+ADD COLUMN     "website" TEXT,
+ADD COLUMN     "zip" TEXT;

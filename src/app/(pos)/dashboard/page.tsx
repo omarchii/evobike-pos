@@ -566,12 +566,14 @@ export default async function DashboardPage({
                 horasRestantes: Math.max(1, Math.ceil((q.validUntil.getTime() - now.getTime()) / 3600000)),
                 customerName: q.customer?.name ?? q.anonymousCustomerName ?? null,
             })),
-            stockCritico: stockCriticoPrisma.map((s) => ({
-                productVariantId: s.productVariantId,
-                productName: `${s.productVariant.modelo.nombre} ${s.productVariant.color.nombre} ${s.productVariant.voltaje.label}`,
-                sku: s.productVariant.sku,
-                quantity: s.quantity,
-            })),
+            stockCritico: stockCriticoPrisma
+                .filter((s) => s.productVariantId !== null && s.productVariant !== null)
+                .map((s) => ({
+                    productVariantId: s.productVariantId!,
+                    productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,
+                    sku: s.productVariant!.sku,
+                    quantity: s.quantity,
+                })),
             reensamblesPendientes: reensamblesPendientesPrisma.map((a) => ({
                 id: a.id,
                 productName: a.productVariant
@@ -1077,12 +1079,14 @@ export default async function DashboardPage({
                 folio: s.folio,
                 customerName: s.customer?.name ?? null,
             })),
-            stockCritico: techStockPrisma.map((s) => ({
-                productVariantId: s.productVariantId,
-                productName: `${s.productVariant.modelo.nombre} ${s.productVariant.color.nombre} ${s.productVariant.voltaje.label}`,
-                sku: s.productVariant.sku,
-                quantity: s.quantity,
-            })),
+            stockCritico: techStockPrisma
+                .filter((s) => s.productVariantId !== null && s.productVariant !== null)
+                .map((s) => ({
+                    productVariantId: s.productVariantId!,
+                    productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,
+                    sku: s.productVariant!.sku,
+                    quantity: s.quantity,
+                })),
             reensamblesPendientes: techReensamblesPrisma.map((a) => ({
                 id: a.id,
                 productName: a.productVariant

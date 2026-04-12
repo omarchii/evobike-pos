@@ -67,7 +67,7 @@ const routes: RouteGroup[] = [
             { label: "Comisiones", href: "/reportes/comisiones" },
         ],
     },
-    { label: "Configuración", icon: Settings, href: "/settings" },
+    { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
 ];
 
 const SUB_ICONS: Record<string, React.ElementType> = {

@@ -32,23 +32,22 @@ export async function PATCH(
     );
   }
 
-  const branchId = user.branchId;
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Sin sucursal asignada" },
-      { status: 400 },
-    );
-  }
-
   const { id } = await params;
 
   const rule = await prisma.commissionRule.findUnique({ where: { id } });
-  if (!rule || rule.branchId !== branchId) {
+  if (!rule) {
     return NextResponse.json(
       { success: false, error: "Regla no encontrada" },
       { status: 404 },
     );
   }
+  if (user.role !== "ADMIN" && rule.branchId !== user.branchId) {
+    return NextResponse.json(
+      { success: false, error: "No autorizado" },
+      { status: 403 },
+    );
+  }
+  const branchId = rule.branchId;
 
   let body: unknown;
   try {
@@ -137,23 +136,22 @@ export async function DELETE(
     );
   }
 
-  const branchId = user.branchId;
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Sin sucursal asignada" },
-      { status: 400 },
-    );
-  }
-
   const { id } = await params;
 
   const rule = await prisma.commissionRule.findUnique({ where: { id } });
-  if (!rule || rule.branchId !== branchId) {
+  if (!rule) {
     return NextResponse.json(
       { success: false, error: "Regla no encontrada" },
       { status: 404 },
     );
   }
+  if (user.role !== "ADMIN" && rule.branchId !== user.branchId) {
+    return NextResponse.json(
+      { success: false, error: "No autorizado" },
+      { status: 403 },
+    );
+  }
+  const branchId = rule.branchId;
 
   await prisma.commissionRule.update({
     where: { id },

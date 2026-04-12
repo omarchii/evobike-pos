@@ -23,20 +23,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const branchId = user.branchId;
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Sin sucursal asignada" },
-      { status: 400 },
-    );
-  }
-
   const { searchParams } = req.nextUrl;
   const includeInactive = searchParams.get("includeInactive") === "true";
+  const queryBranchId = searchParams.get("branchId");
+
+  let branchFilter: { branchId: string } | Record<string, never>;
+  if (user.role === "ADMIN") {
+    branchFilter = queryBranchId ? { branchId: queryBranchId } : {};
+  } else {
+    if (!user.branchId) {
+      return NextResponse.json(
+        { success: false, error: "Sin sucursal asignada" },
+        { status: 400 },
+      );
+    }
+    branchFilter = { branchId: user.branchId };
+  }
 
   const rules = await prisma.commissionRule.findMany({
     where: {
-      branchId,
+      ...branchFilter,
       ...(includeInactive ? {} : { isActive: true }),
     },
     include: {
@@ -67,6 +73,7 @@ const createSchema = z.object({
   commissionType: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]),
   value: z.number().positive("El valor debe ser positivo"),
   modeloId: z.string().uuid().nullable(),
+  branchId: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -77,14 +84,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
       { status: 403 },
-    );
-  }
-
-  const branchId = user.branchId;
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Sin sucursal asignada" },
-      { status: 400 },
     );
   }
 
@@ -107,6 +106,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { role, commissionType, value, modeloId } = parsed.data;
+
+  const branchId =
+    user.role === "ADMIN"
+      ? parsed.data.branchId ?? user.branchId
+      : user.branchId;
+
+  if (!branchId) {
+    return NextResponse.json(
+      { success: false, error: "Sucursal requerida" },
+      { status: 400 },
+    );
+  }
+
+  if (user.role === "ADMIN" && parsed.data.branchId) {
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!branch) {
+      return NextResponse.json(
+        { success: false, error: "Sucursal no encontrada" },
+        { status: 404 },
+      );
+    }
+  }
 
   // Check for duplicate active rule (same role + modelo + branch)
   const existing = await prisma.commissionRule.findFirst({

@@ -270,18 +270,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       prisma.batteryLot.count({ where: branchFilter }),
     ]);
 
-    const data = lots.map((lot) => ({
-      id: lot.id,
-      supplier: lot.supplier,
-      reference: lot.reference,
-      receivedAt: lot.receivedAt.toISOString(),
-      productVariantSku: lot.productVariant.sku,
-      batteryTypeName: lot.productVariant.modelo.nombre,
-      registeredBy: lot.user.name,
-      totalBatteries: lot._count.batteries,
-      inStock: lot.batteries.length,
-      installed: lot._count.batteries - lot.batteries.length,
-    }));
+    const data = lots
+      .filter((lot) => lot.productVariant !== null)
+      .map((lot) => ({
+        id: lot.id,
+        supplier: lot.supplier,
+        reference: lot.reference,
+        receivedAt: lot.receivedAt.toISOString(),
+        productVariantSku: lot.productVariant!.sku,
+        batteryTypeName: lot.productVariant!.modelo.nombre,
+        registeredBy: lot.user.name,
+        totalBatteries: lot._count.batteries,
+        inStock: lot.batteries.length,
+        installed: lot._count.batteries - lot.batteries.length,
+      }));
 
     return NextResponse.json({
       success: true,

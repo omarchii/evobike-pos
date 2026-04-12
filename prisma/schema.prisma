@@ -14,6 +14,7 @@ model User {
   email             String                @unique
   password          String
   role              String                @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
+  isActive          Boolean               @default(true)
   branchId          String?
   branch            Branch?               @relation(fields: [branchId], references: [id])
   sales             Sale[]
@@ -35,7 +36,24 @@ model Branch {
   id                        String                @id @default(uuid())
   code                      String                @unique // "LEO", "AV135"
   name                      String
-  address                   String?
+  address                   String?               // legacy — se conserva; nuevos campos desglosados abajo
+  rfc                       String?
+  razonSocial               String?
+  regimenFiscal             String?
+  street                    String?
+  extNum                    String?
+  intNum                    String?
+  colonia                   String?
+  city                      String?
+  state                     String?
+  zip                       String?
+  phone                     String?
+  email                     String?
+  website                   String?
+  sealImageUrl              String?
+  terminosCotizacion        String?               @db.Text
+  terminosPedido            String?               @db.Text
+  terminosPoliza            String?               @db.Text
   lastSaleFolioNumber       Int                   @default(0)
   lastQuotationFolioNumber  Int                   @default(0)
   users                     User[]
@@ -56,14 +74,25 @@ model Branch {
 }
 
 // === CATALOG & INVENTORY ===
+enum ModeloCategoria {
+  BICICLETA
+  TRICICLO
+  SCOOTER
+  JUGUETE
+  CARGA
+}
+
 model Modelo {
-  id           String   @id @default(uuid())
-  nombre       String   @unique
+  id           String          @id @default(uuid())
+  nombre       String          @unique
   descripcion  String?
-  requiere_vin Boolean  @default(true)
+  requiere_vin Boolean         @default(true)
   imageUrl     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  categoria    ModeloCategoria @default(BICICLETA)
+  esBateria    Boolean         @default(false)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   coloresDisponibles ModeloColor[]
   configuraciones    ProductVariant[]
@@ -73,18 +102,20 @@ model Modelo {
 }
 
 model Color {
-  id     String @id @default(uuid())
-  nombre String @unique
+  id        String  @id @default(uuid())
+  nombre    String  @unique
   isGeneric Boolean @default(false)
+  isActive  Boolean @default(true)
 
   modelos         ModeloColor[]
   configuraciones ProductVariant[]
 }
 
 model Voltaje {
-  id    String @id @default(uuid())
-  valor Int    @unique
-  label String
+  id       String  @id @default(uuid())
+  valor    Int     @unique
+  label    String
+  isActive Boolean @default(true)
 
   configuraciones ProductVariant[]
 
@@ -110,7 +141,10 @@ model ProductVariant {
   costo                        Decimal  @db.Decimal(10, 2)
   precioDistribuidor           Decimal? @db.Decimal(10, 2)
   precioDistribuidorConfirmado Boolean  @default(false)
+  stockMinimo                  Int      @default(0)
+  stockMaximo                  Int      @default(0)
   imageUrl   String?
+  isActive   Boolean @default(true)
 
   modelo  Modelo  @relation(fields: [modelo_id], references: [id])
   color   Color   @relation(fields: [color_id], references: [id])
@@ -132,14 +166,19 @@ model ProductVariant {
 }
 
 model Stock {
-  id               String         @id @default(uuid())
-  productVariantId String         @map("productId")
+  id               String          @id @default(uuid())
+  productVariantId String?         @map("productId")
+  simpleProductId  String?
   branchId         String
-  quantity         Int            @default(0)
-  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
-  branch           Branch         @relation(fields: [branchId], references: [id])
+  quantity         Int             @default(0)
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct    SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
+  branch           Branch          @relation(fields: [branchId], references: [id])
 
+  // Polimorfismo: exactamente uno de (productVariantId, simpleProductId) por fila (CHECK en SQL).
+  // Postgres trata NULL como distinto en UNIQUE, así los dos @@unique coexisten sin colisión.
   @@unique([productVariantId, branchId])
+  @@unique([simpleProductId, branchId])
 }
 
 enum MovementType {
@@ -153,15 +192,17 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id               String         @id @default(uuid())
-  productVariantId String         @map("productId")
+  id               String          @id @default(uuid())
+  productVariantId String?         @map("productId")
+  simpleProductId  String?
   branchId         String
   quantity         Int
   type             MovementType
   referenceId      String?
   userId           String
-  createdAt        DateTime       @default(now())
-  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  createdAt        DateTime        @default(now())
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct    SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
 }
 
 // === SALES ===
@@ -217,6 +258,7 @@ model SaleItem {
   id               String          @id @default(uuid())
   saleId           String
   productVariantId String?         @map("productId")  // nullable: líneas libres (cotización → venta)
+  simpleProductId  String?
   description      String?         // snapshot del nombre del producto o descripción libre
   isFreeForm       Boolean         @default(false)     // true = línea libre sin producto del catálogo
   quantity         Int
@@ -224,6 +266,7 @@ model SaleItem {
   discount         Decimal         @default(0) @db.Decimal(10, 2)
   sale             Sale            @relation(fields: [saleId], references: [id])
   productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct    SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
   batteryLots      BatteryLot[]
 }
 
@@ -367,6 +410,7 @@ model ServiceOrderItem {
   id               String          @id @default(uuid())
   serviceOrderId   String
   productVariantId String?         @map("productId")
+  simpleProductId  String?
   serviceCatalogId String?
   description      String
   quantity         Int             @default(1)
@@ -375,6 +419,7 @@ model ServiceOrderItem {
   inventoryMovementId String? @unique
   serviceOrder   ServiceOrder    @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct  SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
   serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
 }
 
@@ -489,7 +534,8 @@ model BatteryConfiguration {
 
 model BatteryLot {
   id               String   @id @default(cuid())
-  productVariantId String   @map("productId")
+  productVariantId String?  @map("productId")
+  simpleProductId  String?
   branchId         String
   supplier         String?
   reference        String?
@@ -497,10 +543,11 @@ model BatteryLot {
   userId           String
   saleItemId       String?
 
-  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
-  branch         Branch         @relation(fields: [branchId], references: [id])
-  user           User           @relation(fields: [userId], references: [id])
-  saleItem       SaleItem?      @relation(fields: [saleItemId], references: [id])
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct  SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  saleItem       SaleItem?       @relation(fields: [saleItemId], references: [id])
   batteries      Battery[]
 }
 
@@ -652,4 +699,42 @@ model QuotationItem {
 
   @@index([quotationId])
   @@map("cotizacion_items")
+}
+
+// === SIMPLE PRODUCTS (accesorios, cargadores, refacciones, baterías standalone) ===
+// Nota: Stock, InventoryMovement y BatteryLot son polimórficos (productVariantId XOR simpleProductId).
+// Los CHECK constraints y los índices únicos parciales viven en el SQL de la migración, no en Prisma.
+// Ver AGENTS.md → Decisiones arquitectónicas clave.
+
+enum SimpleProductCategoria {
+  ACCESORIO
+  CARGADOR
+  REFACCION
+  BATERIA_STANDALONE
+}
+
+model SimpleProduct {
+  id               String                 @id @default(cuid())
+  codigo           String                 @unique
+  nombre           String
+  descripcion      String?
+  categoria        SimpleProductCategoria
+  modeloAplicable  String?                // null = GLOBAL. Helper de normalización pendiente en P3.
+  precioPublico    Decimal                @db.Decimal(10, 2)
+  precioMayorista  Decimal                @db.Decimal(10, 2)
+  stockMinimo      Int                    @default(0)
+  stockMaximo      Int                    @default(0)
+  imageUrl         String?
+  isActive         Boolean                @default(true)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  stocks             Stock[]
+  inventoryMovements InventoryMovement[]
+  batteryLots        BatteryLot[]
+  saleItems          SaleItem[]
+  serviceOrderItems  ServiceOrderItem[]
+
+  @@index([categoria, isActive])
+  @@index([modeloAplicable])
 }

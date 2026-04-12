@@ -1,24 +1,40 @@
-Modelo Base,Nombre,SKU,Color,Voltaje,Precio,Costo,Stock LEO,Stock AV135,Requiere VIN
-,CANDADO,CANDADO,,,350,180,0,0,FALSO
-,JUEGO DE CANDADOS,JUEGO-DE-CANDADOS,,,224,110,0,0,FALSO
-,SOPORTE PARA TELEFONO MOVIL,SOPORTE-PARA-TELEFONO-MOVIL,,,150,80,0,0,FALSO
-,SILLA SENCILLA,SILLA-SENCILLA,,,550,350,0,0,FALSO
-,SILLA PREMIUM,SILLA-PREMIUM,,,650,420,0,0,FALSO
-,CASCO CICLISTA,CASCO-CICLISTA,,,350,200,0,0,FALSO
-,CASCO ABIERTO,CASCO-ABIERTO,,,450,250,0,0,FALSO
-IMPERMEABLE COMPLETO,IMPERMEABLE COMPLETO / ROJO,IMPERMEABLE-COMPLETO-ROJO,ROJO,,250,120,0,0,FALSO
-IMPERMEABLE COMPLETO,IMPERMEABLE COMPLETO / AZUL,IMPERMEABLE-COMPLETO-AZUL,AZUL,,250,120,0,0,FALSO
-,IMPERMEABLE PEQUEÑO,IMPERMEABLE-PEQUEÑO,,,150,80,0,0,FALSO
-,CAJA (CAJUELA),CAJA-(CAJUELA),,,1500,1200,0,0,FALSO
-,Soporte de celular,SOPORTE-DE-CELULAR,,,200,172.41,0,0,FALSO
-,TOLDO SENCILLO,TOLDO-SENCILLO,,,480,280,0,0,FALSO
-,Cubrepolvo,CUBREPOLVO,,,350,200,0,0,FALSO
-,SALPICADERA TRASERA MODELO ZEUS,SALPICADERA-TRASERA-MODELO-ZEUS,,,252,176,0,0,FALSO
-,CASCO PARA NIÑO,CASCO-PARA-NIÑO,,,300,200,0,0,FALSO
-,TOLDO RIGIDO FAMILY / FAMILY Q,TOLDO-RIGIDO-FAMILY-/-FAMILY-Q,,,5200,4000,0,0,FALSO
-,CUBRE POLVO,CUBRE-POLVO,,,350,200,0,0,FALSO
-,CUBRE POLVO,CUBRE-POLVO-1,,,350,200,0,0,FALSO
-,CORTINAS GOLF/GOLF PLUS,CORTINAS-GOLF/GOLF-PLUS,,,1508,1300,0,0,FALSO
-,TOLDO RIGIDO FAMILY PLUS / FAMILY Q PLUS,TOLDO-RIGIDO-FAMILY-PLUS-/-FAMILY-Q-PLUS,,,7700,6000,0,0,FALSO
-,CORTINA DE TOLDO FAMILY Q / FAMILY Q PLUS,CORTINA-DE-TOLDO-FAMILY-Q-/-FAMILY-Q-PLUS,,,1200,800,0,0,FALSO
-,BOLSA PARA SCOOTER,BOLSA-PARA-SCOOTER,,,300,170,0,0,FALSO
+codigo,nombre,categoria,modelo_aplicable,precio_publico,precio_distribuidor,stock_minimo,stock_maximo,descripcion
+ACC-001,Porta Celular,ACCESORIO,GLOBAL,120,50,3,15,Porta celulares pequeño adaptable para cualquier modelo de bicicleta y/o scooter eléctrico
+ACC-002,Bolsa para Scooter,ACCESORIO,GLOBAL,250,170,3,15,Mini mochila ajustada y adaptable para cualquier scooter de material plástico reforzable
+ACC-003,Silla Sencilla,ACCESORIO,GLOBAL,500,350,2,10,Asiento de bebé color negro con rojo; adaptable para menores de 3 años con respaldo y agarraderas
+ACC-004,Silla Premium,ACCESORIO,GLOBAL,600,420,2,10,Asiento de bebé color café con beige; adaptable para menores de 3 años con respaldo y agarraderas material plástico duro
+ACC-005,Cortina de Toldo Family / Family Q,ACCESORIO,FAMILY,1050,800,1,5,Cortinas laterales de plástico cristal complemento de toldo rígido
+ACC-006,Cortina de Toldo Golf / Golf Plus,ACCESORIO,GOLF,1300,1000,1,5,Cortinas laterales de plástico cristal complemento de toldo rígido
+ACC-007,Toldo Rígido Family / Family Q,ACCESORIO,FAMILY,5000,4000,1,5,Toldo rígido grande de plástico con parabrisas de cristal para triciclos Evobike
+ACC-008,Toldo Rígido Family Plus / Family Q Plus,ACCESORIO,FAMILY PLUS,7500,6000,1,5,Toldo rígido grande de plástico con parabrisas de cristal para triciclos Evobike
+ACC-009,Toldo Sencillo,ACCESORIO,GLOBAL,400,280,2,10,Toldo básico de plástico cristal adaptable para cualquier bicicleta y/o triciclo eléctrico
+ACC-010,Casco Modelo 606 / 618,ACCESORIO,GLOBAL,380,250,5,20,Casco 3/4 con visor retraíble para adulto. Amplia variedad de modelos y colores
+ACC-011,Rompevientos,ACCESORIO,GLOBAL,380,250,3,15,Rompe vientos de tela resistente y contra agua doble capa y dos colores distintos
+ACC-012,Funda Protectora,ACCESORIO,GLOBAL,300,200,3,15,Funda protectora de plástico para sol y lluvia
+ACC-013,Espejos Beetle,ACCESORIO,BEETLE,400,400,2,10,Espejos retrovisores de color para modelo Beetle
+ACC-014,Retrovisores Universales,ACCESORIO,GLOBAL,200,140,5,20,Espejos genéricos de 35cm de altura aplica para distintos modelos de bicicletas eléctricas
+ACC-015,Retrovisores Cargo / Evotank,ACCESORIO,CARGO,250,175,2,10,Espejos retrovisores para Cargo y Evotank
+ACC-016,Retrovisores Golf / Solara,ACCESORIO,GOLF,270,190,2,10,Espejos retrovisores para triciclos modelo Golf Golf plus y Solara
+ACC-017,Retrovisores Águila Pro,ACCESORIO,AGUILA PRO,350,200,2,10,Espejos retrovisores para modelo Águila Pro
+ACC-018,Logo Mediano,ACCESORIO,GLOBAL,1200,1200,1,5,Logotipo mediano para colocar en local
+ACC-019,Logo Grande,ACCESORIO,GLOBAL,1800,1800,1,5,Logotipo grande para colocar en local
+ACC-020,Uniforme Evobike,ACCESORIO,GLOBAL,500,350,5,20,Playeras oficiales de la marca con el logotipo Evobike
+ACC-021,Banderola,ACCESORIO,GLOBAL,0,400,1,5,Bandera de tela con diseño de Evobike y logotipo altura de 2m. Venta únicamente a distribuidor
+CAR-001,Cargador 48V / 12Ah,CARGADOR,VMPS5,450,315,2,10,Cargador compatible solo para la bicicleta eléctrica del modelo VMP S5
+CAR-002,Cargador 48V / 20Ah,CARGADOR,GLOBAL,480,336,2,10,Cargador compatible para bicicletas eléctricas y triciclos
+CAR-003,Cargador 60V / 20Ah,CARGADOR,GLOBAL,500,350,2,10,Cargador compatible para bicicletas eléctricas y triciclos
+CAR-004,Cargador 72V / 20Ah,CARGADOR,GLOBAL,600,420,2,10,Cargador compatible para bicicletas eléctricas y triciclos
+BAT-001,Batería 12V / 12Ah,BATERIA_STANDALONE,GLOBAL,600,420,3,15,Batería de ácido de plomo compatible solo para bicicletas eléctricas y juguetes eléctricos
+BAT-002,Batería 12V / 25Ah,BATERIA_STANDALONE,GLOBAL,800,560,3,15,Batería de ácido de plomo compatible para todas las bicicletas eléctricas y triciclos excepto Evotank
+BAT-003,Batería 12V / 45Ah,BATERIA_STANDALONE,EVOTANK 160,1500,1050,2,10,Batería de ácido de plomo compatible únicamente para modelo Evotank
+BAT-004,Batería 12V / 52Ah,BATERIA_STANDALONE,EVOTANK 160,1700,1190,2,10,Batería de ácido de plomo compatible únicamente para modelo Evotank
+BAT-005,Batería Scooter M1,BATERIA_STANDALONE,M1,3152,2458,2,8,Batería de litio para scooter M1
+BAT-006,Batería Scooter M2,BATERIA_STANDALONE,M2,4144,2901,2,8,Batería de litio para scooter M2
+BAT-007,Batería Scooter M3,BATERIA_STANDALONE,M3,1816,1271,2,8,Batería de litio para scooter M3
+BAT-008,Batería Scooter M3-B,BATERIA_STANDALONE,M3-B,1816,1271,2,8,Batería de litio para scooter M3-B
+BAT-009,Batería Scooter M4,BATERIA_STANDALONE,M4,2296,1607,2,8,Batería de litio para scooter M4
+BAT-010,Batería Scooter M5,BATERIA_STANDALONE,M5,2680,1876,2,8,Batería de litio para scooter M5
+BAT-011,Batería Scooter S6,BATERIA_STANDALONE,S6,5408,3786,2,8,Batería de litio para scooter S6
+BAT-012,Batería Scooter Evokid,BATERIA_STANDALONE,CROSSKID,700,490,2,8,Batería de litio para scooter Evokid
+REF-001,Fusibles Cilíndricos,REFACCION,GLOBAL,20,15,10,50,Fusible para bicicletas
+REF-002,Fusibles Cargo,REFACCION,CARGO,45,30,5,20,Fusibles para modelos de tres ruedas

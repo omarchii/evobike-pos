@@ -1,10 +1,6 @@
 ## Arquitectura y flujo de datos
 
-- **Migraciones con drift BD-adelantada** 
-— Si `prisma db push` fue usado en algún 
-  momento, el procedimiento de sincronización es: generar SQL con `migrate diff`, 
-  crear el archivo manualmente en `prisma/migrations/`, luego 
-  `prisma migrate resolve --applied <nombre>`. Nunca resetear la BD.
+- **Migraciones con drift BD-adelantada** — Si `prisma db push` fue usado en algún momento, el procedimiento de sincronización es: generar SQL con `migrate diff`, crear el archivo manualmente en `prisma/migrations/`, luego `prisma migrate resolve --applied <nombre>`. Nunca resetear la BD.
 
 **Grupos de rutas:**
 
@@ -52,7 +48,7 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 - **Customer / CustomerBike** — CRM con saldo de crédito y bicicletas por VIN. `CustomerBike` único por `(serialNumber, branchId)`.
 - **VoltageChangeLog** — historial de cambios de voltaje en `CustomerBike`.
 - **Layaway / Pedido** — Sale con status `LAYAWAY` o tipo backorder; pagos parciales. Fusionados en módulo Pedidos (Fase 2G).
-- **CommissionRule / CommissionRecord** — reglas de comisión por rol/modelo y registros generados en cada venta.
+- **CommissionRule / CommissionRecord** — reglas de comisión por rol/modelo/sucursal y registros generados automáticamente en cada venta. `CommissionStatus`: `PENDING → APPROVED → PAID`, más `CANCELLED` cuando la venta origen se cancela.
 - **BatteryConfiguration** — cuántas baterías (y de qué `ProductVariant`) requiere cada combinación `(Modelo, Voltaje)`.
 - **BatteryLot** — lote de recepción de baterías (proveedor, referencia, fecha).
 - **Battery** — unidad individual con serial único. Estados: `IN_STOCK | INSTALLED | DEFECTIVE | WARRANTY_REVIEW`.
@@ -156,6 +152,10 @@ import { prisma } from "../../lib/prisma";
 - **Recepción parcial bidireccional (Fase 2H-D)** — Los flujos `inventory/receipts` (vehículos → Stock + AssemblyOrder PENDING) y `batteries/lots` (baterías → BatteryLot + Battery IN_STOCK) son independientes. Ambos órdenes de llegada están soportados sin sincronización entre recepciones. El montaje vincula ambos al completarse. No se requiere bloqueo explícito: si no hay baterías IN_STOCK, el técnico simplemente no puede completar el montaje.
 - **Separación Pedidos vs. Inventario** — El cobro de anticipos y abonos vive en Pedidos (2G) vía `Sale + CashTransaction`. La recepción de mercancía vive en Inventario vía `inventory/receipts`. No se fusionan (dominios distintos: venta a cliente vs. operación de almacén, cardinalidad N:M entre envíos y pedidos). La disponibilidad de stock para un BACKORDER se resuelve con query de lectura a `Stock` en el Server Component, sin acoplamiento de escritura.
 - **Flujo dual de baterías corregido (Fase 2H-D)** — La creación de un `BatteryLot` DEBE generar `InventoryMovement(PURCHASE_RECEIPT)` y actualizar `Stock` dentro de la misma `$transaction`. Esto corrige la inconsistencia original donde los Battery records existían sin contrapartida contable. Script de sincronización para datos existentes diferido a Fase 6 (no hay datos reales de producción aún).
+- **SimpleProduct polimórfico (Fase P0)** — Accesorios, cargadores, refacciones y baterías standalone viven en `SimpleProduct` (categoría enum, `precioPublico` + `precioMayorista`, `stockMinimo`/`stockMaximo`, `modeloAplicable` como string libre). `Stock`, `InventoryMovement` y `BatteryLot` son polimórficos: ambos FKs (`productVariantId`, `simpleProductId`) son nullable y existe un CHECK constraint en SQL `(productId IS NOT NULL) <> (simpleProductId IS NOT NULL)` para exigir exactamente uno. La unicidad de `Stock` usa dos `@@unique` regulares — Postgres trata `NULL` como distinto, lo que da el efecto deseado sin necesidad de índices únicos parciales. Los CHECK constraints se editan manualmente en el `.sql` de la migración después de `migrate dev --create-only` porque Prisma no los declara. `modeloAplicable` se mantiene como `String?` libre (null = GLOBAL); la normalización y validación cruzada con `Modelo.nombre` se resuelve con un helper pendiente de P3. `ProductVariant` también gana `stockMinimo`/`stockMaximo` para unificar alertas de reposición entre ambos tipos.
+- **Configuración de sucursal (Fase P1-A)** — Los PDFs (P6) consultan `Branch` directamente por `rfc`, `razonSocial`, `regimenFiscal`, dirección desglosada, contacto, `sealImageUrl`, y plantillas `terminosCotizacion/Pedido/Poliza`. Antes de emitir un PDF usar `assertBranchConfiguredForPDF(branchId, tipoDoc)` (`src/lib/branch.ts`). El seed precarga placeholders `CONFIGURAR …` — el guard falla hasta que ADMIN los sobreescriba en `/configuracion/sucursal`. El campo `Branch.address` (legacy) queda y no debe usarse para nueva UI. El sello se guarda en `/public/sellos/{branchId}-{ts}.webp` — procesado con `sharp` (WebP 800×800 máx, 2MB). La integración del guard en endpoints de PDF se posterga a P6.
+- **Módulo de Configuración (Fase P1)** — Hub `/configuracion` (ADMIN + MANAGER) con tarjetas a sub-módulos. Sub-módulos disponibles: `/configuracion/sucursal` (ADMIN — P1-A), `/configuracion/usuarios` (ADMIN — P1-B), `/configuracion/servicios` (ADMIN + MANAGER — P1-C), `/configuracion/comisiones` (redirect a `/reportes/comisiones/reglas` — P1-D). Pendiente P1-E (catálogo de productos). Los usuarios no se eliminan: se desactivan (`User.isActive = false`). El login (`src/lib/auth.ts`) rechaza usuarios con `isActive = false`. ADMIN puede crear/editar comisiones y servicios en cualquier sucursal pasando `branchId` en el payload; MANAGER queda restringido a su sucursal. Un usuario no puede desactivarse a sí mismo.
+- **Código polimórfico: filtrar antes de serializar** — Cualquier serializer que asuma `productVariant` non-null (ej. `assembly/page.tsx`, `dashboard/page.tsx`, `batteries/lots GET`) debe filtrar por `productVariant !== null` y/o por `productVariantId !== null`. A medida que se agregue UI/reportes para `SimpleProduct`, considerar una segunda lista (`simpleProducts`) en vez de forzarla en la misma estructura. Recordatorio: el CHECK de DB garantiza que exactamente uno está poblado, pero TypeScript no lo sabe.
 
 ---
 
@@ -170,7 +170,7 @@ import { prisma } from "../../lib/prisma";
 | 1C | Schema baterías, comisiones, catálogo servicios | ✅ Completo |
 | 2 (parcial) | Módulos de inventario, taller, clientes | ✅ Parcial |
 | 2F | Modales de pago avanzados (múltiples métodos, ATRATO) | ✅ Completo |
-| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ⏳ Pendiente - Lo dejamos para la fase 5|
+| **2F.5** | **Historial de Ventas** (consulta por folio, filtros por fecha/vendedor/método de pago, detalle de venta) | ✅ Completo (cubierto en Fase 5-B) |
 | **2F.6** | **Cliente obligatorio en POS** — modal de selección/creación con campos completos | ✅ Completo |
 | **2G** | **Módulo Pedidos** (Layaway + Backorder fusionados) | ✅ Completo |
 | **2H** | **Módulo de Montaje** — ensamble batería+vehículo, trazabilidad para garantía | ✅ Completo |
@@ -180,8 +180,47 @@ import { prisma } from "../../lib/prisma";
 | **2H-D** | **Vinculación Pedidos ↔ Baterías ↔ Montaje** (BatteryLot.saleItemId, AssemblyOrder.saleId, modal Nuevo Pedido completo, chip Kanban, dialog completar con lotes) | ✅ Completo |
 | 3 | Cotizaciones | ✅ Completo |
 | 4 | Taller completo (cobro de servicios, stock automático al entregar, VIN obligatorio en POS, cambio de voltaje pre-venta, póliza diferida, cancelación con reversión, `/ventas/[id]`) | ✅ Completo |
-| 5 | Reportes y comisiones (incluye desglose COLLECTED vs PENDING en caja) | ⏳ Pendiente |
-| 6 | Cierre / producción (tests, hardening, deploy, config Prisma v7) | ⏳ Pendiente |
+| 5 | Reportes, Historial de Ventas y Comisiones (sub-fases 5-A a 5-G) | ✅ Completo |
+| 5-H | Navegación: agregar item "Reportes" al sidebar con sub-items | ⏳ Pendiente |
+
+### Roadmap post-Fase 5 (detalle en `ROADMAP.md`)
+
+Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar la fuente en `ROADMAP.md`.
+
+| Fase | Descripción | Modelo | Dependencias | Estado |
+|------|-------------|--------|--------------|--------|
+| **P0** | **Arquitectura SimpleProduct** — schema polimórfico (Stock/InventoryMovement/BatteryLot), dual pricing, stockMin/Max, trazabilidad en SaleItem/ServiceOrderItem, baterías standalone unificadas con `BatteryLot/Battery` | Opus | — | ✅ Completo (2026-04-12) |
+| **P1** | **Módulo de Configuración** (ADMIN) | Opus diseño → Sonnet impl | P0 | ✅ Completo (2026-04-12) |
+| P1-A | Datos de sucursal (RFC, dirección, sello, términos por tipo de documento) | | P0 | ✅ Completo (2026-04-12) |
+| P1-B | Gestión de usuarios (CRUD, reset password) | | P0 | ✅ Completo (2026-04-12) |
+| P1-C | Catálogo de servicios del taller (`ServiceCatalog` CRUD) | | P0 | ✅ Completo (2026-04-12) |
+| P1-D | Reglas de comisión (completar UI de Fase 5-D) | | P0 | ✅ Completo (2026-04-12) |
+| P1-E | Catálogo de productos (cascada Modelo→Color→Voltaje→Variant, CRUD SimpleProduct, alertas stock mínimo) | | P0 | ✅ Completo (2026-04-12) |
+| **P2** | **Datos de prueba realistas** — enriquecer `prisma/seed.ts` + carga de CSVs (`accesorios.csv`, `refacciones.csv`) | Sonnet | P0, P1 | ⏳ Pendiente |
+| **P3** | **Fixes y mejoras POS** — labels en español, separar baterías del grid, tabs por categoría, UX cambio de voltaje, sección SimpleProduct en grid, concepto libre, helper de normalización de `modeloAplicable` | Sonnet | P0, P2 | ⏳ Pendiente |
+| **P4** | **Inventario enriquecido** — proveedor, factura URL, precio pagado, forma/estado de pago en `inventory/receipts` | Sonnet | P0 | ⏳ Pendiente |
+| **P5** | **Flujo de autorización** (PIN presencial + remoto con polling) — modelo `AuthorizationRequest` para cancelaciones y descuentos | Opus | — | ⏳ Pendiente |
+| **P6** | **Documentos PDF** (`@react-pdf/renderer`, IVA 16% fijo) | Sonnet | P1-A | ⏳ Pendiente |
+| P6-A | PDF Cotización (formato Alegra) | | P1-A | ⏳ Pendiente |
+| P6-B | PDF Recibo de Pedido / Apartado (timeline de abonos) | | P1-A | ⏳ Pendiente |
+| P6-C | PDF Ticket de venta | | P1-A | ⏳ Pendiente |
+| P6-D | PDF Póliza de garantía (auto-generada desde `warrantyDocReady`) | | P1-A | ⏳ Pendiente |
+| **P7** | **Cotizaciones mejoradas** — rediseño de `QuotationStatus`, términos desde `Branch`, vinculación a perfil del cliente | Sonnet | P6-A | ⏳ Pendiente |
+| **P8** | **Historial de abonos** — timeline visual en `/pedidos/[id]` | Sonnet | — | ⏳ Pendiente |
+| **P9** | **Tesorería** — gastos operativos (`OperationalExpense`), saldos, reportes de ingresos vs. gastos | Sonnet | — | ⏳ Pendiente |
+| **P10** | **Reportes expandidos** | Sonnet | P4 (rentabilidad) | ⏳ Pendiente |
+| P10-A | Ventas por vendedor (completo) | | — | ⏳ Pendiente |
+| P10-B | Estado de cuenta por cliente | | — | ⏳ Pendiente |
+| P10-C | Rentabilidad por producto | | P4 | ⏳ Pendiente |
+| P10-D | Valor de inventario | | P0, P4 | ⏳ Pendiente |
+| P10-E | Movimientos de inventario | | P0 | ⏳ Pendiente |
+| P10-F | Compras al proveedor + cuentas por pagar | | P4 | ⏳ Pendiente |
+| P10-G | Reporte de stock mínimo | | P0 | ⏳ Pendiente |
+| P10-H | Reporte anual (KPIs por mes, comparativa entre sucursales) | | P4, P9 | ⏳ Pendiente |
+| **P11** | **Seguimiento de mantenimientos** — semáforo de pólizas a 6 meses | Sonnet | — | ⏳ Pendiente |
+| **6** | **Hardening y producción** — tests, rate limiting, security headers, Prisma v7, PgBouncer/Accelerate, deploy, limpieza final, carga de `refacciones_revisar.csv` | Opus | TODO | ⏳ Pendiente |
+
+**Fuente de verdad:** `ROADMAP.md`. Esta tabla es un espejo resumido para navegación rápida; actualizar ambos al cerrar una fase.
 
 ### Reglas del módulo de montaje (2H)
 
@@ -326,6 +365,72 @@ Los campos fueron aplicados vía `db push` antes de crear la migración formal. 
 
 ---
 
+## Fase 5 — Estado completado (Reportes, Historial y Comisiones)
+
+### Cambios de schema (migración `20260411221234_add_cancelled_commission_status`)
+
+- `CommissionStatus` — agregado valor `CANCELLED` (aditivo, no destructivo). Se aplica a registros cuya `Sale` origen fue cancelada.
+
+### Convención de URLs
+
+- `POST /api/sales` — endpoint de **escritura** (inglés, legacy).
+- `GET /api/ventas` — endpoint de **lectura** con filtros y paginación (español, consistente con la URL de UI `/ventas`).
+- Análoga: `/api/comisiones`, `/api/reportes/caja` para módulos nuevos en español.
+
+### Sub-fase 5-B — Historial de Ventas (`/ventas`)
+
+- `GET /api/ventas` — listado con filtros server-side (rango fecha, vendedor, status, método de pago, folio, cliente, sucursal). Paginación cursor-based, 25 items/página.
+- `/ventas/page.tsx` + `sales-history-table.tsx` — Server Component + Client con tabla filtrable. Permisos: SELLER ve solo lo suyo, MANAGER su sucursal, ADMIN todas.
+
+### Sub-fase 5-C — Reportes de Caja (`/reportes/caja`)
+
+- `GET /api/reportes/caja?view=sessions|period` — dos vistas:
+  - **Por turno**: lista de `CashRegisterSession` con desglose efectivo real vs. declarado (diferencia), totales COLLECTED vs PENDING, transacciones individuales expandibles.
+  - **Por período**: agregación de KPIs (Ingresos COLLECTED, Ingresos PENDING, Devoluciones, Gastos, Retiros, Neto Operativo), desglose por método y por día.
+- Cálculo del **efectivo real**: `openingAmt + Σ(CASH PAYMENT_IN) − Σ(CASH REFUND_OUT + EXPENSE_OUT + WITHDRAWAL)`. La diferencia con `closingAmt` se muestra en verde (cero) o rojo (≠0).
+- Permisos: SELLER no accede; MANAGER su sucursal; ADMIN todas con filtro.
+
+### Sub-fase 5-D — CRUD de Reglas de Comisión (`/reportes/comisiones/reglas`)
+
+- `GET / POST /api/comisiones/reglas` y `PATCH / DELETE /api/comisiones/reglas/[id]` (soft-delete vía `isActive=false`).
+- UI con tabla de reglas + modal crear/editar (rol, tipo PERCENTAGE/FIXED_AMOUNT, valor, modelo opcional, sucursal). Solo MANAGER/ADMIN.
+
+### Sub-fase 5-E — Generación automática de comisiones
+
+- Dentro del `$transaction` de `POST /api/sales` y `POST /api/pedidos`: para cada `SaleItem` con `productVariantId`, busca `CommissionRule` aplicable y crea `CommissionRecord(PENDING)`.
+- **Búsqueda de regla**: primero específica (`role + branchId + modeloId`), fallback genérica (`modeloId = null`). Si no hay regla → silencioso, no error.
+- **Cálculo**: `PERCENTAGE` aplica `(price × qty − discount) × value/100`; `FIXED_AMOUNT` usa `value` por línea.
+- Cancelación: dentro del `$transaction` de `POST /api/sales/[id]/cancel`, `updateMany` pone `CommissionRecord.status = CANCELLED` para las del `saleId` que estuvieran PENDING o APPROVED.
+
+### Sub-fase 5-F — Panel de Comisiones (`/reportes/comisiones`)
+
+- `GET /api/comisiones` — listado con filtros (userId, branchId, status, dateRange).
+- `PATCH /api/comisiones/batch` — actualización masiva de status: `{ ids: string[], status: "APPROVED" | "PAID" }`.
+- UI por rol:
+  - **SELLER**: solo sus comisiones, KPIs PENDING/APPROVED/PAID del mes, sin acciones.
+  - **MANAGER**: comisiones del equipo en su sucursal, batch "Aprobar seleccionadas".
+  - **ADMIN**: cross-branch, batch "Aprobar" + "Marcar como pagadas", filtro por sucursal.
+
+### Sub-fase 5-G — Dashboard Gerencial mejorado
+
+- Selector de período en el header (Hoy / Semana / Mes) implementado vía query param `?period=today|week|month`. Default: `today`. El Server Component re-consulta Prisma con el rango.
+- KPIs y comparación dinámicos: label ("INGRESOS HOY" → "INGRESOS ESTA SEMANA") y trend ("vs ayer" → "vs semana pasada" → "vs mes pasado") se adaptan al período.
+- Comparación contra período anterior equivalente (semana pasada misma cantidad de días, mes pasado hasta el mismo día del mes).
+- Nuevas secciones (debajo de las existentes, MANAGER + ADMIN):
+  - **Ventas por Modelo** — top 5 por revenue del período (groupBy en `SaleItem.productVariantId`, agregación por `Modelo.nombre`).
+  - **Ventas por Vendedor** — ranking por revenue (groupBy en `Sale.userId`).
+  - **Flujo de Caja** — cards COBRADO (verde) vs PENDIENTE (amarillo) con link a `/reportes/caja`.
+  - **Comisiones del Equipo** — POR APROBAR vs APROBADAS del período, link a `/reportes/comisiones`.
+
+### Decisiones clave
+
+- Toda la Fase 5 (excepto 5-E) es **solo lectura**: queries de agregación que no tocan flujo transaccional. La 5-E modifica `$transaction` existente de forma append-only — si falla, la venta entera se rollbackea (consistente).
+- No se crearon modelos nuevos. Los modelos `CommissionRule` y `CommissionRecord` ya existían desde Fase 1C.
+- Reportes sin export PDF/Excel — diferido a Fase 6 si se necesita.
+- Sub-fase 5-H (navegación con item "Reportes" en sidebar) **pendiente**.
+
+---
+
 ## Reglas de sesión de trabajo
 
 ### Commits
@@ -368,12 +473,11 @@ node_modules/.bin/next build      # Build completo — incluye type-check + bund
 
 Ambos comandos son equivalentes o superiores a lint para detectar problemas antes de commitear.
 
-## 🎨 Frontend y UI
-- **Sistema de Diseño (EvoFlow):** Para cualquier trabajo de UI, creación de vistas o modificación visual, **es OBLIGATORIO leer el archivo `DESIGN.md`** (allí están las reglas de tipografías, ausencia de bordes sólidos, glassmorphism y tokens de color). Si trabajas en backend, ignora ese archivo.
-- **Componentes Base:** Ubicados en `src/components/ui/` (shadcn/ui). **NUNCA los edites manualmente.**
-- **Estilos:** Tailwind utility-first. Usa `cn()` para clases condicionales. No crees archivos `.css` (usa los tokens EvoFlow de `globals.css`).
-- **Formularios y Alertas:** Obligatorio usar `react-hook-form` + Zod. Obligatorio usar `toast` de `sonner` (Cero `alert()` o `console.log` en producción).
-- **Idioma y Rutas:** Textos visibles al usuario en **español**. Variables/archivos en español. Usa siempre el alias `@/*` para imports.
+## Frontend y UI
+
+> Para cualquier trabajo de UI o modificación visual, **es OBLIGATORIO leer `DESIGN.md`** (tipografías, regla "no-line", glassmorphism, tokens de color en light/dark mode). Si trabajas solo en backend, puedes ignorarlo.
+
+Las reglas operativas (componentes base, formularios, notificaciones, idioma) están en la sección "Reglas de código" arriba.
 
 ---
 
@@ -539,9 +643,5 @@ const SELECT_STYLE: React.CSSProperties = {
 **Por qué funciona `--surf-low`:**
 - Light: `#f0f7f4` (suave tinte verde) sobre modal `~#fafffe` → campo visible y legible.
 - Dark: `#1b1b1b` sobre modal `#2b2b2b` → campo claramente recesado, buen contraste.
-
-
-
-
 
 

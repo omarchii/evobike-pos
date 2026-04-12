@@ -47,16 +47,61 @@ async function main() {
   console.log('🌱 Iniciando seed de evobike-pos2...\n');
 
   // ── 1. Sucursales ────────────────────────────────────────────────────────────
+  const TERMINOS_COTIZACION_DEFAULT = [
+    'Vigencia: esta cotización es válida por 7 días naturales a partir de su fecha de emisión.',
+    'Los precios están expresados en pesos mexicanos (MXN) e incluyen IVA cuando aplique.',
+    'Precios y existencias sujetos a disponibilidad al momento de confirmar el pedido.',
+    'Formas de pago aceptadas: efectivo, tarjeta de débito/crédito, transferencia bancaria y financiamiento (sujeto a aprobación).',
+    'La aceptación de esta cotización implica la aceptación de estos términos.',
+  ].join('\n\n');
+
+  const TERMINOS_PEDIDO_DEFAULT = [
+    'Apartado: el cliente deberá cubrir un anticipo mínimo y pagos parciales según lo acordado. El vehículo permanece resguardado en la sucursal hasta su liquidación total.',
+    'Tiempo de resguardo: 30 días naturales a partir del último abono. Vencido este plazo sin movimiento, el apartado podrá cancelarse y los anticipos se conservarán como saldo a favor para compras posteriores.',
+    'Backorder: los tiempos de entrega son estimados y dependen de la disponibilidad del proveedor. Se notificará al cliente cualquier cambio en la fecha prevista.',
+    'La mercancía se libera únicamente al liquidar el total del pedido.',
+    'Cualquier cancelación por parte del cliente estará sujeta a una penalización equivalente al 10% del anticipo.',
+  ].join('\n\n');
+
+  const TERMINOS_POLIZA_DEFAULT = [
+    'Cobertura: la presente póliza ampara defectos de fabricación del vehículo eléctrico durante el período indicado en el documento de venta.',
+    'Exclusiones: esta garantía no cubre daños por uso indebido, accidentes, modificaciones no autorizadas, falta de mantenimiento, desgaste normal de piezas consumibles (llantas, frenos, luces) ni daños provocados por agentes externos (agua, golpes, robo).',
+    'Mantenimientos obligatorios: el cliente se compromete a realizar los mantenimientos programados en cualquiera de nuestras sucursales autorizadas para conservar la vigencia de esta póliza.',
+    'Proceso de reclamación: presentar el vehículo en la sucursal de venta junto con esta póliza y el comprobante de compra. El diagnóstico será realizado por nuestro taller autorizado.',
+    'La sustitución de baterías bajo garantía está sujeta al análisis del lote y número de serie registrado al momento de la venta.',
+  ].join('\n\n');
+
+  const BRANCH_DEFAULTS = {
+    rfc: 'CONFIGURAR RFC',
+    razonSocial: 'CONFIGURAR RAZÓN SOCIAL',
+    regimenFiscal: 'CONFIGURAR RÉGIMEN FISCAL',
+    phone: 'CONFIGURAR TELÉFONO',
+    email: 'configurar@evobike.mx',
+    terminosCotizacion: TERMINOS_COTIZACION_DEFAULT,
+    terminosPedido: TERMINOS_PEDIDO_DEFAULT,
+    terminosPoliza: TERMINOS_POLIZA_DEFAULT,
+  };
+
   const leoBranch = await prisma.branch.upsert({
     where: { code: 'LEO' },
     update: {},
-    create: { code: 'LEO', name: 'Sucursal Leo', address: 'Cancún, Q.R. Leo' },
+    create: {
+      code: 'LEO',
+      name: 'Sucursal Leo',
+      address: 'Cancún, Q.R. Leo',
+      ...BRANCH_DEFAULTS,
+    },
   });
 
   const av135Branch = await prisma.branch.upsert({
     where: { code: 'AV135' },
     update: {},
-    create: { code: 'AV135', name: 'Sucursal Av 135', address: 'Cancún, Q.R. Av 135' },
+    create: {
+      code: 'AV135',
+      name: 'Sucursal Av 135',
+      address: 'Cancún, Q.R. Av 135',
+      ...BRANCH_DEFAULTS,
+    },
   });
 
   console.log(`✅ Sucursales: ${leoBranch.code}, ${av135Branch.code}`);

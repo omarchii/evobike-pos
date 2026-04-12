@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   ArrowLeft,
 } from "lucide-react";
-import type { RuleRow, ModeloOption } from "./page";
+import type { RuleRow, ModeloOption, BranchOption } from "./page";
 import Link from "next/link";
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -20,7 +20,10 @@ import Link from "next/link";
 interface CommissionRulesProps {
   initialRules: RuleRow[];
   modelos: ModeloOption[];
+  branches: BranchOption[];
   role: string;
+  selectedBranchId: string | null;
+  defaultBranchId: string;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -42,8 +45,12 @@ const ROLE_OPTIONS = [
 export function CommissionRules({
   initialRules,
   modelos,
-  role: _userRole,
+  branches,
+  role: userRole,
+  selectedBranchId,
+  defaultBranchId,
 }: CommissionRulesProps): React.JSX.Element {
+  const isAdmin = userRole === "ADMIN";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rules, setRules] = useState<RuleRow[]>(initialRules);
@@ -57,6 +64,9 @@ export function CommissionRules({
   const [formType, setFormType] = useState<"PERCENTAGE" | "FIXED_AMOUNT">("PERCENTAGE");
   const [formValue, setFormValue] = useState("");
   const [formModeloId, setFormModeloId] = useState<string>("__all__");
+  const [formBranchId, setFormBranchId] = useState<string>(
+    selectedBranchId ?? defaultBranchId,
+  );
 
   function openCreate(): void {
     setEditingRule(null);
@@ -64,6 +74,7 @@ export function CommissionRules({
     setFormType("PERCENTAGE");
     setFormValue("");
     setFormModeloId("__all__");
+    setFormBranchId(selectedBranchId ?? defaultBranchId);
     setError(null);
     setShowModal(true);
   }
@@ -93,6 +104,7 @@ export function CommissionRules({
       commissionType: formType,
       value: val,
       modeloId: formModeloId === "__all__" ? null : formModeloId,
+      ...(isAdmin ? { branchId: formBranchId } : {}),
     };
 
     try {
@@ -183,6 +195,40 @@ export function CommissionRules({
             Configura las comisiones por rol y modelo de vehículo
           </p>
         </div>
+        {isAdmin && (
+          <form
+            action="/reportes/comisiones/reglas"
+            method="get"
+            className="flex items-center gap-2"
+          >
+            <select
+              name="branchId"
+              defaultValue={selectedBranchId ?? ""}
+              className="px-3 py-2 rounded-xl text-sm"
+              style={{
+                background: "var(--surf-high)",
+                color: "var(--on-surf)",
+                border: "none",
+                appearance: "none",
+                WebkitAppearance: "none",
+              }}
+            >
+              <option value="">Todas las sucursales</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code} — {b.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="text-xs font-medium px-3 py-2 rounded-xl"
+              style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
+            >
+              Filtrar
+            </button>
+          </form>
+        )}
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all"
@@ -484,6 +530,33 @@ export function CommissionRules({
                   ))}
                 </select>
               </div>
+
+              {isAdmin && !editingRule && (
+                <div>
+                  <label
+                    className="block text-xs font-medium uppercase tracking-wider mb-1.5"
+                    style={{ color: "var(--on-surf-var)", letterSpacing: "0.05em" }}
+                  >
+                    Sucursal
+                  </label>
+                  <select
+                    value={formBranchId}
+                    onChange={(e) => setFormBranchId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm"
+                    style={{
+                      background: "var(--surf-lowest)",
+                      color: "var(--on-surf)",
+                      border: "1px solid rgba(178,204,192,0.15)",
+                    }}
+                  >
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.code} — {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {error && (
                 <p className="text-xs" style={{ color: "var(--ter)" }}>

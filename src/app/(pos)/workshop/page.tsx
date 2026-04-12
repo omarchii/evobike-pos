@@ -185,6 +185,7 @@ export default async function WorkshopPage() {
             select: { productVariantId: true, quantity: true },
         });
         for (const s of stocks) {
+            if (!s.productVariantId) continue;
             stockMap.set(s.productVariantId, (stockMap.get(s.productVariantId) ?? 0) + s.quantity);
         }
     }

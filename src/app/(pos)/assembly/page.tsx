@@ -125,18 +125,20 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
 
   // ── Serializar ─────────────────────────────────────────────────────────────
 
-  const lots = rawLots.map((l) => ({
-    id: l.id,
-    supplier: l.supplier,
-    reference: l.reference,
-    receivedAt: l.receivedAt.toISOString(),
-    productVariantSku: l.productVariant.sku,
-    batteryTypeName: l.productVariant.modelo.nombre,
-    registeredBy: l.user.name,
-    totalBatteries: l._count.batteries,
-    inStock: l.batteries.length,
-    installed: l._count.batteries - l.batteries.length,
-  }));
+  const lots = rawLots
+    .filter((l) => l.productVariant !== null)
+    .map((l) => ({
+      id: l.id,
+      supplier: l.supplier,
+      reference: l.reference,
+      receivedAt: l.receivedAt.toISOString(),
+      productVariantSku: l.productVariant!.sku,
+      batteryTypeName: l.productVariant!.modelo.nombre,
+      registeredBy: l.user.name,
+      totalBatteries: l._count.batteries,
+      inStock: l.batteries.length,
+      installed: l._count.batteries - l.batteries.length,
+    }));
 
   const variants = batteryVariants.map((v) => ({
     id: v.id,
@@ -197,6 +199,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
   // batteryVariantId → count of IN_STOCK batteries (from rawLots, already filtrado por branch)
   const batteryStockMap = new Map<string, number>();
   for (const lot of rawLots) {
+    if (!lot.productVariantId) continue;
     const cur = batteryStockMap.get(lot.productVariantId) ?? 0;
     batteryStockMap.set(lot.productVariantId, cur + lot.batteries.length);
   }
