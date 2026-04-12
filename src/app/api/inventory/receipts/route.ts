@@ -63,6 +63,100 @@ const receiptSchema = z
     }
   });
 
+const ESTADO_PAGO_VALUES: readonly string[] = ESTADO_PAGO;
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
+  }
+  const { role, branchId } = session.user as unknown as SessionUser;
+
+  if (role !== "ADMIN" && role !== "MANAGER") {
+    return NextResponse.json(
+      { success: false, error: "Solo MANAGER o ADMIN pueden consultar compras al proveedor" },
+      { status: 403 },
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? "20")));
+  const skip = (page - 1) * limit;
+
+  const estadoParam = searchParams.get("estadoPago");
+  const vencDesdeParam = searchParams.get("vencimientoDesde");
+  const vencHastaParam = searchParams.get("vencimientoHasta");
+  const branchParam = searchParams.get("branchId");
+
+  const where: Prisma.PurchaseReceiptWhereInput = {};
+  // ADMIN puede filtrar por cualquier sucursal; el resto queda fijado a la suya.
+  where.branchId = role === "ADMIN" ? (branchParam ?? undefined) : branchId;
+
+  if (estadoParam && ESTADO_PAGO_VALUES.includes(estadoParam)) {
+    where.estadoPago = estadoParam as (typeof ESTADO_PAGO)[number];
+  }
+  if (vencDesdeParam || vencHastaParam) {
+    where.fechaVencimiento = {
+      ...(vencDesdeParam ? { gte: new Date(vencDesdeParam) } : {}),
+      ...(vencHastaParam ? { lte: new Date(vencHastaParam) } : {}),
+    };
+  }
+
+  try {
+    const [rows, total] = await Promise.all([
+      prisma.purchaseReceipt.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          proveedor: true,
+          folioFacturaProveedor: true,
+          facturaUrl: true,
+          formaPagoProveedor: true,
+          estadoPago: true,
+          fechaVencimiento: true,
+          fechaPago: true,
+          totalPagado: true,
+          createdAt: true,
+          branch: { select: { id: true, name: true } },
+          user: { select: { name: true } },
+          _count: { select: { inventoryMovements: true, batteryLots: true } },
+        },
+      }),
+      prisma.purchaseReceipt.count({ where }),
+    ]);
+
+    const data = rows.map((r) => ({
+      id: r.id,
+      proveedor: r.proveedor,
+      folioFacturaProveedor: r.folioFacturaProveedor,
+      facturaUrl: r.facturaUrl,
+      formaPagoProveedor: r.formaPagoProveedor,
+      estadoPago: r.estadoPago,
+      fechaVencimiento: r.fechaVencimiento?.toISOString() ?? null,
+      fechaPago: r.fechaPago?.toISOString() ?? null,
+      totalPagado: r.totalPagado.toString(),
+      createdAt: r.createdAt.toISOString(),
+      branch: r.branch,
+      registeredBy: r.user.name,
+      totalLineas: r._count.inventoryMovements,
+      totalLotes: r._count.batteryLots,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error al listar recepciones";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
