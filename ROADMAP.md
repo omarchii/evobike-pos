@@ -194,11 +194,16 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
   - 4 recepciones realistas adicionales por sucursal: PAGADA/CONTADO, PAGADA/TRANSFERENCIA, PENDIENTE/CONTADO, CREDITO con vencimiento (LEO vencida, AV135 próxima).
   - Idempotente por `findFirst({ proveedor: "Histórico previo a P4", branchId })`.
 
-### P4-B — API Routes (pendiente)
-- `src/app/api/inventory/receipts/route.ts`: aceptar `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `precioUnitarioPagado` por línea. Crear `PurchaseReceipt` + enlazar `InventoryMovement` y (si aplica) `BatteryLot` dentro del mismo `$transaction`.
-- `src/app/api/batteries/lots/route.ts`: aceptar `purchaseReceiptId?` opcional para vincular a una cabecera existente (caso real: misma factura trae bicis + lote de baterías).
-- Endpoint para subir factura (PDF/imagen) → `/public/facturas/{branchId}-{ts}.{ext}`.
-- `PATCH /api/inventory/receipts/[id]/pagar` — pone `estadoPago = PAGADA` y llena `fechaPago`.
+### P4-B — API Routes ✅ (2026-04-12)
+- `POST /api/inventory/receipts` reescrito: Zod con `discriminatedUnion("kind", [variant, simple])`, `totalPagado` calculado server-side (ignora cliente), `superRefine` para reglas cruzadas (CREDITO ⇒ fechaVencimiento; CONTADO+CREDITO inconsistente; PAGADA rechaza fechaVencimiento). `fechaPago` server-side cuando estadoPago=PAGADA. `ProductVariant.costo` y `SimpleProduct.precioMayorista` **no se tocan** (separa costo catálogo del costo histórico en `InventoryMovement.precioUnitarioPagado` — fundamental para rentabilidad en P10-C). P2002 ⇒ 409 español. Guard MANAGER+ADMIN.
+- `POST /api/batteries/lots` acepta `purchaseReceiptId?` opcional. Validación de cabecera (existencia + mismo branch) **dentro** del `$transaction` para evitar TOCTOU.
+- `GET /api/inventory/receipts` — listado paginado con filtros `estadoPago`, `vencimientoDesde`, `vencimientoHasta`, `branchId` (ADMIN). Scoping automático por branch para no-ADMIN. Resuelve cuentas por pagar (P10-F).
+- `GET /api/inventory/receipts/[id]` — detalle con líneas agrupadas: `variantLines`, `simpleLines`, `batteryLots` (filtra nulos respetando AGENTS.md:158).
+- `PATCH /api/inventory/receipts/[id]/pagar` — 409 si ya PAGADA, 404 si no existe, 403 si otra sucursal. `fechaPago = now()`.
+- `POST /api/inventory/receipts/[id]/invoice` y `DELETE` — multipart, mismo patrón que sello de sucursal (P1-A). Imágenes vía `sharp` → WebP (2000px max, q85). PDFs raw. Límites 10MB PDF / 5MB imagen; 413 explícito. Naming: `/public/facturas/{branchId}-{receiptId}-{ts}.{ext}`. Validación de existencia de la recepción ANTES de parsear formData para evitar archivos huérfanos.
+- Cancelación/reversión de recepción: diferida a Fase 6 / P10-E. Mientras tanto, las correcciones se hacen con `InventoryMovement(ADJUSTMENT)` manual.
+- Tests manuales corridos con curl (12/12 pasaron). Tests automatizados ⇒ Fase 6.
+- Micro-migración `20260412110000_drop_purchase_receipt_saleid` — se eliminó `PurchaseReceipt.saleId` porque el vínculo Pedido↔Recepción vive con granularidad correcta en `BatteryLot.saleItemId` y `AssemblyOrder.saleId` (2H-D); a nivel cabecera era ambiguo (N:M real).
 
 ### P4-C — UI (pendiente)
 - Extender formulario en `src/app/(pos)/inventario/` con proveedor, factura, forma y estado de pago, precio unitario pagado por línea.
@@ -215,9 +220,12 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 - `prisma/schema.prisma` ✅
 - `prisma/migrations/20260412100000_enrich_inventory_receipt/` ✅
 - `prisma/seed-transactional.ts` ✅
-- `src/app/api/inventory/receipts/route.ts` ⏳
-- `src/app/api/batteries/lots/route.ts` ⏳
-- `src/app/(pos)/inventario/` ⏳
+- `src/app/api/inventory/receipts/route.ts` ✅
+- `src/app/api/inventory/receipts/[id]/route.ts` ✅
+- `src/app/api/inventory/receipts/[id]/pagar/route.ts` ✅
+- `src/app/api/inventory/receipts/[id]/invoice/route.ts` ✅
+- `src/app/api/batteries/lots/route.ts` ✅
+- `src/app/(pos)/inventario/` ⏳ (P4-C)
 
 ---
 

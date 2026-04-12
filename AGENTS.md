@@ -202,7 +202,7 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 | **P3** | **Fixes y mejoras POS** — labels en español, separar baterías del grid, tabs por categoría, UX cambio de voltaje, sección SimpleProduct en grid, concepto libre, helper de normalización de `modeloAplicable` | Sonnet | P0, P2 | ⏳ Pendiente |
 | **P4** | **Inventario enriquecido** — proveedor, factura URL, precio pagado, forma/estado de pago en `inventory/receipts` | Sonnet | P0 | 🟡 En curso |
 | P4-A | Schema `PurchaseReceipt` + migración + seed histórico/sintético | | P0 | ✅ Completo (2026-04-12) |
-| P4-B | API Routes (`inventory/receipts`, `batteries/lots`, upload de factura) | | P4-A | ⏳ Pendiente |
+| P4-B | API Routes (`inventory/receipts`, `batteries/lots`, upload de factura) | | P4-A | ✅ Completo (2026-04-12) |
 | P4-C | UI de recepción enriquecida + cuentas por pagar | | P4-B | ⏳ Pendiente |
 | **P5** | **Flujo de autorización** (PIN presencial + remoto con polling) — modelo `AuthorizationRequest` para cancelaciones y descuentos | Opus | — | ⏳ Pendiente |
 | **P6** | **Documentos PDF** (`@react-pdf/renderer`, IVA 16% fijo) | Sonnet | P1-A | ⏳ Pendiente |
