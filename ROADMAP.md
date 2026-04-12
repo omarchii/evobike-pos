@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-12  
+Última actualización: 2026-04-12 (P4-C)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -104,7 +104,7 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
   - Tab Variantes: selector de modelo en header + toggle inactivas. Modal respeta grupos A/B: si la respuesta 409 devuelve `hasHistory: true`, campos grupo B quedan disabled con aviso inline.
   - Tab Config. Baterías: tabla agrupada por modelo de vehículo. Dropdown de batería filtrado por `modelo_esBateria = true`.
   - Tab Productos Simples: filtro por categoría + toggle inactivos. Input libre con `<datalist>` autocompletando valores existentes de `modeloAplicable`.
-  - Tab Alertas: semáforo (rojo si `quantity ≤ stockMinimo/2`, amarillo si `quantity ≤ stockMinimo`). Botón "Crear recepción" lleva a `/inventario/recepciones/nuevo?productId=X` (ruta que P4 entrega; por ahora puede no existir).
+  - Tab Alertas: semáforo (rojo si `quantity ≤ stockMinimo/2`, amarillo si `quantity ≤ stockMinimo`). Botón "Crear recepción" lleva a `/inventario/recepciones/nuevo?variantId=X` o `?simpleProductId=X` según el tipo de producto (discriminación entregada en P4-C).
 - Imágenes bajo `/public/productos/`, sharp → WebP 1200×1200 máx, 2MB.
 - `/configuracion` ahora habilita la tarjeta "Catálogo de productos" para ADMIN y MANAGER.
 
@@ -174,7 +174,7 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 
 ---
 
-## FASE P4 — Inventario enriquecido (Compras al proveedor)
+## FASE P4 — Inventario enriquecido (Compras al proveedor) ✅ (2026-04-12)
 **Modelo: Sonnet | Dependencias: P0**
 
 Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
@@ -205,10 +205,14 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 - Tests manuales corridos con curl (12/12 pasaron). Tests automatizados ⇒ Fase 6.
 - Micro-migración `20260412110000_drop_purchase_receipt_saleid` — se eliminó `PurchaseReceipt.saleId` porque el vínculo Pedido↔Recepción vive con granularidad correcta en `BatteryLot.saleItemId` y `AssemblyOrder.saleId` (2H-D); a nivel cabecera era ambiguo (N:M real).
 
-### P4-C — UI (pendiente)
-- Extender formulario en `src/app/(pos)/inventario/` con proveedor, factura, forma y estado de pago, precio unitario pagado por línea.
-- Listado de cuentas por pagar con filtros por estadoPago y fechaVencimiento.
-- Upload de archivo de factura.
+### P4-C — UI ✅ (2026-04-12)
+- Migración de rutas a español: `/inventory/` → `/inventario/`, consistente con el resto del app. La API en inglés (`/api/inventory/receipts`) queda intacta.
+- Nuevas rutas: `/inventario/recepciones` (listado), `/inventario/recepciones/nuevo` (formulario), `/inventario/recepciones/[id]` (detalle).
+- Listado con filtros sincronizados a URL (estadoPago, proveedor, rango vencimiento). Server Component con Prisma directo — cubre el caso operativo de cuentas por pagar. P10-F queda reducido a reporte agregado / export CSV.
+- Formulario nueva recepción: tabs Vehículos/Simples/Baterías, líneas mixtas con `useReducer`, validación cruzada cliente espeja reglas P4-B. Preselección desde tab Alertas vía `?variantId=X` / `?simpleProductId=X`.
+- Detalle: vista read-only de cabecera + líneas agrupadas, acción "Marcar pagada" (PATCH `/pagar`), upload/reemplazo/eliminación de factura (POST/DELETE `/invoice`). Preview inline PDF + imagen. `router.refresh()` como SSOT tras cada mutación.
+- `ReceiptStatusBadge` compartido entre listado y detalle (PAGADA/PENDIENTE/CREDITO con variantes de urgencia por días al vencimiento).
+- Deuda documentada: normalización de proveedor (string libre, trim + collapse whitespace pendiente en API).
 
 ### Esto desbloquea automáticamente
 - Historial de compras al proveedor (query sobre `PurchaseReceipt`).
@@ -225,7 +229,11 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 - `src/app/api/inventory/receipts/[id]/pagar/route.ts` ✅
 - `src/app/api/inventory/receipts/[id]/invoice/route.ts` ✅
 - `src/app/api/batteries/lots/route.ts` ✅
-- `src/app/(pos)/inventario/` ⏳ (P4-C)
+- `src/app/(pos)/inventario/` ✅
+- `src/app/(pos)/inventario/recepciones/` ✅ (listado + types)
+- `src/app/(pos)/inventario/recepciones/nuevo/` ✅ (formulario)
+- `src/app/(pos)/inventario/recepciones/[id]/` ✅ (detalle)
+- `src/components/inventario/receipt-status-badge.tsx` ✅
 
 ---
 
@@ -417,10 +425,9 @@ Requiere `precioMayorista` en `SimpleProduct` y `ProductVariant`.
 Entradas, salidas, ajustes, devoluciones por período.
 Útil para auditoría y cuadre con inventario físico.
 
-### P10-F — Compras al proveedor
+### P10-F — Compras al proveedor (reporte agregado)
 Historial desde `inventory/receipts` enriquecido.
-Cuentas por pagar: recepciones con estado `PENDIENTE` o `CREDITO`.
-Filtros: proveedor, rango de fechas, estado de pago.
+**Alcance reducido post P4-C**: el listado operativo de cuentas por pagar (filtros por estadoPago, proveedor, rango vencimiento) ya lo cubre `/inventario/recepciones`. P10-F queda como reporte agregado: totales mensuales por proveedor, análisis de vencimientos por período, export CSV.
 
 ### P10-G — Reporte de stock mínimo
 Productos donde `stockActual ≤ stockMinimo` → lista de reabastecimiento.
