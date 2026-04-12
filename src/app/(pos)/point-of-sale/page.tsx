@@ -19,8 +19,10 @@ export default async function PointOfSalePage() {
   const authUser = session?.user as AuthUser | undefined;
   const branchId = authUser?.branchId ?? "";
 
-  // All product variants with stock
+  // Vehicle variants only — baterías standalone se venden vía SimpleProduct,
+  // no desde el grid de unidades.
   const rawVariants = await prisma.productVariant.findMany({
+    where: { modelo: { esBateria: false } },
     include: {
       modelo: true,
       color: true,
