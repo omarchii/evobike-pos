@@ -153,24 +153,31 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 
 ---
 
-## FASE P3 — Fixes y mejoras POS
+## FASE P3 — Fixes y mejoras POS ✅ (2026-04-12)
 **Modelo: Sonnet | Dependencias: P0 + P2**
 
-### Tareas
-- Labels en español en compra guiada:
-  - `"SYSTEM VOLTAGE"` → `"Voltaje del sistema"`
-  - `"FRAME COLOR"` → `"Color del cuadro"`
-- Separar baterías del grid de unidades — flujo de venta directo sin compra guiada
-- Actualizar filtros/tabs del POS con categorías reales: `Bicicletas | Triciclos | Scooters | Juguetes | Carga`
-- Mejorar UX de cambio de voltaje: al seleccionar voltaje distinto al ensamblado, mostrar mensaje claro "Esta unidad requiere reensamble a [X]V. Se creará una orden de montaje automáticamente." con confirmación explícita
-- Sección de `SimpleProduct` en grid del POS (separada de unidades, sin compra guiada)
-- Botón "Agregar concepto libre" en POS: descripción manual + precio (`isFreeForm` ya existe en backend)
-- Sidebar: agregar item "Reportes" con sub-items (Fase 5-H pendiente desde antes)
+### P3.1–P3.3 ✅
+- Labels en español en compra guiada (`"SYSTEM VOLTAGE"` → `"Voltaje del sistema"`, `"FRAME COLOR"` → `"Color del cuadro"`).
+- Tabs del POS por categoría real de `Modelo.categoria`: `Bicicletas | Triciclos | Scooters | Juguetes | Carga`.
+- Mensaje claro de reensamble al cambiar voltaje pre-venta: aviso explícito "Esta unidad requiere reensamble a [X]V" antes de confirmar.
+- Exclusión de modelos `esBateria: true` del grid de unidades (baterías standalone se venden como `SimpleProduct`).
+- Botón "Agregar concepto libre" en POS: dialog con descripción + precio + cantidad, usa `SaleItem.isFreeForm = true` ya existente en backend.
+
+### P3.4 ✅ — SimpleProduct en el POS (mixto)
+- **P3.4a — Backend polimórfico:** `saleItemSchema` y `frozenItemSchema` de `POST /api/sales` aceptan `simpleProductId` opcional. `superRefine` valida exactamente uno de `{productVariantId, simpleProductId, isFreeForm}`. Stock check/decrement e `InventoryMovement` usan la constraint `simpleProductId_branchId` cuando aplica. `SaleItem` persiste `simpleProductId` + `description = sp.nombre` snapshot. Comisiones solo se generan por `ProductVariant` (SimpleProduct no comisiona). `POST /api/pedidos` extiende `frozenItems` con `simpleProductId` para conversión de cotizaciones con líneas mixtas.
+  - Decisión: flat schema con `superRefine` en lugar de `z.discriminatedUnion`. Razón: mantiene compatibilidad con callers existentes (POS normal, quotation conversion, seed) sin refactor de todos los payloads. El invariant XOR queda validado server-side.
+- **P3.4b — Tab "Accesorios" en POS:** nueva pestaña que sustituye el grid de modelos por un grid de `SimpleProduct`. Sub-filtros por `modeloAplicable` (Todos / Universal / nombre del modelo). Card incluye badge de categoría (Accesorio/Cargador/Refacción/Batería), stock por sucursal y precio público. `page.tsx` carga `SimpleProduct` activos + stock de la sucursal del vendedor.
+- **P3.4c — Cart mixto:** `CartItem` extendido con `simpleProductId?` y `simpleCategoria?`. `handleAddSimpleProduct` agrupa duplicados (incrementa cantidad respetando stock). `handleCheckout` manda `productVariantId: null` y `simpleProductId` para líneas de accesorio. El render del cart muestra `{categoría} · {SKU}` para SimpleProduct, concepto libre para free-form, y `color/voltaje` para vehículos. Un mismo carrito puede combinar vehículos + accesorios + concepto libre + baterías standalone en una sola venta o apartado.
+
+### Pendiente P3 (movido a otras fases)
+- Sidebar: item "Reportes" con sub-items → sigue en Fase 5-H.
 
 ### Archivos clave
-- `src/app/(pos)/pos/pos-terminal.tsx` ⚠️ RIESGO DE REGRESIÓN — modificar con cuidado
-- `src/components/pos/guided-purchase/` (labels en español)
-- `src/app/(pos)/pos/page.tsx`
+- `src/app/(pos)/point-of-sale/pos-terminal.tsx` ✅
+- `src/app/(pos)/point-of-sale/page.tsx` ✅
+- `src/app/(pos)/point-of-sale/free-form-dialog.tsx` ✅
+- `src/app/api/sales/route.ts` ✅
+- `src/app/api/pedidos/route.ts` ✅
 
 ---
 
