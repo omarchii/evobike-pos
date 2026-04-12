@@ -11,6 +11,7 @@ import {
   Plus,
   RotateCcw,
 } from "lucide-react";
+import { ReceiptStatusBadge, daysUntil } from "@/components/inventario/receipt-status-badge";
 import type { SerializedReceiptListItem, ReceiptFilters } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -31,71 +32,8 @@ function formatDate(iso: string): string {
   });
 }
 
-/** Returns how many whole days until the given ISO date (negative = overdue). */
-function daysUntil(iso: string): number {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const due = new Date(iso);
-  due.setHours(0, 0, 0, 0);
-  return Math.round((due.getTime() - now.getTime()) / 86_400_000);
-}
-
 // ── Chips ─────────────────────────────────────────────────────────────────────
-
-function EstadoChip({
-  estadoPago,
-  fechaVencimiento,
-}: {
-  estadoPago: string;
-  fechaVencimiento: string | null;
-}) {
-  let bg: string;
-  let color: string;
-  let label: string;
-
-  if (estadoPago === "PAGADA") {
-    bg = "var(--sec-container)";
-    color = "var(--on-sec-container)";
-    label = "Pagada";
-  } else if (estadoPago === "PENDIENTE") {
-    bg = "var(--warn-container)";
-    color = "var(--warn)";
-    label = "Pendiente";
-  } else {
-    // CREDITO — urgency from fechaVencimiento
-    const days = fechaVencimiento !== null ? daysUntil(fechaVencimiento) : null;
-    if (days !== null && days < 0) {
-      bg = "var(--ter-container)";
-      color = "var(--on-ter-container)";
-    } else if (days !== null && days <= 7) {
-      bg = "var(--warn-container)";
-      color = "var(--warn)";
-    } else {
-      bg = "color-mix(in srgb, var(--warn) 12%, transparent)";
-      color = "var(--warn)";
-    }
-    label = "Crédito";
-  }
-
-  return (
-    <span
-      style={{
-        background: bg,
-        color,
-        borderRadius: "var(--r-full)",
-        padding: "0.2rem 0.65rem",
-        fontSize: "0.625rem",
-        fontWeight: 500,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        fontFamily: "var(--font-body)",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
+// EstadoChip extraído a ReceiptStatusBadge (compartido con detalle)
 
 function VencimientoCell({ iso }: { iso: string }) {
   const days = daysUntil(iso);
@@ -519,7 +457,7 @@ function ReceiptRow({ row }: { row: SerializedReceiptListItem }) {
         {formatMXN(row.totalPagado)}
       </td>
       <td style={{ padding: "0.5625rem 0.75rem" }}>
-        <EstadoChip
+        <ReceiptStatusBadge
           estadoPago={row.estadoPago}
           fechaVencimiento={row.fechaVencimiento}
         />
