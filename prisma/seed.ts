@@ -1,7 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma, SimpleProductCategoria, MovementType } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
+import { normalizeModeloAplicable } from '../src/lib/products';
 
 const prisma = new PrismaClient();
 
@@ -453,6 +454,178 @@ async function main() {
     }
   }
   console.log('✅ Configuraciones de trazabilidad de baterías aplicadas.');
+
+  // ── 6. SimpleProducts (accesorios, cargadores, baterías standalone, refacciones) ──
+  console.log('\n📦 Cargando SimpleProducts desde CSV...');
+
+  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@evobike.mx' } });
+  if (!adminUser) throw new Error('Usuario admin no encontrado — no se puede seedear inventario.');
+
+  const validCategorias = new Set<string>([
+    'ACCESORIO', 'CARGADOR', 'BATERIA_STANDALONE', 'REFACCION',
+  ]);
+
+  interface SimpleProductRow {
+    codigo: string;
+    nombre: string;
+    categoria: string;
+    modelo_aplicable: string;
+    precio_publico: string;
+    precio_distribuidor: string;
+    stock_minimo: string;
+    stock_maximo: string;
+    descripcion?: string;
+  }
+
+  function toDecimal(raw: string | undefined): Prisma.Decimal {
+    const n = Number(raw);
+    return new Prisma.Decimal(Number.isFinite(n) ? n : 0);
+  }
+
+  function toInt(raw: string | undefined, fallback = 0): number {
+    const n = parseInt(raw ?? '', 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  async function loadSimpleProductsFromCSV(
+    fileName: string,
+    defaultCategoria: SimpleProductCategoria | null,
+  ): Promise<{ loaded: number; skipped: number }> {
+    const filePath = path.join(dataDir, fileName);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`CSV requerido no encontrado: ${filePath}`);
+    }
+    const rows = parseCSV(filePath) as unknown as SimpleProductRow[];
+    let loaded = 0;
+    let skipped = 0;
+
+    for (const row of rows) {
+      try {
+        const codigo = row.codigo?.trim();
+        const nombre = row.nombre?.trim();
+        if (!codigo || !nombre) {
+          console.warn(`  ⚠️  Fila malformada (codigo/nombre vacío), omitida.`);
+          skipped++;
+          continue;
+        }
+
+        const categoriaRaw = (row.categoria || '').toUpperCase().trim();
+        const categoria = (validCategorias.has(categoriaRaw)
+          ? (categoriaRaw as SimpleProductCategoria)
+          : defaultCategoria);
+        if (!categoria) {
+          console.warn(`  ⚠️  Categoría inválida "${row.categoria}" en ${codigo}, omitida.`);
+          skipped++;
+          continue;
+        }
+
+        const normalized = normalizeModeloAplicable(row.modelo_aplicable);
+        const modeloAplicable = normalized === 'GLOBAL' ? null : normalized;
+
+        const data = {
+          codigo,
+          nombre,
+          descripcion: row.descripcion?.trim() || null,
+          categoria,
+          modeloAplicable,
+          precioPublico: toDecimal(row.precio_publico),
+          precioMayorista: toDecimal(row.precio_distribuidor),
+          stockMinimo: toInt(row.stock_minimo),
+          stockMaximo: toInt(row.stock_maximo),
+        };
+
+        await prisma.simpleProduct.upsert({
+          where: { codigo },
+          update: data,
+          create: data,
+        });
+        loaded++;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`  ❌ Error en fila ${row.codigo ?? '(sin código)'}: ${msg}`);
+        skipped++;
+      }
+    }
+    return { loaded, skipped };
+  }
+
+  const accesoriosResult = await loadSimpleProductsFromCSV('accesorios.csv', null);
+  console.log(
+    `✅ Accesorios: ${accesoriosResult.loaded} cargados, ${accesoriosResult.skipped} omitidos.`,
+  );
+
+  const refaccionesResult = await loadSimpleProductsFromCSV(
+    'refacciones.csv',
+    SimpleProductCategoria.REFACCION,
+  );
+  console.log(
+    `✅ Refacciones: ${refaccionesResult.loaded} cargados, ${refaccionesResult.skipped} omitidos.`,
+  );
+
+  // ── 7. Stock inicial de SimpleProducts por sucursal ─────────────────────────
+  console.log('\n📊 Generando stock inicial por sucursal...');
+
+  const allSimpleProducts = await prisma.simpleProduct.findMany({
+    select: { id: true, codigo: true, stockMinimo: true, stockMaximo: true },
+  });
+  const branches = [leoBranch, av135Branch];
+  let stockEntriesCreated = 0;
+  let stockEntriesSkipped = 0;
+
+  function randomStockQuantity(min: number, max: number): number {
+    let lo = min;
+    let hi = Math.floor(max * 1.5);
+    if (lo === 0 && hi === 0) {
+      lo = 5;
+      hi = 20;
+    }
+    lo = Math.max(3, lo);
+    hi = Math.max(lo + 1, Math.min(hi, 50));
+    return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+  }
+
+  for (const sp of allSimpleProducts) {
+    for (const branch of branches) {
+      try {
+        const existing = await prisma.stock.findUnique({
+          where: { simpleProductId_branchId: { simpleProductId: sp.id, branchId: branch.id } },
+        });
+        if (existing) {
+          stockEntriesSkipped++;
+          continue;
+        }
+
+        const qty = randomStockQuantity(sp.stockMinimo, sp.stockMaximo);
+
+        await prisma.$transaction([
+          prisma.stock.create({
+            data: {
+              simpleProductId: sp.id,
+              branchId: branch.id,
+              quantity: qty,
+            },
+          }),
+          prisma.inventoryMovement.create({
+            data: {
+              simpleProductId: sp.id,
+              branchId: branch.id,
+              quantity: qty,
+              type: MovementType.PURCHASE_RECEIPT,
+              userId: adminUser.id,
+            },
+          }),
+        ]);
+        stockEntriesCreated++;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`  ❌ Stock ${sp.codigo}/${branch.code}: ${msg}`);
+      }
+    }
+  }
+
+  console.log(
+    `✅ Stock SimpleProducts: ${stockEntriesCreated} entradas creadas, ${stockEntriesSkipped} preexistentes.`,
+  );
 
   console.log('\n🎉 Seed completado exitosamente.\n');
   console.log('─── Usuarios disponibles ───────────────────────────');
