@@ -180,9 +180,9 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 
 ### P4-A — Schema + migración + seed ✅ (2026-04-12)
-- Nuevo modelo cabecera `PurchaseReceipt` (cuid) con FKs a `Branch`, `User` y `Sale?` (para BACKORDERs). Una factura puede cubrir N SKUs (vehículos + SimpleProducts + baterías).
+- Nuevo modelo cabecera `PurchaseReceipt` (cuid) con FKs a `Branch` y `User`. Una factura puede cubrir N SKUs (vehículos + SimpleProducts + baterías). Sin `saleId` — la vinculación Pedido↔Recepción vive en `BatteryLot.saleItemId` y `AssemblyOrder.saleId` con granularidad de ítem (una recepción es N:M con pedidos).
 - Enums `FormaPagoProveedor` (`CONTADO | CREDITO | TRANSFERENCIA`) y `EstadoPagoProveedor` (`PAGADA | PENDIENTE | CREDITO`).
-- Campos del modelo: `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `fechaPago?`, `totalPagado Decimal(12,2)`, `notas?`, `saleId?`.
+- Campos del modelo: `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `fechaPago?`, `totalPagado Decimal(12,2)`, `notas?`.
 - `@@unique([branchId, proveedor, folioFacturaProveedor])` — Postgres trata NULL como distinto, así que recepciones sin factura no colisionan. `@@index` por `(branchId, estadoPago)` y `fechaVencimiento` para cuentas por pagar (P10-F).
 - Campos aditivos nullable:
   - `InventoryMovement.purchaseReceiptId` — nullable porque SALE/RETURN/TRANSFER/ADJUSTMENT/WORKSHOP_USAGE nunca lo usan.

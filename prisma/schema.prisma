@@ -261,7 +261,6 @@ model Sale {
   commissionRecords CommissionRecord[]
   assemblyOrders    AssemblyOrder[]
   quotation         Quotation?         @relation("QuotationConvertedSale")
-  purchaseReceipts  PurchaseReceipt[]
 }
 
 model SaleItem {
@@ -777,13 +776,11 @@ model PurchaseReceipt {
   fechaPago             DateTime?
   totalPagado           Decimal             @db.Decimal(12, 2)
   notas                 String?
-  saleId                String?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
   branch             Branch              @relation(fields: [branchId], references: [id])
   user               User                @relation(fields: [userId], references: [id])
-  sale               Sale?               @relation(fields: [saleId], references: [id])
   inventoryMovements InventoryMovement[]
   batteryLots        BatteryLot[]
 
