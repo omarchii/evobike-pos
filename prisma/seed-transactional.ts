@@ -21,6 +21,8 @@ import {
   CommissionStatus,
   CommissionType,
   QuotationStatus,
+  FormaPagoProveedor,
+  EstadoPagoProveedor,
 } from "@prisma/client";
 
 type Tx = Omit<
@@ -117,6 +119,7 @@ export async function seedTransactional(prisma: PrismaClient): Promise<void> {
   await seedPedidos(ctx);
   await seedServiceOrders(ctx);
   await seedQuotations(ctx);
+  await seedPurchaseReceipts(ctx);
 
   console.log("✅ Seed transaccional completado.\n");
 }
@@ -1540,5 +1543,156 @@ async function seedQuotations(ctx: SeedContext): Promise<void> {
     console.log(
       `  ✅ Cotizaciones ${branch.code}: DRAFT=${counts.DRAFT}, SENT=${counts.SENT}, CONVERTED=${counts.CONVERTED}, EXPIRED=${counts.EXPIRED}.`,
     );
+  }
+}
+
+// ─── T11 Purchase Receipts (Fase P4-A) ────────────────────────────────────────
+// Cabecera histórica sintética por sucursal que agrupa TODAS las recepciones
+// previas a P4 (vehículos, baterías, SimpleProducts). Luego 4 recepciones
+// realistas adicionales por sucursal cubriendo los 3 estados de pago.
+
+const HISTORIC_PROVIDER = "Histórico previo a P4";
+
+async function seedPurchaseReceipts(ctx: SeedContext): Promise<void> {
+  const branches = [
+    { id: ctx.leoBranchId, code: "LEO" },
+    { id: ctx.av135BranchId, code: "AV135" },
+  ];
+
+  for (const branch of branches) {
+    const existing = await ctx.prisma.purchaseReceipt.findFirst({
+      where: { branchId: branch.id, proveedor: HISTORIC_PROVIDER },
+      select: { id: true },
+    });
+    if (existing) {
+      console.log(`  ⏭️  PurchaseReceipts ${branch.code} ya sembrados, skip.`);
+      continue;
+    }
+
+    // 1) Cabecera histórica agrupando todo lo previo.
+    const historic = await ctx.prisma.purchaseReceipt.create({
+      data: {
+        branchId: branch.id,
+        userId: ctx.adminUserId,
+        proveedor: HISTORIC_PROVIDER,
+        folioFacturaProveedor: null,
+        formaPagoProveedor: FormaPagoProveedor.CONTADO,
+        estadoPago: EstadoPagoProveedor.PAGADA,
+        fechaPago: new Date(),
+        totalPagado: dec(0),
+        notas: "Recepciones registradas antes de la Fase P4 (vehículos, baterías y accesorios).",
+      },
+    });
+
+    // 2) Backfill de InventoryMovement + BatteryLot sin cabecera.
+    const [movUpdate, lotUpdate] = await Promise.all([
+      ctx.prisma.inventoryMovement.updateMany({
+        where: {
+          branchId: branch.id,
+          type: MovementType.PURCHASE_RECEIPT,
+          purchaseReceiptId: null,
+        },
+        data: { purchaseReceiptId: historic.id },
+      }),
+      ctx.prisma.batteryLot.updateMany({
+        where: { branchId: branch.id, purchaseReceiptId: null },
+        data: { purchaseReceiptId: historic.id },
+      }),
+    ]);
+
+    // 3) Recalcular totalPagado desde las líneas vinculadas, usando costo
+    //    (ProductVariant) o precioMayorista (SimpleProduct) como valor unitario.
+    const linkedMovs = await ctx.prisma.inventoryMovement.findMany({
+      where: { purchaseReceiptId: historic.id },
+      select: {
+        quantity: true,
+        productVariant: { select: { costo: true } },
+        simpleProduct: { select: { precioMayorista: true } },
+      },
+    });
+    let total = new Prisma.Decimal(0);
+    for (const m of linkedMovs) {
+      const unit = m.productVariant?.costo ?? m.simpleProduct?.precioMayorista ?? null;
+      if (!unit) continue;
+      total = total.plus(unit.mul(m.quantity));
+    }
+    await ctx.prisma.purchaseReceipt.update({
+      where: { id: historic.id },
+      data: { totalPagado: total },
+    });
+
+    console.log(
+      `  ✅ Histórico ${branch.code}: ${movUpdate.count} movimientos + ${lotUpdate.count} lotes vinculados, total $${total.toFixed(2)}.`,
+    );
+
+    // 4) Cuatro recepciones realistas adicionales.
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const isLeo = branch.code === "LEO";
+
+    type SyntheticReceipt = Omit<Prisma.PurchaseReceiptUncheckedCreateInput, "branchId" | "userId">;
+    const sinteticas: SyntheticReceipt[] = [
+      // PAGADA · CONTADO
+      {
+        proveedor: "Distribuidora Evo MX",
+        folioFacturaProveedor: `FAC-2026-0${isLeo ? "123" : "456"}`,
+        formaPagoProveedor: FormaPagoProveedor.CONTADO,
+        estadoPago: EstadoPagoProveedor.PAGADA,
+        fechaPago: new Date(now - 15 * day),
+        totalPagado: dec(isLeo ? 48200 : 52750),
+        notas: "Compra contado: lote de accesorios y refacciones.",
+      },
+      // PAGADA · TRANSFERENCIA
+      {
+        proveedor: "Baterías Power Plus",
+        folioFacturaProveedor: `FAC-2026-0${isLeo ? "201" : "318"}`,
+        formaPagoProveedor: FormaPagoProveedor.TRANSFERENCIA,
+        estadoPago: EstadoPagoProveedor.PAGADA,
+        fechaPago: new Date(now - 8 * day),
+        totalPagado: dec(isLeo ? 95400 : 118600),
+        notas: "Pago por transferencia — lote de baterías 60V/72V.",
+      },
+      // PENDIENTE · CONTADO
+      {
+        proveedor: "Accesorios del Sureste",
+        folioFacturaProveedor: `FAC-2026-0${isLeo ? "277" : "402"}`,
+        formaPagoProveedor: FormaPagoProveedor.CONTADO,
+        estadoPago: EstadoPagoProveedor.PENDIENTE,
+        fechaPago: null,
+        totalPagado: dec(isLeo ? 14250 : 18900),
+        notas: "Mercancía recibida; pago pendiente de ejecutar en caja.",
+      },
+      // CREDITO — LEO vencida; AV135 próxima a vencer.
+      {
+        proveedor: "Importaciones Orión SA",
+        folioFacturaProveedor: `FAC-2026-0${isLeo ? "089" : "511"}`,
+        formaPagoProveedor: FormaPagoProveedor.CREDITO,
+        estadoPago: EstadoPagoProveedor.CREDITO,
+        fechaVencimiento: new Date(now + (isLeo ? -5 : 7) * day),
+        fechaPago: null,
+        totalPagado: dec(isLeo ? 176800 : 142350),
+        notas: isLeo
+          ? "Crédito vencido — requiere gestión con el proveedor."
+          : "Crédito a 7 días — vencimiento próximo.",
+      },
+    ];
+
+    let createdExtras = 0;
+    for (const r of sinteticas) {
+      try {
+        await ctx.prisma.purchaseReceipt.create({
+          data: {
+            ...r,
+            branchId: branch.id,
+            userId: ctx.adminUserId,
+          },
+        });
+        createdExtras++;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`  ❌ PurchaseReceipt ${branch.code}/${r.proveedor}: ${msg}`);
+      }
+    }
+    console.log(`  ✅ PurchaseReceipts realistas ${branch.code}: ${createdExtras} creados.`);
   }
 }

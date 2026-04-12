@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-11  
+Última actualización: 2026-04-12  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -179,27 +179,45 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 
 Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 
-### Nuevos campos en recepción de mercancía
-- `proveedor` String — nombre del proveedor
-- `folioFacturaProveedor` String? — número de factura del proveedor
-- `facturaUrl` String? — URL del PDF/imagen adjunto (upload a `/public/facturas/` o storage)
-- `precioUnitarioPagado` Decimal? — precio mayorista real pagado
-- `formaPagoProveedor` enum: `CONTADO | CREDITO | TRANSFERENCIA`
-- `estadoPago` enum: `PAGADA | PENDIENTE | CREDITO`
+### P4-A — Schema + migración + seed ✅ (2026-04-12)
+- Nuevo modelo cabecera `PurchaseReceipt` (cuid) con FKs a `Branch`, `User` y `Sale?` (para BACKORDERs). Una factura puede cubrir N SKUs (vehículos + SimpleProducts + baterías).
+- Enums `FormaPagoProveedor` (`CONTADO | CREDITO | TRANSFERENCIA`) y `EstadoPagoProveedor` (`PAGADA | PENDIENTE | CREDITO`).
+- Campos del modelo: `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `fechaPago?`, `totalPagado Decimal(12,2)`, `notas?`, `saleId?`.
+- `@@unique([branchId, proveedor, folioFacturaProveedor])` — Postgres trata NULL como distinto, así que recepciones sin factura no colisionan. `@@index` por `(branchId, estadoPago)` y `fechaVencimiento` para cuentas por pagar (P10-F).
+- Campos aditivos nullable:
+  - `InventoryMovement.purchaseReceiptId` — nullable porque SALE/RETURN/TRANSFER/ADJUSTMENT/WORKSHOP_USAGE nunca lo usan.
+  - `InventoryMovement.precioUnitarioPagado Decimal?(10,2)` — costo real por unidad.
+  - `BatteryLot.purchaseReceiptId` — misma factura puede traer bicis + baterías.
+- Migración `20260412100000_enrich_inventory_receipt` aplicada vía `migrate diff --from-url --to-schema-datamodel` + `migrate resolve --applied` (una migración previa había sido editada post-aplicación → se siguió el procedimiento documentado en AGENTS.md, sin reset).
+- Seed (`prisma/seed-transactional.ts` → `seedPurchaseReceipts`):
+  - Crea 1 cabecera sintética por sucursal con `proveedor: "Histórico previo a P4"`, `CONTADO/PAGADA`. `updateMany` vincula los `InventoryMovement(PURCHASE_RECEIPT)` y `BatteryLot` existentes (sin cabecera). `totalPagado` se recalcula sumando `costo × qty` (ProductVariant) o `precioMayorista × qty` (SimpleProduct).
+  - 4 recepciones realistas adicionales por sucursal: PAGADA/CONTADO, PAGADA/TRANSFERENCIA, PENDIENTE/CONTADO, CREDITO con vencimiento (LEO vencida, AV135 próxima).
+  - Idempotente por `findFirst({ proveedor: "Histórico previo a P4", branchId })`.
+
+### P4-B — API Routes (pendiente)
+- `src/app/api/inventory/receipts/route.ts`: aceptar `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `precioUnitarioPagado` por línea. Crear `PurchaseReceipt` + enlazar `InventoryMovement` y (si aplica) `BatteryLot` dentro del mismo `$transaction`.
+- `src/app/api/batteries/lots/route.ts`: aceptar `purchaseReceiptId?` opcional para vincular a una cabecera existente (caso real: misma factura trae bicis + lote de baterías).
+- Endpoint para subir factura (PDF/imagen) → `/public/facturas/{branchId}-{ts}.{ext}`.
+- `PATCH /api/inventory/receipts/[id]/pagar` — pone `estadoPago = PAGADA` y llena `fechaPago`.
+
+### P4-C — UI (pendiente)
+- Extender formulario en `src/app/(pos)/inventario/` con proveedor, factura, forma y estado de pago, precio unitario pagado por línea.
+- Listado de cuentas por pagar con filtros por estadoPago y fechaVencimiento.
+- Upload de archivo de factura.
 
 ### Esto desbloquea automáticamente
-- Historial de compras al proveedor (query a `InventoryMovement` con tipo `PURCHASE_RECEIPT`)
-- Cuentas por pagar (recepciones con `estadoPago = PENDIENTE | CREDITO`)
-- Costo real del inventario (`precioUnitarioPagado` × stock)
-- Rentabilidad (precio venta vs precio compra)
-
-### Migración
-- `prisma migrate dev --name enrich_inventory_receipt`
+- Historial de compras al proveedor (query sobre `PurchaseReceipt`).
+- Cuentas por pagar (P10-F — filtros por `estadoPago = PENDIENTE | CREDITO`).
+- Costo real del inventario (`precioUnitarioPagado` × stock).
+- Rentabilidad (precio venta vs precio compra).
 
 ### Archivos clave
-- `src/app/api/inventory/receipts/route.ts`
-- `src/app/(pos)/inventario/` (UI de recepción)
-- `prisma/schema.prisma`
+- `prisma/schema.prisma` ✅
+- `prisma/migrations/20260412100000_enrich_inventory_receipt/` ✅
+- `prisma/seed-transactional.ts` ✅
+- `src/app/api/inventory/receipts/route.ts` ⏳
+- `src/app/api/batteries/lots/route.ts` ⏳
+- `src/app/(pos)/inventario/` ⏳
 
 ---
 
@@ -434,6 +452,12 @@ Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 - No requiere API Route nueva — query en Server Component
 
 ---
+## P12 — Inventario cross-branch + Transferencias entre sucursales
+  P12-A: Visibilidad de stock global en POS (lectura)
+  P12-B: Flujo de transferencias (modelo, API, UI)
+  P12-C: Reportes de movimientos cross-branch
+
+  ---
 
 ## FASE 6 — Hardening y Producción
 **Modelo: Opus | Dependencias: TODO lo anterior**
