@@ -10,6 +10,14 @@ interface SessionUser {
   branchId: string;
 }
 
+class LotError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 // ── POST /api/batteries/lots — Registrar lote de baterías ──────────────────────
 
 const createLotSchema = z.object({
@@ -20,6 +28,7 @@ const createLotSchema = z.object({
     .array(z.string().min(1, "Los seriales no pueden estar vacíos"))
     .min(1, "Ingresa al menos un número de serie"),
   saleItemId: z.string().optional(), // ítem específico del pedido de origen
+  purchaseReceiptId: z.string().optional(), // cabecera PurchaseReceipt existente (P4-B)
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -44,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { productVariantId, supplier, reference, serials, saleItemId } = parsed.data;
+  const { productVariantId, supplier, reference, serials, saleItemId, purchaseReceiptId } = parsed.data;
 
   // Normalizar seriales: trim + deduplicar dentro del input
   const normalizedSerials = serials.map((s) => s.trim()).filter(Boolean);
@@ -169,6 +178,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // ── Crear lote + baterías + movimiento de inventario en transacción ───────
     const result = await prisma.$transaction(async (tx) => {
+      // Validar cabecera PurchaseReceipt dentro del tx para evitar TOCTOU.
+      if (purchaseReceiptId) {
+        const receipt = await tx.purchaseReceipt.findUnique({
+          where: { id: purchaseReceiptId },
+          select: { id: true, branchId: true },
+        });
+        if (!receipt) {
+          throw new LotError("La recepción de compra indicada no existe", 422);
+        }
+        if (receipt.branchId !== branchId) {
+          throw new LotError(
+            "La recepción de compra pertenece a otra sucursal",
+            422,
+          );
+        }
+      }
+
       const lot = await tx.batteryLot.create({
         data: {
           productVariantId,
@@ -177,6 +203,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           supplier: supplier ?? null,
           reference: reference ?? null,
           saleItemId: saleItemId ?? null,
+          purchaseReceiptId: purchaseReceiptId ?? null,
         },
       });
 
@@ -205,7 +232,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           userId,
           quantity: uniqueSerials.length,
           type: "PURCHASE_RECEIPT",
-          referenceId: reference ?? "BATTERY_LOT",
+          referenceId: purchaseReceiptId ?? reference ?? "BATTERY_LOT",
+          purchaseReceiptId: purchaseReceiptId ?? null,
         },
       });
 
@@ -218,6 +246,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ...(quantityWarning ? { warning: quantityWarning } : {}),
     });
   } catch (error: unknown) {
+    if (error instanceof LotError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status },
+      );
+    }
     const message = error instanceof Error ? error.message : "Error al registrar el lote";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
