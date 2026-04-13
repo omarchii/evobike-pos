@@ -13,6 +13,7 @@ model User {
   name              String
   email             String                @unique
   password          String
+  pin               String? // hash bcrypt del PIN corto (solo MANAGER/ADMIN). Validado vs. AuthorizationRequest.
   role              String                @default("SELLER") // ADMIN, MANAGER, SELLER, TECHNICIAN
   isActive          Boolean               @default(true)
   branchId          String?
@@ -32,6 +33,9 @@ model User {
   quotationsConverted    Quotation[] @relation("QuotationConverter")
 
   purchaseReceipts PurchaseReceipt[]
+
+  authorizationsRequested AuthorizationRequest[] @relation("AuthRequester")
+  authorizationsApproved  AuthorizationRequest[] @relation("AuthApprover")
 }
 
 model Branch {
@@ -74,7 +78,8 @@ model Branch {
   quotations          Quotation[] @relation("QuotationBranch")
   quotationsConverted Quotation[] @relation("QuotationConvertedInBranch")
 
-  purchaseReceipts PurchaseReceipt[]
+  purchaseReceipts      PurchaseReceipt[]
+  authorizationRequests AuthorizationRequest[]
 }
 
 // === CATALOG & INVENTORY ===
@@ -253,14 +258,15 @@ model Sale {
   warrantyDocReady     Boolean       @default(true)
   createdAt            DateTime      @default(now())
 
-  branch            Branch             @relation(fields: [branchId], references: [id])
-  user              User               @relation(fields: [userId], references: [id])
-  customer          Customer?          @relation(fields: [customerId], references: [id])
-  items             SaleItem[]
-  payments          CashTransaction[]
-  commissionRecords CommissionRecord[]
-  assemblyOrders    AssemblyOrder[]
-  quotation         Quotation?         @relation("QuotationConvertedSale")
+  branch                Branch                 @relation(fields: [branchId], references: [id])
+  user                  User                   @relation(fields: [userId], references: [id])
+  customer              Customer?              @relation(fields: [customerId], references: [id])
+  items                 SaleItem[]
+  payments              CashTransaction[]
+  commissionRecords     CommissionRecord[]
+  assemblyOrders        AssemblyOrder[]
+  quotation             Quotation?             @relation("QuotationConvertedSale")
+  authorizationRequests AuthorizationRequest[]
 }
 
 model SaleItem {
@@ -787,4 +793,48 @@ model PurchaseReceipt {
   @@unique([branchId, proveedor, folioFacturaProveedor])
   @@index([branchId, estadoPago])
   @@index([fechaVencimiento])
+}
+
+// === AUTHORIZATIONS (Fase P5) ===
+enum AuthorizationType {
+  CANCELACION
+  DESCUENTO
+}
+
+enum AuthorizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED // solicitudes remotas con timeout (ver AuthorizationRequest.expiresAt)
+}
+
+enum AuthorizationMode {
+  PRESENCIAL // manager teclea PIN en el mismo POS
+  REMOTA // solicitud enviada al dashboard de otro manager
+}
+
+model AuthorizationRequest {
+  id          String              @id @default(cuid())
+  branchId    String
+  tipo        AuthorizationType
+  status      AuthorizationStatus @default(PENDING)
+  mode        AuthorizationMode
+  saleId      String? // cancelación: venta afectada. descuento: puede ser null (venta aún no materializada)
+  requestedBy String
+  approvedBy  String?
+  monto       Decimal?            @db.Decimal(10, 2) // descuentos: monto solicitado
+  motivo      String?             @db.Text
+  rejectReason String?            @db.Text
+  expiresAt   DateTime? // null = sin expiración (PRESENCIAL). REMOTA: createdAt + 5min
+  createdAt   DateTime            @default(now())
+  resolvedAt  DateTime?
+
+  branch    Branch @relation(fields: [branchId], references: [id])
+  sale      Sale?  @relation(fields: [saleId], references: [id])
+  requester User   @relation("AuthRequester", fields: [requestedBy], references: [id])
+  approver  User?  @relation("AuthApprover", fields: [approvedBy], references: [id])
+
+  @@index([branchId, status])
+  @@index([requestedBy, status])
+  @@index([saleId])
 }

@@ -27,6 +27,7 @@ export default async function UsuariosPage() {
         role: true,
         isActive: true,
         branchId: true,
+        pin: true,
         branch: { select: { id: true, code: true, name: true } },
       },
       orderBy: [{ isActive: "desc" }, { role: "asc" }, { name: "asc" }],
@@ -60,6 +61,7 @@ export default async function UsuariosPage() {
           branchId: u.branchId,
           branchName: u.branch?.name ?? null,
           branchCode: u.branch?.code ?? null,
+          hasPin: u.pin != null,
         }))}
         branches={branches}
         currentUserId={user.id}

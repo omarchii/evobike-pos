@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, KeyRound, Power } from "lucide-react";
+import { Plus, Pencil, KeyRound, Power, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +61,10 @@ interface UserRow {
   branchId: string | null;
   branchName: string | null;
   branchCode: string | null;
+  hasPin: boolean;
 }
+
+const PIN_ELIGIBLE = new Set(["MANAGER", "ADMIN"]);
 
 interface Branch {
   id: string;
@@ -100,6 +103,7 @@ export function UsersManager({
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+  const [pinTarget, setPinTarget] = useState<UserRow | null>(null);
 
   async function handleToggleActive(u: UserRow): Promise<void> {
     if (u.id === currentUserId) {
@@ -148,6 +152,7 @@ export function UsersManager({
           currentUserId={currentUserId}
           onEdit={setEditing}
           onReset={setResetTarget}
+          onPin={setPinTarget}
           onToggle={handleToggleActive}
         />
       </Section>
@@ -159,6 +164,7 @@ export function UsersManager({
             currentUserId={currentUserId}
             onEdit={setEditing}
             onReset={setResetTarget}
+            onPin={setPinTarget}
             onToggle={handleToggleActive}
           />
         </Section>
@@ -189,6 +195,18 @@ export function UsersManager({
         <ResetPasswordDialog
           user={resetTarget}
           onClose={() => setResetTarget(null)}
+        />
+      )}
+      {pinTarget && (
+        <SetPinDialog
+          user={pinTarget}
+          onClose={() => setPinTarget(null)}
+          onChanged={(hasPin) => {
+            setUsers((prev) =>
+              prev.map((x) => (x.id === pinTarget.id ? { ...x, hasPin } : x)),
+            );
+            router.refresh();
+          }}
         />
       )}
     </>
@@ -229,12 +247,14 @@ function UsersTable({
   currentUserId,
   onEdit,
   onReset,
+  onPin,
   onToggle,
 }: {
   rows: UserRow[];
   currentUserId: string;
   onEdit: (u: UserRow) => void;
   onReset: (u: UserRow) => void;
+  onPin: (u: UserRow) => void;
   onToggle: (u: UserRow) => void;
 }) {
   if (rows.length === 0) {
@@ -265,15 +285,29 @@ function UsersTable({
               <td className="px-5 py-3 text-[var(--on-surf)]">{u.name}</td>
               <td className="px-5 py-3 text-[var(--on-surf-var)]">{u.email}</td>
               <td className="px-5 py-3">
-                <span
-                  className="inline-block px-2.5 py-1 rounded-full text-xs font-medium"
-                  style={{
-                    background: "var(--p-container)",
-                    color: "var(--on-p-container)",
-                  }}
-                >
-                  {ROLE_LABELS[u.role] ?? u.role}
-                </span>
+                <div className="inline-flex items-center gap-2">
+                  <span
+                    className="inline-block px-2.5 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      background: "var(--p-container)",
+                      color: "var(--on-p-container)",
+                    }}
+                  >
+                    {ROLE_LABELS[u.role] ?? u.role}
+                  </span>
+                  {PIN_ELIGIBLE.has(u.role) && !u.hasPin && (
+                    <span
+                      className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide"
+                      style={{
+                        background: "rgba(220, 38, 38, 0.12)",
+                        color: "#dc2626",
+                      }}
+                      title="Este usuario aún no tiene PIN de autorización"
+                    >
+                      Sin PIN
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-5 py-3 text-[var(--on-surf-var)]">
                 {u.branchCode ? `${u.branchCode} — ${u.branchName}` : "—"}
@@ -286,6 +320,17 @@ function UsersTable({
                   <IconButton onClick={() => onReset(u)} title="Resetear contraseña">
                     <KeyRound className="h-4 w-4" />
                   </IconButton>
+                  {PIN_ELIGIBLE.has(u.role) && (
+                    <IconButton
+                      onClick={() => onPin(u)}
+                      title={u.hasPin ? "Cambiar PIN de autorización" : "Establecer PIN de autorización"}
+                    >
+                      <Lock
+                        className="h-4 w-4"
+                        style={{ color: u.hasPin ? "var(--sec)" : "var(--on-surf-var)" }}
+                      />
+                    </IconButton>
+                  )}
                   <IconButton
                     onClick={() => onToggle(u)}
                     title={u.isActive ? "Desactivar" : "Activar"}
@@ -407,6 +452,7 @@ function CreateUserDialog({
         ...json.data,
         branchCode: json.data.branch?.code ?? null,
         branchName: json.data.branch?.name ?? null,
+        hasPin: false,
       });
       onClose();
     } catch {
@@ -523,6 +569,7 @@ function EditUserDialog({
         ...json.data,
         branchCode: json.data.branch?.code ?? null,
         branchName: json.data.branch?.name ?? null,
+        hasPin: user.hasPin,
       });
       onClose();
     } catch {
@@ -674,6 +721,156 @@ function ResetPasswordDialog({
             >
               {saving ? "Guardando…" : "Actualizar"}
             </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SetPinDialog({
+  user,
+  onClose,
+  onChanged,
+}: {
+  user: UserRow;
+  onClose: () => void;
+  onChanged: (hasPin: boolean) => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!/^\d{4,6}$/.test(pin)) {
+      toast.error("El PIN debe ser de 4 a 6 dígitos numéricos");
+      return;
+    }
+    if (pin !== confirmPin) {
+      toast.error("Los PINs no coinciden");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/configuracion/usuarios/${user.id}/pin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error(json.error ?? "No se pudo guardar el PIN");
+        return;
+      }
+      toast.success(user.hasPin ? "PIN actualizado" : "PIN establecido");
+      onChanged(true);
+      onClose();
+    } catch {
+      toast.error("Error de red");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onRemove = async (): Promise<void> => {
+    if (!confirm("¿Eliminar el PIN de este usuario? No podrá autorizar hasta que configure uno nuevo.")) return;
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/configuracion/usuarios/${user.id}/pin`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error(json.error ?? "No se pudo eliminar el PIN");
+        return;
+      }
+      toast.success("PIN eliminado");
+      onChanged(false);
+      onClose();
+    } catch {
+      toast.error("Error de red");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="p-0 gap-0 overflow-hidden max-w-md" style={modalStyle()}>
+        <DialogHeader className="px-6 pt-6 pb-2">
+          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+            {user.hasPin ? "Cambiar PIN" : "Establecer PIN"}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="px-6 pb-6 space-y-3">
+          <p className="text-sm text-[var(--on-surf-var)]">
+            PIN de autorización para <strong>{user.name}</strong>. Se usa para aprobar cancelaciones y descuentos en el POS.
+          </p>
+          <Field label="Nuevo PIN (4 a 6 dígitos)">
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              style={INPUT_STYLE}
+              autoFocus
+            />
+          </Field>
+          <Field label="Confirmar PIN">
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={6}
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <div>
+              {user.hasPin && (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  disabled={removing || saving}
+                  className="px-3 py-2 rounded-xl text-sm font-medium"
+                  style={{
+                    background: "rgba(220, 38, 38, 0.12)",
+                    color: "#dc2626",
+                    opacity: removing || saving ? 0.5 : 1,
+                  }}
+                >
+                  {removing ? "Eliminando…" : "Eliminar PIN"}
+                </button>
+              )}
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-sm font-medium"
+                style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving || removing}
+                className="px-4 py-2 rounded-xl text-sm font-medium"
+                style={{
+                  background: "var(--p)",
+                  color: "#ffffff",
+                  opacity: saving || removing ? 0.5 : 1,
+                }}
+              >
+                {saving ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
           </div>
         </form>
       </DialogContent>
