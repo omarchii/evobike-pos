@@ -3,10 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import {
+  consumeAuthorization,
+  AuthorizationConsumeError,
+} from "@/lib/authorizations";
 
 interface SessionUser {
   id: string;
   branchId: string;
+  role: string;
 }
 
 const paymentMethodSchema = z.object({
@@ -58,6 +63,8 @@ const saleSchema = z.object({
   discountAmount: z.number().nonnegative().optional(),
   discountAuthorizedByUserId: z.string().optional(),
   discountAuthorizedByName: z.string().optional(),
+  // P5-C: ID de la AuthorizationRequest(DESCUENTO) APPROVED. Requerido para SELLER si discountAmount > 0.
+  discountAuthorizationId: z.string().optional(),
   // Optional quotation conversion fields (additive — does not affect existing callers)
   quotationId: z.string().optional(),
   frozenItems: z.array(frozenItemSchema).optional(),
@@ -145,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId, role: userRole } = session.user as unknown as SessionUser;
 
   if (!branchId) {
     return NextResponse.json({ success: false, error: "Usuario sin sucursal asignada" }, { status: 400 });
@@ -156,6 +163,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]?.message ?? "Datos inválidos";
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
+  }
+
+  // P5-C: SELLER no puede aplicar descuento sin autorización consumible.
+  // MANAGER/ADMIN pueden autoaprobarse (el role es la autorización).
+  if (
+    parsed.data.discountAmount &&
+    parsed.data.discountAmount > 0 &&
+    !parsed.data.discountAuthorizationId &&
+    userRole !== "MANAGER" &&
+    userRole !== "ADMIN"
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Los descuentos requieren autorización de un gerente" },
+      { status: 403 },
+    );
   }
 
   const input = parsed.data;
@@ -273,6 +295,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             },
           },
         });
+
+        // P5-C: consumir autorización de descuento si aplica (frozen path)
+        if (input.discountAuthorizationId && input.discountAmount && input.discountAmount > 0) {
+          await consumeAuthorization(tx, {
+            tipo: "DESCUENTO",
+            authorizationId: input.discountAuthorizationId,
+            requestedBy: userId,
+            saleId: frozenSale.id,
+            monto: input.discountAmount,
+          });
+        }
 
         // Inventory movements (skip free-form items) — polimórfico
         for (const item of input.frozenItems) {
@@ -484,6 +517,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
       });
 
+      // P5-C: consumir autorización de descuento si aplica (path normal)
+      if (input.discountAuthorizationId && input.discountAmount && input.discountAmount > 0) {
+        await consumeAuthorization(tx, {
+          tipo: "DESCUENTO",
+          authorizationId: input.discountAuthorizationId,
+          requestedBy: userId,
+          saleId: sale.id,
+          monto: input.discountAmount,
+        });
+      }
+
       // D. Inventory movements (skip assembly-mode and free-form items) — polimórfico
       for (const item of input.items) {
         if (item.assemblyMode) continue;
@@ -656,6 +700,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true, data: { saleId: result.id, folio: result.folio } });
   } catch (error: unknown) {
+    if (error instanceof AuthorizationConsumeError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
     const message = error instanceof Error ? error.message : "Error al procesar la venta";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

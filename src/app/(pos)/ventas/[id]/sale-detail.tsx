@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -14,8 +15,10 @@ import {
   Zap,
   FileText,
   Printer,
+  XCircle,
 } from "lucide-react";
 import type { SaleDetailData } from "./page";
+import { CancelSaleModal } from "@/components/pos/authorization/cancel-sale-modal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -143,10 +146,12 @@ function MetaItem({
 
 interface SaleDetailProps {
   sale: SaleDetailData;
+  userRole: string;
 }
 
-export function SaleDetail({ sale }: SaleDetailProps) {
+export function SaleDetail({ sale, userRole }: SaleDetailProps) {
   const router = useRouter();
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const reensambleOrders = sale.assemblyOrders.filter(
     (ao) => ao.voltageChangeLogId !== null
@@ -155,6 +160,8 @@ export function SaleDetail({ sale }: SaleDetailProps) {
   const handlePrintWarranty = () => {
     window.open(`/api/sales/${sale.id}/warranty-pdf`, "_blank");
   };
+
+  const canCancel = sale.status !== "CANCELLED";
 
   return (
     <div className="max-w-3xl mx-auto pb-16">
@@ -170,21 +177,48 @@ export function SaleDetail({ sale }: SaleDetailProps) {
           Volver
         </button>
 
-        {sale.warrantyDocReady && (
-          <button
-            type="button"
-            onClick={handlePrintWarranty}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-90"
-            style={{
-              background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
-              color: "var(--on-p)",
-            }}
-          >
-            <Printer className="w-4 h-4" />
-            Imprimir póliza
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(220,38,38,0.1)",
+                color: "#dc2626",
+              }}
+            >
+              <XCircle className="w-4 h-4" />
+              Cancelar venta
+            </button>
+          )}
+          {sale.warrantyDocReady && (
+            <button
+              type="button"
+              onClick={handlePrintWarranty}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-90"
+              style={{
+                background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
+                color: "var(--on-p)",
+              }}
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir póliza
+            </button>
+          )}
+        </div>
       </div>
+
+      {showCancelModal && (
+        <CancelSaleModal
+          saleId={sale.id}
+          saleFolio={sale.folio}
+          saleTotal={sale.total}
+          userRole={userRole}
+          onCancelled={() => router.refresh()}
+          onClose={() => setShowCancelModal(false)}
+        />
+      )}
 
       {/* Header card */}
       <div

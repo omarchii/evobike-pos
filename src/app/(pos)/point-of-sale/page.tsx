@@ -145,6 +145,7 @@ export default async function PointOfSalePage() {
 
   const sellerName = authUser?.name ?? "";
   const branchName = authUser?.branchName ?? "";
+  const userRole = authUser?.role ?? "SELLER";
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden">
@@ -157,6 +158,7 @@ export default async function PointOfSalePage() {
         branchId={branchId}
         sellerName={sellerName}
         branchName={branchName}
+        userRole={userRole}
       />
     </div>
   );

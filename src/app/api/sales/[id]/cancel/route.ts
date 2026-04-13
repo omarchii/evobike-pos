@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import {
+  consumeAuthorization,
+  AuthorizationConsumeError,
+} from "@/lib/authorizations";
 
 interface AuthUser {
   id: string;
@@ -12,10 +16,13 @@ interface AuthUser {
 
 const cancelSchema = z.object({
   motivo: z.string().min(1, "El motivo de cancelación es obligatorio"),
+  // P5-C: requerido para SELLER. Opcional para MANAGER/ADMIN (self-authorize implícito por rol).
+  authorizationId: z.string().optional(),
 });
 
 // POST /api/sales/[id]/cancel
-// Solo MANAGER y ADMIN pueden cancelar.
+// MANAGER/ADMIN pueden cancelar directamente. SELLER debe proveer authorizationId
+// de una AuthorizationRequest(CANCELACION, APPROVED, saleId coincidente).
 // 1. Revierte stock por cada SaleItem con productVariantId
 // 2. Crea CashTransaction(REFUND_OUT) por cada cobro registrado (si hay sesión abierta)
 // 3. Revierte voltaje de CustomerBike si la venta tenía VoltageChangeLog
@@ -31,14 +38,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as AuthUser;
-
-  if (role !== "MANAGER" && role !== "ADMIN") {
-    return NextResponse.json(
-      { success: false, error: "Sin permisos para cancelar ventas" },
-      { status: 403 }
-    );
-  }
+  const { id: userId, role, branchId } = session.user as unknown as AuthUser;
 
   if (!branchId) {
     return NextResponse.json(
@@ -57,7 +57,15 @@ export async function POST(
       { status: 400 }
     );
   }
-  const { motivo } = parsed.data;
+  const { motivo, authorizationId } = parsed.data;
+
+  const isManager = role === "MANAGER" || role === "ADMIN";
+  if (!isManager && !authorizationId) {
+    return NextResponse.json(
+      { success: false, error: "Esta acción requiere autorización de un gerente" },
+      { status: 403 }
+    );
+  }
 
   try {
     const sale = await prisma.sale.findUnique({
@@ -86,6 +94,16 @@ export async function POST(
       );
     }
 
+    // Nombre del autorizador para el internalNote (fuera de la tx: lectura independiente).
+    let approverName: string | null = null;
+    if (authorizationId) {
+      const auth = await prisma.authorizationRequest.findUnique({
+        where: { id: authorizationId },
+        select: { approver: { select: { name: true } } },
+      });
+      approverName = auth?.approver?.name ?? null;
+    }
+
     // Fetch voltage change logs for this sale (for reversal)
     const voltageChangeLogs = await prisma.voltageChangeLog.findMany({
       where: { saleId },
@@ -93,6 +111,16 @@ export async function POST(
     });
 
     await prisma.$transaction(async (tx) => {
+      // 0. Consumir autorización (fail-fast antes de tocar stock/pagos)
+      if (authorizationId) {
+        await consumeAuthorization(tx, {
+          tipo: "CANCELACION",
+          authorizationId,
+          requestedBy: userId,
+          saleId,
+        });
+      }
+
       // 1. Restore stock for each catalog item
       for (const item of sale.items) {
         if (item.isFreeForm || !item.productVariantId) continue;
@@ -147,19 +175,25 @@ export async function POST(
       });
 
       // 6. Mark Sale as CANCELLED with reason in internalNote
+      const cancellationLine = approverName
+        ? `Cancelación: ${motivo}. Autorizado por ${approverName}`
+        : `Cancelación: ${motivo}`;
       await tx.sale.update({
         where: { id: saleId },
         data: {
           status: "CANCELLED",
           internalNote: sale.internalNote
-            ? `${sale.internalNote}\nCancelación: ${motivo}`
-            : `Cancelación: ${motivo}`,
+            ? `${sale.internalNote}\n${cancellationLine}`
+            : cancellationLine,
         },
       });
     });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
+    if (error instanceof AuthorizationConsumeError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
     const message = error instanceof Error ? error.message : "Error al cancelar la venta";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

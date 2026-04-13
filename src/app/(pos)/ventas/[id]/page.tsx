@@ -160,5 +160,5 @@ export default async function VentaDetallePage({ params }: PageProps): Promise<R
     })),
   };
 
-  return <SaleDetail sale={data} />;
+  return <SaleDetail sale={data} userRole={user.role} />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -15,6 +15,7 @@ import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { DiscountAuthorizationPanel } from "@/components/pos/authorization/discount-authorization-panel";
 import {
   Select,
   SelectContent,
@@ -480,6 +481,7 @@ export default function PosTerminal({
   branchId,
   sellerName,
   branchName,
+  userRole,
 }: {
   modelos: ModeloData[];
   customers?: CustomerData[];
@@ -489,6 +491,7 @@ export default function PosTerminal({
   branchId: string;
   sellerName: string;
   branchName: string;
+  userRole: string;
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -517,16 +520,16 @@ export default function PosTerminal({
   const [voltageChangeTargetIdx, setVoltageChangeTargetIdx] = useState<number | null>(null);
   const [freeFormOpen, setFreeFormOpen] = useState(false);
 
-  // ── Discount state
+  // ── Discount state (P5-C)
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [discountPin, setDiscountPin] = useState("");
-  const [pinError, setPinError] = useState(false);
+  // authorizationId = null cuando el vendedor es MANAGER/ADMIN (self-authorize implícito)
   const [discountAuthorized, setDiscountAuthorized] = useState<{
-    userId: string;
+    authorizationId: string | null;
     name: string;
   } | null>(null);
   const [discountReason, setDiscountReason] = useState("");
-  const [validatingPin, setValidatingPin] = useState(false);
+
+  const isManager = userRole === "MANAGER" || userRole === "ADMIN";
 
   // ── Internal note
   const [internalNote, setInternalNote] = useState("");
@@ -775,39 +778,18 @@ export default function PosTerminal({
     [sessionBranchId],
   );
 
-  // ── Handlers: validate manager PIN
-  const handleValidatePin = async () => {
-    if (!discountPin || discountAmount <= 0) return;
-    setValidatingPin(true);
-    setPinError(false);
-    try {
-      const res = await fetch("/api/managers/pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: discountPin, branchId: sessionBranchId }),
-      });
-      const data: {
-        success?: boolean;
-        managerId?: string;
-        managerName?: string;
-      } = await res.json();
-      if (data.success && data.managerId && data.managerName) {
-        setDiscountAuthorized({
-          userId: data.managerId,
-          name: data.managerName,
-        });
-        setDiscountPin("");
-        toast.success(`Descuento autorizado por ${data.managerName}`);
-      } else {
-        setPinError(true);
-        setDiscountPin("");
-      }
-    } catch {
-      setPinError(true);
-    } finally {
-      setValidatingPin(false);
+  // MANAGER/ADMIN se autoautorizan: en cuanto ponen un descuento > 0, se aprueba localmente
+  // con authorizationId = null. Para SELLER el panel de autorización se muestra hasta que
+  // se consiga approved via PIN (presencial) o polling (remota).
+  useEffect(() => {
+    if (!isManager) return;
+    if (discountAmount > 0 && !discountAuthorized) {
+      setDiscountAuthorized({ authorizationId: null, name: sellerName || "Gerente" });
     }
-  };
+    if (discountAmount === 0 && discountAuthorized) {
+      setDiscountAuthorized(null);
+    }
+  }, [isManager, discountAmount, discountAuthorized, sellerName]);
 
   // ── Handlers: complete guided config → add to cart
   const handleCompleteConfig = () => {
@@ -944,7 +926,7 @@ export default function PosTerminal({
           internalNote,
           discountAmount:
             discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
-          discountAuthorizedByUserId: discountAuthorized?.userId,
+          discountAuthorizationId: discountAuthorized?.authorizationId ?? undefined,
           discountAuthorizedByName: discountAuthorized?.name,
         }),
       }).then((r) => r.json() as Promise<{ success: boolean; data?: { saleId: string; folio: string }; error?: string }>);
@@ -997,7 +979,6 @@ export default function PosTerminal({
     setDiscountAmount(0);
     setDiscountAuthorized(null);
     setDiscountReason("");
-    setDiscountPin("");
     setInternalNote("");
     setIsLayaway(false);
     setLayawayPercent(30);
@@ -2118,49 +2099,18 @@ export default function PosTerminal({
                       value={discountReason}
                       onChange={(e) => setDiscountReason(e.target.value)}
                     />
-                    <div className="flex gap-1.5">
-                      <input
-                        type="password"
-                        className={`flex-1 px-2 py-1.5 text-[10px] rounded-lg focus:outline-none ${pinError ? "animate-pulse" : ""}`}
-                        style={{
-                          background: "var(--surf-low)",
-                          border: pinError
-                            ? "1px solid var(--ter)"
-                            : "1px solid rgba(178,204,192,0.2)",
-                          color: "var(--on-surf)",
-                        }}
-                        placeholder="PIN Manager..."
-                        value={discountPin}
-                        onChange={(e) => {
-                          setDiscountPin(e.target.value);
-                          setPinError(false);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleValidatePin();
+                    {!isManager && (
+                      <DiscountAuthorizationPanel
+                        branchId={sessionBranchId}
+                        amount={discountAmount}
+                        reason={discountReason}
+                        onAuthorized={(result) => {
+                          setDiscountAuthorized({
+                            authorizationId: result.authorizationId,
+                            name: result.approverName,
+                          });
                         }}
                       />
-                      <button
-                        onClick={handleValidatePin}
-                        disabled={validatingPin || !discountPin}
-                        className="px-2 py-1.5 rounded-lg text-[9px] font-medium"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #1B4332, #2ECC71)",
-                          color: "var(--on-primary)",
-                          opacity: validatingPin || !discountPin ? 0.6 : 1,
-                        }}
-                      >
-                        {validatingPin ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          "OK"
-                        )}
-                      </button>
-                    </div>
-                    {pinError && (
-                      <p className="text-[9px]" style={{ color: "var(--ter)" }}>
-                        PIN incorrecto
-                      </p>
                     )}
                   </>
                 )}
