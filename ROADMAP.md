@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-12 (P4-C)  
+Última actualización: 2026-04-13 (P5)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -150,7 +150,6 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - `prisma/data/accesorios.csv`
 - `prisma/data/refacciones.csv`
 - `prisma/data/refacciones_revisar.csv` (pendiente de revisión manual en Fase 6)
-
 ---
 
 ## FASE P3 — Fixes y mejoras POS ✅ (2026-04-12)
@@ -244,40 +243,52 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 
 ---
 
-## FASE P5 — Flujo de autorización (PIN + remoto)
-**Modelo: Opus — decisión de arquitectura con tiempo real | Dependencias: ninguna**
+## FASE P5 — Flujo de autorización (PIN + remoto) ✅ (2026-04-13)
 
 Aplica a: cancelaciones de venta y descuentos sobre precio.
 
-### Modelo nuevo `AuthorizationRequest`
-```prisma
-model AuthorizationRequest {
-  id          String   @id @default(cuid())
-  tipo        AuthorizationType  // CANCELACION | DESCUENTO
-  status      AuthorizationStatus // PENDING | APPROVED | REJECTED
-  saleId      String?  // referencia a la venta afectada
-  requestedBy String   // userId del vendedor
-  approvedBy  String?  // userId del manager
-  pin         String?  // hash del PIN usado (modo presencial)
-  monto       Decimal? // para descuentos: monto solicitado
-  motivo      String?
-  createdAt   DateTime @default(now())
-  resolvedAt  DateTime?
-}
-```
+### P5-A ✅ — Schema + PIN + UI de configuración
+- Nuevo modelo `AuthorizationRequest` con enums `AuthorizationType` (CANCELACION | DESCUENTO), `AuthorizationStatus` (PENDING | APPROVED | REJECTED | EXPIRED) y `AuthorizationMode` (PRESENCIAL | REMOTA). Incluye `branchId` (bandeja sin join), `expiresAt` (REMOTA: now+5min), `rejectReason`. Relaciones a `Branch`, `Sale?`, requester/approver en `User`.
+- `User.pin String?` (hash bcrypt, 4-6 dígitos). Campo separado del `password` — UX mala al teclear la contraseña completa del manager frente al vendedor.
+- Migración drift-safe con `prisma migrate diff` + archivo manual + `migrate resolve --applied`.
+- API ADMIN-only `POST/DELETE /api/configuracion/usuarios/[id]/pin` — Zod valida 4-6 dígitos y que el rol sea MANAGER/ADMIN.
+- UI en `/configuracion/usuarios`: badge "Sin PIN" para MANAGER/ADMIN sin configurar, ícono candado por fila, `SetPinDialog` con confirm y botón eliminar.
 
-### Flujos
-- **Modo presencial**: campo PIN de manager en POS → validación inmediata → ejecutar acción
-- **Modo remoto**: crear `AuthorizationRequest(PENDING)` → bandeja en sesión del manager → POS polling cada 3s hasta resolución
-- Decisión técnica (Opus): polling simple vs WebSockets para el modo remoto
-- Bandeja de solicitudes pendientes visible en dashboard de manager como notificación urgente
-- Historial de autorizaciones consultable
+### P5-B ✅ — API de autorizaciones
+- Helper `src/lib/authorizations.ts`: `validatePinForBranch(pin, branchId)`, `expireIfNeeded(request)` (lazy + idempotente), `consumeAuthorization(tx, input)` transaccional con `AuthorizationConsumeError` tipada.
+- **Lock de no-reuso**: DESCUENTO → `AuthorizationRequest.saleId IS NULL` (se setea al consumir en la misma $transaction); CANCELACION → `Sale.status → CANCELLED` (lock natural).
+- `POST /api/auth-requests`: PRESENCIAL valida PIN inline y crea APPROVED; REMOTA crea PENDING + `expiresAt = now + 5min`. Rechaza auto-autorización (`manager.id === requester.id`).
+- `GET /api/auth-requests`: historial filtrable por `tipo`, `status`, `fromDate`, `toDate`, `branchId` (solo ADMIN).
+- `GET /api/auth-requests/[id]`: polling individual con lazy-expire.
+- `POST /api/auth-requests/[id]/resolve`: manager aprueba/rechaza con PIN. Carreras cubiertas con `updateMany({ where: { id, status: PENDING } })` — si `count === 0` otro manager ya ganó.
+- `GET /api/auth-requests/pending`: bandeja del manager, auto-expira vencidas con un `updateMany` barato por índice `(branchId, status)`, excluye `requestedBy === currentUser`.
+
+### P5-C ✅ — Integración en POS y cancelación
+- Decisión polling vs WebSockets (Opus): **polling** — sin precedente de real-time en el repo, sin infra stateful, 3s es suficiente para la UX.
+- Hook compartido `useAuthorizationPolling` con cleanup estricto: `setInterval` limpiado en el return del `useEffect`, flag `cancelled` para fetches en vuelo, detiene polling al alcanzar estado terminal y tras 3 errores consecutivos.
+- `POST /api/sales` acepta `discountAuthorizationId`. **SELLER con `discountAmount > 0` requiere autorización APPROVED**; MANAGER/ADMIN pueden autoaprobarse (su rol es la autorización). Consumo en $transaction con `AuthorizationConsumeError` mapeado a 400.
+- `POST /api/sales/[id]/cancel` acepta `authorizationId`. Gate relajado: SELLER habilitado si provee autorización válida; MANAGER/ADMIN mantienen cancelación directa. Autorizador se añade al `internalNote` de la venta.
+- POS: `DiscountAuthorizationPanel` inline con modos presencial (PIN) y remoto (polling + countdown). MANAGER/ADMIN se autoautorizan vía `useEffect` cuando `discountAmount > 0`. Reemplaza el viejo `/api/managers/pin` (que validaba contra `User.password`) — endpoint eliminado.
+- `/ventas/[id]`: botón "Cancelar venta" + `CancelSaleModal` reutilizable con el mismo flujo presencial/remoto. Refresca la vista al cancelar.
+
+### P5-D ✅ — Bandeja + historial
+- `AuthorizationInbox` en dashboard manager: card que polla `/api/auth-requests/pending` cada 10s con cleanup de `setInterval` y `AbortController` para fetches en vuelo. Lista pendientes con countdown, solicitante y motivo. Aprobar/Rechazar abre `ResolveDialog` con PIN + motivo opcional (para rechazo).
+- Página `/autorizaciones` (MANAGER+ADMIN): historial filtrable por tipo, estado, sucursal (solo ADMIN) y rango de fechas. Server Component con Prisma directo; filtros en URL via `useTransition`. Links clickables a `/ventas/[id]` para cancelaciones.
+- Link "Autorizaciones" en sidebar (MANAGER+ADMIN) con icono `ShieldCheck`.
 
 ### Archivos clave
-- `prisma/schema.prisma`
-- `src/app/api/auth-requests/route.ts` (nueva)
-- `src/app/(pos)/pos/pos-terminal.tsx` ⚠️
-- Dashboard de manager
+- `prisma/schema.prisma` — `User.pin`, `AuthorizationRequest`, enums
+- `prisma/migrations/20260413000000_add_authorization_requests_and_user_pin/`
+- `src/lib/authorizations.ts` — helper compartido
+- `src/app/api/auth-requests/` — 4 endpoints (POST + GET + [id] GET/resolve + pending)
+- `src/app/api/configuracion/usuarios/[id]/pin/` — set/clear PIN
+- `src/components/pos/authorization/` — hook + panel + cancel modal compartidos
+- `src/app/(pos)/autorizaciones/` — historial
+- `src/app/(pos)/dashboard/authorization-inbox.tsx` — bandeja
+- `src/app/api/sales/route.ts` ⚠️ — consume en path normal + frozen
+- `src/app/api/sales/[id]/cancel/route.ts` ⚠️ — gate relajado + consume
+- `src/app/(pos)/point-of-sale/pos-terminal.tsx` ⚠️ — migración del flujo de descuento
+- `src/app/(pos)/ventas/[id]/sale-detail.tsx` — botón cancelar
 
 ---
 
