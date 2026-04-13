@@ -21,6 +21,7 @@ import {
     CircleDollarSign,
     ChevronDown,
     ChevronRight,
+    ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const routes: RouteGroup[] = [
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },
+    { label: "Autorizaciones", icon: ShieldCheck, href: "/autorizaciones", roles: ["MANAGER", "ADMIN"] },
     {
         label: "Reportes",
         icon: BarChart2,

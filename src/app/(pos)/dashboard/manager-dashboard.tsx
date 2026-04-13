@@ -4,6 +4,7 @@ import { TrendingUp, Banknote, Vault, ArchiveRestore, CheckCircle, ArrowRight, U
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
+import { AuthorizationInbox } from "./authorization-inbox";
 
 type BranchComparisonRow = {
     branchId: string;
@@ -237,6 +238,8 @@ export function ManagerDashboard({
             </div>
 
             <AttentionPanel {...attentionAlerts} />
+
+            <AuthorizationInbox />
 
             {/* Row 1: 4 KPI cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
