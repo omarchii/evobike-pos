@@ -80,6 +80,10 @@
   --ter: #e74c3c;
   --ter-container: #fdecea;
   --on-ter-container: #7b241c;
+  /* on-ter-solid: texto sobre --ter (rojo sólido). Mismo valor en light/dark
+     para preservar el contraste alto de alertas (botones de acción destructiva,
+     chips "Sin stock"). */
+  --on-ter-solid: #ffffff;
   --warn: #f39c12;
   --warn-container: #fef9e7;
   --surface: #f8fafa;
@@ -123,6 +127,7 @@
   --ter: #ff8080;
   --ter-container: #3d1515;
   --on-ter-container: #ffb3b1;
+  --on-ter-solid: #ffffff;
   --warn: #f5c842;
   --warn-container: #3d2e00;
   --surface: #131313;
