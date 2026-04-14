@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { type CashTransaction } from "@prisma/client";
+import { Prisma, type CashTransaction } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
@@ -74,6 +74,12 @@ export async function PATCH(
     } catch (error: unknown) {
         if (error instanceof UserInactiveError) {
             return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+        }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+            return NextResponse.json(
+                { success: false, error: "Sesión obsoleta. Cierra sesión y vuelve a iniciar." },
+                { status: 401 },
+            );
         }
         console.error("[api/cash/transactions/[id]/collect PATCH]", error);
         const message = error instanceof Error ? error.message : "Error interno";

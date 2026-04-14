@@ -12,8 +12,8 @@ import {
 } from "@/lib/cash-register";
 
 const withdrawalSchema = z.object({
-    amount: z.number().positive(),
-    reference: z.string().trim().min(3, "El motivo debe tener al menos 3 caracteres."),
+    amount: z.coerce.number().positive(),
+    reference: z.string().trim().min(3, "El número de sobre debe tener al menos 3 caracteres."),
 });
 
 type SerializedCashTransaction = Omit<CashTransaction, "amount"> & { amount: number };
@@ -79,6 +79,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                     error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
                 },
                 { status: 409 },
+            );
+        }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+            return NextResponse.json(
+                { success: false, error: "Sesión obsoleta. Cierra sesión y vuelve a iniciar." },
+                { status: 401 },
             );
         }
         console.error("[api/cash/withdrawal POST]", error);

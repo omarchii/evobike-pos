@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { CashExpenseCategory, Prisma, type CashTransaction } from "@prisma/client";
+import { CashDepositCategory, Prisma, type CashTransaction } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
@@ -11,14 +11,12 @@ import {
     OrphanedCashSessionError,
 } from "@/lib/cash-register";
 
-const SELLER_EXPENSE_LIMIT = 500;
+const SELLER_DEPOSIT_LIMIT = 500;
 
-const expenseSchema = z.object({
+const depositSchema = z.object({
     amount: z.coerce.number().positive(),
-    method: z.literal("CASH"),
-    category: z.nativeEnum(CashExpenseCategory),
-    beneficiary: z.string().trim().min(1).optional(),
-    notes: z.string().trim().min(3, "El motivo debe tener al menos 3 caracteres."),
+    category: z.nativeEnum(CashDepositCategory),
+    notes: z.string().trim().optional(),
 });
 
 type SerializedCashTransaction = Omit<CashTransaction, "amount"> & { amount: number };
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const body: unknown = await req.json();
-    const parsed = expenseSchema.safeParse(body);
+    const parsed = depositSchema.safeParse(body);
     if (!parsed.success) {
         const first = parsed.error.issues[0]?.message ?? "Datos inválidos";
         return NextResponse.json({ success: false, error: first }, { status: 400 });
@@ -43,7 +41,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
         const user = await requireActiveUser(session);
 
-        if (user.role === "SELLER" && parsed.data.amount > SELLER_EXPENSE_LIMIT) {
+        if (user.role === "SELLER" && parsed.data.amount > SELLER_DEPOSIT_LIMIT) {
             return NextResponse.json(
                 {
                     success: false,
@@ -66,14 +64,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const tx = await prisma.cashTransaction.create({
             data: {
                 sessionId: activeSession.id,
-                type: "EXPENSE_OUT",
+                type: "CASH_DEPOSIT",
                 method: "CASH",
                 amount: new Prisma.Decimal(parsed.data.amount.toFixed(2)),
-                beneficiary: parsed.data.beneficiary?.trim() ?? null,
-                notes: parsed.data.notes.trim(),
+                notes: parsed.data.notes?.trim() || null,
                 collectionStatus: "COLLECTED",
                 collectedAt: now,
-                expenseCategory: parsed.data.category,
+                depositCategory: parsed.data.category,
             },
         });
 
@@ -97,7 +94,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 { status: 401 },
             );
         }
-        console.error("[api/cash/expense POST]", error);
+        console.error("[api/cash/deposit POST]", error);
         const message = error instanceof Error ? error.message : "Error interno";
         return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
