@@ -299,13 +299,29 @@ enum CollectionStatus {
   PENDING // Pago pendiente de liquidación por la financiera (ej. Atrato)
 }
 
+enum CashTransactionType {
+  PAYMENT_IN
+  REFUND_OUT
+  EXPENSE_OUT
+  WITHDRAWAL
+  CASH_DEPOSIT // Entrada manual de efectivo (dotación de cambio, reposición de fondo)
+}
+
 enum CashExpenseCategory {
   MENSAJERIA
   PAPELERIA
   CONSUMO
   MANTENIMIENTO
+  PAGO_PROVEEDOR
+  LIMPIEZA
   AJUSTE_CAJA
   OTRO
+}
+
+enum CashDepositCategory {
+  DOTACION_INICIAL
+  CAMBIO
+  OTROS
 }
 
 model CashRegisterSession {
@@ -328,13 +344,16 @@ model CashTransaction {
   id               String               @id @default(uuid())
   sessionId        String
   saleId           String?
-  type             String // PAYMENT_IN, REFUND_OUT, EXPENSE_OUT, WITHDRAWAL
+  type             CashTransactionType
   method           PaymentMethod
   amount           Decimal              @db.Decimal(10, 2)
-  reference        String?
+  reference        String? // WITHDRAWAL: número de sobre. PAYMENT_IN: referencia opcional de pago.
+  beneficiary      String? // EXPENSE_OUT: nombre/razón social del proveedor o destinatario del gasto
+  notes            String? // Motivo o concepto libre (obligatorio en EXPENSE_OUT, opcional en otros)
   collectionStatus CollectionStatus     @default(COLLECTED)
   collectedAt      DateTime? // Fecha en que el dinero quedó efectivamente en caja; null mientras collectionStatus = PENDING
   expenseCategory  CashExpenseCategory? // Solo se pobla cuando type = EXPENSE_OUT
+  depositCategory  CashDepositCategory? // Solo se pobla cuando type = CASH_DEPOSIT
   createdAt        DateTime             @default(now())
 
   session CashRegisterSession @relation(fields: [sessionId], references: [id])
