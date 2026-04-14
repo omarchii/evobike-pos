@@ -246,7 +246,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                 </aside>
             </section>
 
-            <CashFab sessionOpen={true} />
+            <CashFab sessionOpen={true} userRole={user.role} />
         </div>
     );
 }

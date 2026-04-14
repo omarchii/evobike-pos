@@ -35,7 +35,7 @@ function formatTime(iso: string): string {
 
 // ── Filter taxonomy (URL param `?tipo=`) ──────────────────────────────────────
 
-type TipoKey = "todos" | "cobros" | "gastos" | "retiros" | "depositos" | "reembolsos";
+type TipoKey = "todos" | "cobros" | "gastos" | "retiros" | "entradas" | "reembolsos";
 
 const TIPO_FILTERS: ReadonlyArray<{
     key: TipoKey;
@@ -46,7 +46,7 @@ const TIPO_FILTERS: ReadonlyArray<{
     { key: "cobros", label: "Cobros", types: ["PAYMENT_IN"] },
     { key: "gastos", label: "Gastos", types: ["EXPENSE_OUT"] },
     { key: "retiros", label: "Retiros", types: ["WITHDRAWAL"] },
-    { key: "depositos", label: "Depósitos", types: ["CASH_DEPOSIT"] },
+    { key: "entradas", label: "Entradas", types: ["CASH_DEPOSIT"] },
     { key: "reembolsos", label: "Reembolsos", types: ["REFUND_OUT"] },
 ] as const;
 
@@ -68,7 +68,7 @@ function getTypeMeta(type: CashTransactionType): {
         case "PAYMENT_IN":
             return { label: "Cobro", category: "in", icon: <Banknote className="h-3.5 w-3.5" /> };
         case "CASH_DEPOSIT":
-            return { label: "Depósito", category: "in", icon: <PiggyBank className="h-3.5 w-3.5" /> };
+            return { label: "Entrada", category: "in", icon: <PiggyBank className="h-3.5 w-3.5" /> };
         case "EXPENSE_OUT":
             return { label: "Gasto", category: "out", icon: <Receipt className="h-3.5 w-3.5" /> };
         case "WITHDRAWAL":

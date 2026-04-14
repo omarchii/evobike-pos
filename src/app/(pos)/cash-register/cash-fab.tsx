@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Receipt, Vault, PiggyBank } from "lucide-react";
+import { EntradaEfectivoDialog } from "./entrada-efectivo-dialog";
+import { ExpenseDialog } from "./expense-dialog";
+import { WithdrawalDialog } from "./withdrawal-dialog";
 
 interface Props {
     sessionOpen: boolean;
+    userRole: string;
 }
 
 interface FabAction {
@@ -14,8 +18,11 @@ interface FabAction {
     onClick: () => void;
 }
 
-export function CashFab({ sessionOpen }: Props): React.ReactElement | null {
+export function CashFab({ sessionOpen, userRole }: Props): React.ReactElement | null {
     const [expanded, setExpanded] = useState(false);
+    const [entradaOpen, setEntradaOpen] = useState(false);
+    const [expenseOpen, setExpenseOpen] = useState(false);
+    const [withdrawalOpen, setWithdrawalOpen] = useState(false);
 
     useEffect(() => {
         if (!expanded) return;
@@ -28,34 +35,35 @@ export function CashFab({ sessionOpen }: Props): React.ReactElement | null {
 
     if (!sessionOpen) return null;
 
+    const canWithdraw = userRole === "MANAGER" || userRole === "ADMIN";
+
     const actions: FabAction[] = [
         {
             key: "deposit",
-            label: "Registrar depósito",
+            label: "Registrar entrada",
             icon: <PiggyBank className="h-4 w-4" />,
-            onClick: () => {
-                /* TODO: abrir modal en Fase 4 */
-            },
+            onClick: () => setEntradaOpen(true),
         },
         {
             key: "expense",
             label: "Registrar gasto",
             icon: <Receipt className="h-4 w-4" />,
-            onClick: () => {
-                /* TODO: abrir modal en Fase 4 */
-            },
+            onClick: () => setExpenseOpen(true),
         },
-        {
-            key: "withdrawal",
-            label: "Registrar retiro",
-            icon: <Vault className="h-4 w-4" />,
-            onClick: () => {
-                /* TODO: abrir modal en Fase 4 */
-            },
-        },
+        ...(canWithdraw
+            ? [
+                  {
+                      key: "withdrawal",
+                      label: "Registrar retiro",
+                      icon: <Vault className="h-4 w-4" />,
+                      onClick: () => setWithdrawalOpen(true),
+                  } satisfies FabAction,
+              ]
+            : []),
     ];
 
     return (
+        <>
         <div
             className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3"
             style={{ pointerEvents: "none" }}
@@ -106,6 +114,24 @@ export function CashFab({ sessionOpen }: Props): React.ReactElement | null {
                 />
             </button>
         </div>
+
+        <EntradaEfectivoDialog
+            open={entradaOpen}
+            onOpenChange={setEntradaOpen}
+            userRole={userRole}
+        />
+        <ExpenseDialog
+            open={expenseOpen}
+            onOpenChange={setExpenseOpen}
+            userRole={userRole}
+        />
+        {canWithdraw && (
+            <WithdrawalDialog
+                open={withdrawalOpen}
+                onOpenChange={setWithdrawalOpen}
+            />
+        )}
+        </>
     );
 }
 
