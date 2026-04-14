@@ -20,6 +20,8 @@ const CASH_EXPENSE_CATEGORIES = [
     "PAPELERIA",
     "CONSUMO",
     "MANTENIMIENTO",
+    "PAGO_PROVEEDOR",
+    "LIMPIEZA",
     "AJUSTE_CAJA",
     "OTRO",
 ] as const;
@@ -144,6 +146,8 @@ const CATEGORY_LABELS: Record<CashExpenseCategory, string> = {
     PAPELERIA: "Papelería",
     CONSUMO: "Consumo",
     MANTENIMIENTO: "Mantenimiento",
+    PAGO_PROVEEDOR: "Pago a proveedor",
+    LIMPIEZA: "Limpieza",
     AJUSTE_CAJA: "Ajuste de caja",
     OTRO: "Otro",
 };
@@ -156,10 +160,11 @@ const expenseFormSchema = z.object({
         .positive("El monto debe ser mayor a cero"),
     method: z.literal("CASH"),
     category: z.enum(CASH_EXPENSE_CATEGORIES),
-    reference: z
+    beneficiary: z.string().trim().optional(),
+    notes: z
         .string()
         .trim()
-        .min(3, "La descripción debe tener al menos 3 caracteres."),
+        .min(3, "El motivo debe tener al menos 3 caracteres."),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -178,13 +183,20 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
             amount: 0,
             method: "CASH",
             category: "OTRO",
-            reference: "",
+            beneficiary: "",
+            notes: "",
         },
     });
 
     useEffect(() => {
         if (!open) {
-            form.reset({ amount: 0, method: "CASH", category: "OTRO", reference: "" });
+            form.reset({
+                amount: 0,
+                method: "CASH",
+                category: "OTRO",
+                beneficiary: "",
+                notes: "",
+            });
         }
     }, [open, form]);
 
@@ -200,7 +212,8 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
                 amount: values.amount,
                 method: "CASH",
                 category: values.category,
-                reference: values.reference,
+                beneficiary: values.beneficiary?.trim() || undefined,
+                notes: values.notes,
             }),
         });
         const json = (await res.json()) as { success: boolean; error?: string };
@@ -330,19 +343,35 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
                         </div>
 
                         <div>
-                            <label htmlFor="exp-reference" style={LABEL_STYLE}>
-                                Descripción
+                            <label htmlFor="exp-beneficiary" style={LABEL_STYLE}>
+                                Beneficiario{" "}
+                                <span style={{ textTransform: "none", fontWeight: 400 }}>
+                                    (opcional)
+                                </span>
                             </label>
                             <input
-                                id="exp-reference"
+                                id="exp-beneficiary"
+                                type="text"
+                                placeholder="Nombre o razón social del proveedor"
+                                style={INPUT_STYLE}
+                                {...form.register("beneficiary")}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="exp-notes" style={LABEL_STYLE}>
+                                Motivo
+                            </label>
+                            <input
+                                id="exp-notes"
                                 type="text"
                                 placeholder="Ej. Café para clientes, toner de impresora"
                                 style={INPUT_STYLE}
-                                {...form.register("reference")}
+                                {...form.register("notes")}
                             />
-                            {form.formState.errors.reference && (
+                            {form.formState.errors.notes && (
                                 <p style={ERROR_STYLE}>
-                                    {form.formState.errors.reference.message}
+                                    {form.formState.errors.notes.message}
                                 </p>
                             )}
                         </div>
