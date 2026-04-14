@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Local upload artifacts (facturas test)
 /public/facturas/
+
+# Mockups y referencias visuales (no parte del producto)
+/referencias/

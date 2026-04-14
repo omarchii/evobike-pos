@@ -46,7 +46,12 @@ function parseCSV(filePath: string): Record<string, string>[] {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🌱 Iniciando seed de evobike-pos2...\n');
+  const FRESH = process.env.FRESH_SEED === '1';
+  console.log(
+    FRESH
+      ? '🌱 Iniciando seed FRESH (catálogo + stock=0, sin datos transaccionales)...\n'
+      : '🌱 Iniciando seed de evobike-pos2...\n'
+  );
 
   // ── 1. Sucursales ────────────────────────────────────────────────────────────
   const TERMINOS_COTIZACION_DEFAULT = [
@@ -299,8 +304,8 @@ async function main() {
         },
       });
 
-      const stockLeo = parseInt(row.stock_leo) || 0;
-      const stockAv135 = parseInt(row.stock_av135) || 0;
+      const stockLeo = FRESH ? 0 : parseInt(row.stock_leo) || 0;
+      const stockAv135 = FRESH ? 0 : parseInt(row.stock_av135) || 0;
 
       await prisma.stock.upsert({
         where: { productVariantId_branchId: { productVariantId: variant.id, branchId: leoBranch.id } },
@@ -564,6 +569,9 @@ async function main() {
   );
 
   // ── 7. Stock inicial de SimpleProducts por sucursal ─────────────────────────
+  if (FRESH) {
+    console.log('\n📊 FRESH: se omite stock inicial de SimpleProducts (quedan sin stock).');
+  } else {
   console.log('\n📊 Generando stock inicial por sucursal...');
 
   const allSimpleProducts = await prisma.simpleProduct.findMany({
@@ -627,9 +635,14 @@ async function main() {
   console.log(
     `✅ Stock SimpleProducts: ${stockEntriesCreated} entradas creadas, ${stockEntriesSkipped} preexistentes.`,
   );
+  }
 
   // ── 8. Datos transaccionales (Fase P2 Sesión 2) ─────────────────────────────
-  await seedTransactional(prisma);
+  if (FRESH) {
+    console.log('\n⏭️  FRESH: se omiten datos transaccionales (ventas, pedidos, órdenes, etc.).');
+  } else {
+    await seedTransactional(prisma);
+  }
 
   console.log('\n🎉 Seed completado exitosamente.\n');
   console.log('─── Usuarios disponibles ───────────────────────────');
