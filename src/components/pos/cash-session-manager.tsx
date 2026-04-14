@@ -240,7 +240,7 @@ export function CashSessionManager() {
 
                     <div className="px-6 pb-2">
                         <label htmlFor="openingAmt" style={LABEL_STYLE}>
-                            Monto en efectivo
+                            Efectivo inicial
                         </label>
                         <div className="relative">
                             <span
