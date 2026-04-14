@@ -52,7 +52,7 @@ interface RouteGroup {
 const routes: RouteGroup[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
-    { label: "Arqueo de Caja", icon: Vault, href: "/cash-register" },
+    { label: "Caja", icon: Vault, href: "/cash-register" },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
     { label: "Montaje", icon: Cog, href: "/assembly" },
     { label: "Inventario", icon: Package, href: "/inventario" },
