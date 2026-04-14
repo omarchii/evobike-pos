@@ -502,6 +502,8 @@ Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 - Migración a Prisma v7 (breaking changes a evaluar)
 - Connection pooling: PgBouncer o Prisma Accelerate
 - Script de sincronización de `BatteryLots` sin contrapartida contable (diferido desde 2H-D)
+- **Race condition al abrir caja (post-refactor per-branch)** — no hay unique parcial en `CashRegisterSession(branchId) WHERE status='OPEN'`. Si dos usuarios de la misma sucursal hacen POST a `/api/cash-register/session` en simultáneo, ambos pasan el `findFirst` y ambos INSERT crean sesión. Fix: migración manual `CREATE UNIQUE INDEX cash_session_one_open_per_branch ON "CashRegisterSession"("branchId") WHERE status = 'OPEN';` (Prisma no soporta índices parciales declarativamente — editar el `.sql` post `migrate dev --create-only`). Alternativa: advisory lock `pg_advisory_xact_lock(hashtext(branchId))` en la `$transaction` del POST. Bajo riesgo operativo (2 usuarios por sucursal, acción rara) pero corrige el data integrity.
+- **Cron proactivo de caja huérfana (diferido desde refactor per-branch)** — hoy el "night audit" es lazy: banner al cargar el layout `(pos)/` + bloqueo 409 al mutar. Falta la notificación proactiva: job nocturno (ej. 23:30) que detecta sesiones OPEN cuyo `openedAt.toDateString()` ≠ hoy y envía alerta (email al manager, push al navegador, webhook a Slack/WhatsApp) para que el turno no termine con caja sin cuadrar. Requiere decisión sobre el canal de notificación y dónde corre el cron (Vercel Cron / worker externo / pg_cron).
 - Deploy: variables de entorno de producción, SSL, dominio
 - Build limpio final: cero `any`, cero `TODO`, cero `console.log`
 - Revisión final de `refacciones_revisar.csv` y carga completa

@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import {
+    getActiveSession,
+    assertSessionFreshOrThrow,
+    OrphanedCashSessionError,
+} from "@/lib/cash-register";
 
 // Atrato no aplica para cobros de taller (cobro directo, sin financiera)
 type DeliveryPaymentMethod = "CASH" | "CARD" | "TRANSFER";
@@ -19,7 +25,7 @@ interface SessionUser {
 
 // POST /api/workshop/deliver
 // Cobra el total de una orden de taller y la marca como DELIVERED.
-// Requiere sesión de caja activa (OPEN) para el usuario y sucursal.
+// Requiere caja abierta en la sucursal.
 export async function POST(request: Request): Promise<NextResponse> {
     try {
         const session = await getServerSession(authOptions);
@@ -27,7 +33,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
         }
 
-        const { id: userId, branchId } = session.user as unknown as SessionUser;
+        const { branchId } = session.user as unknown as SessionUser;
 
         if (!branchId) {
             return NextResponse.json(
@@ -47,6 +53,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!validMethods.includes(paymentMethod)) {
             return NextResponse.json({ success: false, error: "Método de pago no válido" }, { status: 400 });
         }
+
+        await requireActiveUser(session);
 
         const order = await prisma.serviceOrder.findUnique({
             where: { id: serviceOrderId }
@@ -68,17 +76,14 @@ export async function POST(request: Request): Promise<NextResponse> {
             );
         }
 
-        // Verificar sesión de caja activa
-        const activeSession = await prisma.cashRegisterSession.findFirst({
-            where: { userId, branchId, status: "OPEN" }
-        });
-
+        const activeSession = await getActiveSession(branchId);
         if (!activeSession) {
             return NextResponse.json(
-                { success: false, error: "Debes tener una sesión de caja abierta para cobrar y entregar" },
-                { status: 400 }
+                { success: false, error: "Debes tener la caja abierta para cobrar y entregar" },
+                { status: 409 }
             );
         }
+        assertSessionFreshOrThrow(activeSession);
 
         // Transacción ACID: registrar cobro + cambiar status
         await prisma.$transaction(async (tx) => {
@@ -104,6 +109,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         return NextResponse.json({ success: true, newStatus: "DELIVERED" });
     } catch (error: unknown) {
+        if (error instanceof UserInactiveError) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+        }
+        if (error instanceof OrphanedCashSessionError) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
+                },
+                { status: 409 },
+            );
+        }
+        console.error("[api/workshop/deliver POST]", error);
         const message = error instanceof Error ? error.message : "Error al procesar la entrega";
         return NextResponse.json({ success: false, error: message }, { status: 500 });
     }

@@ -19,13 +19,11 @@ export default async function CashRegisterPage() {
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect("/login");
 
-    const userId = (session.user as SessionUser).id;
     const branchId = (session.user as SessionUser).branchId;
 
-    // Obtener sesión activa de este usuario
+    // Obtener caja activa de la sucursal (compartida entre todos los usuarios)
     const activeSession = await prisma.cashRegisterSession.findFirst({
         where: {
-            userId,
             branchId,
             status: "OPEN"
         },
@@ -41,7 +39,7 @@ export default async function CashRegisterPage() {
             <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
                 <Wallet className="h-16 w-16 text-slate-300 mb-4" />
                 <h1 className="text-2xl font-bold text-slate-700">Caja Cerrada</h1>
-                <p className="text-slate-500 mt-2 max-w-sm">No tienes un turno abierto en este momento. La ventana flotante de apertura aparecerá si navegas a otras pantallas.</p>
+                <p className="text-slate-500 mt-2 max-w-sm">No hay caja abierta en esta sucursal. La ventana flotante de apertura aparecerá si navegas a otras pantallas.</p>
             </div>
         );
     }

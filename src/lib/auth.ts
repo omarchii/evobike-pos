@@ -35,6 +35,7 @@ export const authOptions: AuthOptions = {
     adapter: PrismaAdapter(prisma),
     session: {
         strategy: "jwt",
+        maxAge: 8 * 60 * 60,
     },
     pages: {
         signIn: "/login",

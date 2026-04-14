@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Bell, HelpCircle, Search, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
+import { OrphanedSessionBanner } from "./orphaned-session-banner";
 
 interface SessionUser {
     id: string;
@@ -82,6 +83,7 @@ export default async function PosLayout({
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Topbar user={user} />
                 <main className="flex-1 overflow-y-auto relative">
+                    <OrphanedSessionBanner branchId={user.branchId} />
                     <div className="p-8">
                         {children}
                     </div>

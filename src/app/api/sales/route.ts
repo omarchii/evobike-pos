@@ -7,6 +7,12 @@ import {
   consumeAuthorization,
   AuthorizationConsumeError,
 } from "@/lib/authorizations";
+import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import {
+  getActiveSession,
+  assertSessionFreshOrThrow,
+  OrphanedCashSessionError,
+} from "@/lib/cash-register";
 
 interface SessionUser {
   id: string;
@@ -183,15 +189,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const input = parsed.data;
 
   try {
-    const activeSession = await prisma.cashRegisterSession.findFirst({
-      where: { userId, branchId, status: "OPEN" },
-    });
+    await requireActiveUser(session);
+
+    const activeSession = await getActiveSession(branchId);
     if (!activeSession) {
       return NextResponse.json(
         { success: false, error: "Debes abrir caja antes de poder realizar ventas." },
-        { status: 400 }
+        { status: 409 }
       );
     }
+    assertSessionFreshOrThrow(activeSession);
 
     if (input.isLayaway) {
       if (!input.customerId) {
@@ -700,9 +707,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true, data: { saleId: result.id, folio: result.folio } });
   } catch (error: unknown) {
+    if (error instanceof UserInactiveError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+    }
+    if (error instanceof OrphanedCashSessionError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
+        },
+        { status: 409 },
+      );
+    }
     if (error instanceof AuthorizationConsumeError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
+    console.error("[api/sales POST]", error);
     const message = error instanceof Error ? error.message : "Error al procesar la venta";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

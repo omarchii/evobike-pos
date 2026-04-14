@@ -199,7 +199,7 @@ export function SellerDashboard({
                     <div className="flex items-center gap-2">
                         <Vault className="h-4 w-4 text-[var(--on-surf-var)]" />
                         <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
-                            Mi Caja
+                            Caja de la Sucursal
                         </h2>
                     </div>
                     <div className="flex items-center gap-3">
@@ -209,7 +209,7 @@ export function SellerDashboard({
                                 ? "bg-[var(--sec-container)] text-[var(--on-sec-container)]"
                                 : "bg-[var(--warn-container)] text-[var(--warn)]"
                         )}>
-                            {cashSession.isOpen ? "Turno abierto" : "Sin turno activo"}
+                            {cashSession.isOpen ? "Caja abierta" : "Caja cerrada"}
                         </span>
                         {cashSession.isOpen && (
                             <Link

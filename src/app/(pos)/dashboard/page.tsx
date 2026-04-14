@@ -631,12 +631,14 @@ export default async function DashboardPage({
             where: { userId, status: "LAYAWAY" },
         });
 
-        const sellerSession = await prisma.cashRegisterSession.findFirst({
-            where: { userId, ...(branchId ? { branchId } : {}), status: "OPEN" },
-            select: { id: true, openingAmt: true },
-        });
+        const branchCashSession = branchId
+            ? await prisma.cashRegisterSession.findFirst({
+                  where: { branchId, status: "OPEN" },
+                  select: { id: true, openingAmt: true },
+              })
+            : null;
 
-        const openSessionId = sellerSession?.id ?? null;
+        const openSessionId = branchCashSession?.id ?? null;
 
         const recentSellerSalesPrisma = await prisma.sale.findMany({
             where: {
@@ -805,7 +807,7 @@ export default async function DashboardPage({
         );
         const sellerCashIn = sellerPaymentsMap.get("CASH") ?? 0;
         const sellerCashOut = Number(sellerCashOutAgg._sum.amount ?? 0);
-        const openingAmt = sellerSession ? Number(sellerSession.openingAmt) : 0;
+        const openingAmt = branchCashSession ? Number(branchCashSession.openingAmt) : 0;
         const cashInDrawer = openingAmt + sellerCashIn - sellerCashOut;
         const totalCobrado = [...sellerPaymentsMap.values()].reduce((a, b) => a + b, 0);
         const paymentBreakdown = (["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"] as const)
@@ -854,7 +856,7 @@ export default async function DashboardPage({
                 revenueYesterday={Number(sellerYesterdayAgg._sum.total ?? 0)}
                 activeLayawaysCount={activeLayawaysCountSeller}
                 cashSession={{
-                    isOpen: sellerSession !== null,
+                    isOpen: branchCashSession !== null,
                     openingAmt,
                     cashInDrawer,
                     totalCobrado,

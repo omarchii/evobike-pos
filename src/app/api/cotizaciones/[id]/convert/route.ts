@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getEffectiveStatus } from "@/lib/quotations";
+import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import { assertSessionFreshOrThrow, OrphanedCashSessionError } from "@/lib/cash-register";
 
 interface SessionUser {
   id: string;
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
   }
 
   try {
+    await requireActiveUser(session);
+
     const result = await prisma.$transaction(async (tx) => {
       // ── a) Lock + lectura de la cotización ──────────────────────────────────
       const quotation = await tx.quotation.findUnique({
@@ -98,14 +102,15 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
 
       // ── e) Sesión de caja abierta en targetBranchId ────────────────────────
       const activeSession = await tx.cashRegisterSession.findFirst({
-        where: { userId, branchId: targetBranchId, status: "OPEN" },
+        where: { branchId: targetBranchId, status: "OPEN" },
       });
       if (!activeSession) {
         throw Object.assign(
-          new Error("Debes tener la caja abierta en tu sucursal para convertir esta cotización"),
-          { status: 422 }
+          new Error("No hay caja abierta en la sucursal destino. Abre la caja para continuar."),
+          { status: 409 }
         );
       }
+      assertSessionFreshOrThrow(activeSession);
 
       // ── f) Leer precios actuales + detectar drift ──────────────────────────
       const catalogItems = quotation.items.filter(
@@ -341,9 +346,22 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof UserInactiveError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+    }
+    if (error instanceof OrphanedCashSessionError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
+        },
+        { status: 409 },
+      );
+    }
     const err = error as Error & { status?: number };
     const status = err.status ?? 500;
     const message = err.message ?? "Error al convertir la cotización";
+    if (status === 500) console.error("[api/cotizaciones/[id]/convert POST]", error);
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }

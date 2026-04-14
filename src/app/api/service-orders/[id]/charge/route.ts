@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import {
+  getActiveSession,
+  assertSessionFreshOrThrow,
+  OrphanedCashSessionError,
+} from "@/lib/cash-register";
 
 interface AuthUser {
   id: string;
@@ -52,6 +58,8 @@ export async function POST(
   const input = parsed.data;
 
   try {
+    await requireActiveUser(session);
+
     const order = await prisma.serviceOrder.findUnique({
       where: { id: serviceOrderId },
       include: { items: true },
@@ -76,12 +84,11 @@ export async function POST(
       );
     }
 
-    const activeSession = await prisma.cashRegisterSession.findFirst({
-      where: { userId, branchId, status: "OPEN" },
-    });
+    const activeSession = await getActiveSession(branchId);
     if (!activeSession) {
-      return NextResponse.json({ success: false, error: "No hay caja abierta" }, { status: 422 });
+      return NextResponse.json({ success: false, error: "No hay caja abierta" }, { status: 409 });
     }
+    assertSessionFreshOrThrow(activeSession);
 
     // Calculate total from items
     const total = order.items.reduce(
@@ -160,6 +167,19 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof UserInactiveError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+    }
+    if (error instanceof OrphanedCashSessionError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
+        },
+        { status: 409 },
+      );
+    }
+    console.error("[api/service-orders/[id]/charge POST]", error);
     const message = error instanceof Error ? error.message : "Error al procesar el cobro";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import {
+  getActiveSession,
+  assertSessionFreshOrThrow,
+  OrphanedCashSessionError,
+} from "@/lib/cash-register";
 
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
 const pedidoFrozenItemSchema = z.object({
@@ -81,15 +87,16 @@ export async function POST(req: NextRequest) {
       total: parsedTotal,
     } = parsed.data;
 
-    const activeSession = await prisma.cashRegisterSession.findFirst({
-      where: { userId, branchId, status: "OPEN" },
-    });
+    await requireActiveUser(session);
+
+    const activeSession = await getActiveSession(branchId);
     if (!activeSession) {
       return NextResponse.json(
         { success: false, error: "Caja cerrada. Abre la caja para registrar pedidos." },
-        { status: 400 }
+        { status: 409 }
       );
     }
+    assertSessionFreshOrThrow(activeSession);
 
     const total = frozenItems && frozenItems.length > 0
       ? (parsedTotal ?? unitPrice * quantity)
@@ -276,6 +283,19 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof UserInactiveError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+    }
+    if (error instanceof OrphanedCashSessionError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
+        },
+        { status: 409 },
+      );
+    }
+    console.error("[api/pedidos POST]", error);
     const message = error instanceof Error ? error.message : "Error al crear el pedido";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
