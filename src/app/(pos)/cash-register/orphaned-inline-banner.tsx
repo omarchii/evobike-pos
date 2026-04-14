@@ -1,8 +1,11 @@
 import { AlertTriangle } from "lucide-react";
-import { CloseShiftTrigger } from "./close-shift-dialog";
+import type { SessionSummary } from "@/lib/cash-register";
+import { CloseCorteTrigger } from "./close-corte-dialog";
 
 interface Props {
     openedAt: string;
+    session: SessionSummary;
+    userRole: string;
 }
 
 function formatLongDate(iso: string): string {
@@ -13,7 +16,11 @@ function formatLongDate(iso: string): string {
     }).format(new Date(iso));
 }
 
-export function OrphanedInlineBanner({ openedAt }: Props): React.ReactElement {
+export function OrphanedInlineBanner({
+    openedAt,
+    session,
+    userRole,
+}: Props): React.ReactElement {
     return (
         <div
             className="rounded-[var(--r-xl)] p-5 flex flex-col sm:flex-row sm:items-center gap-4"
@@ -50,7 +57,11 @@ export function OrphanedInlineBanner({ openedAt }: Props): React.ReactElement {
                 </p>
             </div>
             <div className="shrink-0">
-                <CloseShiftTrigger variant="inline-cta" />
+                <CloseCorteTrigger
+                    variant="inline-cta"
+                    session={session}
+                    userRole={userRole}
+                />
             </div>
         </div>
     );

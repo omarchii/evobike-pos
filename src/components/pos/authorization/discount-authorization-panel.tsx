@@ -10,8 +10,10 @@ export interface DiscountAuthorizationResult {
   approverName: string;
 }
 
+export type AuthorizationPanelTipo = "DESCUENTO" | "CIERRE_DIFERENCIA";
+
 /**
- * Panel inline para autorizar descuentos en el POS.
+ * Panel inline para autorizar descuentos en el POS y cierres con diferencia en Caja.
  *
  * Dos modos:
  * - PRESENCIAL: manager teclea PIN → respuesta inmediata.
@@ -24,15 +26,34 @@ export interface DiscountAuthorizationResult {
  * - rejected/expired: mensaje de error con botón reintentar
  */
 export function DiscountAuthorizationPanel({
-  branchId,
   amount,
   reason,
+  tipo = "DESCUENTO",
   onAuthorized,
+  onRejected,
+  onExpired,
+  onCancel,
 }: {
-  branchId: string;
+  branchId?: string;
   amount: number;
   reason: string;
+  tipo?: AuthorizationPanelTipo;
   onAuthorized: (result: DiscountAuthorizationResult) => void;
+  /**
+   * Se dispara cuando el polling detecta REJECTED. Si está definido, el panel
+   * delega al parent y deja su estado interno en idle (el parent suele cambiar
+   * de step/desmontar el panel). Si es undefined, el panel muestra el UI inline
+   * de "Rechazado" con botón Reintentar (backward-compat).
+   */
+  onRejected?: (rejectReason: string | null) => void;
+  /** Idem onRejected pero para EXPIRED (timeout del polling remoto de 5 min). */
+  onExpired?: () => void;
+  /**
+   * Se dispara cuando el usuario cancela una solicitud REMOTA en curso (botón X
+   * sobre el estado "Esperando aprobación"). Opcional — el panel siempre resetea
+   * su estado interno; este callback solo permite al parent reaccionar.
+   */
+  onCancel?: () => void;
 }) {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
@@ -41,10 +62,26 @@ export function DiscountAuthorizationPanel({
   const { state, start, reset } = useAuthorizationPolling({
     onTerminal: (s) => {
       if (s.kind === "approved") {
-        onAuthorized({ authorizationId: s.id, approverName: s.approverName ?? "Gerente" });
+        onAuthorized({
+          authorizationId: s.id,
+          approverName: s.approverName ?? "Gerente",
+        });
+      } else if (s.kind === "rejected" && onRejected) {
+        onRejected(s.rejectReason);
+        reset();
+      } else if (s.kind === "expired" && onExpired) {
+        onExpired();
+        reset();
       }
+      // Si no hay callback (DESCUENTO legacy), el panel queda en el estado
+      // terminal y renderiza el UI inline de Rechazado/Expirado con Reintentar.
     },
   });
+
+  const handleCancelPending = (): void => {
+    reset();
+    onCancel?.();
+  };
 
   const handlePresencial = async (): Promise<void> => {
     if (!pin) return;
@@ -55,7 +92,7 @@ export function DiscountAuthorizationPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo: "DESCUENTO",
+          tipo,
           mode: "PRESENCIAL",
           pin,
           monto: amount,
@@ -73,7 +110,9 @@ export function DiscountAuthorizationPanel({
         authorizationId: json.data.id,
         approverName: json.data.approverName ?? "Gerente",
       });
-      toast.success(`Descuento autorizado por ${json.data.approverName}`);
+      const successLabel =
+        tipo === "CIERRE_DIFERENCIA" ? "Diferencia" : "Descuento";
+      toast.success(`${successLabel} autorizado por ${json.data.approverName}`);
     } catch {
       setPinError("Error de red");
     } finally {
@@ -89,7 +128,7 @@ export function DiscountAuthorizationPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo: "DESCUENTO",
+          tipo,
           mode: "REMOTA",
           monto: amount,
           motivo: reason || undefined,
@@ -132,7 +171,7 @@ export function DiscountAuthorizationPanel({
           </p>
         </div>
         <button
-          onClick={reset}
+          onClick={handleCancelPending}
           className="p-1 rounded"
           title="Cancelar solicitud"
           style={{ color: "var(--on-surf-var)" }}

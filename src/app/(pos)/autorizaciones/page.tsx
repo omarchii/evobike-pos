@@ -39,7 +39,11 @@ export default async function AutorizacionesPage({
   } else {
     where.branchId = user.branchId ?? "__none__";
   }
-  if (params.tipo === "CANCELACION" || params.tipo === "DESCUENTO") {
+  if (
+    params.tipo === "CANCELACION" ||
+    params.tipo === "DESCUENTO" ||
+    params.tipo === "CIERRE_DIFERENCIA"
+  ) {
     where.tipo = params.tipo;
   }
   if (

@@ -84,6 +84,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                             canRegisterWithdrawal={canRegisterWithdrawal}
                             sessionOpen={false}
                             userRole={user.role}
+                            session={null}
                         />
                     </div>
                 </div>
@@ -98,7 +99,11 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-24">
             {summary.isOrphaned && (
-                <OrphanedInlineBanner openedAt={summary.openedAt} />
+                <OrphanedInlineBanner
+                    openedAt={summary.openedAt}
+                    session={summary}
+                    userRole={user.role}
+                />
             )}
 
             {/* ── Header ────────────────────────────────────────────────────── */}
@@ -163,6 +168,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                         canRegisterWithdrawal={canRegisterWithdrawal}
                         sessionOpen={true}
                         userRole={user.role}
+                        session={summary}
                     />
                 </div>
             </header>

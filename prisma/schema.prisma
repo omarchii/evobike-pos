@@ -36,6 +36,8 @@ model User {
 
   authorizationsRequested AuthorizationRequest[] @relation("AuthRequester")
   authorizationsApproved  AuthorizationRequest[] @relation("AuthApprover")
+
+  authorizedCashSessions CashRegisterSession[] @relation("CashSessionAuthorizer")
 }
 
 model Branch {
@@ -331,13 +333,17 @@ model CashRegisterSession {
   openedAt   DateTime  @default(now())
   closedAt   DateTime?
   // Efectivo exclusivamente. Tarjeta/transferencia no aplican.
-  openingAmt Decimal   @db.Decimal(10, 2)
-  closingAmt Decimal?  @db.Decimal(10, 2)
-  status     String    @default("OPEN") // OPEN, CLOSED
+  openingAmt     Decimal  @db.Decimal(10, 2)
+  closingAmt     Decimal? @db.Decimal(10, 2)
+  diferencia     Decimal? @db.Decimal(10, 2) // closingAmt - expectedAmt calculado server-side al cerrar; null mientras status = OPEN
+  authorizedById String? // User que autorizó el cierre con diferencia (MANAGER/ADMIN). null si diferencia = 0 o SELLER sin diferencia.
+  status         String   @default("OPEN") // OPEN, CLOSED
 
-  branch       Branch            @relation(fields: [branchId], references: [id])
-  user         User              @relation(fields: [userId], references: [id])
-  transactions CashTransaction[]
+  branch             Branch                @relation(fields: [branchId], references: [id])
+  user               User                  @relation(fields: [userId], references: [id])
+  authorizedBy       User?                 @relation("CashSessionAuthorizer", fields: [authorizedById], references: [id])
+  transactions       CashTransaction[]
+  closeAuthorization AuthorizationRequest? @relation("SessionCloseAuth")
 }
 
 model CashTransaction {
@@ -830,6 +836,7 @@ model PurchaseReceipt {
 enum AuthorizationType {
   CANCELACION
   DESCUENTO
+  CIERRE_DIFERENCIA // Autorización para cerrar corte con diferencia != 0 (solo SELLER — MANAGER/ADMIN cierran diferencias sin autorización)
 }
 
 enum AuthorizationStatus {
@@ -845,25 +852,27 @@ enum AuthorizationMode {
 }
 
 model AuthorizationRequest {
-  id          String              @id @default(cuid())
-  branchId    String
-  tipo        AuthorizationType
-  status      AuthorizationStatus @default(PENDING)
-  mode        AuthorizationMode
-  saleId      String? // cancelación: venta afectada. descuento: puede ser null (venta aún no materializada)
-  requestedBy String
-  approvedBy  String?
-  monto       Decimal?            @db.Decimal(10, 2) // descuentos: monto solicitado
-  motivo      String?             @db.Text
-  rejectReason String?            @db.Text
-  expiresAt   DateTime? // null = sin expiración (PRESENCIAL). REMOTA: createdAt + 5min
-  createdAt   DateTime            @default(now())
-  resolvedAt  DateTime?
+  id            String              @id @default(cuid())
+  branchId      String
+  tipo          AuthorizationType
+  status        AuthorizationStatus @default(PENDING)
+  mode          AuthorizationMode
+  saleId        String? // CANCELACION: venta afectada. DESCUENTO: null hasta consumirse en una venta (marker de consumo).
+  cashSessionId String?             @unique // CIERRE_DIFERENCIA: null hasta consumirse en el cierre de sesión (marker de consumo, @unique previene reuso).
+  requestedBy   String
+  approvedBy    String?
+  monto         Decimal?            @db.Decimal(10, 2) // DESCUENTO: monto solicitado. CIERRE_DIFERENCIA: valor absoluto de la diferencia.
+  motivo        String?             @db.Text
+  rejectReason  String?             @db.Text
+  expiresAt     DateTime? // null = sin expiración (PRESENCIAL). REMOTA: createdAt + 5min
+  createdAt     DateTime            @default(now())
+  resolvedAt    DateTime?
 
-  branch    Branch @relation(fields: [branchId], references: [id])
-  sale      Sale?  @relation(fields: [saleId], references: [id])
-  requester User   @relation("AuthRequester", fields: [requestedBy], references: [id])
-  approver  User?  @relation("AuthApprover", fields: [approvedBy], references: [id])
+  branch      Branch               @relation(fields: [branchId], references: [id])
+  sale        Sale?                @relation(fields: [saleId], references: [id])
+  cashSession CashRegisterSession? @relation("SessionCloseAuth", fields: [cashSessionId], references: [id])
+  requester   User                 @relation("AuthRequester", fields: [requestedBy], references: [id])
+  approver    User?                @relation("AuthApprover", fields: [approvedBy], references: [id])
 
   @@index([branchId, status])
   @@index([requestedBy, status])

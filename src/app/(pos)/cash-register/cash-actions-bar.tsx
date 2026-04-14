@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Printer, Receipt, Vault } from "lucide-react";
+import type { SessionSummary } from "@/lib/cash-register";
 import { ExpenseDialog } from "./expense-dialog";
 import { WithdrawalDialog } from "./withdrawal-dialog";
-import { CloseShiftTrigger } from "./close-shift-dialog";
+import { CloseCorteTrigger } from "./close-corte-dialog";
 
 // Tokens compartidos con cash-session-manager.tsx (patrón canónico DESIGN.md §9)
 
@@ -39,12 +40,14 @@ interface Props {
     canRegisterWithdrawal: boolean;
     sessionOpen: boolean;
     userRole: string;
+    session: SessionSummary | null;
 }
 
 export function CashActionsBar({
     canRegisterWithdrawal,
     sessionOpen,
     userRole,
+    session,
 }: Props): React.ReactElement {
     const [expenseOpen, setExpenseOpen] = useState(false);
     const [withdrawalOpen, setWithdrawalOpen] = useState(false);
@@ -54,7 +57,12 @@ export function CashActionsBar({
     return (
         <>
             <div className="flex flex-wrap items-center gap-2">
-                <CloseShiftTrigger variant="danger" sessionOpen={sessionOpen} />
+                <CloseCorteTrigger
+                    variant="danger"
+                    sessionOpen={sessionOpen}
+                    session={session}
+                    userRole={userRole}
+                />
 
                 <button
                     type="button"

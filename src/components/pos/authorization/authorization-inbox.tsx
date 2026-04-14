@@ -14,7 +14,7 @@ interface PendingRequest {
   id: string;
   branchCode: string | null;
   branchName: string | null;
-  tipo: "CANCELACION" | "DESCUENTO";
+  tipo: "CANCELACION" | "DESCUENTO" | "CIERRE_DIFERENCIA";
   mode: "PRESENCIAL" | "REMOTA";
   saleId: string | null;
   saleFolio: string | null;
@@ -25,6 +25,12 @@ interface PendingRequest {
   motivo: string | null;
   expiresAt: string | null;
   createdAt: string;
+}
+
+function tipoLabel(tipo: PendingRequest["tipo"]): string {
+  if (tipo === "CANCELACION") return "Cancelación";
+  if (tipo === "CIERRE_DIFERENCIA") return "Cierre con diferencia";
+  return "Descuento";
 }
 
 const INPUT_STYLE: React.CSSProperties = {
@@ -139,9 +145,9 @@ export function AuthorizationInbox({
               <div className="flex-1 min-w-[220px]">
                 <div className="flex items-center gap-2 text-xs font-medium mb-0.5">
                   <span style={{ color: "var(--on-surf)" }}>
-                    {r.tipo === "CANCELACION" ? "Cancelación" : "Descuento"}
+                    {tipoLabel(r.tipo)}
                   </span>
-                  {r.tipo === "DESCUENTO" && r.monto != null && (
+                  {r.tipo !== "CANCELACION" && r.monto != null && (
                     <span style={{ color: "var(--warn)" }}>
                       ${r.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                     </span>
@@ -272,10 +278,8 @@ function ResolveDialog({
             style={{ background: "var(--surf-low)" }}
           >
             <p style={{ color: "var(--on-surf)" }}>
-              <strong>
-                {request.tipo === "CANCELACION" ? "Cancelación" : "Descuento"}
-              </strong>
-              {request.tipo === "DESCUENTO" && request.monto != null && (
+              <strong>{tipoLabel(request.tipo)}</strong>
+              {request.tipo !== "CANCELACION" && request.monto != null && (
                 <> de ${request.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</>
               )}
               {request.saleFolio && <> en {request.saleFolio}</>}

@@ -332,10 +332,23 @@ Estructura:
 - Condiciones desde `Branch.terminosPoliza` + sello
 - Endpoint ya existe: `GET /api/sales/[id]/warranty-pdf` — solo falta el documento visual
 
+### P6-E — PDF Comprobante de cierre de corte
+Estructura:
+- Folio de sesión, sucursal, operador que abrió + operador que cerró (si distintos)
+- Timestamp de apertura y cierre
+- Saldo inicial + ventas en efectivo + entradas + gastos + retiros + reembolsos
+- Efectivo esperado, efectivo contado y **diferencia** (con signo y color)
+- Breakdown de denominaciones (depende de tech-debt de Fase 6: persistir `denominationsJson` en `CashRegisterSession`)
+- Autorización de diferencia (si aplica): nombre del manager que aprobó + motivo
+- Sello de sucursal
+- Endpoint nuevo: `GET /api/cash-register/session/[id]/pdf/route.ts`
+- Wire del botón "Imprimir comprobante" en `src/app/(pos)/cash-register/close-corte-dialog.tsx` (actualmente disabled con tooltip "Disponible en fase P6")
+
 ### Archivos clave
 - `src/app/api/sales/[id]/warranty-pdf/route.ts` (modificar para generar PDF)
 - `src/app/api/cotizaciones/[id]/pdf/route.ts` (nueva)
 - `src/app/api/pedidos/[id]/pdf/route.ts` (nueva)
+- `src/app/api/cash-register/session/[id]/pdf/route.ts` (nueva — P6-E)
 - `src/lib/pdf/` (nueva carpeta con templates)
 
 ---
@@ -506,6 +519,7 @@ Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 - Script de sincronización de `BatteryLots` sin contrapartida contable (diferido desde 2H-D)
 - **Race condition al abrir caja (post-refactor per-branch)** — no hay unique parcial en `CashRegisterSession(branchId) WHERE status='OPEN'`. Si dos usuarios de la misma sucursal hacen POST a `/api/cash-register/session` en simultáneo, ambos pasan el `findFirst` y ambos INSERT crean sesión. Fix: migración manual `CREATE UNIQUE INDEX cash_session_one_open_per_branch ON "CashRegisterSession"("branchId") WHERE status = 'OPEN';` (Prisma no soporta índices parciales declarativamente — editar el `.sql` post `migrate dev --create-only`). Alternativa: advisory lock `pg_advisory_xact_lock(hashtext(branchId))` en la `$transaction` del POST. Bajo riesgo operativo (2 usuarios por sucursal, acción rara) pero corrige el data integrity.
 - **Cron proactivo de caja huérfana (diferido desde refactor per-branch)** — hoy el "night audit" es lazy: banner al cargar el layout `(pos)/` + bloqueo 409 al mutar. Falta la notificación proactiva: job nocturno (ej. 23:30) que detecta sesiones OPEN cuyo `openedAt.toDateString()` ≠ hoy y envía alerta (email al manager, push al navegador, webhook a Slack/WhatsApp) para que el turno no termine con caja sin cuadrar. Requiere decisión sobre el canal de notificación y dónde corre el cron (Vercel Cron / worker externo / pg_cron).
+- **Persistir breakdown de denominaciones en cierre de corte** — el `PATCH /api/cash-register/session` (P5.7) ya recibe `denominaciones: Record<string, number>` en el body pero lo **descarta** server-side (no hay campo en `CashRegisterSession`). Es dato de auditoría útil (forense en diferencias de caja, análisis de mezcla de efectivo, PDF P6-E). **Fix sugerido:** `CashRegisterSession.denominacionesJson Jsonb?` — `Jsonb` (no `Json`) persiste el `Record<string, number>` del body tal cual sin tabla hija ni normalización, y permite query server-side si se necesita en reportes. Al cerrar, escribir el mismo objeto que ya llega en el body; el PDF P6-E lo lee directo. Backfill opcional — sesiones cerradas antes del cambio quedan `null` (se muestra "No registrado" en el PDF).
 - Deploy: variables de entorno de producción, SSL, dominio
 - Build limpio final: cero `any`, cero `TODO`, cero `console.log`
 - Revisión final de `refacciones_revisar.csv` y carga completa

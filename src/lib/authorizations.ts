@@ -86,6 +86,12 @@ export type ConsumeInput =
       requestedBy: string;
       saleId: string; // venta recién creada — la autorización NO debe tener saleId antes (marker de "no consumida")
       monto: Prisma.Decimal | number; // descuento aplicado — debe ser ≤ monto autorizado
+    }
+  | {
+      tipo: "CIERRE_DIFERENCIA";
+      authorizationId: string;
+      requestedBy: string;
+      cashSessionId: string; // sesión que se está cerrando — la autorización NO debe tener cashSessionId antes (marker de "no consumida", @unique en schema previene reuso)
     };
 
 export class AuthorizationConsumeError extends Error {
@@ -119,6 +125,7 @@ export async function consumeAuthorization(
       tipo: true,
       status: true,
       saleId: true,
+      cashSessionId: true,
       requestedBy: true,
       monto: true,
     },
@@ -151,6 +158,20 @@ export async function consumeAuthorization(
       );
     }
     // No-op de escritura: el lock es el cambio de Sale.status a CANCELLED.
+    return;
+  }
+
+  if (input.tipo === "CIERRE_DIFERENCIA") {
+    if (auth.cashSessionId !== null) {
+      throw new AuthorizationConsumeError(
+        "ALREADY_USED",
+        "Esta autorización ya fue consumida en otro cierre",
+      );
+    }
+    await tx.authorizationRequest.update({
+      where: { id: auth.id },
+      data: { cashSessionId: input.cashSessionId },
+    });
     return;
   }
 

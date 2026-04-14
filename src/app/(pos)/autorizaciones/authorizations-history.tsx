@@ -9,7 +9,7 @@ export interface AuthorizationRow {
   branchId: string;
   branchCode: string | null;
   branchName: string | null;
-  tipo: "CANCELACION" | "DESCUENTO";
+  tipo: "CANCELACION" | "DESCUENTO" | "CIERRE_DIFERENCIA";
   status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
   mode: "PRESENCIAL" | "REMOTA";
   saleId: string | null;
@@ -117,6 +117,7 @@ export function AuthorizationsHistory({
             <option value="">Todos</option>
             <option value="CANCELACION">Cancelación</option>
             <option value="DESCUENTO">Descuento</option>
+            <option value="CIERRE_DIFERENCIA">Cierre con diferencia</option>
           </select>
         </FilterField>
         <FilterField label="Estado">
@@ -209,7 +210,11 @@ export function AuthorizationsHistory({
                         {formatDate(r.createdAt)}
                       </td>
                       <td className="px-5 py-3" style={{ color: "var(--on-surf)" }}>
-                        {r.tipo === "CANCELACION" ? "Cancelación" : "Descuento"}
+                        {r.tipo === "CANCELACION"
+                          ? "Cancelación"
+                          : r.tipo === "CIERRE_DIFERENCIA"
+                            ? "Cierre con diferencia"
+                            : "Descuento"}
                         <span className="ml-1.5 text-xs" style={{ color: "var(--on-surf-var)" }}>
                           · {r.mode === "PRESENCIAL" ? "presencial" : "remota"}
                         </span>

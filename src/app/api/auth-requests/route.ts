@@ -40,7 +40,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   } else {
     where.branchId = user.branchId;
   }
-  if (tipo && (tipo === "CANCELACION" || tipo === "DESCUENTO")) {
+  if (
+    tipo &&
+    (tipo === "CANCELACION" || tipo === "DESCUENTO" || tipo === "CIERRE_DIFERENCIA")
+  ) {
     where.tipo = tipo;
   }
   if (
@@ -114,7 +117,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 const baseSchema = z.object({
-  tipo: z.enum(["CANCELACION", "DESCUENTO"]),
+  tipo: z.enum(["CANCELACION", "DESCUENTO", "CIERRE_DIFERENCIA"]),
   mode: z.enum(["PRESENCIAL", "REMOTA"]),
   saleId: z.string().optional(),
   monto: z.number().positive().optional(),
@@ -171,7 +174,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 400 },
       );
     }
+  } else if (tipo === "CIERRE_DIFERENCIA") {
+    if (monto === undefined) {
+      return NextResponse.json(
+        { success: false, error: "monto requerido (valor absoluto de la diferencia)" },
+        { status: 400 },
+      );
+    }
+    if (saleId) {
+      return NextResponse.json(
+        { success: false, error: "No se espera saleId en cierres de diferencia" },
+        { status: 400 },
+      );
+    }
   } else {
+    // DESCUENTO
     if (monto === undefined) {
       return NextResponse.json(
         { success: false, error: "monto requerido para descuentos" },

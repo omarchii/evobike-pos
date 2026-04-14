@@ -6,10 +6,18 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import { getActiveSession } from "@/lib/cash-register";
+import {
+    AuthorizationConsumeError,
+    consumeAuthorization,
+} from "@/lib/authorizations";
 
-type SerializedCashSession = Omit<CashRegisterSession, "openingAmt" | "closingAmt"> & {
+type SerializedCashSession = Omit<
+    CashRegisterSession,
+    "openingAmt" | "closingAmt" | "diferencia"
+> & {
     openingAmt: number;
     closingAmt: number | null;
+    diferencia: number | null;
 };
 
 function serializeSession(s: CashRegisterSession): SerializedCashSession {
@@ -17,6 +25,7 @@ function serializeSession(s: CashRegisterSession): SerializedCashSession {
         ...s,
         openingAmt: Number(s.openingAmt),
         closingAmt: s.closingAmt ? Number(s.closingAmt) : null,
+        diferencia: s.diferencia !== null && s.diferencia !== undefined ? Number(s.diferencia) : null,
     };
 }
 
@@ -25,6 +34,10 @@ function errorFromUnknown(error: unknown, scope: string): NextResponse {
 
     if (error instanceof UserInactiveError) {
         return NextResponse.json({ success: false, error: error.message }, { status: 401 });
+    }
+
+    if (error instanceof AuthorizationConsumeError) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
@@ -101,11 +114,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 }
 
+// Fórmula canónica documentada en AGENTS.md §Caja:
+//   expectedCash = openingAmt
+//     + Σ(PAYMENT_IN method=CASH collected)
+//     + Σ(CASH_DEPOSIT)
+//     - Σ(EXPENSE_OUT method=CASH)
+//     - Σ(WITHDRAWAL)
+//     - Σ(REFUND_OUT method=CASH)
+
+// NO es tolerancia contable — regla de negocio es "cero estricto". Este umbral
+// solo absorbe ruido de redondeo Decimal(10,2) ↔ Number al sumar N transacciones
+// (p.ej. 5000.000000000002 tras sumar floats). Un sub-centavo nunca existe en la
+// caja física, así que debajo de 1e-2 es por definición ruido, no diferencia real.
+const FLOATING_POINT_EPSILON = 0.01;
+
+// Tolerancia del expectedAmt reportado por el cliente vs recalculado por el server.
+// Absorbe la misma clase de ruido numérico en el camino inverso (server → cliente →
+// server) para que el round-trip no falle espuriamente. Si excede, significa que
+// llegaron transacciones concurrentes mientras el modal estaba abierto — 409 para
+// forzar refresh, NO para aceptar diferencia silenciosa.
+const EXPECTED_CLIENT_TOLERANCE = 0.5;
+
 const closeSchema = z.object({
     closingAmt: z.number().nonnegative(),
+    expectedAmt: z.number().nonnegative(),
+    diferencia: z.number(), // puede ser negativa
+    denominaciones: z.record(z.string(), z.number().int().nonnegative()).optional(),
+    authorizationId: z.string().cuid().optional(),
 });
 
-// PATCH /api/cash-register/session — cerrar caja de la sucursal
+// PATCH /api/cash-register/session — cerrar caja de la sucursal con denominaciones + diferencia
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -115,13 +153,23 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     const body: unknown = await req.json();
     const parsed = closeSchema.safeParse(body);
     if (!parsed.success) {
-        return NextResponse.json({ success: false, error: "Monto inválido" }, { status: 400 });
+        return NextResponse.json(
+            {
+                success: false,
+                error: parsed.error.issues[0]?.message ?? "Datos inválidos",
+            },
+            { status: 400 },
+        );
     }
 
     try {
         const user = await requireActiveUser(session);
 
-        const activeSession = await getActiveSession(user.branchId);
+        const activeSession = await prisma.cashRegisterSession.findFirst({
+            where: { branchId: user.branchId, status: "OPEN" },
+            include: { transactions: true },
+        });
+
         if (!activeSession) {
             return NextResponse.json(
                 { success: false, error: "No hay ninguna caja abierta en esta sucursal." },
@@ -129,16 +177,110 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
             );
         }
 
-        const closed = await prisma.cashRegisterSession.update({
-            where: { id: activeSession.id },
-            data: {
-                closedAt: new Date(),
-                closingAmt: parsed.data.closingAmt,
-                status: "CLOSED",
-            },
+        // Recalcular expectedAmt server-side (no confiar en el cliente).
+        const openingAmt = Number(activeSession.openingAmt);
+        let salesCash = 0;
+        let depositsCash = 0;
+        let expensesCash = 0;
+        let withdrawalsCash = 0;
+        let refundsCash = 0;
+
+        for (const tx of activeSession.transactions) {
+            const amt = Number(tx.amount);
+            if (tx.type === "PAYMENT_IN" && tx.method === "CASH" && tx.collectionStatus === "COLLECTED") {
+                salesCash += amt;
+            } else if (tx.type === "CASH_DEPOSIT") {
+                depositsCash += amt;
+            } else if (tx.type === "EXPENSE_OUT" && tx.method === "CASH") {
+                expensesCash += amt;
+            } else if (tx.type === "WITHDRAWAL") {
+                withdrawalsCash += amt;
+            } else if (tx.type === "REFUND_OUT" && tx.method === "CASH") {
+                refundsCash += amt;
+            }
+        }
+
+        const expectedAmtServer =
+            openingAmt + salesCash + depositsCash - expensesCash - withdrawalsCash - refundsCash;
+
+        if (Math.abs(expectedAmtServer - parsed.data.expectedAmt) > EXPECTED_CLIENT_TOLERANCE) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "El efectivo esperado cambió. Refresca la página e intenta de nuevo.",
+                },
+                { status: 409 },
+            );
+        }
+
+        const diferenciaReal = parsed.data.closingAmt - expectedAmtServer;
+        const hasDiferencia = Math.abs(diferenciaReal) > FLOATING_POINT_EPSILON;
+
+        // Reglas de autorización.
+        if (hasDiferencia && user.role === "SELLER" && !parsed.data.authorizationId) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "Cerrar con diferencia requiere autorización de gerente.",
+                },
+                { status: 400 },
+            );
+        }
+
+        // authorizedById: quién aprobó la diferencia. Para MANAGER/ADMIN sin auth request, se
+        // audita como auto-autorización (user.id). Para SELLER con authorizationId, se resuelve
+        // durante consumeAuthorization (approvedBy de la request).
+        const closed = await prisma.$transaction(async (tx) => {
+            let authorizedById: string | null = null;
+
+            if (hasDiferencia) {
+                if (parsed.data.authorizationId) {
+                    // Consume y lockea la autorización (setea cashSessionId, previene reuso).
+                    await consumeAuthorization(tx, {
+                        tipo: "CIERRE_DIFERENCIA",
+                        authorizationId: parsed.data.authorizationId,
+                        requestedBy: user.id,
+                        cashSessionId: activeSession.id,
+                    });
+                    // Leer approvedBy de la autorización para auditar en CashRegisterSession.
+                    const auth = await tx.authorizationRequest.findUnique({
+                        where: { id: parsed.data.authorizationId },
+                        select: { approvedBy: true },
+                    });
+                    authorizedById = auth?.approvedBy ?? null;
+                } else if (user.role === "MANAGER" || user.role === "ADMIN") {
+                    // Auto-autorización: queda en auditoría.
+                    authorizedById = user.id;
+                }
+                // SELLER sin authorizationId ya fue bloqueado arriba.
+            }
+
+            const updated = await tx.cashRegisterSession.update({
+                where: { id: activeSession.id },
+                data: {
+                    closedAt: new Date(),
+                    closingAmt: parsed.data.closingAmt,
+                    diferencia: diferenciaReal,
+                    authorizedById,
+                    status: "CLOSED",
+                },
+                include: {
+                    authorizedBy: { select: { id: true, name: true } },
+                },
+            });
+
+            return updated;
         });
 
-        return NextResponse.json({ success: true, data: serializeSession(closed) });
+        return NextResponse.json({
+            success: true,
+            data: {
+                ...serializeSession(closed),
+                authorizedBy: closed.authorizedBy
+                    ? { id: closed.authorizedBy.id, name: closed.authorizedBy.name }
+                    : null,
+            },
+        });
     } catch (error: unknown) {
         return errorFromUnknown(error, "PATCH");
     }
