@@ -51,13 +51,32 @@ function modalStyle(): React.CSSProperties {
   };
 }
 
+interface AuthorizationInboxProps {
+  /** Título del panel. Por defecto "Autorizaciones pendientes". */
+  title?: string;
+  /**
+   * Qué renderizar cuando no hay solicitudes. Por defecto `null` — el panel
+   * se oculta. Para el módulo de Caja se pasa un empty state con ícono y
+   * mensaje informativo.
+   */
+  emptyState?: React.ReactNode;
+  /** Footer opcional (por ejemplo link a `/autorizaciones`). */
+  footer?: React.ReactNode;
+}
+
 /**
- * Bandeja de solicitudes de autorización pendientes. Polling cada 10s.
+ * Bandeja compartida de solicitudes de autorización pendientes. Polling cada 10s.
  *
- * Cleanup riguroso: setInterval limpiado en el return del useEffect, flag cancelled
- * para que un fetch en vuelo no escriba state tras unmount.
+ * Cleanup riguroso: setInterval limpiado en el return del useEffect, flag `cancelled`
+ * via AbortController para que un fetch en vuelo no escriba state tras unmount.
+ *
+ * Consumido desde `/dashboard` (manager) y `/cash-register`.
  */
-export function AuthorizationInbox() {
+export function AuthorizationInbox({
+  title = "Autorizaciones pendientes",
+  emptyState = null,
+  footer = null,
+}: AuthorizationInboxProps = {}) {
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [resolving, setResolving] = useState<{
     request: PendingRequest;
@@ -88,7 +107,9 @@ export function AuthorizationInbox() {
     };
   }, [fetchPending]);
 
-  if (pending.length === 0) return null;
+  if (pending.length === 0) {
+    return <>{emptyState}</>;
+  }
 
   return (
     <>
@@ -105,7 +126,7 @@ export function AuthorizationInbox() {
             className="text-xs font-medium uppercase tracking-[0.05em]"
             style={{ color: "var(--on-surf)" }}
           >
-            Autorizaciones pendientes ({pending.length})
+            {title} ({pending.length})
           </h3>
         </div>
         <div className="space-y-2">
@@ -166,6 +187,7 @@ export function AuthorizationInbox() {
             </div>
           ))}
         </div>
+        {footer && <div className="mt-3">{footer}</div>}
       </div>
 
       {resolving && (

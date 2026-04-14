@@ -4,7 +4,7 @@ import { TrendingUp, Banknote, Vault, ArchiveRestore, CheckCircle, ArrowRight, U
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
-import { AuthorizationInbox } from "./authorization-inbox";
+import { AuthorizationInbox } from "@/components/pos/authorization/authorization-inbox";
 
 type BranchComparisonRow = {
     branchId: string;
