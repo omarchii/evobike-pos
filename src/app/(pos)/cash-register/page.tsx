@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CashActionsBar } from "./cash-actions-bar";
+import { CollectPendingButton } from "./collect-pending-button";
 import { OrphanedSessionBanner } from "../orphaned-session-banner";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +101,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                         automáticamente al navegar a otras pantallas.
                     </p>
                     <div className="mt-6">
-                        <CashActionsBar canRegisterWithdrawal={canRegisterWithdrawal} sessionOpen={false} />
+                        <CashActionsBar canRegisterWithdrawal={canRegisterWithdrawal} sessionOpen={false} userRole={user.role} />
                     </div>
                 </div>
             </div>
@@ -203,7 +204,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                     </p>
                 </div>
                 <div className="shrink-0">
-                    <CashActionsBar canRegisterWithdrawal={canRegisterWithdrawal} sessionOpen={true} />
+                    <CashActionsBar canRegisterWithdrawal={canRegisterWithdrawal} sessionOpen={true} userRole={user.role} />
                 </div>
             </header>
 
@@ -576,6 +577,13 @@ function TxRow({ tx }: { tx: TxWithSale }): React.ReactElement {
                     {tx.reference ? ` · ${tx.reference}` : ""}
                 </div>
             </div>
+            {isPending && tx.type === "PAYMENT_IN" && (
+                <CollectPendingButton
+                    transactionId={tx.id}
+                    methodLabel={methodMeta.label}
+                    amountLabel={formatCurrency(amount)}
+                />
+            )}
             <div
                 className="text-[0.875rem] font-semibold shrink-0"
                 style={{ color: signColor, fontVariantNumeric: "tabular-nums" }}

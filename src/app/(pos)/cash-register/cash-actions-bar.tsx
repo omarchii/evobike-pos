@@ -18,6 +18,8 @@ import {
     Vault,
     X,
 } from "lucide-react";
+import { ExpenseDialog } from "./expense-dialog";
+import { WithdrawalDialog } from "./withdrawal-dialog";
 
 // Tokens compartidos con cash-session-manager.tsx (patrón canónico DESIGN.md §9)
 
@@ -151,11 +153,14 @@ const HEADER_DISABLED: React.CSSProperties = {
 interface Props {
     canRegisterWithdrawal: boolean;
     sessionOpen: boolean;
+    userRole: string;
 }
 
-export function CashActionsBar({ canRegisterWithdrawal, sessionOpen }: Props): React.ReactElement {
+export function CashActionsBar({ canRegisterWithdrawal, sessionOpen, userRole }: Props): React.ReactElement {
     const router = useRouter();
     const [isClosing, setIsClosing] = useState(false);
+    const [expenseOpen, setExpenseOpen] = useState(false);
+    const [withdrawalOpen, setWithdrawalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [amount, setAmount] = useState<string>("");
 
@@ -185,7 +190,6 @@ export function CashActionsBar({ canRegisterWithdrawal, sessionOpen }: Props): R
         }
     };
 
-    const pendingTooltip = "Disponible en siguiente fase";
     const pdfTooltip = "Disponible en fase P6";
 
     return (
@@ -204,9 +208,10 @@ export function CashActionsBar({ canRegisterWithdrawal, sessionOpen }: Props): R
 
                 <button
                     type="button"
-                    disabled
-                    style={HEADER_DISABLED}
-                    title={pendingTooltip}
+                    onClick={() => setExpenseOpen(true)}
+                    disabled={!sessionOpen}
+                    style={sessionOpen ? HEADER_SECONDARY : HEADER_DISABLED}
+                    title={sessionOpen ? undefined : "No hay caja abierta"}
                 >
                     <Receipt className="h-4 w-4" />
                     Registrar gasto
@@ -215,9 +220,10 @@ export function CashActionsBar({ canRegisterWithdrawal, sessionOpen }: Props): R
                 {canRegisterWithdrawal && (
                     <button
                         type="button"
-                        disabled
-                        style={HEADER_DISABLED}
-                        title={pendingTooltip}
+                        onClick={() => setWithdrawalOpen(true)}
+                        disabled={!sessionOpen}
+                        style={sessionOpen ? HEADER_SECONDARY : HEADER_DISABLED}
+                        title={sessionOpen ? undefined : "No hay caja abierta"}
                     >
                         <Vault className="h-4 w-4" />
                         Registrar retiro
@@ -234,6 +240,11 @@ export function CashActionsBar({ canRegisterWithdrawal, sessionOpen }: Props): R
                     Imprimir corte
                 </button>
             </div>
+
+            <ExpenseDialog open={expenseOpen} onOpenChange={setExpenseOpen} userRole={userRole} />
+            {canRegisterWithdrawal && (
+                <WithdrawalDialog open={withdrawalOpen} onOpenChange={setWithdrawalOpen} />
+            )}
 
             <Dialog open={isClosing} onOpenChange={setIsClosing}>
                 <DialogContent
