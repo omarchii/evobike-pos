@@ -14,7 +14,17 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Receipt, X } from "lucide-react";
-import { CashExpenseCategory } from "@prisma/client";
+
+const CASH_EXPENSE_CATEGORIES = [
+    "MENSAJERIA",
+    "PAPELERIA",
+    "CONSUMO",
+    "MANTENIMIENTO",
+    "AJUSTE_CAJA",
+    "OTRO",
+] as const;
+
+type CashExpenseCategory = (typeof CASH_EXPENSE_CATEGORIES)[number];
 
 const MODAL_STYLE: React.CSSProperties = {
     background: "color-mix(in srgb, var(--surf-bright) 88%, transparent)",
@@ -145,7 +155,7 @@ const expenseFormSchema = z.object({
         .number({ message: "Ingresa un monto válido" })
         .positive("El monto debe ser mayor a cero"),
     method: z.literal("CASH"),
-    category: z.nativeEnum(CashExpenseCategory),
+    category: z.enum(CASH_EXPENSE_CATEGORIES),
     reference: z
         .string()
         .trim()
