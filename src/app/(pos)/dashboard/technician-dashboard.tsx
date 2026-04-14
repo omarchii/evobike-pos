@@ -118,7 +118,7 @@ export function TechnicianDashboard({
                         </span>
                         <Wrench className="h-4 w-4 text-white/70" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-white leading-none" style={{ fontFamily: "var(--font-display)" }}>{activeOrdersCount}</p>
+                    <p className="text-[2.75rem] font-bold text-white leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>{activeOrdersCount}</p>
                     <p className="text-[11px] text-white/60 mt-1">Órdenes en trabajo</p>
                 </div>
 
@@ -130,7 +130,7 @@ export function TechnicianDashboard({
                         </span>
                         <CheckCircle className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {readyOrdersCount}
                     </p>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Esperando entrega</p>
@@ -144,7 +144,7 @@ export function TechnicianDashboard({
                         </span>
                         <CheckCircle className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {deliveredTodayCount}
                     </p>
                     <p className={`text-[11px] mt-1 font-medium ${deliveredTrend.dir === "up" ? "text-[var(--sec)]" : deliveredTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
@@ -160,7 +160,7 @@ export function TechnicianDashboard({
                         </span>
                         <Wrench className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {assemblyPendingCount}
                     </p>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-1">
@@ -186,7 +186,7 @@ export function TechnicianDashboard({
                                 const statusInfo = ORDER_STATUS[order.status] ?? { label: order.status, className: "bg-[var(--surf-high)] text-[var(--on-surf)]" };
                                 const isLate = order.minutosTranscurridos > 2880;
                                 return (
-                                    <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                    <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[var(--ghost-border)] last:border-0">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
@@ -234,7 +234,7 @@ export function TechnicianDashboard({
                     ) : (
                         <div className="space-y-2">
                             {readyOrders.map((order) => (
-                                <div key={order.id} className="flex items-start gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                <div key={order.id} className="flex items-start gap-3 py-2 border-b border-[var(--ghost-border)] last:border-0">
                                     <div className="min-w-0 flex-1">
                                         <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
                                             {order.folio}
@@ -351,7 +351,7 @@ export function TechnicianDashboard({
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-[rgba(178,204,192,0.15)]">
+                                <tr className="border-b border-[var(--ghost-border)]">
                                     <th className="pb-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Bicicleta</th>
                                     <th className="pb-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Cliente</th>
                                     <th className="pb-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Último Servicio</th>

@@ -97,7 +97,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 <Table>
                     <TableHeader className="bg-slate-50 sticky top-0">
                         <TableRow>
-                            <TableHead className="w-[300px]">Cliente</TableHead>
+                            <TableHead className="w-75">Cliente</TableHead>
                             <TableHead>Contacto</TableHead>
                             <TableHead className="text-center">Compras Históricas</TableHead>
                             <TableHead className="text-right">Límite Crédito</TableHead>

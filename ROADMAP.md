@@ -466,6 +466,8 @@ Comparativa entre sucursales (solo ADMIN).
 
 Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 
+> ⚠️ **Antes de empezar:** evaluar fusionar con Taller Mecánico (tab "Mantenimientos" dentro de `/workshop`) en lugar de módulo independiente. Ambos viven sobre `ServiceOrder` + `CustomerBike` y comparten audiencia. Si se fusiona, no se agrega ítem al sidebar — queda como tab junto al Kanban actual.
+
 ### Lógica
 - Query cruza `CustomerBike` + `Sale` (fecha de compra) + `ServiceOrder` (último servicio `DELIVERED`)
 - Regla: primer mantenimiento a 6 meses de la venta; subsecuentes a 6 meses del último `ServiceOrder` completado
@@ -507,6 +509,7 @@ Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 - Deploy: variables de entorno de producción, SSL, dominio
 - Build limpio final: cero `any`, cero `TODO`, cero `console.log`
 - Revisión final de `refacciones_revisar.csv` y carga completa
+- **Tech-debt UI: migrar `rgba(178,204,192,0.15)` (y variantes `.2` / `.08` / `.45`) hardcoded → `var(--ghost-border)`**. Token ya existe en `globals.css:108` con pares light/dark correctos; cada uso hardcoded rompe dark mode porque no adapta a `rgba(45,74,58,0.30)`. Dashboards ya migrados (2026-04-13). Quedan ~80 instancias en ~25 archivos, incluidos `pos-terminal.tsx` (25+), tablas de `configuracion/catalogo/tab-*`, `reportes/comisiones`, recepciones de inventario, cotizaciones públicas. Refactor mecánico (`replace_all`) pero con alto blast radius — hacer archivo por archivo con verificación visual en light+dark.
 
 ---
 

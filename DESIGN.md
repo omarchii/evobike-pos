@@ -380,6 +380,9 @@ Pegar en `globals.css`:
   --on-surf-var: #3d5247;
   --outline-var: #b2ccc0;
 
+  /* Ghost border — para inputs, bordes sutiles en tablas y tintes al 15% */
+  --ghost-border: rgba(178, 204, 192, 0.15);
+
   /* Elevation */
   --shadow: 0px 12px 32px -4px rgba(19, 27, 46, 0.06);
 
@@ -425,6 +428,7 @@ Pegar en `globals.css`:
   --on-surf: #e8f0eb;
   --on-surf-var: #8fbfa0;
   --outline-var: #2d4a3a;
+  --ghost-border: rgba(45, 74, 58, 0.30);
 
   --shadow: 0px 12px 32px -4px rgba(0, 0, 0, 0.4);
 }
@@ -451,3 +455,65 @@ Pegar en `globals.css`:
 - No usar dividers horizontales entre items de lista. El spacing de `0.9rem` es suficiente.
 - No usar la paleta de alerta roja para nada que no sea un estado negativo real.
 - No mezclar pesos 600/700 de Inter en cuerpo de texto — reservarlos para card titles. El peso 700 en display es solo Space Grotesk.
+
+---
+
+## 10. Anti-patterns que rompen dark mode
+
+Toda violación en esta lista rompe light o dark mode silenciosamente. Los linters no las detectan — hay que revisar manualmente en ambos modos antes de commitear.
+
+### Colores hardcoded prohibidos
+
+| Anti-pattern | Reemplazo | Razón |
+| --- | --- | --- |
+| `rgba(178, 204, 192, 0.15)` / `.2` / `.08` | `var(--ghost-border)` | El token adapta a `rgba(45,74,58,0.30)` en dark; el hardcoded se mantiene verde claro sobre fondo negro |
+| `text-white` como color de texto general | `text-[var(--on-surf)]` o `text-[var(--on-p)]` | Excepción única: KPI card con Velocity Gradient (la spec manda `color: #ffffff` fijo porque el gradient es identidad permanente) |
+| `#dc2626` / `bg-red-500` / cualquier rojo Tailwind | `var(--ter)` + `var(--ter-container)` + `var(--on-ter-container)` | El rojo canónico es `#e74c3c` light / `#ff8080` dark — Tailwind red-500 no flipea |
+| `bg-white` | `bg-[var(--surf-lowest)]` | `surf-lowest` = `#ffffff` light pero `#222222` dark |
+| `#000000` / `text-black` | `text-[var(--on-surf)]` | Texto principal es `#131B2E` light / `#e8f0eb` dark |
+| `bg-slate-*`, `bg-zinc-*`, `bg-gray-*` | surface tokens | Los neutrales de Tailwind no participan del dual-mode del proyecto |
+
+### Tipografía — errores frecuentes
+
+- **KPIs sin `tracking-[-0.02em]`** — la compresión tipográfica del valor display es parte del look. Si pones `text-[2.75rem] font-bold` + Space Grotesk sin tracking, se ve suelto.
+- **Títulos de página sin Space Grotesk** — `font-bold text-xl` no basta; hay que incluir `style={{ fontFamily: "var(--font-display)" }}` o usar la clase Tailwind variable.
+- **`font-semibold` en body copy** — Inter 600 es exclusivo de card titles. En párrafos/descripciones rompe la jerarquía con los títulos.
+- **`tracking-wide` genérico en labels uppercase** — usar siempre `tracking-[0.05em]` (label-md) o `tracking-[0.04em]` (label-sm).
+- **Referenciar tokens de fuente inexistentes** — el único token de fuente oficial es `var(--font-display)`. `var(--font-heading)` **no existe**.
+
+### Glassmorphism — patrón oficial del proyecto
+
+El proyecto implementa glassmorphism con `color-mix` sobre `--surf-bright` (no con `rgba` fijo) precisamente porque `--surf-bright` ya adapta a dark. El patrón canónico — úsalo tal cual:
+
+```css
+background: color-mix(in srgb, var(--surf-bright) 88%, transparent);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+```
+
+Para tintes de status/alerta, `color-mix` sobre el token semántico también es la forma correcta:
+
+```css
+/* Tint suave de warn container */
+background: color-mix(in srgb, var(--warn) 12%, transparent);
+/* Chip activo primario */
+background: color-mix(in srgb, var(--p) 10%, transparent);
+```
+
+No reemplazar estos patrones por `rgba` hardcoded.
+
+### Velocity Gradient — usos permitidos
+
+Máximo 2 instancias por vista (KPI destacado + CTA primario). Se aceptan usos adicionales **solo** en:
+- Chips/pills de estado "activo" en toggles de filtros de rango temporal
+- Barras de progreso de comparativos (branch vs branch, modelo vs modelo)
+
+Si una vista excede el máximo y no entra en esas excepciones, usar `bg-[var(--p)]` + `text-[var(--on-p)]`.
+
+### Checklist antes de commitear UI
+
+1. ¿Hay algún `rgba(...)` hardcoded? → migrar a token.
+2. ¿Hay colores `#` fuera del gradient oficial (`#1b4332`/`#2ecc71`)? → migrar a token.
+3. ¿Los títulos de página usan Space Grotesk? ¿Los KPIs tienen `tracking-[-0.02em]`?
+4. ¿Probé la vista en light y dark mode? (ver Topbar → ThemeToggle)
+5. ¿Los separadores son cambio tonal de surface, no `border-b` con color?

@@ -156,7 +156,7 @@ export function SellerDashboard({
                         </span>
                         <TrendingUp className="h-4 w-4 text-white/70" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-white leading-none" style={{ fontFamily: "var(--font-display)" }}>{salesTodayCount}</p>
+                    <p className="text-[2.75rem] font-bold text-white leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>{salesTodayCount}</p>
                     <p className={`text-[11px] mt-1 font-medium ${salesTrend.dir === "up" ? "text-white/80" : salesTrend.dir === "down" ? "text-white/60" : "text-white/50"}`}>
                         {salesTrend.dir === "up" ? "↑" : salesTrend.dir === "down" ? "↓" : "—"} {salesTrend.label}
                     </p>
@@ -170,7 +170,7 @@ export function SellerDashboard({
                         </span>
                         <Banknote className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
                     <p className={`text-[11px] mt-1 font-medium ${revenueTrend.dir === "up" ? "text-[var(--sec)]" : revenueTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
@@ -186,7 +186,7 @@ export function SellerDashboard({
                         </span>
                         <ArchiveRestore className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {activeLayawaysCount}
                     </p>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-1">Pendientes de liquidar</p>
@@ -195,7 +195,7 @@ export function SellerDashboard({
 
             {/* Panel 2: Caja Viva */}
             <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)] overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[rgba(178,204,192,0.15)]">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ghost-border)]">
                     <div className="flex items-center gap-2">
                         <Vault className="h-4 w-4 text-[var(--on-surf-var)]" />
                         <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
@@ -242,7 +242,7 @@ export function SellerDashboard({
                                     <p className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)] mb-1">
                                         Total cobrado
                                     </p>
-                                    <p className="text-xl font-bold text-[var(--sec)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                                    <p className="text-[1.5rem] font-bold text-[var(--sec)] leading-none tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
                                         {formatMXN(cashSession.totalCobrado)}
                                     </p>
                                 </div>
@@ -262,7 +262,7 @@ export function SellerDashboard({
                                         <p className="text-[9px] font-medium uppercase tracking-[0.04em] opacity-70">
                                             {METHOD_LABEL[m.method] ?? m.method}
                                         </p>
-                                        <p className="text-sm font-semibold mt-0.5">
+                                        <p className="text-sm font-medium mt-0.5">
                                             {formatMXN(m.amount)}
                                         </p>
                                     </div>
@@ -289,7 +289,7 @@ export function SellerDashboard({
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-[rgba(178,204,192,0.15)]">
+                                <tr className="border-b border-[var(--ghost-border)]">
                                     <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Folio</th>
                                     <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Producto</th>
                                     <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Método</th>
@@ -349,7 +349,7 @@ export function SellerDashboard({
                     ) : (
                         <div className="space-y-2">
                             {layaways.map((l) => (
-                                <div key={l.id} className="flex items-center justify-between py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                <div key={l.id} className="flex items-center justify-between py-2 border-b border-[var(--ghost-border)] last:border-0">
                                     <div className="min-w-0">
                                         <Link href={`/pedidos/${l.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
                                             {l.folio}
@@ -386,7 +386,7 @@ export function SellerDashboard({
                     ) : (
                         <div className="divide-y-0">
                             {atratoRows.map((row) => (
-                                <div key={row.id} className="flex items-center justify-between py-2.5 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                <div key={row.id} className="flex items-center justify-between py-2.5 border-b border-[var(--ghost-border)] last:border-0">
                                     <div className="min-w-0">
                                         {row.saleId ? (
                                             <Link href={`/ventas/${row.saleId}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
@@ -410,7 +410,7 @@ export function SellerDashboard({
 
                 {/* Panel 6: Mis Comisiones del Mes */}
                 <div className="col-span-12 lg:col-span-7 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)] overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-[rgba(178,204,192,0.15)]">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ghost-border)]">
                         <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
                             Mis Comisiones del Mes
                         </h2>
@@ -429,7 +429,7 @@ export function SellerDashboard({
                     ) : (
                         <>
                             {/* Status breakdown */}
-                            <div className="flex gap-3 px-5 py-3 border-b border-[rgba(178,204,192,0.15)]">
+                            <div className="flex gap-3 px-5 py-3 border-b border-[var(--ghost-border)]">
                                 {(["PENDING", "APPROVED", "PAID"] as const).map((s) => (
                                     commissionsByStatus[s] > 0 && (
                                         <div key={s} className="flex items-center gap-1.5">
@@ -450,7 +450,7 @@ export function SellerDashboard({
                             {/* Commission rows */}
                             <div className="divide-y-0">
                                 {commissions.map((c) => (
-                                    <div key={c.id} className="flex items-center justify-between px-5 py-2.5 border-b border-[rgba(178,204,192,0.15)] last:border-0 hover:bg-[var(--surf-high)] transition-colors">
+                                    <div key={c.id} className="flex items-center justify-between px-5 py-2.5 border-b border-[var(--ghost-border)] last:border-0 hover:bg-[var(--surf-high)] transition-colors">
                                         <div className="min-w-0">
                                             <Link href={`/ventas/${c.saleId}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
                                                 {c.saleForlio}

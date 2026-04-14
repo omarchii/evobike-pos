@@ -102,7 +102,7 @@ export function AuthorizationInbox() {
         <div className="flex items-center gap-2 mb-3">
           <ShieldAlert className="h-4 w-4" style={{ color: "var(--warn)" }} />
           <h3
-            className="text-sm font-semibold uppercase tracking-wide"
+            className="text-xs font-medium uppercase tracking-[0.05em]"
             style={{ color: "var(--on-surf)" }}
           >
             Autorizaciones pendientes ({pending.length})
@@ -147,8 +147,8 @@ export function AuthorizationInbox() {
                   onClick={() => setResolving({ request: r, action: "REJECT" })}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1"
                   style={{
-                    background: "rgba(220,38,38,0.1)",
-                    color: "#dc2626",
+                    background: "var(--ter-container)",
+                    color: "var(--on-ter-container)",
                   }}
                 >
                   <XCircle className="w-3 h-3" />
@@ -240,7 +240,7 @@ function ResolveDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-md" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             {title}
           </DialogTitle>
         </DialogHeader>
@@ -307,7 +307,7 @@ function ResolveDialog({
               autoFocus
             />
             {error && (
-              <p className="text-xs mt-1" style={{ color: "#dc2626" }}>
+              <p className="text-xs mt-1" style={{ color: "var(--ter)" }}>
                 {error}
               </p>
             )}
@@ -328,8 +328,8 @@ function ResolveDialog({
               disabled={submitting || !pin}
               className="px-4 py-2 rounded-xl text-sm font-medium"
               style={{
-                background: action === "APPROVE" ? "var(--p)" : "#dc2626",
-                color: "#fff",
+                background: action === "APPROVE" ? "var(--p)" : "var(--ter)",
+                color: "var(--on-p)",
                 opacity: submitting || !pin ? 0.5 : 1,
               }}
             >

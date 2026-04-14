@@ -133,7 +133,7 @@ export function AttentionPanel({
     return (
         <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)] overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[rgba(178,204,192,0.15)]">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[var(--surf-low)]">
                 <div className="flex items-center gap-2">
                     <AlertTriangle
                         className={cn(

@@ -251,7 +251,7 @@ export function ManagerDashboard({
                         </span>
                         <TrendingUp className="h-4 w-4 text-white/70" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-white leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-white leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
                     <p className={`text-[11px] mt-1 font-medium ${revenueTrend.dir === "up" ? "text-white/80" : revenueTrend.dir === "down" ? "text-white/60" : "text-white/50"}`}>
@@ -267,7 +267,7 @@ export function ManagerDashboard({
                         </span>
                         <Banknote className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {transactionsToday}
                     </p>
                     <p className={`text-[11px] mt-1 font-medium ${txTrend.dir === "up" ? "text-[var(--sec)]" : txTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
@@ -283,7 +283,7 @@ export function ManagerDashboard({
                         </span>
                         <Vault className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(cashInRegister)}
                     </p>
                     <Link
@@ -303,7 +303,7 @@ export function ManagerDashboard({
                         </span>
                         <ArchiveRestore className="h-4 w-4 text-[var(--on-surf-var)]" />
                     </div>
-                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                    <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {activeLayawaysCount}
                     </p>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-1">
@@ -389,7 +389,7 @@ export function ManagerDashboard({
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-[rgba(178,204,192,0.15)]">
+                            <tr className="border-b border-[var(--ghost-border)]">
                                 <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Folio</th>
                                 <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Producto</th>
                                 <th className="px-5 py-2.5 text-left text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--on-surf-var)]">Vendedor</th>
@@ -462,7 +462,7 @@ export function ManagerDashboard({
                                 const statusInfo = ORDER_STATUS[order.status] ?? { label: order.status, className: "bg-[var(--surf-high)] text-[var(--on-surf)]" };
                                 const isLate = order.minutosTranscurridos > 2880;
                                 return (
-                                    <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                    <div key={order.id} className="flex items-center gap-3 py-2 border-b border-[var(--ghost-border)] last:border-0">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <Link href={`/workshop/${order.id}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
@@ -511,7 +511,7 @@ export function ManagerDashboard({
                     ) : (
                         <div className="space-y-2 mt-3">
                             {atratiPendientes.map((tx) => (
-                                <div key={tx.id} className="flex items-center justify-between py-1.5 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                <div key={tx.id} className="flex items-center justify-between py-1.5 border-b border-[var(--ghost-border)] last:border-0">
                                     <div className="min-w-0">
                                         {tx.saleId ? (
                                             <Link href={`/ventas/${tx.saleId}`} className="font-mono text-xs text-[var(--p)] hover:underline underline-offset-2 transition-colors">
@@ -553,7 +553,7 @@ export function ManagerDashboard({
                     ) : (
                         <div className="space-y-2 mt-3">
                             {pendingCommissions.map((c) => (
-                                <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[rgba(178,204,192,0.15)] last:border-0">
+                                <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[var(--ghost-border)] last:border-0">
                                     <div className="min-w-0">
                                         <p className="text-xs font-medium text-[var(--on-surf)] truncate">
                                             {c.userName}
