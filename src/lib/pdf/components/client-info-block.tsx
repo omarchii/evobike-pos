@@ -100,9 +100,11 @@ export function ClientInfoBlock({
         </View>
       ) : null}
 
-      {/* Fila 4: RFC | Teléfono */}
+      {/* Fila 4: RFC (solo si se proporcionó) | Teléfono */}
       <View style={s.row}>
-        <LabelValue label="RFC" value={client.rfc} />
+        {client.rfc !== undefined ? (
+          <LabelValue label="RFC" value={client.rfc} />
+        ) : null}
         <LabelValue label="TELÉFONO" value={client.telefono} />
       </View>
     </View>

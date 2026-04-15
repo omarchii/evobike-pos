@@ -54,9 +54,10 @@ type TotalsBlockProps = {
   subtotal: number;
   iva: number;
   total: number;
+  descuento?: number;
 };
 
-export function TotalsBlock({ subtotal, iva, total }: TotalsBlockProps) {
+export function TotalsBlock({ subtotal, iva, total, descuento }: TotalsBlockProps) {
   return (
     <View style={s.container}>
       <View style={s.block}>
@@ -64,6 +65,12 @@ export function TotalsBlock({ subtotal, iva, total }: TotalsBlockProps) {
           <Text style={s.label}>Subtotal</Text>
           <Text style={s.value}>{formatMXN(subtotal)}</Text>
         </View>
+        {descuento != null && descuento > 0 ? (
+          <View style={s.row}>
+            <Text style={s.label}>Descuento</Text>
+            <Text style={s.value}>-{formatMXN(descuento)}</Text>
+          </View>
+        ) : null}
         <View style={s.row}>
           <Text style={s.label}>IVA (16.00%)</Text>
           <Text style={s.value}>{formatMXN(iva)}</Text>

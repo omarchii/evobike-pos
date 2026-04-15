@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileText, ChevronRight } from "lucide-react";
-import QuotationStatusBadge from "./quotation-status-badge";
+import QuotationStatusBadge from "@/components/quotation-status-badge";
 import {
   getEffectiveStatus,
   getDaysRemaining,

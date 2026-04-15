@@ -14,31 +14,48 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, User, Phone, Mail, Landmark, ShoppingBag, Wrench } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, Landmark, ShoppingBag, Wrench, FileText } from "lucide-react";
 import Link from "next/link";
 import { AddBalanceDialog } from "./add-balance-dialog";
+import QuotationStatusBadge from "@/components/quotation-status-badge";
+import { getEffectiveStatus, formatMXN, formatDate } from "@/lib/quotations";
 
 export const dynamic = "force-dynamic";
 
 export default async function CustomerProfilePage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
 
-    const customer = await prisma.customer.findUnique({
-        where: { id: params.id },
-        include: {
-            sales: {
-                orderBy: { createdAt: "desc" },
-                include: { user: true }
-            },
-            serviceOrders: {
-                orderBy: { createdAt: "desc" },
-                include: { user: true }
-            },
-            bikes: {
-                orderBy: { createdAt: "desc" }
+    const [customer, cotizaciones] = await Promise.all([
+        prisma.customer.findUnique({
+            where: { id: params.id },
+            include: {
+                sales: {
+                    orderBy: { createdAt: "desc" },
+                    include: { user: true }
+                },
+                serviceOrders: {
+                    orderBy: { createdAt: "desc" },
+                    include: { user: true }
+                },
+                bikes: {
+                    orderBy: { createdAt: "desc" }
+                }
             }
-        }
-    }) as CustomerWithRelations | null;
+        }) as Promise<CustomerWithRelations | null>,
+        prisma.quotation.findMany({
+            where: { customerId: params.id },
+            select: {
+                id: true,
+                folio: true,
+                total: true,
+                status: true,
+                validUntil: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+        }),
+    ]);
 
     if (!customer) {
         notFound();
@@ -112,7 +129,7 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
 
             {/* History Tabs */}
             <Tabs defaultValue="sales" className="w-full mt-8">
-                <TabsList className="grid w-full md:w-[600px] grid-cols-3 mb-6">
+                <TabsList className="grid w-full md:w-[800px] grid-cols-4 mb-6">
                     <TabsTrigger value="sales" className="flex gap-2">
                         <ShoppingBag className="h-4 w-4" /> Ventas y Apartados
                     </TabsTrigger>
@@ -121,6 +138,9 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                     </TabsTrigger>
                     <TabsTrigger value="bikes" className="flex gap-2">
                         <span className="font-bold tracking-wider">VIN</span> Unidades Serializadas
+                    </TabsTrigger>
+                    <TabsTrigger value="cotizaciones" className="flex gap-2">
+                        <FileText className="h-4 w-4" /> Cotizaciones
                     </TabsTrigger>
                 </TabsList>
 
@@ -251,6 +271,58 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center text-slate-500 py-8">
                                                 No hay unidades registradas para este cliente.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="cotizaciones">
+                    <Card className="shadow-sm">
+                        <CardHeader>
+                            <CardTitle>Cotizaciones</CardTitle>
+                            <CardDescription>Últimas 20 cotizaciones emitidas para este cliente.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Folio</TableHead>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Total</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {cotizaciones.map((cot) => {
+                                        const effectiveStatus = getEffectiveStatus({
+                                            status: cot.status,
+                                            validUntil: cot.validUntil,
+                                        });
+                                        return (
+                                            <TableRow key={cot.id}>
+                                                <TableCell className="font-mono text-xs font-semibold">{cot.folio}</TableCell>
+                                                <TableCell className="text-sm">{formatDate(cot.createdAt)}</TableCell>
+                                                <TableCell className="font-semibold">{formatMXN(Number(cot.total))}</TableCell>
+                                                <TableCell>
+                                                    <QuotationStatusBadge status={effectiveStatus} />
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" asChild>
+                                                        <Link href={`/cotizaciones/${cot.id}`}>Ver cotización</Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                    {cotizaciones.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center text-slate-500 py-8">
+                                                Este cliente no tiene cotizaciones.
                                             </TableCell>
                                         </TableRow>
                                     )}
