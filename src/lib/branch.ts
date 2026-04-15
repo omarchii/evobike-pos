@@ -1,24 +1,59 @@
 import { prisma } from "@/lib/prisma";
+import type { BranchPDFData } from "@/lib/pdf/types";
 
-export type BranchPDFDocType = "COTIZACION" | "PEDIDO" | "POLIZA";
+// Re-exportar para que los consumidores importen desde @/lib/branch
+export type { BranchPDFData } from "@/lib/pdf/types";
 
-export type BranchPDFGuardResult =
-  | { ok: true }
-  | { ok: false; missingFields: string[] };
+export type TipoDocPDF = "cotizacion" | "pedido" | "ticket" | "poliza";
 
-const BASE_FIELDS: Array<{ key: string; label: string }> = [
+export class BranchNotConfiguredError extends Error {
+  constructor(public readonly missingFields: string[]) {
+    super(
+      `Sucursal sin configurar: faltan ${missingFields.join(", ")}`,
+    );
+    this.name = "BranchNotConfiguredError";
+  }
+}
+
+// Campos comunes requeridos en todos los tipos de documento
+const BASE_FIELDS: Array<{ key: keyof typeof FIELD_LABELS; label: string }> = [
   { key: "rfc", label: "RFC" },
   { key: "razonSocial", label: "Razón social" },
+  { key: "regimenFiscal", label: "Régimen fiscal" },
+  { key: "street", label: "Calle" },
+  { key: "colonia", label: "Colonia" },
+  { key: "city", label: "Ciudad" },
+  { key: "state", label: "Estado" },
+  { key: "zip", label: "Código postal" },
   { key: "phone", label: "Teléfono" },
-  { key: "email", label: "Email" },
   { key: "sealImageUrl", label: "Sello de sucursal" },
 ];
 
-const EXTRA_FIELD_BY_DOC: Record<BranchPDFDocType, { key: string; label: string }> = {
-  COTIZACION: { key: "terminosCotizacion", label: "Términos de cotización" },
-  PEDIDO: { key: "terminosPedido", label: "Términos de pedido" },
-  POLIZA: { key: "terminosPoliza", label: "Términos de póliza" },
+const EXTRA_BY_TYPE: Record<
+  Exclude<TipoDocPDF, "ticket">,
+  { key: keyof typeof FIELD_LABELS; label: string }
+> = {
+  cotizacion: { key: "terminosCotizacion", label: "Términos de cotización" },
+  pedido: { key: "terminosPedido", label: "Términos de pedido" },
+  poliza: { key: "terminosPoliza", label: "Términos de póliza" },
 };
+
+// Objeto auxiliar para satisfacer el sistema de tipos en los selectores de key
+const FIELD_LABELS = {
+  rfc: "",
+  razonSocial: "",
+  regimenFiscal: "",
+  street: "",
+  colonia: "",
+  city: "",
+  state: "",
+  zip: "",
+  phone: "",
+  sealImageUrl: "",
+  terminosCotizacion: "",
+  terminosPedido: "",
+  terminosPoliza: "",
+} as const;
 
 function isPlaceholder(value: string | null | undefined): boolean {
   if (!value) return true;
@@ -28,24 +63,23 @@ function isPlaceholder(value: string | null | undefined): boolean {
   return false;
 }
 
+/**
+ * Valida que la sucursal tenga todos los datos necesarios para emitir un PDF.
+ * Lanza `BranchNotConfiguredError` si faltan campos.
+ * Devuelve un `BranchPDFData` ya tipado y listo para pasar a `<DocumentHeader>`.
+ */
 export async function assertBranchConfiguredForPDF(
   branchId: string,
-  tipoDoc: BranchPDFDocType,
-): Promise<BranchPDFGuardResult> {
+  tipoDoc: TipoDocPDF,
+): Promise<BranchPDFData> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId } });
   if (!branch) {
-    return { ok: false, missingFields: ["Sucursal no encontrada"] };
+    throw new BranchNotConfiguredError(["Sucursal no encontrada"]);
   }
 
   const requirements = [...BASE_FIELDS];
-  if (tipoDoc === "COTIZACION") {
-    requirements.push(EXTRA_FIELD_BY_DOC.COTIZACION);
-  } else if (tipoDoc === "PEDIDO") {
-    requirements.push(EXTRA_FIELD_BY_DOC.COTIZACION);
-    requirements.push(EXTRA_FIELD_BY_DOC.PEDIDO);
-  } else {
-    requirements.push(EXTRA_FIELD_BY_DOC.COTIZACION);
-    requirements.push(EXTRA_FIELD_BY_DOC.POLIZA);
+  if (tipoDoc !== "ticket") {
+    requirements.push(EXTRA_BY_TYPE[tipoDoc]);
   }
 
   const record = branch as unknown as Record<string, string | null | undefined>;
@@ -54,7 +88,42 @@ export async function assertBranchConfiguredForPDF(
     .map((f) => f.label);
 
   if (missingFields.length > 0) {
-    return { ok: false, missingFields };
+    throw new BranchNotConfiguredError(missingFields);
   }
-  return { ok: true };
+
+  return {
+    id: branch.id,
+    code: branch.code,
+    name: branch.name,
+    rfc: branch.rfc as string,
+    razonSocial: branch.razonSocial as string,
+    regimenFiscal: branch.regimenFiscal as string,
+    street: branch.street as string,
+    extNum: branch.extNum,
+    intNum: branch.intNum,
+    colonia: branch.colonia as string,
+    city: branch.city as string,
+    state: branch.state as string,
+    zip: branch.zip as string,
+    phone: branch.phone as string,
+    email: branch.email,
+    website: branch.website,
+    sealImageUrl: branch.sealImageUrl,
+    terminosCotizacion: branch.terminosCotizacion,
+    terminosPedido: branch.terminosPedido,
+    terminosPoliza: branch.terminosPoliza,
+  };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tipos legacy — se conservan para que el código existente que importe
+// BranchPDFDocType / BranchPDFGuardResult no rompa mientras se migra.
+// TODO: limpiar en la siguiente sesión.
+// ──────────────────────────────────────────────────────────────────────────────
+/** @deprecated usar TipoDocPDF */
+export type BranchPDFDocType = "COTIZACION" | "PEDIDO" | "POLIZA";
+
+/** @deprecated assertBranchConfiguredForPDF ahora lanza en vez de retornar {ok} */
+export type BranchPDFGuardResult =
+  | { ok: true }
+  | { ok: false; missingFields: string[] };
