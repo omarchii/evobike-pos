@@ -394,7 +394,6 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
       <QuotationActionsBar
         quotationId={id}
         effectiveStatus={effectiveStatus}
-        dbStatus={q.status}
         quotation={{
           id: q.id,
           folio: q.folio,

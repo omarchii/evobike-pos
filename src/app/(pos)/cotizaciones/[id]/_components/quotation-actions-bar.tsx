@@ -13,6 +13,9 @@ import {
   RefreshCw,
   Link2,
   FileText,
+  Truck,
+  Bell,
+  Banknote,
 } from "lucide-react";
 import {
   Dialog,
@@ -66,7 +69,6 @@ interface QuotationForDialog {
 interface Props {
   quotationId: string;
   effectiveStatus: EffectiveStatus;
-  dbStatus: string;
   quotation: QuotationForDialog;
   managers: Manager[];
   customers: CustomerOption[];
@@ -77,7 +79,6 @@ interface Props {
 export default function QuotationActionsBar({
   quotationId,
   effectiveStatus,
-  dbStatus,
   quotation,
   managers,
   customers,
@@ -100,11 +101,20 @@ export default function QuotationActionsBar({
     }
   }
 
-  const isActionable = effectiveStatus === "DRAFT" || effectiveStatus === "EN_ESPERA_CLIENTE";
-  // Compartir también aplica a cotizaciones expiradas (el cliente puede verlas)
-  const canShare = isActionable || effectiveStatus === "EXPIRED";
-  const canEdit = isActionable;
-  const canSend = isActionable && dbStatus === "DRAFT";
+  const isDraft = effectiveStatus === "DRAFT";
+  const isEnEsperaCliente = effectiveStatus === "EN_ESPERA_CLIENTE";
+  const isEnEsperaFabrica = effectiveStatus === "EN_ESPERA_FABRICA";
+  const isPagada = effectiveStatus === "PAGADA";
+  const isExpired = effectiveStatus === "EXPIRED";
+
+  const canEdit = isDraft || isEnEsperaCliente;
+  const canSend = isDraft;
+  const canEnviarFabrica = isEnEsperaCliente;
+  const canNotificarCliente = isEnEsperaFabrica;
+  const canRegistrarPago = isEnEsperaCliente || isEnEsperaFabrica;
+  const canConvert = isEnEsperaCliente || isPagada;
+  const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isPagada;
+  const canShare = isDraft || isEnEsperaCliente || isExpired;
   const canDuplicate = true;
 
   async function handleSend() {
@@ -117,6 +127,30 @@ export default function QuotationActionsBar({
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al marcar como enviada");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleStatusTransition(action: "ENVIAR_A_FABRICA" | "NOTIFICAR_CLIENTE" | "REGISTRAR_PAGO") {
+    const labels: Record<typeof action, string> = {
+      ENVIAR_A_FABRICA: "En espera de fábrica",
+      NOTIFICAR_CLIENTE: "En espera del cliente",
+      REGISTRAR_PAGO: "Pagada",
+    };
+    setLoading(action);
+    try {
+      const res = await fetch(`/api/cotizaciones/${quotationId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data: { success: boolean; error?: string } = await res.json();
+      if (!data.success) throw new Error(data.error);
+      toast.success(`Cotización marcada como ${labels[action]}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al cambiar estado");
     } finally {
       setLoading(null);
     }
@@ -178,7 +212,7 @@ export default function QuotationActionsBar({
           border: "1px solid rgba(178,204,192,0.15)",
         }}
       >
-        {/* Edit */}
+        {/* Edit — DRAFT o EN_ESPERA_CLIENTE */}
         {canEdit && (
           <ActionBtn
             href={`/cotizaciones/${quotationId}/edit`}
@@ -187,7 +221,7 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Mark as sent */}
+        {/* Marcar enviada — solo DRAFT */}
         {canSend && (
           <ActionBtn
             icon={Send}
@@ -197,11 +231,41 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Convert */}
-        {isActionable && (
+        {/* Enviar a fábrica — EN_ESPERA_CLIENTE */}
+        {canEnviarFabrica && (
+          <ActionBtn
+            icon={Truck}
+            label="Enviar a fábrica"
+            loading={loading === "ENVIAR_A_FABRICA"}
+            onClick={() => handleStatusTransition("ENVIAR_A_FABRICA")}
+          />
+        )}
+
+        {/* Notificar al cliente — EN_ESPERA_FABRICA */}
+        {canNotificarCliente && (
+          <ActionBtn
+            icon={Bell}
+            label="Notificar cliente"
+            loading={loading === "NOTIFICAR_CLIENTE"}
+            onClick={() => handleStatusTransition("NOTIFICAR_CLIENTE")}
+          />
+        )}
+
+        {/* Registrar pago — EN_ESPERA_CLIENTE o EN_ESPERA_FABRICA */}
+        {canRegistrarPago && (
+          <ActionBtn
+            icon={Banknote}
+            label="Registrar pago"
+            loading={loading === "REGISTRAR_PAGO"}
+            onClick={() => handleStatusTransition("REGISTRAR_PAGO")}
+          />
+        )}
+
+        {/* Convertir — EN_ESPERA_CLIENTE o PAGADA */}
+        {canConvert && (
           <ActionBtn
             icon={RefreshCw}
-            label="Convertir"
+            label={isPagada ? "Convertir a venta" : "Convertir"}
             onClick={() => setConvertOpen(true)}
           />
         )}
@@ -233,7 +297,7 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Duplicate */}
+        {/* Duplicate — siempre */}
         {canDuplicate && (
           <ActionBtn
             icon={Copy}
@@ -243,7 +307,7 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* PDF */}
+        {/* PDF — siempre */}
         <ActionBtn
           icon={FileText}
           label="Descargar PDF"
@@ -251,7 +315,7 @@ export default function QuotationActionsBar({
         />
 
         {/* Cancel */}
-        {isActionable && (
+        {canCancel && (
           <ActionBtn
             icon={Ban}
             label="Cancelar"
