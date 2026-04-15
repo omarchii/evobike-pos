@@ -21,7 +21,7 @@ const s = StyleSheet.create({
     fontFamily: FONT_FAMILY,
     fontSize: 7,
     color: colors.text,
-    lineHeight: 1.5,
+    lineHeight: 1.3,
   },
   sealBlock: {
     flex: 1,
@@ -68,7 +68,7 @@ async function resolveSealBuffer(
 }
 
 type DocumentFooterProps = {
-  terminos: string;
+  terminos?: string | null;
   sealImagePath: string | null;
   sealSrc?: { data: Buffer; format: "png" } | null;
 };
@@ -79,10 +79,12 @@ export function DocumentFooter({
 }: DocumentFooterProps) {
   return (
     <View style={s.container}>
-      {/* Términos del documento */}
-      <View style={s.terminos}>
-        <Text style={s.terminosText}>{terminos}</Text>
-      </View>
+      {/* Términos del documento (omitido si no se proporcionan) */}
+      {terminos ? (
+        <View style={s.terminos}>
+          <Text style={s.terminosText}>{terminos}</Text>
+        </View>
+      ) : null}
 
       {/* Sello y firma */}
       <View style={s.sealBlock}>

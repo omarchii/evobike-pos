@@ -337,8 +337,9 @@ model CashRegisterSession {
   openingAmt     Decimal  @db.Decimal(10, 2)
   closingAmt     Decimal? @db.Decimal(10, 2)
   diferencia     Decimal? @db.Decimal(10, 2) // closingAmt - expectedAmt calculado server-side al cerrar; null mientras status = OPEN
-  authorizedById String? // User que autorizó el cierre con diferencia (MANAGER/ADMIN). null si diferencia = 0 o SELLER sin diferencia.
-  status         String   @default("OPEN") // OPEN, CLOSED
+  authorizedById   String? // User que autorizó el cierre con diferencia (MANAGER/ADMIN). null si diferencia = 0 o SELLER sin diferencia.
+  status           String  @default("OPEN") // OPEN, CLOSED
+  denominationsJson Json?  // Desglose de billetes contados al cierre: { "1000": 2, "500": 3, ... }. null en sesiones legacy.
 
   branch             Branch                @relation(fields: [branchId], references: [id])
   user               User                  @relation(fields: [userId], references: [id])

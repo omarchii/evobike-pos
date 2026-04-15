@@ -263,6 +263,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
                     diferencia: diferenciaReal,
                     authorizedById,
                     status: "CLOSED",
+                    denominationsJson: parsed.data.denominaciones ?? undefined,
                 },
                 include: {
                     authorizedBy: { select: { id: true, name: true } },

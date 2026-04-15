@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { openPDFInNewTab } from "@/lib/pdf-client";
 import {
     AlertCircle,
     AlertTriangle,
@@ -1097,8 +1098,11 @@ function StepConfirmar({
                 </button>
                 <button
                     type="button"
-                    disabled
-                    title="Disponible en fase P6"
+                    onClick={() =>
+                        openPDFInNewTab(
+                            `/api/cash-register/session/${result.sessionId}/pdf`,
+                        )
+                    }
                     style={{
                         background: "var(--surf-high)",
                         color: "var(--on-surf-var)",
@@ -1116,8 +1120,7 @@ function StepConfirmar({
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "0.5rem",
-                        cursor: "not-allowed",
-                        opacity: 0.6,
+                        cursor: "pointer",
                     }}
                 >
                     <Printer className="w-4 h-4" />
