@@ -107,7 +107,7 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
   const router = useRouter();
   const [abonoOpen, setAbonoOpen] = useState(false);
 
-  const pending = pedido.total - pedido.totalPaid;
+  const pending = Math.max(0, pedido.total - pedido.totalPaid);
   const pct = pedido.total > 0 ? Math.min(100, (pedido.totalPaid / pedido.total) * 100) : 0;
 
   const handleAbonoSuccess = () => {
