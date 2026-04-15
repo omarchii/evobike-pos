@@ -417,44 +417,64 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 
 ---
 
-## FASE P7 — Cotizaciones mejoradas
+## FASE P7 — Cotizaciones mejoradas ✅ Completo (2026-04-15)
 **Modelo: Sonnet | Dependencias: P6-A**
 
-### Cambios de schema
-Rediseño de `QuotationStatus` enum:
+### P7-A — Rediseño de `QuotationStatus` ✅ (2026-04-15)
+Enum reemplazado:
 ```
 DRAFT → EN_ESPERA_CLIENTE → EN_ESPERA_FABRICA → PAGADA → FINALIZADA
                                                → RECHAZADA
 ```
-Migración cuidadosa: mapear `SENT` → `EN_ESPERA_CLIENTE`, `CONVERTED` → `FINALIZADA`, `CANCELLED` → `RECHAZADA`.
+Migración `20260415_redesign_quotation_status`: mapeo `SENT` → `EN_ESPERA_CLIENTE`, `CONVERTED` → `FINALIZADA`, `CANCELLED` → `RECHAZADA`. `EXPIRED` es estado computado (no persiste en DB) — se deriva en runtime via `getEffectiveStatus()` solo para `DRAFT` y `EN_ESPERA_CLIENTE` con `validUntil < now`. `EN_ESPERA_FABRICA`, `PAGADA`, `FINALIZADA` y `RECHAZADA` no expiran (hay compromiso activo o son estados terminales).
 
-### Cambios en UI y documento
-- Quitar RFC y domicilio fiscal del cliente en el documento generado
-- Términos precargados desde `Branch.terminosCotizacion` (no hardcodeados)
-- Vincular cotizaciones al perfil del cliente — visibles desde `/clientes/[id]`
-- Panel de cotizaciones muestra nuevo semáforo de estados
+### P7-B — Máquina de transiciones + endpoint unificado ✅ (2026-04-15)
+`PATCH /api/cotizaciones/[id]/status` con Zod + `superRefine`. Transiciones válidas:
+- `DRAFT` → `EN_ESPERA_CLIENTE` | `EN_ESPERA_FABRICA` | `RECHAZADA`
+- `EN_ESPERA_CLIENTE` → `EN_ESPERA_FABRICA` | `PAGADA` | `RECHAZADA`
+- `EN_ESPERA_FABRICA` → `PAGADA` | `RECHAZADA`
+- `PAGADA` → `FINALIZADA` | `RECHAZADA`
 
-### Archivos clave
-- `prisma/schema.prisma` (enum `QuotationStatus`)
-- `src/app/api/cotizaciones/[id]/route.ts`
-- `src/app/(pos)/cotizaciones/`
+### P7-C — Ajustes al PDF de cotización ✅ (2026-04-15)
+- RFC y domicilio fiscal del cliente eliminados del PDF. `ClientInfoBlock` renderiza RFC solo si `client.rfc !== undefined` (no rompe otros PDFs que sí lo pasan).
+- `branch.terminosCotizacion` ya se usaba desde P6-A; `DocumentFooter` omite la sección si está vacío/null.
+- No hay badge de status en el PDF — C3 no aplica.
+
+### P7-D — Cotizaciones en perfil del cliente ✅ (2026-04-15)
+- Tab "Cotizaciones" agregado a `/customers/[id]` (4 tabs: Ventas · Taller · VIN · Cotizaciones).
+- Query `Quotation.findMany({ where: { customerId }, take: 20, orderBy: createdAt desc })`.
+- `getEffectiveStatus()` aplicado antes de renderizar cada badge.
+- `QuotationStatusBadge` movido a `src/components/quotation-status-badge.tsx` (compartido); `quotations-table.tsx` actualizado al nuevo import.
+
+### Archivos clave P7
+- `prisma/schema.prisma` ✅ (enum `QuotationStatus`)
+- `src/app/api/cotizaciones/[id]/status/route.ts` ✅
+- `src/lib/quotations.ts` ✅ (`getEffectiveStatus`, `getDaysRemaining`, `formatMXN`, `formatDate`)
+- `src/components/quotation-status-badge.tsx` ✅ (movido desde `_components/`)
+- `src/app/(pos)/cotizaciones/_components/quotations-table.tsx` ✅ (import actualizado)
+- `src/lib/pdf/templates/cotizacion-pdf.tsx` ✅ (sin RFC/domicilioFiscal del cliente)
+- `src/lib/pdf/components/client-info-block.tsx` ✅ (RFC condicional)
+- `src/app/api/cotizaciones/[id]/pdf/route.tsx` ✅ (cliente sin campos fiscales)
+- `src/app/(pos)/customers/[id]/page.tsx` ✅ (tab Cotizaciones)
 
 ---
 
-## FASE P8 — Vista de historial de abonos
+## FASE P8 — Vista de historial de abonos ✅ Completo (2026-04-15)
 **Modelo: Sonnet | Dependencias: ninguna nueva**
 
-### Tareas
-- En `/pedidos/[id]`: agregar timeline visual de cada abono
-  - Fecha · monto · método de pago · quién cobró
-  - Saldo restante actualizado
-  - Contador "X exhibiciones realizadas"
-- Esta vista alimenta el PDF P6-B cuando se imprime
-- Datos ya existen en `CashTransaction` — solo falta la UI
+### Estado al iniciar la sesión
+El timeline visual ya existía en `pedido-detalle.tsx:438-508` (commits previos): punto + ícono por método, fecha, vendedor que cobró, monto y última fila destacada con gradient. El PDF P6-B (`abonos-timeline.tsx`) también ya incluía la tabla de abonos con totales.
 
-### Archivos clave
-- `src/app/(pos)/pedidos/[id]/page.tsx`
-- Componente nuevo: `abonos-timeline.tsx`
+### Cierre P8
+- **Saldo restante por abono** — `DetallePayment.remainingAfter` calculado server-side en `page.tsx` con `reduce` (purity-safe). Microtexto bajo el monto: "Restante tras este abono: $X,XXX.XX" (10px, `var(--on-surf-var)`, alineado a la derecha).
+- **Contador de exhibiciones** — header pasa de "Historial de abonos (N)" a "Historial de abonos · N exhibiciones realizadas" (singular `exhibición realizada` cuando N=1).
+- **Decisión de modelo** — `CashTransaction` y `Sale` no distinguen enganche vs exhibición. El `downPayment` de `POST /api/sales` solo nombra el monto inicial de un LAYAWAY pero persiste como `CashTransaction` idéntica al resto. Label uniforme; si en el futuro se requiere "1 enganche + N exhibiciones", se necesita migración (campo en `CashTransaction` o convención "primer pago = enganche").
+- **Mini-fix colateral** (commit aparte) — `pedido-detalle.tsx:110` clampea `pending` con `Math.max(0, …)` para evitar negativos por sobreabono manual.
+
+### Archivos modificados
+- `src/app/(pos)/pedidos/[id]/page.tsx` — nuevo `remainingAfter` en `DetallePayment`.
+- `src/app/(pos)/pedidos/[id]/pedido-detalle.tsx` — microtexto, nuevo label del header y clamp del `pending`.
+- PDF P6-B (`abonos-timeline.tsx`) — intacto.
 
 ---
 
@@ -610,7 +630,6 @@ Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
 |---|---|---|
 | `accesorios.csv` | 35 productos: accesorios, cargadores, baterías, refacciones básicas | ✅ Listo |
 | `refacciones.csv` | 2,632 refacciones por modelo, 40 modelos cubiertos | ✅ Listo |
-| `refacciones_revisar.csv` | 940 filas con nombre inválido por PDF con imágenes — revisar manualmente | ⚠️ Revisar |
 
 ---
 
