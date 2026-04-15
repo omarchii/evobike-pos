@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Link2,
+  FileText,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +26,7 @@ import ConvertQuotationDialog from "./convert-quotation-dialog";
 import WhatsAppShareButton from "./whatsapp-share-button";
 import type { Manager } from "./price-drift-alert";
 import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
+import { openPDFInNewTab } from "@/lib/pdf-client";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -98,7 +100,7 @@ export default function QuotationActionsBar({
     }
   }
 
-  const isActionable = effectiveStatus === "DRAFT" || effectiveStatus === "SENT";
+  const isActionable = effectiveStatus === "DRAFT" || effectiveStatus === "EN_ESPERA_CLIENTE";
   // Compartir también aplica a cotizaciones expiradas (el cliente puede verlas)
   const canShare = isActionable || effectiveStatus === "EXPIRED";
   const canEdit = isActionable;
@@ -118,6 +120,10 @@ export default function QuotationActionsBar({
     } finally {
       setLoading(null);
     }
+  }
+
+  async function handleDownloadPDF() {
+    await openPDFInNewTab(`/api/cotizaciones/${quotationId}/pdf`);
   }
 
   async function handleDuplicate() {
@@ -236,6 +242,13 @@ export default function QuotationActionsBar({
             onClick={handleDuplicate}
           />
         )}
+
+        {/* PDF */}
+        <ActionBtn
+          icon={FileText}
+          label="Descargar PDF"
+          onClick={handleDownloadPDF}
+        />
 
         {/* Cancel */}
         {isActionable && (

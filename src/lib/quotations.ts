@@ -4,8 +4,10 @@ export type EffectiveStatus = QuotationStatus | "EXPIRED";
 
 /**
  * Determina el estado efectivo de una cotización en tiempo real.
- * Si el campo status es DRAFT o SENT pero validUntil ya pasó,
+ * Si el campo status es DRAFT o EN_ESPERA_CLIENTE pero validUntil ya pasó,
  * devuelve "EXPIRED" aunque el campo en DB no se haya actualizado.
+ * EN_ESPERA_FABRICA, PAGADA, FINALIZADA y RECHAZADA no expiran
+ * (ya hay compromiso del cliente o son estados terminales).
  * Fuente de verdad: spec 7.4.
  */
 export function getEffectiveStatus(quotation: {
@@ -18,7 +20,7 @@ export function getEffectiveStatus(quotation: {
       : new Date(quotation.validUntil);
 
   if (
-    (quotation.status === "DRAFT" || quotation.status === "SENT") &&
+    (quotation.status === "DRAFT" || quotation.status === "EN_ESPERA_CLIENTE") &&
     validUntil < new Date()
   ) {
     return "EXPIRED";

@@ -200,7 +200,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
       </div>
 
       {/* Converted info */}
-      {effectiveStatus === "CONVERTED" && q.convertedToSale && (
+      {effectiveStatus === "FINALIZADA" && q.convertedToSale && (
         <div
           className="flex items-start gap-3 rounded-2xl p-4 mb-6"
           style={{ background: "var(--sec-container)" }}
@@ -368,7 +368,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
       )}
 
       {/* Cancellation info */}
-      {effectiveStatus === "CANCELLED" && q.cancelReason && (
+      {effectiveStatus === "RECHAZADA" && q.cancelReason && (
         <div
           className="rounded-2xl p-5 mb-6"
           style={{ background: "var(--ter-container)", boxShadow: "var(--shadow)" }}

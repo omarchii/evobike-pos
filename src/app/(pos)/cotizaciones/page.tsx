@@ -39,7 +39,8 @@ export default async function CotizacionesPage({
   const isAdmin = role === "ADMIN";
 
   const params = await searchParams;
-  const statusParam = params.status as QuotationStatus | undefined;
+  // statusParam may include computed values ("EXPIRED", "ALL") not in the DB enum
+  const statusParam = params.status as (QuotationStatus | "EXPIRED" | "ALL") | undefined;
   const q = params.q ?? "";
   const branchFilter = params.branchId ?? "";
   const page = Math.max(1, Number(params.page ?? "1"));
@@ -54,13 +55,13 @@ export default async function CotizacionesPage({
   // ── Status filter ──────────────────────────────────────────────────────────
   // "EXPIRED" is a computed value — filter DRAFT/SENT with validUntil < now
   let statusWhere: object = {};
-  if (statusParam && statusParam !== ("ALL" as QuotationStatus)) {
+  if (statusParam && statusParam !== "ALL") {
     if (statusParam === "EXPIRED") {
       statusWhere = {
-        status: { in: ["DRAFT", "SENT"] },
+        status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
         validUntil: { lt: new Date() },
       };
-    } else if (statusParam === "DRAFT" || statusParam === "SENT") {
+    } else if (statusParam === "DRAFT" || statusParam === "EN_ESPERA_CLIENTE") {
       statusWhere = {
         status: statusParam,
         validUntil: { gte: new Date() },
@@ -114,21 +115,21 @@ export default async function CotizacionesPage({
       prisma.quotation.count({
         where: {
           ...kpiBranchWhere,
-          status: { in: ["DRAFT", "SENT"] },
+          status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
           validUntil: { gte: now },
         },
       }),
       prisma.quotation.count({
         where: {
           ...kpiBranchWhere,
-          status: "CONVERTED",
+          status: "FINALIZADA",
           convertedAt: { gte: monthStart, lte: monthEnd },
         },
       }),
       prisma.quotation.aggregate({
         where: {
           ...kpiBranchWhere,
-          status: { in: ["DRAFT", "SENT"] },
+          status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
           validUntil: { gte: now },
         },
         _sum: { total: true },

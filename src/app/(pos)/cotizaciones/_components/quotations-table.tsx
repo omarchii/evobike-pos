@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export interface QuotationRow {
   id: string;
   folio: string;
-  status: "DRAFT" | "SENT" | "CONVERTED" | "EXPIRED" | "CANCELLED";
+  status: "DRAFT" | "EN_ESPERA_CLIENTE" | "EN_ESPERA_FABRICA" | "PAGADA" | "FINALIZADA" | "RECHAZADA";
   validUntil: string; // ISO
   createdAt: string;
   total: number;
@@ -30,7 +30,7 @@ interface Props {
 }
 
 function DaysRemainingBadge({ validUntil, effectiveStatus }: { validUntil: string; effectiveStatus: EffectiveStatus }) {
-  if (!["DRAFT", "SENT", "EXPIRED"].includes(effectiveStatus)) return null;
+  if (!["DRAFT", "EN_ESPERA_CLIENTE", "EXPIRED"].includes(effectiveStatus)) return null;
 
   const days = getDaysRemaining(validUntil);
   if (days <= 0) {

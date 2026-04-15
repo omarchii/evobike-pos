@@ -12,28 +12,38 @@ const CONFIG: Record<
 > = {
   DRAFT: {
     label: "Borrador",
+    bg: "var(--surf-highest)",
+    color: "var(--on-surf-var)",
+  },
+  EN_ESPERA_CLIENTE: {
+    label: "En espera del cliente",
     bg: "var(--warn-container)",
     color: "var(--warn)",
   },
-  SENT: {
-    label: "Enviada",
+  EN_ESPERA_FABRICA: {
+    label: "En espera de fábrica",
     bg: "var(--p-container)",
     color: "var(--on-p-container)",
   },
-  CONVERTED: {
-    label: "Convertida",
+  PAGADA: {
+    label: "Pagada",
     bg: "var(--sec-container)",
     color: "var(--on-sec-container)",
+  },
+  FINALIZADA: {
+    label: "Finalizada",
+    bg: "var(--p-container)",
+    color: "var(--p)",
+  },
+  RECHAZADA: {
+    label: "Rechazada",
+    bg: "var(--ter-container)",
+    color: "var(--ter)",
   },
   EXPIRED: {
     label: "Expirada",
     bg: "var(--ter-container)",
     color: "var(--on-ter-container)",
-  },
-  CANCELLED: {
-    label: "Cancelada",
-    bg: "var(--surf-highest)",
-    color: "var(--on-surf-var)",
   },
 };
 

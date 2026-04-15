@@ -53,7 +53,7 @@ const patchQuotationSchema = z.object({
   internalNote: z.string().optional(),
 });
 
-const EDITABLE_STATUSES = ["DRAFT", "SENT"] as const;
+const EDITABLE_STATUSES = ["DRAFT", "EN_ESPERA_CLIENTE"] as const;
 
 // PATCH /api/cotizaciones/[id] — editar cotización (solo DRAFT o SENT)
 export async function PATCH(req: NextRequest, { params }: RouteParams): Promise<NextResponse> {
@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams): Promise<
     return NextResponse.json(
       {
         success: false,
-        error: `No se puede editar una cotización en estado ${existing.status}. Solo se permiten DRAFT y SENT.`,
+        error: `No se puede editar una cotización en estado ${existing.status}. Solo se permiten DRAFT y EN_ESPERA_CLIENTE.`,
       },
       { status: 422 }
     );

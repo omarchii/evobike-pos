@@ -671,10 +671,11 @@ model BatteryAssignment {
 
 enum QuotationStatus {
   DRAFT
-  SENT
-  CONVERTED
-  EXPIRED
-  CANCELLED
+  EN_ESPERA_CLIENTE
+  EN_ESPERA_FABRICA
+  PAGADA
+  FINALIZADA
+  RECHAZADA
 }
 
 model Quotation {

@@ -1463,18 +1463,21 @@ async function seedQuotations(ctx: SeedContext): Promise<void> {
     if (variants.length === 0) continue;
 
     const TARGET = 10;
-    let counts = { DRAFT: 0, SENT: 0, CONVERTED: 0, EXPIRED: 0 };
+    let counts = { DRAFT: 0, EN_ESPERA_CLIENTE: 0, EN_ESPERA_FABRICA: 0, PAGADA: 0, FINALIZADA: 0, RECHAZADA: 0, EXPIRED: 0 };
 
     for (let i = 0; i < TARGET; i++) {
       try {
         const r = Math.random();
         let status: QuotationStatus;
         let isExpired = false;
-        if (r < 0.4) status = QuotationStatus.DRAFT;
-        else if (r < 0.7) status = QuotationStatus.SENT;
-        else if (r < 0.9) status = QuotationStatus.CONVERTED;
+        if (r < 0.3) status = QuotationStatus.DRAFT;
+        else if (r < 0.5) status = QuotationStatus.EN_ESPERA_CLIENTE;
+        else if (r < 0.65) status = QuotationStatus.EN_ESPERA_FABRICA;
+        else if (r < 0.75) status = QuotationStatus.PAGADA;
+        else if (r < 0.9) status = QuotationStatus.FINALIZADA;
+        else if (r < 0.95) status = QuotationStatus.RECHAZADA;
         else {
-          status = QuotationStatus.SENT;
+          status = QuotationStatus.EN_ESPERA_CLIENTE;
           isExpired = true;
         }
 
@@ -1514,9 +1517,9 @@ async function seedQuotations(ctx: SeedContext): Promise<void> {
               subtotal: dec(subtotal),
               discountAmount: dec(0),
               total: dec(subtotal),
-              convertedAt: status === QuotationStatus.CONVERTED ? new Date() : null,
-              convertedByUserId: status === QuotationStatus.CONVERTED ? userId : null,
-              convertedInBranchId: status === QuotationStatus.CONVERTED ? branch.id : null,
+              convertedAt: status === QuotationStatus.FINALIZADA ? new Date() : null,
+              convertedByUserId: status === QuotationStatus.FINALIZADA ? userId : null,
+              convertedInBranchId: status === QuotationStatus.FINALIZADA ? branch.id : null,
             },
           });
           for (const it of items) {
@@ -1534,14 +1537,14 @@ async function seedQuotations(ctx: SeedContext): Promise<void> {
         });
 
         if (isExpired) counts.EXPIRED++;
-        else counts[status === QuotationStatus.CONVERTED ? "CONVERTED" : status === QuotationStatus.SENT ? "SENT" : "DRAFT"]++;
+        else counts[status as keyof typeof counts]++;
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`  ❌ Cotización ${branch.code} #${i}: ${msg}`);
       }
     }
     console.log(
-      `  ✅ Cotizaciones ${branch.code}: DRAFT=${counts.DRAFT}, SENT=${counts.SENT}, CONVERTED=${counts.CONVERTED}, EXPIRED=${counts.EXPIRED}.`,
+      `  ✅ Cotizaciones ${branch.code}: DRAFT=${counts.DRAFT}, EN_ESPERA_CLIENTE=${counts.EN_ESPERA_CLIENTE}, EN_ESPERA_FABRICA=${counts.EN_ESPERA_FABRICA}, PAGADA=${counts.PAGADA}, FINALIZADA=${counts.FINALIZADA}, RECHAZADA=${counts.RECHAZADA}, EXPIRED=${counts.EXPIRED}.`,
     );
   }
 }

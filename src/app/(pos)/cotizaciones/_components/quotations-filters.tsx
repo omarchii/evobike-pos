@@ -5,15 +5,25 @@ import { useTransition } from "react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = "ALL" | "DRAFT" | "SENT" | "CONVERTED" | "EXPIRED" | "CANCELLED";
+type StatusFilter =
+  | "ALL"
+  | "DRAFT"
+  | "EN_ESPERA_CLIENTE"
+  | "EN_ESPERA_FABRICA"
+  | "PAGADA"
+  | "FINALIZADA"
+  | "RECHAZADA"
+  | "EXPIRED";
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "ALL", label: "Todas" },
   { value: "DRAFT", label: "Borrador" },
-  { value: "SENT", label: "Enviada" },
-  { value: "CONVERTED", label: "Convertida" },
+  { value: "EN_ESPERA_CLIENTE", label: "En espera del cliente" },
+  { value: "EN_ESPERA_FABRICA", label: "En espera de fábrica" },
+  { value: "PAGADA", label: "Pagada" },
+  { value: "FINALIZADA", label: "Finalizada" },
+  { value: "RECHAZADA", label: "Rechazada" },
   { value: "EXPIRED", label: "Expirada" },
-  { value: "CANCELLED", label: "Cancelada" },
 ];
 
 interface Props {

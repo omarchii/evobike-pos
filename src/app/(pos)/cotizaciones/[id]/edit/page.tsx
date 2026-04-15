@@ -45,9 +45,9 @@ export default async function EditarCotizacionPage({ params }: RouteParams) {
   if (!q) notFound();
   if (role !== "ADMIN" && q.branchId !== branchId) notFound();
 
-  // Guard: only DRAFT/SENT are editable (computed effective status)
+  // Guard: only DRAFT/EN_ESPERA_CLIENTE are editable (computed effective status)
   const effectiveStatus = getEffectiveStatus({ status: q.status, validUntil: q.validUntil });
-  if (effectiveStatus !== "DRAFT" && effectiveStatus !== "SENT") {
+  if (effectiveStatus !== "DRAFT" && effectiveStatus !== "EN_ESPERA_CLIENTE") {
     redirect(`/cotizaciones/${id}`);
   }
 

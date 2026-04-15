@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
 
   const updated = await prisma.quotation.update({
     where: { id },
-    data: { status: "SENT" },
+    data: { status: "EN_ESPERA_CLIENTE" },
     select: { id: true, folio: true, status: true, updatedAt: true },
   });
 

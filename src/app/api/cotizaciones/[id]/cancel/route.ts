@@ -18,9 +18,9 @@ const cancelSchema = z.object({
   reason: z.string().min(1, "El motivo de cancelación es requerido"),
 });
 
-const CANCELLABLE_STATUSES = ["DRAFT", "SENT"] as const;
+const CANCELLABLE_STATUSES = ["DRAFT", "EN_ESPERA_CLIENTE"] as const;
 
-// POST /api/cotizaciones/[id]/cancel — DRAFT/SENT → CANCELLED
+// POST /api/cotizaciones/[id]/cancel — DRAFT/EN_ESPERA_CLIENTE → RECHAZADA
 export async function POST(req: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
     return NextResponse.json(
       {
         success: false,
-        error: `No se puede cancelar una cotización en estado ${quotation.status}. Solo se permiten DRAFT y SENT.`,
+        error: `No se puede rechazar una cotización en estado ${quotation.status}. Solo se permiten DRAFT y EN_ESPERA_CLIENTE.`,
       },
       { status: 422 }
     );
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
   const updated = await prisma.quotation.update({
     where: { id },
     data: {
-      status: "CANCELLED",
+      status: "RECHAZADA",
       cancelledAt: new Date(),
       cancelledByUserId: userId,
       cancelReason: reason,

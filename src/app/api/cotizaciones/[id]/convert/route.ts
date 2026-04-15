@@ -86,11 +86,11 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
         validUntil: quotation.validUntil,
       });
 
-      if (effectiveStatus === "CONVERTED") {
-        throw Object.assign(new Error("Esta cotización ya fue convertida"), { status: 409 });
+      if (effectiveStatus === "FINALIZADA") {
+        throw Object.assign(new Error("Esta cotización ya fue finalizada"), { status: 409 });
       }
-      if (effectiveStatus === "CANCELLED") {
-        throw Object.assign(new Error("No se puede convertir una cotización cancelada"), { status: 409 });
+      if (effectiveStatus === "RECHAZADA") {
+        throw Object.assign(new Error("No se puede convertir una cotización rechazada"), { status: 409 });
       }
 
       // ── c) Validar vigencia dentro de la transacción ──────────────────────
@@ -331,11 +331,11 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
         });
       }
 
-      // ── m) Marcar cotización como CONVERTED ───────────────────────────────
+      // ── m) Marcar cotización como FINALIZADA ──────────────────────────────
       await tx.quotation.update({
         where: { id: quotationId },
         data: {
-          status: "CONVERTED",
+          status: "FINALIZADA",
           convertedToSaleId: sale.id,
           convertedAt: new Date(),
           convertedByUserId: userId,

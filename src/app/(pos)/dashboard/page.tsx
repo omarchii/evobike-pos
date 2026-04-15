@@ -486,7 +486,7 @@ export default async function DashboardPage({
             prisma.quotation.findMany({
                 where: {
                     ...(viewBranchId ? { branchId: viewBranchId } : {}),
-                    status: { in: ["DRAFT", "SENT"] },
+                    status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
                     validUntil: { gte: now, lte: in48Hours },
                 },
                 take: 5,
@@ -749,7 +749,7 @@ export default async function DashboardPage({
             prisma.quotation.findMany({
                 where: {
                     userId,
-                    status: { in: ["DRAFT", "SENT"] },
+                    status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
                     validUntil: { gte: now, lte: in48Hours },
                 },
                 take: 5,
