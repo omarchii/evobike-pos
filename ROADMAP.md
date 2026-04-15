@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-14 (P6-S3)  
+Última actualización: 2026-04-15 (P6-E)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -292,7 +292,7 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 
 ---
 
-## FASE P6 — Documentos PDF ✅ Completo (P6-A ✅ P6-B ✅ P6-C ✅ P6-D ✅ — P6-E pendiente)
+## FASE P6 — Documentos PDF ✅ Completo (P6-A ✅ P6-B ✅ P6-C ✅ P6-D ✅ P6-E ✅)
 **Modelo: Sonnet | Librería: @react-pdf/renderer@4.4.1 | Dependencias: P1-A obligatorio**
 
 IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `Branch`.
@@ -369,17 +369,14 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 
 ### P6-D — PDF Póliza de garantía ✅ (ver P6-S3)
 
-### P6-E — PDF Comprobante de cierre de corte
-Estructura:
-- Folio de sesión, sucursal, operador que abrió + operador que cerró (si distintos)
-- Timestamp de apertura y cierre
-- Saldo inicial + ventas en efectivo + entradas + gastos + retiros + reembolsos
-- Efectivo esperado, efectivo contado y **diferencia** (con signo y color)
-- Breakdown de denominaciones (depende de tech-debt de Fase 6: persistir `denominationsJson` en `CashRegisterSession`)
-- Autorización de diferencia (si aplica): nombre del manager que aprobó + motivo
-- Sello de sucursal
-- Endpoint nuevo: `GET /api/cash-register/session/[id]/pdf/route.ts`
-- Wire del botón "Imprimir comprobante" en `src/app/(pos)/cash-register/close-corte-dialog.tsx` (actualmente disabled con tooltip "Disponible en fase P6")
+### P6-E — PDF Comprobante de cierre de corte ✅ (2026-04-15)
+- Migración `denominationsJson Json?` en `CashRegisterSession` — nullable para sesiones legacy.
+- PATCH `/api/cash-register/session` persiste el desglose de billetes en el mismo UPDATE de cierre.
+- Template `CortePDF` en `src/lib/pdf/templates/corte-pdf.tsx`: bloque de sesión, resumen financiero con diferencia coloreada (verde sobrante / rojo faltante), tabla de denominaciones (o texto "Desglose no disponible" para sesiones legacy), bloque amber de autorización si aplica.
+- `GET /api/cash-register/session/[id]/pdf`: 403 para SELLER/TECHNICIAN, 409 si sesión abierta, 412 sucursal sin config. Recalcula resumen desde transacciones (misma fórmula canónica que el endpoint de cierre).
+- `DocumentFooter`: `terminos` ahora opcional — corte no incluye términos legales; PDFs anteriores no afectados.
+- Botón "Imprimir comprobante" activado en `close-corte-dialog.tsx` tras cierre exitoso.
+- **Pendiente deuda técnica**: botón en historial de cortes → ver P10-F.
 
 ### P6-S3 — Templates Pedido y Póliza ✅ (2026-04-14)
 
@@ -411,8 +408,12 @@ Estructura:
 - `src/app/(pos)/pedidos/[id]/pedido-detalle.tsx` ✅ (botón Descargar Recibo)
 - `src/app/(pos)/ventas/[id]/sale-detail.tsx` ✅ (handlePrintWarranty async + 409)
 
-### Archivos clave P6-E (pendiente)
-- `src/app/api/cash-register/session/[id]/pdf/route.ts` (nueva)
+### Archivos clave P6-E
+- `prisma/migrations/20260415061254_add_denominations_json_to_cash_session/` ✅
+- `src/lib/pdf/templates/corte-pdf.tsx` ✅
+- `src/app/api/cash-register/session/[id]/pdf/route.ts` ✅
+- `src/lib/pdf/components/document-footer.tsx` ✅ (terminos opcional)
+- `src/app/(pos)/cash-register/close-corte-dialog.tsx` ✅ (botón activado)
 
 ---
 
@@ -519,15 +520,23 @@ Requiere `precioMayorista` en `SimpleProduct` y `ProductVariant`.
 Entradas, salidas, ajustes, devoluciones por período.
 Útil para auditoría y cuadre con inventario físico.
 
-### P10-F — Compras al proveedor (reporte agregado)
-Historial desde `inventory/receipts` enriquecido.
-**Alcance reducido post P4-C**: el listado operativo de cuentas por pagar (filtros por estadoPago, proveedor, rango vencimiento) ya lo cubre `/inventario/recepciones`. P10-F queda como reporte agregado: totales mensuales por proveedor, análisis de vencimientos por período, export CSV.
+### P10-F — Historial de cortes de caja
+Vista `/caja/historial` con tabla de sesiones cerradas.
+- Filtros: rango de fechas, sucursal (ADMIN), operador.
+- Columnas: fecha apertura/cierre, operador, efectivo esperado, efectivo contado, diferencia (coloreada), autorización.
+- Botón "Imprimir comprobante" por fila — reutiliza `GET /api/cash-register/session/[id]/pdf` (ya existe desde P6-E).
+- Permisos: MANAGER + ADMIN únicamente.
+- **Dependencia: P6-E ✅**
 
-### P10-G — Reporte de stock mínimo
+### P10-G — Compras al proveedor (reporte agregado)
+Historial desde `inventory/receipts` enriquecido.
+**Alcance reducido post P4-C**: el listado operativo de cuentas por pagar (filtros por estadoPago, proveedor, rango vencimiento) ya lo cubre `/inventario/recepciones`. P10-G queda como reporte agregado: totales mensuales por proveedor, análisis de vencimientos por período, export CSV.
+
+### P10-H — Reporte de stock mínimo
 Productos donde `stockActual ≤ stockMinimo` → lista de reabastecimiento.
 Ordenado por urgencia (qué tan debajo del mínimo está).
 
-### P10-H — Reporte anual
+### P10-I — Reporte anual
 KPIs por mes: ingresos, gastos operativos, compras al proveedor, margen neto.
 Comparativa entre sucursales (solo ADMIN).
 

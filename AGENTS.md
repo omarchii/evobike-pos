@@ -221,12 +221,13 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 | **P5** | **Flujo de autorización** (PIN presencial + remoto con polling) — modelo `AuthorizationRequest` para cancelaciones y descuentos | Opus | — | ✅ Completo (2026-04-13) |
 | **P5.5** | **Caja per-branch + validación isActive en mutaciones + night audit** — refactor de `CashRegisterSession` de per-user a per-branch, helpers `requireActiveUser`/`getOrphanedSession`/`assertSessionFreshOrThrow`, banner de caja huérfana, `session.maxAge = 8h` | Sonnet | P5 | ✅ Completo (2026-04-13) |
 | **P5.6** | **Módulo Caja UI completo** — sidebar "Caja", `/cash-register` rediseñado con tokens (header + KPIs + esperado en cajón + tabs); schema aditivo `CashTransaction.collectedAt` + enum `CashExpenseCategory`; APIs `POST /api/cash/expense` (tope SELLER $500), `POST /api/cash/withdrawal` (MANAGER+ADMIN), `PATCH /api/cash/transactions/[id]/collect`; modales RHF+Zod glassmorphism; banner huérfano se auto-oculta en `/cash-register` | Opus | P5.5 | ✅ Completo (2026-04-14) |
-| **P6** | **Documentos PDF** (`@react-pdf/renderer@4.4.1`, IVA 16% fijo) — P6-E pendiente | Sonnet | P1-A | 🔄 En progreso |
+| **P6** | **Documentos PDF** (`@react-pdf/renderer@4.4.1`, IVA 16% fijo) | Sonnet | P1-A | ✅ Completo (2026-04-15) |
 | P6-S1 | Infraestructura base: fuentes Inter TTF, `src/lib/pdf/` (colors/fonts/helpers/styles/types/components), `assertBranchConfiguredForPDF` reescrito, dev preview | Sonnet | P1-A | ✅ Completo (2026-04-14) |
 | P6-A | PDF Cotización (formato Alegra) | | P6-S1 | ✅ Completo (2026-04-14) |
 | P6-B | PDF Recibo de Pedido / Apartado (timeline de abonos, badge de status) | | P6-S1 | ✅ Completo (2026-04-14) |
 | P6-C | PDF Ticket de venta | | P6-S1 | ✅ Completo (2026-04-14) |
 | P6-D | PDF Póliza de garantía (auto-generada desde `warrantyDocReady`) | | P6-S1 | ✅ Completo (2026-04-14) |
+| P6-E | PDF Comprobante de cierre de corte — `denominationsJson` migrado, template `CortePDF`, endpoint 403/409/412, `DocumentFooter.terminos` opcional, botón activado en dialog | | P6-S1 | ✅ Completo (2026-04-15) |
 | **P7** | **Cotizaciones mejoradas** — rediseño de `QuotationStatus`, términos desde `Branch`, vinculación a perfil del cliente | Sonnet | P6-A | ⏳ Pendiente |
 | **P8** | **Historial de abonos** — timeline visual en `/pedidos/[id]` | Sonnet | — | ⏳ Pendiente |
 | **P9** | **Tesorería** — gastos operativos (`OperationalExpense`), saldos, reportes de ingresos vs. gastos | Sonnet | — | ⏳ Pendiente |
@@ -236,9 +237,10 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 | P10-C | Rentabilidad por producto | | P4 | ⏳ Pendiente |
 | P10-D | Valor de inventario | | P0, P4 | ⏳ Pendiente |
 | P10-E | Movimientos de inventario | | P0 | ⏳ Pendiente |
-| P10-F | Compras al proveedor — reporte agregado / export CSV (el listado operativo de cuentas por pagar ya lo cubre P4-C `/inventario/recepciones`) | | P4 | ⏳ Pendiente |
-| P10-G | Reporte de stock mínimo | | P0 | ⏳ Pendiente |
-| P10-H | Reporte anual (KPIs por mes, comparativa entre sucursales) | | P4, P9 | ⏳ Pendiente |
+| P10-F | Historial de cortes de caja — `/caja/historial`, filtros fecha/sucursal/operador, botón "Imprimir comprobante" por fila (reutiliza P6-E), MANAGER+ADMIN | | P6-E | ⏳ Pendiente |
+| P10-G | Compras al proveedor — reporte agregado / export CSV (el listado operativo de cuentas por pagar ya lo cubre P4-C `/inventario/recepciones`) | | P4 | ⏳ Pendiente |
+| P10-H | Reporte de stock mínimo | | P0 | ⏳ Pendiente |
+| P10-I | Reporte anual (KPIs por mes, comparativa entre sucursales) | | P4, P9 | ⏳ Pendiente |
 | **P11** | **Seguimiento de mantenimientos** — semáforo de pólizas a 6 meses | Sonnet | — | ⏳ Pendiente |
 | **6** | **Hardening y producción** — tests, rate limiting, security headers, Prisma v7, PgBouncer/Accelerate, deploy, limpieza final, carga de `refacciones_revisar.csv` | Opus | TODO | ⏳ Pendiente |
 
