@@ -23,6 +23,7 @@ export interface DetallePayment {
   collectionStatus: string;
   createdAt: Date;
   collectedBy: string;
+  remainingAfter: number;
 }
 
 export interface DetalleItem {
@@ -116,6 +117,17 @@ export default async function PedidoDetallePage({ params }: PageProps) {
   }
 
   const totalPaid = sale.payments.reduce((acc, p) => acc + Number(p.amount), 0);
+  const total = Number(sale.total);
+
+  const paymentsWithRemaining = sale.payments.reduce<
+    { p: (typeof sale.payments)[number]; remainingAfter: number }[]
+  >((acc, p) => {
+    const acumulado = (acc[acc.length - 1]?.remainingAfter !== undefined
+      ? total - acc[acc.length - 1].remainingAfter
+      : 0) + Number(p.amount);
+    acc.push({ p, remainingAfter: Math.max(0, total - acumulado) });
+    return acc;
+  }, []);
 
   // ── Estado de recepción (solo para BACKORDER) ─────────────────────────────
   // Estructura: saleItemId → { vehiclesReceived, vehiclesAssembled, batteriesReceived }
@@ -208,7 +220,7 @@ export default async function PedidoDetallePage({ params }: PageProps) {
     folio: sale.folio,
     status: sale.status,
     orderType: sale.orderType,
-    total: Number(sale.total),
+    total,
     subtotal: Number(sale.subtotal),
     discount: Number(sale.discount),
     totalPaid,
@@ -237,13 +249,14 @@ export default async function PedidoDetallePage({ params }: PageProps) {
         ? { vehiclesExpected: item.quantity, ...receptionByItem.get(item.id)! }
         : undefined,
     })),
-    payments: sale.payments.map((p) => ({
+    payments: paymentsWithRemaining.map(({ p, remainingAfter }) => ({
       id: p.id,
       amount: Number(p.amount),
       method: p.method,
       collectionStatus: p.collectionStatus,
       createdAt: p.createdAt,
       collectedBy: p.session.user.name ?? "–",
+      remainingAfter,
     })),
   };
 

@@ -445,7 +445,7 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
           style={{ color: "var(--on-surf-var)" }}
         >
           <Clock className="w-3.5 h-3.5" />
-          Historial de abonos ({pedido.payments.length})
+          Historial de abonos · {pedido.payments.length} {pedido.payments.length === 1 ? "exhibición realizada" : "exhibiciones realizadas"}
         </h2>
 
         {pedido.payments.length === 0 ? (
@@ -493,12 +493,20 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
                         {formatDateTime(pay.createdAt)} · Cobrado por {pay.collectedBy}
                       </p>
                     </div>
-                    <p
-                      className="text-sm font-bold ml-4 shrink-0"
-                      style={{ fontFamily: "var(--font-display)", color: "var(--p-mid)" }}
-                    >
-                      {formatMXN(pay.amount)}
-                    </p>
+                    <div className="ml-4 shrink-0 flex flex-col items-end">
+                      <p
+                        className="text-sm font-bold"
+                        style={{ fontFamily: "var(--font-display)", color: "var(--p-mid)" }}
+                      >
+                        {formatMXN(pay.amount)}
+                      </p>
+                      <p
+                        className="text-[10px] mt-0.5"
+                        style={{ color: "var(--on-surf-var)" }}
+                      >
+                        Restante tras este abono: {formatMXN(pay.remainingAfter)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
