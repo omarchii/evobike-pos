@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-13 (P5)  
+Última actualización: 2026-04-14 (P6-S3)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -292,45 +292,82 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 
 ---
 
-## FASE P6 — Documentos PDF
-**Modelo: Sonnet | Librería: @react-pdf/renderer | Dependencias: P1-A obligatorio**
+## FASE P6 — Documentos PDF ✅ Completo (P6-A ✅ P6-B ✅ P6-C ✅ P6-D ✅ — P6-E pendiente)
+**Modelo: Sonnet | Librería: @react-pdf/renderer@4.4.1 | Dependencias: P1-A obligatorio**
 
 IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `Branch`.
 
-### P6-A — PDF Cotización (formato Alegra)
-Estructura:
-- Header: Logo Evobike (izq) + datos sucursal (centro) + badge "Cotización No. XX" (der)
-- Datos cliente: solo nombre, teléfono, fecha expedición, fecha vencimiento (sin RFC ni domicilio fiscal)
-- Tabla: Producto | Unidad de medida | Precio unitario | Cantidad | Descuento | Total
-- Total en letra (ej. "Ciento cincuenta pesos M.N.")
-- Subtotal + IVA 16% + Total
-- Términos precargados desde `Branch.terminosCotizacion`
-- Sello de sucursal (imagen) + "Elaborado por: [nombre del usuario]"
+### P6-S1 — Infraestructura base ✅ (2026-04-14)
+- Instala `@react-pdf/renderer@4.4.1` y `numero-a-letras` (con declaración de tipos en `src/types/`).
+- Fuentes Inter TTF (400/500/600/700) descargadas en `public/fonts/`.
+- `public/evobike-logo-pdf.png` — copia real PNG del logo (el `.png` original era WebP disfrazado; react-pdf no puede leerlo; todos los componentes PDF apuntan a este archivo).
+- `src/lib/pdf/colors.ts` — paleta hardcoded light-mode (10 tokens; CSS vars del app no funcionan en react-pdf).
+- `src/lib/pdf/fonts.ts` — `Font.register()` + `Font.registerHyphenationCallback` (desactiva partición silábica en headers de tabla). `FONT_FAMILY = 'Inter'`.
+- `src/lib/pdf/helpers.ts` — `formatMXN`, `formatDate`, `totalEnLetra` (normaliza "M.N." a mayúsculas), `calcIVA`, `calcSubtotalFromTotal`.
+- `src/lib/pdf/styles.ts` — `StyleSheet.create()` con estilos compartidos.
+- `src/lib/pdf/types.ts` — `BranchPDFData`, `PDFItem`, `ClientPDFData`.
+- 6 componentes base en `src/lib/pdf/components/`: `BaseDocument`, `DocumentHeader`, `ClientInfoBlock`, `ItemsTable`, `TotalsBlock`, `DocumentFooter`.
+- `DocumentFooter` exporta `resolveSealBuffer()` — lee el sello WebP del filesystem y lo convierte a PNG buffer (los sellos de P1-A se guardan como WebP; react-pdf no los acepta directamente).
+- `src/lib/branch.ts` reescrito: `assertBranchConfiguredForPDF(branchId, tipoDoc)` ahora **lanza `BranchNotConfiguredError`** (antes retornaba `{ok}`), devuelve `BranchPDFData` tipado listo para pasar a componentes. `TipoDocPDF = 'cotizacion' | 'pedido' | 'ticket' | 'poliza'`. Tipos legacy `BranchPDFDocType`/`BranchPDFGuardResult` conservados como `@deprecated`.
+- Dev preview: `GET /api/dev/pdf-preview?branchId=X` genera cotización dummy; `src/app/(pos)/dev/pdf-preview/page.tsx` con iframe. Ambos bloquean con `notFound()` fuera de `development`.
 
-### P6-B — PDF Recibo de Pedido / Apartado
-Estructura:
-- Header: logo + datos sucursal
-- Datos cliente: nombre, teléfono, correo
-- Tabla producto: modelo, color, voltaje, cantidad, precio unitario, total
-- Timeline de abonos: fecha · monto · método de pago · quién cobró
-- Total abonado + saldo restante
-- Condiciones desde `Branch.terminosPedido` + sello
+### Archivos clave P6-S1
+- `public/fonts/Inter-{Regular,Medium,SemiBold,Bold}.ttf` ✅
+- `public/evobike-logo-pdf.png` ✅
+- `src/lib/pdf/` ✅
+- `src/lib/branch.ts` ✅ (reescrito)
+- `src/types/numero-a-letras.d.ts` ✅
+- `src/app/api/dev/pdf-preview/route.tsx` ✅
+- `src/app/(pos)/dev/pdf-preview/page.tsx` ✅
 
-### P6-C — PDF Ticket de venta
-Estructura:
-- Folio, fecha, vendedor, sucursal, cliente
-- Productos vendidos con subtotales
-- Subtotal + IVA 16% + Total
-- Método(s) de pago usados
-- Si fue cancelado: quién autorizó y cuándo
+### P6-S2 — Templates Cotización y Ticket ✅ (2026-04-14)
 
-### P6-D — PDF Póliza de garantía (auto-generada)
-- Se activa cuando `Sale.warrantyDocReady = true`
-- VIN desde `CustomerBike.serialNumber`
-- Seriales de baterías instaladas desde `BatteryAssignment.where(isCurrent: true)`
-- Lote de procedencia desde `BatteryLot`
-- Condiciones desde `Branch.terminosPoliza` + sello
-- Endpoint ya existe: `GET /api/sales/[id]/warranty-pdf` — solo falta el documento visual
+**Prerequisitos completados en esta sesión:**
+- `TotalsBlock` ganó prop `descuento?: number` — fila "Descuento" se muestra solo si > 0. Las demás plantillas no la pasan.
+- `DocumentFooter.terminosText.lineHeight` reducido 1.5 → 1.3 para párrafos compactos.
+- `src/lib/pdf-client.ts` (client-side único): `openPDFInNewTab(url)` — fetch → 412 check → blob → `window.open`. Mantiene la separación: `src/lib/pdf/` es server-only.
+
+**P6-A — PDF Cotización** ✅
+- Template `CotizacionPDF` + interface `CotizacionPDFData` en `src/lib/pdf/templates/cotizacion-pdf.tsx`.
+- Usa todos los componentes base (`BaseDocument`, `DocumentHeader`, `ClientInfoBlock`, `ItemsTable`, `TotalsBlock`, `DocumentFooter`).
+- `descuento` global: si > 0 se pasa a `TotalsBlock` y aparece fila entre Subtotal e IVA.
+- IVA desglosado con `calcSubtotalFromTotal(total − descuento)` (precios del catálogo ya incluyen IVA).
+- `PDFItem.discount` = fracción calculada como `1 − lineTotal / (unitPrice × qty)`.
+- Cliente: usa `Customer.rfc` y `Customer.direccionFiscal`; fallback a snapshot anónimo.
+- Endpoint `GET /api/cotizaciones/[id]/pdf` (`.tsx`) — auth + scoping por rol (SELLER solo las suyas, MANAGER su sucursal, ADMIN todas) + 412 si sucursal sin configurar + render.
+- Botón "Descargar PDF" en `quotation-actions-bar.tsx` (floating action bar, antes de Cancelar).
+
+**P6-C — PDF Ticket de venta** ✅
+- Template `TicketPDF` + interface `TicketPDFData` en `src/lib/pdf/templates/ticket-pdf.tsx`.
+- `TicketPDFData.cliente` es `{nombre, telefono, email} | null` (las ventas no siempre tienen cliente).
+- Bloque de metadatos: fecha, vendedor, cliente (solo si existe). Sin `ClientInfoBlock` — diseño propio con chips.
+- Banner de cancelación: fondo `#FDECEA`, texto `#7B241C`, autorizador desde `AuthorizationRequest(tipo: CANCELACION, status: APPROVED)`.
+- Métodos de pago únicos traducidos debajo de `TotalsBlock` (`CASH` → "Efectivo", `CARD` → "Tarjeta de débito/crédito", etc.).
+- Items mixtos: `ProductVariant` → `"${modelo} - ${color} - ${voltaje.label}"`; `SimpleProduct` → `item.description ?? sp.nombre`; freeForm → `item.description`.
+- `PDFItem.discount` = fracción: `discountAmt / (unitPrice × qty)` (el campo `SaleItem.discount` es monto, no porcentaje).
+- Endpoint `GET /api/sales/[id]/ticket-pdf` (`.ts`) — mismo scoping + `React.createElement(TicketPDF, {...}) as unknown as React.ReactElement<DocumentProps>` para satisfacer el tipo de `renderToBuffer` sin JSX en archivo `.ts`.
+- Botón "Descargar Ticket" en `sale-detail.tsx` (top bar, junto a "Imprimir póliza").
+
+### Archivos clave P6-S2
+- `src/lib/pdf-client.ts` ✅ (helper client-side)
+- `src/lib/pdf/components/totals-block.tsx` ✅ (prop `descuento` opcional)
+- `src/lib/pdf/components/document-footer.tsx` ✅ (lineHeight 1.3)
+- `src/lib/pdf/templates/cotizacion-pdf.tsx` ✅
+- `src/lib/pdf/templates/ticket-pdf.tsx` ✅
+- `src/app/api/cotizaciones/[id]/pdf/route.tsx` ✅
+- `src/app/api/sales/[id]/ticket-pdf/route.ts` ✅
+- `src/app/(pos)/cotizaciones/[id]/_components/quotation-actions-bar.tsx` ✅ (botón PDF)
+- `src/app/(pos)/ventas/[id]/sale-detail.tsx` ✅ (botón Ticket)
+
+---
+
+### P6-A — PDF Cotización (formato Alegra) ✅ (ver P6-S2)
+
+### P6-B — PDF Recibo de Pedido / Apartado ✅ (ver P6-S3)
+
+### P6-C — PDF Ticket de venta ✅ (ver P6-S2)
+
+### P6-D — PDF Póliza de garantía ✅ (ver P6-S3)
 
 ### P6-E — PDF Comprobante de cierre de corte
 Estructura:
@@ -344,12 +381,38 @@ Estructura:
 - Endpoint nuevo: `GET /api/cash-register/session/[id]/pdf/route.ts`
 - Wire del botón "Imprimir comprobante" en `src/app/(pos)/cash-register/close-corte-dialog.tsx` (actualmente disabled con tooltip "Disponible en fase P6")
 
-### Archivos clave
-- `src/app/api/sales/[id]/warranty-pdf/route.ts` (modificar para generar PDF)
-- `src/app/api/cotizaciones/[id]/pdf/route.ts` (nueva)
-- `src/app/api/pedidos/[id]/pdf/route.ts` (nueva)
-- `src/app/api/cash-register/session/[id]/pdf/route.ts` (nueva — P6-E)
-- `src/lib/pdf/` (nueva carpeta con templates)
+### P6-S3 — Templates Pedido y Póliza ✅ (2026-04-14)
+
+**P6-B — PDF Recibo de Pedido / Apartado** ✅
+- Componente `AbonosTimeline` en `src/lib/pdf/components/abonos-timeline.tsx` — tabla Fecha/Monto/Método/Cobrador + filas resumen total abonado (verde) y saldo restante (rojo si > 0, verde si liquidado).
+- Template `PedidoPDF` + interface `PedidoPDFData` en `src/lib/pdf/templates/pedido-pdf.tsx`.
+- Badge de status inline sobre el bloque cliente: PENDIENTE/ABONADO PARCIAL/LIQUIDADO/CANCELADO con colores propios.
+- Bloque cliente simplificado (sin RFC, sin domicilio, sin vencimiento): CLIENTE | TELÉFONO / CORREO | FECHA.
+- Endpoint `GET /api/pedidos/[id]/pdf` (`.tsx`) — scoping por rol, mapeo de `CashTransaction(PAYMENT_IN)` como abonos con `session.user.name` como cobrador, cálculo de status efectivo desde `sale.status` + balance.
+- `documentType` = "Apartado" o "Backorder" según `sale.orderType`.
+- Botón "Descargar Recibo" en `pedido-detalle.tsx` (top bar, junto a la acción principal).
+
+**P6-D — PDF Póliza de Garantía** ✅
+- Componente `VehicleInfoBlock` en `src/lib/pdf/components/vehicle-info-block.tsx` — MODELO/COLOR/VOLTAJE/VIN con mismo estilo chip que bloque cliente.
+- Template `PolizaPDF` + interface `PolizaPDFData` en `src/lib/pdf/templates/poliza-pdf.tsx`.
+- Sin tabla de items ni totales — solo datos del vehículo + baterías + términos legales.
+- Tabla baterías inline: No. / Serial / Lote de procedencia / Fecha de recepción.
+- `GET /api/sales/[id]/warranty-pdf` reemplazado completamente: ahora devuelve PDF. **Preserva el 409** con `{ success: false, error, pendingAssemblyOrders: N }` si `warrantyDocReady = false`.
+- Lookup de `CustomerBike` via `customerId + productVariantId` donde `modelo.requiere_vin = true`; baterías via `BatteryAssignment.isCurrent = true`.
+- `handlePrintWarranty` en `sale-detail.tsx` actualizado: async, maneja 409 con toast (muestra conteo de ensambles), 412 para sucursal sin configurar.
+
+### Archivos clave P6-S3
+- `src/lib/pdf/components/abonos-timeline.tsx` ✅
+- `src/lib/pdf/components/vehicle-info-block.tsx` ✅
+- `src/lib/pdf/templates/pedido-pdf.tsx` ✅
+- `src/lib/pdf/templates/poliza-pdf.tsx` ✅
+- `src/app/api/pedidos/[id]/pdf/route.tsx` ✅
+- `src/app/api/sales/[id]/warranty-pdf/route.ts` ✅ (reemplazado — ahora PDF)
+- `src/app/(pos)/pedidos/[id]/pedido-detalle.tsx` ✅ (botón Descargar Recibo)
+- `src/app/(pos)/ventas/[id]/sale-detail.tsx` ✅ (handlePrintWarranty async + 409)
+
+### Archivos clave P6-E (pendiente)
+- `src/app/api/cash-register/session/[id]/pdf/route.ts` (nueva)
 
 ---
 
