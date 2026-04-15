@@ -22,6 +22,7 @@ import {
     ChevronDown,
     ChevronRight,
     ShieldCheck,
+    Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ const routes: RouteGroup[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
     { label: "Caja", icon: Vault, href: "/cash-register" },
+    { label: "Tesorería", icon: Landmark, href: "/tesoreria", roles: ["MANAGER", "ADMIN"] },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
     { label: "Montaje", icon: Cog, href: "/assembly" },
     { label: "Inventario", icon: Package, href: "/inventario" },

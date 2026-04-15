@@ -478,40 +478,39 @@ El timeline visual ya existía en `pedido-detalle.tsx:438-508` (commits previos)
 
 ---
 
-## FASE P9 — Tesorería
+## FASE P9 — Tesorería ✅ (2026-04-15)
 **Modelo: Sonnet | Dependencias: ninguna**
 
 Ruta: `/tesoreria` (MANAGER + ADMIN).
 
-### Gastos operativos (nuevo modelo `OperationalExpense`)
-```prisma
-model OperationalExpense {
-  id          String    @id @default(cuid())
-  branchId    String
-  categoria   ExpenseCategory // RENTA | SERVICIOS | NOMINA | PUBLICIDAD | TRANSPORTE | OTRO
-  descripcion String
-  monto       Decimal
-  fecha       DateTime
-  metodoPago  PaymentMethod
-  comprobanteUrl String?
-  registradoPor  String  // userId
-  createdAt   DateTime @default(now())
-}
-```
+### Schema aplicado (migración `20260415074752_add_operational_expense_and_bank_balance`)
+- `OperationalExpense` con enum `ExpenseCategory` (RENTA, SERVICIOS, NOMINA, PUBLICIDAD, TRANSPORTE, MANTENIMIENTO_INMUEBLE, IMPUESTOS, COMISIONES_BANCARIAS, OTRO) y anulación inmutable (`isAnulado + anuladoPor + anuladoAt + motivoAnulacion`). Índices por `branchId+fecha` y `branchId+categoria`.
+- `BankBalanceSnapshot` **sin `branchId`** — es saldo de empresa, no de sucursal. Historial inmutable; el "saldo actual" es siempre el último `createdAt`.
 
-### Saldos
-- Efectivo en caja: calculado automáticamente desde `CashRegisterSession` activa
-- Cuenta bancaria: registro manual con historial de actualizaciones
+### APIs (`/api/tesoreria/`)
+- `expenses` POST/GET — MANAGER (su sucursal) + ADMIN (cross-branch vía `branchId` en body). Zod rechaza `CASH` (los cash viven en `CashTransaction`). `superRefine` exige `comprobanteUrl` cuando `metodoPago === "TRANSFER"`.
+- `expenses/[id]` PATCH — solo `descripcion/categoria/comprobanteUrl`. Mandar `monto/fecha/metodoPago` responde **422** explícito. MANAGER solo su sucursal + mismo día. Bloqueado si `isAnulado` (409).
+- `expenses/[id]/anular` POST — **solo ADMIN**, motivo min 5, idempotente (409 si ya anulado).
+- `expenses/[id]/comprobante` POST/DELETE — upload multipart patrón P4-A (PDF 10MB raw, imagen via sharp → WebP 2000px 5MB), `/public/comprobantes/{branchId}-{expenseId}-{ts}.{ext}`. Valida gasto antes de `formData`.
+- `bank-balance` GET (MANAGER+ADMIN, `?historial=true` paginado) + POST (**solo ADMIN**, siempre INSERT).
+- `summary` GET — ingresos = ventas completadas, egresos = `gastosEfectivo + gastosOperativos + comprasProveedor`, `gastosPorCategoria` unificado con denominador `gastosEfectivo + gastosOperativos`, saldo efectivo vía `summarizeSession().expectedCash`, saldo bancario del último snapshot.
 
-### Reportes de tesorería
-- Ingresos vs. gastos por período
-- Gastos por categoría (pie chart)
-- Balance general del período
+### UI `/tesoreria/page.tsx` (Server Component)
+3 secciones tonales (sin `border-b`): saldos (2 cards), gastos (filtros URL-params + tabla mixta operational+cash), reportes (barras CSS sin librería de charts). Tabla mixta usa badge "Efectivo" para filas de `CashTransaction` (no editables — link a `/cash-register`). Botón "Actualizar saldo" disabled para MANAGER con tooltip.
 
-### Archivos clave
-- `prisma/schema.prisma`
-- `src/app/api/tesoreria/` (nueva)
-- `src/app/(pos)/tesoreria/` (nueva)
+### Helpers (`src/lib/tesoreria.ts`)
+- `mapCashExpenseToOperational()` — mapeo MENSAJERIA→TRANSPORTE, PAPELERIA/LIMPIEZA→SERVICIOS, MANTENIMIENTO→MANTENIMIENTO_INMUEBLE, resto→OTRO. Solo para agregado del summary; NO muta `CashTransaction`.
+- `getActiveBankBalance`, `getExpensesInRange`, `getCashExpensesInRange`, `getDefaultMonthRange`, `OPERATIONAL_EXPENSE_METHODS`.
+
+### Archivos tocados
+- `prisma/schema.prisma` + `prisma/migrations/20260415074752_add_operational_expense_and_bank_balance/`
+- `src/lib/tesoreria.ts` (nuevo)
+- `src/app/api/tesoreria/**` (7 archivos nuevos)
+- `src/app/(pos)/tesoreria/**` (10 archivos nuevos)
+- `src/app/(pos)/sidebar.tsx` (agregada entrada "Tesorería" icono `Landmark`, roles `MANAGER+ADMIN`, después de "Caja")
+
+### Deuda conocida
+- Cuando `metodoPago === "TRANSFER"`, el modal envía un placeholder URL (`https://placeholder.local/tmp`) al crear y luego sobrescribe con el upload de `/comprobante`. Si el upload falla tras el create, el gasto queda con URL placeholder (corrección manual via editar/anular). Alternativa: hacer el upload primero y enviar la URL resultante al create — diferido.
 
 ---
 
