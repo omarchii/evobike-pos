@@ -39,6 +39,10 @@ model User {
 
   authorizedCashSessions CashRegisterSession[] @relation("CashSessionAuthorizer")
   cashTransactions       CashTransaction[]
+
+  operationalExpensesRegistered OperationalExpense[] @relation("OperationalExpenseRegistradoPor")
+  operationalExpensesAnulled    OperationalExpense[] @relation("OperationalExpenseAnuladoPor")
+  bankBalanceSnapshots          BankBalanceSnapshot[] @relation("BankBalanceSnapshotRegistradoPor")
 }
 
 model Branch {
@@ -83,6 +87,7 @@ model Branch {
 
   purchaseReceipts      PurchaseReceipt[]
   authorizationRequests AuthorizationRequest[]
+  operationalExpenses   OperationalExpense[]
 }
 
 // === CATALOG & INVENTORY ===
@@ -882,4 +887,53 @@ model AuthorizationRequest {
   @@index([branchId, status])
   @@index([requestedBy, status])
   @@index([saleId])
+}
+
+// === TESORERÍA (Fase P9) ===
+enum ExpenseCategory {
+  RENTA
+  SERVICIOS
+  NOMINA
+  PUBLICIDAD
+  TRANSPORTE
+  MANTENIMIENTO_INMUEBLE
+  IMPUESTOS
+  COMISIONES_BANCARIAS
+  OTRO
+}
+
+model OperationalExpense {
+  id              String          @id @default(cuid())
+  branchId        String
+  branch          Branch          @relation(fields: [branchId], references: [id])
+  categoria       ExpenseCategory
+  descripcion     String
+  monto           Decimal         @db.Decimal(12, 2)
+  fecha           DateTime
+  metodoPago      PaymentMethod // EXCLUIR CASH en validación Zod; los CASH viven en CashTransaction
+  comprobanteUrl  String?
+  registradoPor   String
+  registradoBy    User            @relation("OperationalExpenseRegistradoPor", fields: [registradoPor], references: [id])
+  isAnulado       Boolean         @default(false)
+  anuladoPor      String?
+  anuladoBy       User?           @relation("OperationalExpenseAnuladoPor", fields: [anuladoPor], references: [id])
+  anuladoAt       DateTime?
+  motivoAnulacion String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([branchId, fecha])
+  @@index([branchId, categoria])
+  @@index([isAnulado])
+}
+
+model BankBalanceSnapshot {
+  id            String   @id @default(cuid())
+  monto         Decimal  @db.Decimal(14, 2)
+  notas         String?
+  registradoPor String
+  registradoBy  User     @relation("BankBalanceSnapshotRegistradoPor", fields: [registradoPor], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
 }
