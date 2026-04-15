@@ -17,8 +17,10 @@ import {
   Printer,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { SaleDetailData } from "./page";
 import { CancelSaleModal } from "@/components/pos/authorization/cancel-sale-modal";
+import { openPDFInNewTab } from "@/lib/pdf-client";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,8 +159,33 @@ export function SaleDetail({ sale, userRole }: SaleDetailProps) {
     (ao) => ao.voltageChangeLogId !== null
   );
 
-  const handlePrintWarranty = () => {
-    window.open(`/api/sales/${sale.id}/warranty-pdf`, "_blank");
+  const handlePrintWarranty = async () => {
+    const res = await fetch(`/api/sales/${sale.id}/warranty-pdf`);
+    if (res.status === 409) {
+      const data = await res.json() as { error?: string; pendingAssemblyOrders?: number };
+      const msg = data.error ?? "La póliza no está lista";
+      toast.error(data.pendingAssemblyOrders != null
+        ? `${msg} (${data.pendingAssemblyOrders} ensamble${data.pendingAssemblyOrders !== 1 ? "s" : ""} pendiente${data.pendingAssemblyOrders !== 1 ? "s" : ""})`
+        : msg);
+      return;
+    }
+    if (res.status === 412) {
+      const data = await res.json() as { error?: string };
+      toast.error(data.error ?? "Configura los datos de tu sucursal antes de generar documentos");
+      return;
+    }
+    if (!res.ok) {
+      toast.error("Error al generar la póliza");
+      return;
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, "_blank");
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+  };
+
+  const handleDownloadTicket = async () => {
+    await openPDFInNewTab(`/api/sales/${sale.id}/ticket-pdf`);
   };
 
   const canCancel = sale.status !== "CANCELLED";
@@ -178,6 +205,18 @@ export function SaleDetail({ sale, userRole }: SaleDetailProps) {
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadTicket}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+            style={{
+              background: "color-mix(in srgb, var(--p) 12%, transparent)",
+              color: "var(--p)",
+            }}
+          >
+            <FileText className="w-4 h-4" />
+            Descargar Ticket
+          </button>
           {canCancel && (
             <button
               type="button"
