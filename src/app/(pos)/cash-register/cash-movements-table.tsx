@@ -33,6 +33,17 @@ function formatTime(iso: string): string {
     }).format(new Date(iso));
 }
 
+function getOperatorParts(fullName: string): { initials: string; first: string } {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { initials: "?", first: "—" };
+    const first = parts[0];
+    const second = parts[1];
+    const initials = second
+        ? `${first[0]}${second[0]}`.toUpperCase()
+        : first.slice(0, 2).toUpperCase();
+    return { initials, first };
+}
+
 // ── Filter taxonomy (URL param `?tipo=`) ──────────────────────────────────────
 
 type TipoKey = "todos" | "cobros" | "gastos" | "retiros" | "entradas" | "reembolsos";
@@ -200,6 +211,7 @@ export function CashMovementsTable({ transactions }: Props): React.ReactElement 
                         <thead>
                             <tr>
                                 <Th>Hora</Th>
+                                <Th>Operador</Th>
                                 <Th>Tipo</Th>
                                 <Th>Método</Th>
                                 <Th>Detalle</Th>
@@ -274,6 +286,9 @@ function Row({ tx }: { tx: SerializedCashTransaction }): React.ReactElement {
                 </span>
             </Td>
             <Td>
+                <OperatorCell name={tx.userName} />
+            </Td>
+            <Td>
                 <span
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--r-full)] text-[0.6875rem] font-medium"
                     style={{ background: chipBg, color: chipFg }}
@@ -337,6 +352,33 @@ function Row({ tx }: { tx: SerializedCashTransaction }): React.ReactElement {
                 )}
             </Td>
         </tr>
+    );
+}
+
+function OperatorCell({ name }: { name: string | null }): React.ReactElement {
+    if (!name) {
+        return (
+            <span style={{ color: "var(--on-surf-var)" }}>—</span>
+        );
+    }
+    const { initials, first } = getOperatorParts(name);
+    return (
+        <span
+            className="inline-flex items-center gap-2 text-[0.75rem]"
+            style={{ color: "var(--on-surf)" }}
+            title={name}
+        >
+            <span
+                className="inline-flex items-center justify-center h-6 w-6 rounded-full text-[0.625rem] font-semibold"
+                style={{
+                    background: "var(--surf-high)",
+                    color: "var(--on-surf-var)",
+                }}
+            >
+                {initials}
+            </span>
+            <span className="truncate max-w-[10ch]">{first}</span>
+        </span>
     );
 }
 

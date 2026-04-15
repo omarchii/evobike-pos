@@ -182,12 +182,12 @@ export async function POST(req: NextRequest) {
         // CashTransactions
         if (depositAmount > 0) {
           await tx.cashTransaction.create({
-            data: { sessionId: activeSession.id, saleId: frozenSale.id, type: "PAYMENT_IN", method: paymentMethod, amount: depositAmount },
+            data: { sessionId: activeSession.id, userId, saleId: frozenSale.id, type: "PAYMENT_IN", method: paymentMethod, amount: depositAmount },
           });
         }
         if (isSplitPayment && secondaryDepositAmount && secondaryDepositAmount > 0 && secondaryPaymentMethod) {
           await tx.cashTransaction.create({
-            data: { sessionId: activeSession.id, saleId: frozenSale.id, type: "PAYMENT_IN", method: secondaryPaymentMethod, amount: secondaryDepositAmount },
+            data: { sessionId: activeSession.id, userId, saleId: frozenSale.id, type: "PAYMENT_IN", method: secondaryPaymentMethod, amount: secondaryDepositAmount },
           });
         }
 
@@ -258,6 +258,7 @@ export async function POST(req: NextRequest) {
         await tx.cashTransaction.create({
           data: {
             sessionId: activeSession.id,
+            userId,
             saleId: sale.id,
             type: "PAYMENT_IN",
             method: paymentMethod,
@@ -270,6 +271,7 @@ export async function POST(req: NextRequest) {
         await tx.cashTransaction.create({
           data: {
             sessionId: activeSession.id,
+            userId,
             saleId: sale.id,
             type: "PAYMENT_IN",
             method: secondaryPaymentMethod,

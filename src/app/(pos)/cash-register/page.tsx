@@ -39,7 +39,10 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
             user: { select: { name: true } },
             branch: { select: { name: true } },
             transactions: {
-                include: { sale: { select: { id: true, folio: true } } },
+                include: {
+                    sale: { select: { id: true, folio: true } },
+                    user: { select: { id: true, name: true } },
+                },
                 orderBy: { createdAt: "desc" },
             },
         },

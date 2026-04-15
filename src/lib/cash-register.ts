@@ -75,6 +75,8 @@ export type SerializedCashTransaction = {
     depositCategory: CashDepositCategory | null;
     saleId: string | null;
     saleFolio: string | null;
+    userId: string | null;
+    userName: string | null;
 };
 
 export type MethodSummary = {
@@ -122,7 +124,10 @@ export type SessionWithDetails = Prisma.CashRegisterSessionGetPayload<{
         user: { select: { name: true } };
         branch: { select: { name: true } };
         transactions: {
-            include: { sale: { select: { id: true; folio: true } } };
+            include: {
+                sale: { select: { id: true; folio: true } };
+                user: { select: { id: true; name: true } };
+            };
         };
     };
 }>;
@@ -212,6 +217,8 @@ export function summarizeSession(session: SessionWithDetails): SessionSummary {
             depositCategory: tx.depositCategory,
             saleId: tx.saleId,
             saleFolio: tx.sale?.folio ?? null,
+            userId: tx.userId,
+            userName: tx.user?.name ?? null,
         };
     });
 

@@ -58,6 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const tx = await prisma.cashTransaction.create({
             data: {
                 sessionId: activeSession.id,
+                userId: user.id,
                 type: "WITHDRAWAL",
                 method: "CASH",
                 amount: new Prisma.Decimal(parsed.data.amount.toFixed(2)),

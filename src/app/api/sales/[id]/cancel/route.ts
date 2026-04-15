@@ -143,6 +143,7 @@ export async function POST(
           await tx.cashTransaction.create({
             data: {
               sessionId: activeSession.id,
+              userId,
               saleId: sale.id,
               type: "REFUND_OUT",
               method: payment.method,

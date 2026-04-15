@@ -193,6 +193,7 @@ export async function POST(
         await tx.cashTransaction.create({
           data: {
             sessionId: activeSessionId!,
+            userId,
             saleId: sale.id,
             type: "PAYMENT_IN",
             method: input.paymentMethod!,
@@ -205,6 +206,7 @@ export async function POST(
           await tx.cashTransaction.create({
             data: {
               sessionId: activeSessionId!,
+              userId,
               saleId: sale.id,
               type: "PAYMENT_IN",
               method: input.secondaryPaymentMethod,

@@ -303,6 +303,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       await tx.cashTransaction.create({
         data: {
           sessionId: activeSession.id,
+          userId,
           saleId: sale.id,
           type: "PAYMENT_IN",
           method: input.paymentMethod,
@@ -320,6 +321,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
         await tx.cashTransaction.create({
           data: {
             sessionId: activeSession.id,
+            userId,
             saleId: sale.id,
             type: "PAYMENT_IN",
             method: input.secondaryPaymentMethod,

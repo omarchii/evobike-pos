@@ -38,6 +38,7 @@ model User {
   authorizationsApproved  AuthorizationRequest[] @relation("AuthApprover")
 
   authorizedCashSessions CashRegisterSession[] @relation("CashSessionAuthorizer")
+  cashTransactions       CashTransaction[]
 }
 
 model Branch {
@@ -350,6 +351,7 @@ model CashTransaction {
   id               String               @id @default(uuid())
   sessionId        String
   saleId           String?
+  userId           String? // Usuario que registró el movimiento. Nullable por backfill histórico.
   type             CashTransactionType
   method           PaymentMethod
   amount           Decimal              @db.Decimal(10, 2)
@@ -364,6 +366,7 @@ model CashTransaction {
 
   session CashRegisterSession @relation(fields: [sessionId], references: [id])
   sale    Sale?               @relation(fields: [saleId], references: [id])
+  user    User?               @relation(fields: [userId], references: [id])
 }
 
 // === CRM ===

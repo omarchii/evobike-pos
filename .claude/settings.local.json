@@ -8,7 +8,16 @@
       "Bash(git commit:*)",
       "Bash(ls:*)",
       "Bash(npx ts-node:*)",
-      "Bash(node_modules/.bin/next build:*)"
+      "Bash(node_modules/.bin/next build:*)",
+      "Bash(echo \"---TSC_EXIT=$?---\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx eslint:*)",
+      "Bash(echo \"TSC=$?\")",
+      "Bash(echo \"ESLINT=$?\")",
+      "Bash(npm install *)",
+      "Bash(npm view *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports',{}\\), indent=2\\)\\)\")",
+      "Bash(node *)"
     ]
   }
 }

@@ -27,7 +27,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as AuthUser;
+  const { id: userId, role, branchId } = session.user as unknown as AuthUser;
 
   if (role !== "MANAGER" && role !== "ADMIN") {
     return NextResponse.json(
@@ -106,6 +106,7 @@ export async function POST(
             await tx.cashTransaction.create({
               data: {
                 sessionId: activeSession.id,
+                userId,
                 saleId: order.sale.id,
                 type: "REFUND_OUT",
                 method: payment.method,

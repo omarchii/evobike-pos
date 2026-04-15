@@ -30,7 +30,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
     }
 
-    const { branchId } = session.user as unknown as SessionUser;
+    const { id: userId, branchId } = session.user as unknown as SessionUser;
     if (!branchId) {
       return NextResponse.json(
         { success: false, error: "Usuario sin sucursal asignada" },
@@ -93,6 +93,7 @@ export async function POST(
       await tx.cashTransaction.create({
         data: {
           sessionId: activeSession.id,
+          userId,
           saleId: sale.id,
           type: "PAYMENT_IN",
           method: paymentMethod,
