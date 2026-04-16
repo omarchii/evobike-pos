@@ -23,6 +23,10 @@ import {
     ChevronRight,
     ShieldCheck,
     Landmark,
+    ClipboardList,
+    AlertTriangle,
+    TrendingUp,
+    ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -68,7 +72,11 @@ const routes: RouteGroup[] = [
         children: [
             { label: "Historial de Ventas", href: "/ventas" },
             { label: "Caja", href: "/reportes/caja", roles: ["MANAGER", "ADMIN"] },
+            { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
             { label: "Comisiones", href: "/reportes/comisiones" },
+            { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
+            { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
+            { label: "Movimientos de inventario", href: "/reportes/inventario/movimientos", roles: ["MANAGER", "ADMIN"] },
         ],
     },
     { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
@@ -77,7 +85,11 @@ const routes: RouteGroup[] = [
 const SUB_ICONS: Record<string, React.ElementType> = {
     "/ventas": History,
     "/reportes/caja": Banknote,
+    "/reportes/caja/historial": ClipboardList,
     "/reportes/comisiones": CircleDollarSign,
+    "/reportes/ventas-vendedor": TrendingUp,
+    "/reportes/inventario/stock-minimo": AlertTriangle,
+    "/reportes/inventario/movimientos": ArrowUpDown,
 };
 
 export default function Sidebar({ user }: { user: UserProp }) {
@@ -154,9 +166,13 @@ export default function Sidebar({ user }: { user: UserProp }) {
                                 {reportesOpen && (
                                     <div className="ml-4 pl-3 mt-0.5 space-y-0.5 border-l border-[rgba(178,204,192,0.2)]">
                                         {visibleChildren.map((child) => {
-                                            const isActive =
-                                                pathname === child.href ||
-                                                pathname.startsWith(child.href + "/");
+                                            // Use exact match when a sibling is more specific (e.g. /reportes/caja vs /reportes/caja/historial)
+                                            const hasSpecificSibling = visibleChildren.some(
+                                                (other) => other !== child && other.href.startsWith(child.href + "/"),
+                                            );
+                                            const isActive = hasSpecificSibling
+                                                ? pathname === child.href
+                                                : pathname === child.href || pathname.startsWith(child.href + "/");
                                             const SubIcon = SUB_ICONS[child.href];
                                             return (
                                                 <Link

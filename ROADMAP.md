@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-15 (P6-E)  
+Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -517,10 +517,33 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 ## FASE P10 — Reportes expandidos
 **Modelo: Sonnet | Dependencias: P4 para rentabilidad**
 
-### P10-A — Ventas por vendedor (completo)
-Columnas: folio, cliente, modelo, voltaje, fecha, precio, método de pago.
-Filtros: rango de fechas, vendedor, sucursal.
-Exportable a CSV.
+### Infraestructura compartida P10 ✅ (Lote 1 — 2026-04-16)
+
+`src/lib/reportes/` — 6 módulos:
+- `csv.ts` — `downloadCSV(rows: Record<string, unknown>[], filename)`, BOM UTF-8 para Excel.
+- `money.ts` — `serializeDecimal(d)`, `formatMXN(n)`.
+- `branch-scope.ts` — `branchWhere(session, filterBranchId?)` → `{ branchId?: string }`.
+- `date-range.ts` — `parseDateRange`, `getDefaultDateRange`, `toDateString`. El `to` se ajusta a 23:59:59.999.
+- `types.ts` — `ReportKPI`, `ReportFilters`, `ReportRow`.
+- `cost-resolver.ts` — stub de tipos `ResolvedCost`/`CostSource` para Lote 5 (P10-C/D).
+
+`src/app/(pos)/reportes/_components/` — 6 componentes:
+- `ReportHeader` — título + icono + filtros + acciones.
+- `ReportKpiCards` — grid `2/3/5 cols`; primera card con Velocity Gradient.
+- `ReportTable<T>` — genérica con `TableColumn<T>[]`, `keyExtractor`, `isLoading`, `emptyMessage`.
+- `ReportEmptyState` — icono `FileSearch` + mensaje.
+- `ReportDateFilter` — inputs fecha con `router.replace()` reactivo.
+- `ReportBranchFilter` — select de sucursales, retorna `null` si `role !== "ADMIN"`.
+
+### P10-A — Ventas por vendedor ✅ (Lote 1 — 2026-04-16)
+- Ruta: `/reportes/ventas-vendedor` (MANAGER + ADMIN).
+- Columnas: folio, cliente, modelo, voltaje, fecha, total, método de pago, estado.
+- KPIs (solo ventas COMPLETED): total vendido, tickets, ticket promedio, unidades, vendedores activos.
+- Resumen por vendedor (tabla ordenada por revenue desc) + detalle individual exportable.
+- Filtros URL: rango de fechas, vendedor (`userId`), sucursal (ADMIN), método de pago, status (completed/all).
+- CSV doble: resumen por vendedor + detalle de ventas.
+- `getModeloVoltaje()`: discrimina por número de `productVariantId` únicos (mixto → "Mixto").
+- `getPaymentLabel()`: un método → label español; varios → "MIXTO".
 
 ### P10-B — Estado de cuenta por cliente
 Historial completo de compras por cliente.
@@ -535,25 +558,43 @@ Margen por unidad y por categoría.
 Cantidad en stock × precio mayorista = costo del inventario actual por sucursal.
 Requiere `precioMayorista` en `SimpleProduct` y `ProductVariant`.
 
-### P10-E — Movimientos de inventario
-Entradas, salidas, ajustes, devoluciones por período.
-Útil para auditoría y cuadre con inventario físico.
+### P10-E — Movimientos de inventario ✅ (Lote 3 — 2026-04-16)
+- Ruta: `/reportes/inventario/movimientos` (MANAGER + ADMIN).
+- Fuente: `InventoryMovement` — **sin** `include: { user, branch }` (no existen relaciones Prisma en el modelo); sucursales y usuarios resueltos con queries batch separadas en `Promise.all`.
+- Convención de signo confirmada por código existente: `quantity > 0` → Entrada (`PURCHASE_RECEIPT`, `RETURN`, `TRANSFER_IN`); `quantity < 0` → Salida (`SALE`, `WORKSHOP_USAGE`, `TRANSFER_OUT`); `quantity === 0` → Neutro (ajuste sin cambio neto).
+- Polimorfismo variant/simple: discriminación explícita (`productVariantId != null` → nombre = `modelo + color + voltaje`, código = `sku`; `simpleProductId != null` → `simpleProduct.nombre` + `codigo`). Caso ambos null maneja defensivamente con `"—"`.
+- Batch N+1-safe: 1 query principal → 5 queries batch en `Promise.all` (branches, users, sales, serviceOrders, branchesForFilter) → mapas `Map<string, string>` para lookup O(1).
+- Referencias amigables por tipo: PURCHASE_RECEIPT usa FK directa `purchaseReceipt.proveedor + folio`; SALE/RETURN resuelven `Sale.folio` desde batch; WORKSHOP_USAGE resuelve `ServiceOrder.folio`; TRANSFER_OUT/IN muestran id corto `#xxxxxxxx` (patrón de `referenceId` no documentado en codebase v1 — pendiente enriquecer en v2); ADJUSTMENT muestra `referenceId` tal cual.
+- KPIs: total movimientos, entradas totales (`sum qty > 0`), salidas totales (`abs(sum qty < 0)`), ajustes (`count ADJUSTMENT` con neto `±X u.` en trend), productos distintos (IDs únicos con prefijo `v:` / `s:`).
+- Filtros URL: `from`, `to`, `branchId` (ADMIN), `type` (7 valores + `all`), `kind` (`variant/simple/all`), `sign` (`in/out/all`), `q` (búsqueda SKU/código/nombre server-side vía OR nested).
+- Sidebar: "Movimientos de inventario" en grupo Reportes, icon `ArrowUpDown`, roles `MANAGER+ADMIN`.
+- CSV client-side con `downloadCSV` del Lote 1.
+- Mini-fix aplicado en este lote: orden de resolución del autorizador en `historial/page.tsx` corregido — `closeAuthorization.approver.name` (fuente canónica P5) tiene prioridad sobre `authorizedBy.name` (campo legacy pre-P5).
 
-### P10-F — Historial de cortes de caja
-Vista `/caja/historial` con tabla de sesiones cerradas.
-- Filtros: rango de fechas, sucursal (ADMIN), operador.
-- Columnas: fecha apertura/cierre, operador, efectivo esperado, efectivo contado, diferencia (coloreada), autorización.
-- Botón "Imprimir comprobante" por fila — reutiliza `GET /api/cash-register/session/[id]/pdf` (ya existe desde P6-E).
-- Permisos: MANAGER + ADMIN únicamente.
-- **Dependencia: P6-E ✅**
+### P10-F — Historial de cortes de caja ✅ (Lote 2 — 2026-04-16)
+- Ruta: `/reportes/caja/historial` (MANAGER + ADMIN).
+- Filtros: rango de fechas (cierre), sucursal (ADMIN), operador.
+- KPIs: total cortes, efectivo esperado acumulado, efectivo contado acumulado, diferencia neta, cortes con diferencia.
+- Columnas: folio, sucursal (ADMIN), operador, apertura, cierre, ef. esperado, ef. contado, diferencia (badge coloreado), autorizador (badge con `ShieldCheck`), botón "Imprimir".
+- Botón "Imprimir comprobante" por fila — reutiliza `GET /api/cash-register/session/[id]/pdf` (P6-E).
+- CSV export.
+- Sidebar: `hasSpecificSibling` fix para que `/reportes/caja` no quede activo cuando la ruta es `/reportes/caja/historial`.
 
 ### P10-G — Compras al proveedor (reporte agregado)
 Historial desde `inventory/receipts` enriquecido.
 **Alcance reducido post P4-C**: el listado operativo de cuentas por pagar (filtros por estadoPago, proveedor, rango vencimiento) ya lo cubre `/inventario/recepciones`. P10-G queda como reporte agregado: totales mensuales por proveedor, análisis de vencimientos por período, export CSV.
 
-### P10-H — Reporte de stock mínimo
-Productos donde `stockActual ≤ stockMinimo` → lista de reabastecimiento.
-Ordenado por urgencia (qué tan debajo del mínimo está).
+### P10-H — Reporte de stock mínimo ✅ (Lote 2 — 2026-04-16)
+- Ruta: `/reportes/inventario/stock-minimo` (MANAGER + ADMIN).
+- Snapshot de todos los `Stock` con `quantity < stockMinimo`. Filtro in-memory (cross-model `quantity ≤ productVariant.stockMinimo` no es expresable en Prisma where).
+- Polimorfismo: `ProductVariant` (`kind: "variant"`) y `SimpleProduct` (`kind: "simple"`). Double null-guard antes de serializar.
+- Severidad: `critical` si `quantity ≤ stockMinimo/2`, `warning` en otro caso.
+- KPIs: total alertas, críticos, advertencias, unidades faltantes, sucursales afectadas.
+- Filtros client-side: tipo (variant/simple), severidad, búsqueda de texto (SKU/nombre).
+- Filtro server-side: sucursal (ADMIN, URL param).
+- Botón "Crear recepción" → `/inventario/recepciones/nuevo?variantId=X` o `?simpleProductId=X`.
+- CSV export.
+- Ordenado por `quantity − stockMinimo` asc (más urgente primero).
 
 ### P10-I — Reporte anual
 KPIs por mes: ingresos, gastos operativos, compras al proveedor, margen neto.
