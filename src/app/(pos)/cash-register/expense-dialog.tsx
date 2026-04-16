@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -200,7 +200,7 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
         }
     }, [open, form]);
 
-    const amount = form.watch("amount");
+    const amount = useWatch({ control: form.control, name: "amount" });
     const isOverSellerLimit = userRole === "SELLER" && amount > SELLER_EXPENSE_LIMIT;
 
     const onSubmit = async (values: ExpenseFormValues): Promise<void> => {

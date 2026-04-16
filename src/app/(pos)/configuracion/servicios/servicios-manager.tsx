@@ -264,7 +264,7 @@ function Table({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+          <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
             <Th>Servicio</Th>
             <Th align="right">Precio base</Th>
             {isAdmin && <Th>Sucursal</Th>}

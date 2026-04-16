@@ -384,7 +384,7 @@ export function SalesHistoryTable({
 
   const inputStyle: React.CSSProperties = {
     background: "var(--surf-low)",
-    border: "1px solid rgba(178, 204, 192, 0.15)",
+    border: "1px solid var(--ghost-border)",
     borderRadius: "var(--r-md)",
     color: "var(--on-surf)",
     fontFamily: "var(--font-body)",
@@ -683,7 +683,7 @@ export function SalesHistoryTable({
                         textTransform: "uppercase",
                         color: "var(--on-surf-var)",
                         padding: "0.5rem 0.75rem",
-                        borderBottom: "1px solid rgba(178, 204, 192, 0.15)",
+                        borderBottom: "1px solid var(--ghost-border)",
                         textAlign: "left",
                         whiteSpace: "nowrap",
                         fontFamily: "var(--font-body)",
@@ -707,7 +707,7 @@ export function SalesHistoryTable({
         {nextCursor && displayItems.length > 0 && (
           <div
             className="flex justify-center py-4"
-            style={{ borderTop: "1px solid rgba(178, 204, 192, 0.15)" }}
+            style={{ borderTop: "1px solid var(--ghost-border)" }}
           >
             <button
               type="button"

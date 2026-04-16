@@ -41,8 +41,8 @@ export function CatalogoClient({
   const [tab, setTab] = useState<string>(defaultTab);
 
   const [modelos, setModelos] = useState<ModeloRow[]>(initialData.modelos);
-  const [colores, setColores] = useState<ColorRow[]>(initialData.colores);
-  const [voltajes, setVoltajes] = useState<VoltajeRow[]>(initialData.voltajes);
+  const [colores] = useState<ColorRow[]>(initialData.colores);
+  const [voltajes] = useState<VoltajeRow[]>(initialData.voltajes);
   const [variantes, setVariantes] = useState<VarianteRow[]>(initialData.variantes);
   const [batteryConfigs, setBatteryConfigs] = useState<BatteryConfigRow[]>(
     initialData.batteryConfigs,

@@ -47,8 +47,11 @@ export function useAuthorizationPolling({
 } {
   const [state, setState] = useState<PollingState>({ kind: "idle" });
   const onTerminalRef = useRef(onTerminal);
-  // Mantenemos la referencia actualizada sin re-triggerear el efecto.
-  onTerminalRef.current = onTerminal;
+  // Mantenemos la referencia actualizada sin re-triggerear el efecto del polling.
+  // La asignación va en useEffect para cumplir `react-hooks/refs` (no mutar en render).
+  useEffect(() => {
+    onTerminalRef.current = onTerminal;
+  }, [onTerminal]);
 
   const start = (id: string, expiresAt: Date | null): void => {
     setState({ kind: "pending", id, expiresAt });

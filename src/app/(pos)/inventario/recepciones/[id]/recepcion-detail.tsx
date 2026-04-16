@@ -177,7 +177,7 @@ function LinesTable({
                   fontWeight: 500,
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(178,204,192,0.15)",
+                  borderBottom: "1px solid var(--ghost-border)",
                   textAlign: h === "Subtotal" || h === "Precio unit." ? "right" : "left",
                 }}
               >
@@ -545,7 +545,6 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
     return acc + p * l.quantity;
   }, 0);
 
-  const isCredito = data.estadoPago === "CREDITO";
   const vencDays =
     data.fechaVencimiento !== null ? daysUntil(data.fechaVencimiento) : null;
 
@@ -771,7 +770,7 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
           {/* Grand total */}
           <div
             className="flex items-center justify-end gap-4 mt-2 pt-3"
-            style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+            style={{ borderTop: "1px solid var(--ghost-border)" }}
           >
             <span
               style={{

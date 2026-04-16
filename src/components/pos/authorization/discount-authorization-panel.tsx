@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthorizationPolling } from "./use-authorization-polling";
@@ -271,14 +271,37 @@ export function DiscountAuthorizationPanel({
   );
 }
 
+// Reloj compartido — un solo setInterval mientras haya ≥1 suscriptor.
+// useSyncExternalStore evita la regla `react-hooks/purity` sobre `Date.now()`.
+let nowSnapshot: number | null = null;
+const nowListeners = new Set<() => void>();
+let nowIntervalId: ReturnType<typeof setInterval> | null = null;
+
+function subscribeNow(callback: () => void): () => void {
+  nowListeners.add(callback);
+  if (nowIntervalId === null) {
+    nowSnapshot = Date.now();
+    nowIntervalId = setInterval(() => {
+      nowSnapshot = Date.now();
+      nowListeners.forEach((cb) => cb());
+    }, 1000);
+  }
+  return () => {
+    nowListeners.delete(callback);
+    if (nowListeners.size === 0 && nowIntervalId !== null) {
+      clearInterval(nowIntervalId);
+      nowIntervalId = null;
+      nowSnapshot = null;
+    }
+  };
+}
+const getNowSnapshot = (): number | null => nowSnapshot;
+const getNowServerSnapshot = (): number | null => null;
+
 function CountdownLabel({ expiresAt }: { expiresAt: Date | null }) {
-  const [now, setNow] = useState(Date.now());
-  // Re-render cada segundo para actualizar el countdown. Interval limpiado en cleanup.
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const now = useSyncExternalStore(subscribeNow, getNowSnapshot, getNowServerSnapshot);
   if (!expiresAt) return <>sin límite</>;
+  if (now === null) return <>…</>;
   const remainingMs = expiresAt.getTime() - now;
   if (remainingMs <= 0) return <>expirando…</>;
   const seconds = Math.ceil(remainingMs / 1000);

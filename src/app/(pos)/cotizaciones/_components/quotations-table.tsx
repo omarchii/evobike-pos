@@ -108,7 +108,7 @@ export default function QuotationsTable({ quotations, page, totalPages, searchPa
           className="grid gap-3 px-4 py-2.5"
           style={{
             gridTemplateColumns: "1.5fr 1.5fr 1fr 1fr 1fr 1fr 1fr 2.5rem",
-            borderBottom: "1px solid rgba(178,204,192,0.15)",
+            borderBottom: "1px solid var(--ghost-border)",
           }}
         >
           {["Folio", "Cliente", "Emisión", "Vigencia", "Total", "Estado", "Vendedor"].map(

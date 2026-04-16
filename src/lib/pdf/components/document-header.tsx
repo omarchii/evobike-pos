@@ -88,6 +88,8 @@ export function DocumentHeader({
     <View style={s.container}>
       {/* Izquierda: logo */}
       <View style={s.left}>
+        {/* react-pdf Image no acepta prop alt */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image style={s.logo} src={logoPath} />
       </View>
 

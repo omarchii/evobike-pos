@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useReducer, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,22 +34,40 @@ export function VinSelectorDialog({
   productVariantId,
   onSelect,
 }: VinSelectorDialogProps) {
-  const [bikes, setBikes] = useState<CustomerBikeOption[]>([]);
-  const [loading, setLoading] = useState(false);
+  interface State {
+    bikes: CustomerBikeOption[];
+    loading: boolean;
+  }
+  type Action =
+    | { kind: "reset" }
+    | { kind: "done"; bikes: CustomerBikeOption[] };
+  const [{ bikes, loading }, dispatch] = useReducer(
+    (_s: State, a: Action): State => {
+      if (a.kind === "reset") return { bikes: [], loading: true };
+      return { bikes: a.bikes, loading: false };
+    },
+    { bikes: [], loading: false },
+  );
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!open || !productVariantId) return;
-    setLoading(true);
-    setBikes([]);
-    setSearch("");
-    fetch(`/api/customer-bikes/available?productVariantId=${encodeURIComponent(productVariantId)}`)
-      .then((r) => r.json())
-      .then((data: { success?: boolean; data?: CustomerBikeOption[] }) => {
-        setBikes(data.data ?? []);
-      })
-      .catch(() => setBikes([]))
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+    Promise.resolve().then(() => {
+      if (controller.signal.aborted) return;
+      dispatch({ kind: "reset" });
+      setSearch("");
+      fetch(
+        `/api/customer-bikes/available?productVariantId=${encodeURIComponent(productVariantId)}`,
+        { signal: controller.signal },
+      )
+        .then((r) => r.json())
+        .then((data: { success?: boolean; data?: CustomerBikeOption[] }) => {
+          dispatch({ kind: "done", bikes: data.data ?? [] });
+        })
+        .catch(() => dispatch({ kind: "done", bikes: [] }));
+    });
+    return () => controller.abort();
   }, [open, productVariantId]);
 
   const filtered = bikes.filter((b) =>

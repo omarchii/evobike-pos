@@ -1,6 +1,6 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -207,7 +207,7 @@ export function EntradaEfectivoDialog({
         defaultValues: DEFAULT_VALUES,
     });
 
-    const amount = form.watch("amount");
+    const amount = useWatch({ control: form.control, name: "amount" });
     const isOverSellerLimit = userRole === "SELLER" && amount > SELLER_DEPOSIT_LIMIT;
 
     const handleOpenChange = (next: boolean): void => {

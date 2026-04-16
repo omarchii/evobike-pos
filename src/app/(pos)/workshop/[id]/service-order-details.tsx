@@ -576,7 +576,7 @@ export function ServiceOrderDetailsView({
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",
                   color: "var(--on-surf-var)",
-                  borderBottom: "1px solid rgba(178,204,192,0.15)",
+                  borderBottom: "1px solid var(--ghost-border)",
                 }}
               >
                 <span className="col-span-6">Descripción</span>
@@ -657,7 +657,7 @@ export function ServiceOrderDetailsView({
               {order.items.length > 0 && (
                 <div
                   className="flex justify-end mt-4 pt-4"
-                  style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+                  style={{ borderTop: "1px solid var(--ghost-border)" }}
                 >
                   <div className="space-y-1 text-right">
                     <div

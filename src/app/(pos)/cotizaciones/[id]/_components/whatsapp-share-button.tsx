@@ -192,7 +192,7 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
                   background: "var(--surf-low)",
                   border: phoneError
                     ? "1.5px solid var(--ter)"
-                    : "1px solid rgba(178,204,192,0.15)",
+                    : "1px solid var(--ghost-border)",
                   borderRadius: "var(--r-md)",
                   color: "var(--on-surf)",
                   fontFamily: "var(--font-body)",

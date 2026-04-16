@@ -289,7 +289,7 @@ export function CommissionRules({
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+                <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
                   <th className="text-left px-5 py-3 text-xs font-medium uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
                     Rol
                   </th>
@@ -343,7 +343,7 @@ export function CommissionRules({
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+                <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
                   <th className="text-left px-5 py-3 text-xs font-medium uppercase tracking-wider" style={{ color: "var(--on-surf-var)" }}>
                     Rol
                   </th>
@@ -416,7 +416,7 @@ export function CommissionRules({
                   style={{
                     background: "var(--surf-lowest)",
                     color: "var(--on-surf)",
-                    border: "1px solid rgba(178,204,192,0.15)",
+                    border: "1px solid var(--ghost-border)",
                     opacity: editingRule ? 0.6 : 1,
                   }}
                 >
@@ -450,7 +450,7 @@ export function CommissionRules({
                         formType === "PERCENTAGE"
                           ? "var(--on-p-container)"
                           : "var(--on-surf-var)",
-                      border: "1px solid rgba(178,204,192,0.15)",
+                      border: "1px solid var(--ghost-border)",
                     }}
                   >
                     <Percent size={14} />
@@ -469,7 +469,7 @@ export function CommissionRules({
                         formType === "FIXED_AMOUNT"
                           ? "var(--on-p-container)"
                           : "var(--on-surf-var)",
-                      border: "1px solid rgba(178,204,192,0.15)",
+                      border: "1px solid var(--ghost-border)",
                     }}
                   >
                     <DollarSign size={14} />
@@ -497,7 +497,7 @@ export function CommissionRules({
                   style={{
                     background: "var(--surf-lowest)",
                     color: "var(--on-surf)",
-                    border: "1px solid rgba(178,204,192,0.15)",
+                    border: "1px solid var(--ghost-border)",
                   }}
                 />
               </div>
@@ -518,7 +518,7 @@ export function CommissionRules({
                   style={{
                     background: "var(--surf-lowest)",
                     color: "var(--on-surf)",
-                    border: "1px solid rgba(178,204,192,0.15)",
+                    border: "1px solid var(--ghost-border)",
                     opacity: editingRule ? 0.6 : 1,
                   }}
                 >
@@ -546,7 +546,7 @@ export function CommissionRules({
                     style={{
                       background: "var(--surf-lowest)",
                       color: "var(--on-surf)",
-                      border: "1px solid rgba(178,204,192,0.15)",
+                      border: "1px solid var(--ghost-border)",
                     }}
                   >
                     {branches.map((b) => (

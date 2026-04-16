@@ -15,8 +15,23 @@ export class BranchNotConfiguredError extends Error {
   }
 }
 
+type BranchFieldKey =
+  | "rfc"
+  | "razonSocial"
+  | "regimenFiscal"
+  | "street"
+  | "colonia"
+  | "city"
+  | "state"
+  | "zip"
+  | "phone"
+  | "sealImageUrl"
+  | "terminosCotizacion"
+  | "terminosPedido"
+  | "terminosPoliza";
+
 // Campos comunes requeridos en todos los tipos de documento
-const BASE_FIELDS: Array<{ key: keyof typeof FIELD_LABELS; label: string }> = [
+const BASE_FIELDS: Array<{ key: BranchFieldKey; label: string }> = [
   { key: "rfc", label: "RFC" },
   { key: "razonSocial", label: "Razón social" },
   { key: "regimenFiscal", label: "Régimen fiscal" },
@@ -31,29 +46,12 @@ const BASE_FIELDS: Array<{ key: keyof typeof FIELD_LABELS; label: string }> = [
 
 const EXTRA_BY_TYPE: Record<
   Exclude<TipoDocPDF, "ticket">,
-  { key: keyof typeof FIELD_LABELS; label: string }
+  { key: BranchFieldKey; label: string }
 > = {
   cotizacion: { key: "terminosCotizacion", label: "Términos de cotización" },
   pedido: { key: "terminosPedido", label: "Términos de pedido" },
   poliza: { key: "terminosPoliza", label: "Términos de póliza" },
 };
-
-// Objeto auxiliar para satisfacer el sistema de tipos en los selectores de key
-const FIELD_LABELS = {
-  rfc: "",
-  razonSocial: "",
-  regimenFiscal: "",
-  street: "",
-  colonia: "",
-  city: "",
-  state: "",
-  zip: "",
-  phone: "",
-  sealImageUrl: "",
-  terminosCotizacion: "",
-  terminosPedido: "",
-  terminosPoliza: "",
-} as const;
 
 function isPlaceholder(value: string | null | undefined): boolean {
   if (!value) return true;

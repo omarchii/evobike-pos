@@ -106,7 +106,7 @@ export function TabAlertas({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+              <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
                 <Th>Severidad</Th>
                 <Th>Producto</Th>
                 <Th>Sucursal</Th>

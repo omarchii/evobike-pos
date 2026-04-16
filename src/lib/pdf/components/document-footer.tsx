@@ -89,6 +89,8 @@ export function DocumentFooter({
       {/* Sello y firma */}
       <View style={s.sealBlock}>
         {sealSrc != null ? (
+          // react-pdf Image no acepta prop alt
+          // eslint-disable-next-line jsx-a11y/alt-text
           <Image style={s.sealImage} src={sealSrc} />
         ) : null}
         <View style={s.sealLine} />

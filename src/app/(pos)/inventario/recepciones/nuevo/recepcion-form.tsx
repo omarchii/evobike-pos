@@ -772,7 +772,7 @@ export function RecepcionForm({
         >
           <div
             className="px-4 py-3 shrink-0 flex items-center justify-between"
-            style={{ borderBottom: "1px solid rgba(178, 204, 192, 0.15)" }}
+            style={{ borderBottom: "1px solid var(--ghost-border)" }}
           >
             <span
               style={{
@@ -829,7 +829,7 @@ export function RecepcionForm({
                           textTransform: "uppercase",
                           color: "var(--on-surf-var)",
                           padding: "0.5rem 0.5rem",
-                          borderBottom: "1px solid rgba(178, 204, 192, 0.15)",
+                          borderBottom: "1px solid var(--ghost-border)",
                           textAlign: h === "Subtotal" ? "right" : "left",
                           fontFamily: "var(--font-body)",
                         }}
@@ -971,7 +971,7 @@ export function RecepcionForm({
           {/* Footer: total + actions */}
           <div
             className="shrink-0 px-4 py-3 space-y-3"
-            style={{ borderTop: "1px solid rgba(178, 204, 192, 0.15)" }}
+            style={{ borderTop: "1px solid var(--ghost-border)" }}
           >
             {lines.length > 0 && (
               <div className="flex items-end justify-between">

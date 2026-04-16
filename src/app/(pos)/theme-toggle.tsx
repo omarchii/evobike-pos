@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 
+const EMPTY_SUBSCRIBE = (): (() => void) => (): void => {};
+
 export function ThemeToggle() {
     const { resolvedTheme, setTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => setMounted(true), []);
+    // Evita hydration-mismatch: en SSR devuelve false, tras hidratar devuelve true
+    // sin necesidad de setState en useEffect (compiler-safe).
+    const mounted = useSyncExternalStore(
+        EMPTY_SUBSCRIBE,
+        () => true,
+        () => false,
+    );
 
     const isDark = resolvedTheme === "dark";
 

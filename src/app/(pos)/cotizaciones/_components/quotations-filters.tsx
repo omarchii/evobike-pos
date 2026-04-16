@@ -112,7 +112,7 @@ export default function QuotationsFilters({ isAdmin, branches = [] }: Props) {
             style={{
               background: "var(--surf-lowest)",
               color: "var(--on-surf)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
             }}
           />
           {currentSearch && (
@@ -135,7 +135,7 @@ export default function QuotationsFilters({ isAdmin, branches = [] }: Props) {
             style={{
               background: "var(--surf-lowest)",
               color: "var(--on-surf)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
             }}
           >
             <option value="">Todas las sucursales</option>

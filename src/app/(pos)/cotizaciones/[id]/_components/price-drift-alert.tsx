@@ -101,7 +101,7 @@ export default function PriceDriftAlert({
             className="grid gap-3 px-4 py-2"
             style={{
               gridTemplateColumns: "2fr 1fr 1fr 1fr",
-              borderBottom: "1px solid rgba(178,204,192,0.15)",
+              borderBottom: "1px solid var(--ghost-border)",
             }}
           >
             {["Producto", "Cotizado", "Actual", "Diferencia"].map((h) => (

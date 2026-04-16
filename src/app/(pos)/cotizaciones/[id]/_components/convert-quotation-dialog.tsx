@@ -608,7 +608,7 @@ export default function ConvertQuotationDialog({
           {/* Footer — fijo */}
           <div
             className="px-6 py-4 flex items-center justify-between gap-4 shrink-0"
-            style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+            style={{ borderTop: "1px solid var(--ghost-border)" }}
           >
             <button
               type="button"

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Wifi, SplitSquareVertical, PackageCheck } from "lucide-react";
+import { SplitSquareVertical, PackageCheck } from "lucide-react";
 
 // ── Design tokens (AGENTS.md: inputs en modales SIEMPRE --surf-low) ──────────
 const INPUT_STYLE: React.CSSProperties = {

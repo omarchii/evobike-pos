@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import { ShieldAlert, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -57,6 +57,33 @@ function modalStyle(): React.CSSProperties {
   };
 }
 
+// Reloj compartido para todos los CountdownLabel — un solo setInterval activo
+// mientras haya ≥1 suscriptor. useSyncExternalStore evita `set-state-in-effect`.
+let nowSnapshot: number | null = null;
+const nowListeners = new Set<() => void>();
+let nowIntervalId: ReturnType<typeof setInterval> | null = null;
+
+function subscribeNow(callback: () => void): () => void {
+  nowListeners.add(callback);
+  if (nowIntervalId === null) {
+    nowSnapshot = Date.now();
+    nowIntervalId = setInterval(() => {
+      nowSnapshot = Date.now();
+      nowListeners.forEach((cb) => cb());
+    }, 1000);
+  }
+  return () => {
+    nowListeners.delete(callback);
+    if (nowListeners.size === 0 && nowIntervalId !== null) {
+      clearInterval(nowIntervalId);
+      nowIntervalId = null;
+      nowSnapshot = null;
+    }
+  };
+}
+const getNowSnapshot = (): number | null => nowSnapshot;
+const getNowServerSnapshot = (): number | null => null;
+
 interface AuthorizationInboxProps {
   /** Título del panel. Por defecto "Autorizaciones pendientes". */
   title?: string;
@@ -105,9 +132,17 @@ export function AuthorizationInbox({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchPending(controller.signal);
-    const intervalId = setInterval(() => void fetchPending(controller.signal), 10_000);
+    // Defer inicial + interval: mantienen el setState fuera del cuerpo
+    // síncrono del efecto (compiler-safe).
+    const timeoutId = setTimeout(() => {
+      void fetchPending(controller.signal);
+    }, 0);
+    const intervalId = setInterval(
+      () => void fetchPending(controller.signal),
+      10_000,
+    );
     return () => {
+      clearTimeout(timeoutId);
       clearInterval(intervalId);
       controller.abort();
     };
@@ -369,12 +404,10 @@ function ResolveDialog({
 }
 
 function CountdownLabel({ expiresAt }: { expiresAt: string | null }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  if (!expiresAt) {
+  // useSyncExternalStore mantiene el reloj fuera del ciclo de render
+  // sin triggerear la regla `react-hooks/set-state-in-effect`. SSR snapshot = null.
+  const now = useSyncExternalStore(subscribeNow, getNowSnapshot, getNowServerSnapshot);
+  if (!expiresAt || now === null) {
     return (
       <span className="inline-flex items-center gap-1">
         <Clock className="w-3 h-3" />

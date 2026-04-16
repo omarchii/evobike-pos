@@ -209,7 +209,7 @@ export default function QuotationActionsBar({
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           boxShadow: "var(--shadow)",
-          border: "1px solid rgba(178,204,192,0.15)",
+          border: "1px solid var(--ghost-border)",
         }}
       >
         {/* Edit — DRAFT o EN_ESPERA_CLIENTE */}

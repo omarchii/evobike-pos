@@ -103,7 +103,7 @@ export function TabBatteryConfigs({
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+                <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
                   <Th>Voltaje</Th>
                   <Th>Batería</Th>
                   <Th align="right">Cantidad</Th>

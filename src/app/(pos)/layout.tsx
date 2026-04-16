@@ -25,7 +25,7 @@ function getInitials(name?: string | null) {
 
 function Topbar({ user }: { user: { name?: string | null; branchName?: string | null } }) {
     return (
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between px-6 bg-[var(--surf-lowest)]/90 backdrop-blur-md border-b border-[rgba(178,204,192,0.15)] shrink-0 transition-colors duration-200">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between px-6 bg-[var(--surf-lowest)]/90 backdrop-blur-md border-b border-[var(--ghost-border)] shrink-0 transition-colors duration-200">
             {/* Left: Branch chip */}
             <div className="px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
                 BRANCH: {user.branchName ?? "—"}

@@ -18,7 +18,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
 import { DiscountAuthorizationPanel } from "@/components/pos/authorization/discount-authorization-panel";

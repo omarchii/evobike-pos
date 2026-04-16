@@ -201,7 +201,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Pre-cargar info de variantes para clasificar ensamblables (fuera de tx).
-  let assembleableMap = new Map<string, boolean>();
+  const assembleableMap = new Map<string, boolean>();
   if (variantIds.length > 0) {
     const variantInfo = await prisma.productVariant.findMany({
       where: { id: { in: variantIds } },

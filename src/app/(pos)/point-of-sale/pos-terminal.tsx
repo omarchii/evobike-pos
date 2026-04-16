@@ -1350,7 +1350,7 @@ export default function PosTerminal({
                 {/* Separator */}
                 <div
                   style={{
-                    borderTop: "1px solid rgba(178,204,192,0.15)",
+                    borderTop: "1px solid var(--ghost-border)",
                     margin: "12px 0",
                   }}
                 />
@@ -1495,7 +1495,7 @@ export default function PosTerminal({
                 {/* Separator */}
                 <div
                   style={{
-                    borderTop: "1px solid rgba(178,204,192,0.15)",
+                    borderTop: "1px solid var(--ghost-border)",
                     margin: "12px 0",
                   }}
                 />
@@ -1593,7 +1593,7 @@ export default function PosTerminal({
                   <>
                     <div
                       style={{
-                        borderTop: "1px solid rgba(178,204,192,0.15)",
+                        borderTop: "1px solid var(--ghost-border)",
                         margin: "12px 0",
                       }}
                     />
@@ -1700,7 +1700,7 @@ export default function PosTerminal({
                   <>
                     <div
                       style={{
-                        borderTop: "1px solid rgba(178,204,192,0.15)",
+                        borderTop: "1px solid var(--ghost-border)",
                         margin: "12px 0",
                       }}
                     />
@@ -2337,7 +2337,7 @@ export default function PosTerminal({
             className="px-4 pt-3.5 pb-6 border-t shrink-0"
             style={{
               background: "var(--surf-low)",
-              borderTop: "1px solid rgba(178,204,192,0.15)",
+              borderTop: "1px solid var(--ghost-border)",
             }}
           >
             {/* Totals */}
@@ -2370,7 +2370,7 @@ export default function PosTerminal({
               )}
               <div
                 className="flex justify-between items-baseline pt-1.5"
-                style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+                style={{ borderTop: "1px solid var(--ghost-border)" }}
               >
                 <span
                   style={{
@@ -2554,7 +2554,7 @@ export default function PosTerminal({
                       className="space-y-1.5 p-2.5 rounded-xl mb-2"
                       style={{
                         background: "var(--surf-high)",
-                        border: "1px solid rgba(178,204,192,0.15)",
+                        border: "1px solid var(--ghost-border)",
                       }}
                     >
                       <div className="flex gap-1.5 items-center">
@@ -2769,7 +2769,7 @@ export default function PosTerminal({
               background: "var(--surf-lowest)",
               borderRadius: "var(--r-lg)",
               boxShadow: "var(--shadow)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
               width: 380,
               padding: 24,
             }}>
@@ -2837,7 +2837,7 @@ export default function PosTerminal({
 
               {isCard && (
                 <div className="space-y-4">
-                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid var(--ghost-border)" }}>
                     <p style={{ fontSize: 12, color: "var(--on-surf-var)" }}>
                       Procesa el pago en el datáfono y confirma cuando el terminal indique APROBADO.
                     </p>
@@ -2865,7 +2865,7 @@ export default function PosTerminal({
 
               {isTransfer && (
                 <div className="space-y-4">
-                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                  <div style={{ background: "var(--surf-low)", padding: 10, borderRadius: "var(--r-md)", border: "1px solid var(--ghost-border)" }}>
                     <p style={{ fontSize: 12, color: "var(--on-surf-var)" }}>
                       Verifica que la transferencia se haya recibido antes de confirmar.
                     </p>
@@ -2904,7 +2904,7 @@ export default function PosTerminal({
                       style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
                     />
                   </div>
-                  <div className="flex items-center gap-2 mt-4" style={{ background: "var(--surf-high)", padding: 12, borderRadius: "var(--r-md)", border: "1px solid rgba(178,204,192,0.15)" }}>
+                  <div className="flex items-center gap-2 mt-4" style={{ background: "var(--surf-high)", padding: 12, borderRadius: "var(--r-md)", border: "1px solid var(--ghost-border)" }}>
                     <Switch checked={atratoApproved} onCheckedChange={setAtratoApproved} />
                     <Label style={{ fontSize: 11, color: "var(--on-surf)" }}>Confirmo que Atrato aprobó esta solicitud</Label>
                   </div>

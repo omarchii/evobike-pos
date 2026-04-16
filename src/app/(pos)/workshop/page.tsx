@@ -25,7 +25,10 @@ export default async function WorkshopPage() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    // Server component (async) — corre por request, no en render de React.
+    // eslint-disable-next-line react-hooks/purity
+    const nowMs = Date.now();
+    const threeDaysAgo = new Date(nowMs - 3 * 24 * 60 * 60 * 1000);
 
     // Run all queries in parallel
     const [serviceOrders, prepaidPendingCount, readyPendingChargeCount, revenueTodayAgg, recentDeliveries, pendingReensambles, prepaidOrdersWithItems, staleInProgress] = await Promise.all([
@@ -216,7 +219,7 @@ export default async function WorkshopPage() {
         folio: s.folio,
         customerName: s.customer.name,
         bikeInfo: s.bikeInfo,
-        days: Math.floor((Date.now() - new Date(s.updatedAt).getTime()) / (1000 * 60 * 60 * 24)),
+        days: Math.floor((nowMs - new Date(s.updatedAt).getTime()) / (1000 * 60 * 60 * 24)),
         technicianName: s.user.name,
     }));
 

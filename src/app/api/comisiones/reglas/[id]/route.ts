@@ -151,7 +151,6 @@ export async function DELETE(
       { status: 403 },
     );
   }
-  const branchId = rule.branchId;
 
   await prisma.commissionRule.update({
     where: { id },

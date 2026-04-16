@@ -239,7 +239,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
           className="grid gap-4 px-5 py-3"
           style={{
             gridTemplateColumns: "2fr 1fr 1fr 1fr",
-            borderBottom: "1px solid rgba(178,204,192,0.15)",
+            borderBottom: "1px solid var(--ghost-border)",
           }}
         >
           {["Descripción", "Cantidad", "Precio unitario", "Total"].map((h) => (
@@ -308,7 +308,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
         {/* Totals */}
         <div
           className="px-5 py-4 flex flex-col items-end gap-2"
-          style={{ borderTop: "1px solid rgba(178,204,192,0.15)" }}
+          style={{ borderTop: "1px solid var(--ghost-border)" }}
         >
           <div className="flex gap-8 items-center">
             <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>

@@ -21,7 +21,7 @@ export default async function WorkshopOrderPage(props: {
 }) {
   const params = await props.params;
   const session = await getServerSession(authOptions);
-  const { id: userId, branchId, role } = (session?.user as unknown as SessionUser) ?? {};
+  const { id: userId, role } = (session?.user as unknown as SessionUser) ?? {};
 
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },

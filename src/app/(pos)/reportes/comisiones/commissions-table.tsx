@@ -274,7 +274,7 @@ export function CommissionsTable({
             style={{
               background: "var(--surf-high)",
               color: "var(--on-surf)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
             }}
           />
         </div>
@@ -290,7 +290,7 @@ export function CommissionsTable({
             style={{
               background: "var(--surf-high)",
               color: "var(--on-surf)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
             }}
           />
         </div>
@@ -305,7 +305,7 @@ export function CommissionsTable({
             style={{
               background: "var(--surf-high)",
               color: "var(--on-surf)",
-              border: "1px solid rgba(178,204,192,0.15)",
+              border: "1px solid var(--ghost-border)",
             }}
           >
             <option value="">Todos</option>
@@ -328,7 +328,7 @@ export function CommissionsTable({
               style={{
                 background: "var(--surf-high)",
                 color: "var(--on-surf)",
-                border: "1px solid rgba(178,204,192,0.15)",
+                border: "1px solid var(--ghost-border)",
               }}
             >
               <option value="">Todos</option>
@@ -410,7 +410,7 @@ export function CommissionsTable({
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}>
+                <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
                   {canApprove && (
                     <th className="px-4 py-3 w-10">
                       <button

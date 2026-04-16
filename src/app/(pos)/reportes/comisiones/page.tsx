@@ -107,37 +107,36 @@ export default async function ComisionesPage({ searchParams }: PageProps): Promi
       : Promise.resolve([]),
   ]);
 
-  let totalPending = 0;
-  let totalApproved = 0;
-  let totalPaid = 0;
+  const rows: CommissionRow[] = records.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    userName: r.user.name,
+    userRole: r.user.role,
+    saleId: r.saleId,
+    saleFolio: r.sale.folio,
+    saleTotal: Number(r.sale.total),
+    amount: Number(r.amount),
+    status: r.status as CommissionRow["status"],
+    commissionType: r.rule.commissionType as CommissionRow["commissionType"],
+    ruleValue: Number(r.rule.value),
+    createdAt: r.createdAt.toISOString(),
+  }));
 
-  const rows: CommissionRow[] = records.map((r) => {
-    const amount = Number(r.amount);
-    if (r.status === "PENDING") totalPending += amount;
-    else if (r.status === "APPROVED") totalApproved += amount;
-    else if (r.status === "PAID") totalPaid += amount;
+  const totals = rows.reduce(
+    (acc, r) => {
+      if (r.status === "PENDING") acc.pending += r.amount;
+      else if (r.status === "APPROVED") acc.approved += r.amount;
+      else if (r.status === "PAID") acc.paid += r.amount;
+      return acc;
+    },
+    { pending: 0, approved: 0, paid: 0 },
+  );
 
-    return {
-      id: r.id,
-      userId: r.userId,
-      userName: r.user.name,
-      userRole: r.user.role,
-      saleId: r.saleId,
-      saleFolio: r.sale.folio,
-      saleTotal: Number(r.sale.total),
-      amount,
-      status: r.status as CommissionRow["status"],
-      commissionType: r.rule.commissionType as CommissionRow["commissionType"],
-      ruleValue: Number(r.rule.value),
-      createdAt: r.createdAt.toISOString(),
-    };
-  });
-
-  const round = (n: number) => Math.round(n * 100) / 100;
+  const round = (n: number): number => Math.round(n * 100) / 100;
   const kpis: CommissionKpis = {
-    totalPending: round(totalPending),
-    totalApproved: round(totalApproved),
-    totalPaid: round(totalPaid),
+    totalPending: round(totals.pending),
+    totalApproved: round(totals.approved),
+    totalPaid: round(totals.paid),
   };
 
   const userOptions: UserOption[] = sellers.map((s) => ({

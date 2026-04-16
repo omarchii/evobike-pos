@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Banknote,
   Clock,
@@ -101,7 +101,7 @@ const TX_TYPE_LABELS: Record<string, string> = {
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surf-low)",
-  border: "1px solid rgba(178, 204, 192, 0.15)",
+  border: "1px solid var(--ghost-border)",
   borderRadius: "var(--r-md)",
   color: "var(--on-surf)",
   fontFamily: "var(--font-body)",
@@ -138,7 +138,6 @@ export function CashReport({
   currentFilters,
 }: CashReportProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [fromDate, setFromDate] = useState(currentFilters.from);
@@ -457,7 +456,7 @@ function SessionCard({ session: s }: { session: SessionRow }) {
                           textTransform: "uppercase",
                           color: "var(--on-surf-var)",
                           padding: "0.4rem 0.6rem",
-                          borderBottom: "1px solid rgba(178, 204, 192, 0.15)",
+                          borderBottom: "1px solid var(--ghost-border)",
                           textAlign: "left",
                           fontFamily: "var(--font-body)",
                           background: "var(--surf-high)",

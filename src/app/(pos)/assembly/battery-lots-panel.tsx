@@ -138,7 +138,7 @@ export function BatteryLotsPanel({ initialLots, batteryVariants }: Props): React
             className="grid items-center px-4 py-3"
             style={{
               gridTemplateColumns: "1fr 1fr 1fr 120px 96px 96px 32px",
-              borderBottom: "1px solid rgba(178,204,192,0.15)",
+              borderBottom: "1px solid var(--ghost-border)",
             }}
           >
             {["Referencia / Proveedor", "Tipo", "Registrado por", "Fecha", "Total", "Disponibles", ""].map((h) => (
