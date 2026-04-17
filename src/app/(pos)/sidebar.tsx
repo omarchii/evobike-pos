@@ -27,6 +27,7 @@ import {
     AlertTriangle,
     TrendingUp,
     ArrowUpDown,
+    Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ const routes: RouteGroup[] = [
             { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
             { label: "Comisiones", href: "/reportes/comisiones" },
             { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
+            { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
             { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
             { label: "Movimientos de inventario", href: "/reportes/inventario/movimientos", roles: ["MANAGER", "ADMIN"] },
         ],
@@ -88,6 +90,7 @@ const SUB_ICONS: Record<string, React.ElementType> = {
     "/reportes/caja/historial": ClipboardList,
     "/reportes/comisiones": CircleDollarSign,
     "/reportes/ventas-vendedor": TrendingUp,
+    "/reportes/clientes": Wallet,
     "/reportes/inventario/stock-minimo": AlertTriangle,
     "/reportes/inventario/movimientos": ArrowUpDown,
 };

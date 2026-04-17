@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3)  
+Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -545,10 +545,26 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `getModeloVoltaje()`: discrimina por número de `productVariantId` únicos (mixto → "Mixto").
 - `getPaymentLabel()`: un método → label español; varios → "MIXTO".
 
-### P10-B — Estado de cuenta por cliente
-Historial completo de compras por cliente.
-Saldo pendiente de apartados activos.
-Cotizaciones vinculadas.
+### P10-B — Estado de cuenta por cliente ✅ (Lote 4 — 2026-04-16)
+- Dos niveles: **Nivel 1** `/reportes/clientes` (lista agregada) + **Nivel 2** `/reportes/clientes/[id]` (detalle por cliente). Roles: `SELLER + MANAGER + ADMIN`.
+- **Branch scoping para clientes globales**: `Customer` no tiene `branchId`. Para SELLER/MANAGER se resuelve el universo de clientes vía subqueries `Sale.findMany({ distinct: ["customerId"], where: branchFilter })` + equivalente en `Quotation`, union en `Set<string>`. ADMIN puede filtrar por sucursal. No se exponen compras del cliente en otras sucursales.
+- **Nivel 1 — Lista agregada**:
+  - Filtros URL: `q` (nombre/teléfono/email/phone2 con `contains insensitive`), `branchId` (ADMIN), `hasPending` (solo saldo pendiente > 0).
+  - Ordenado por saldo pendiente desc, desempate por última actividad desc.
+  - KPIs: clientes con actividad, apartados activos, saldo pendiente total, saldo a favor acumulado.
+  - Agregados N+1-safe: `Sale.groupBy by customerId` (COMPLETED count + sum total), `Sale.findMany LAYAWAY` con `payments: { where: { type: "PAYMENT_IN" } }` para saldo pendiente, `Sale.groupBy _max createdAt` para última actividad. 3 queries constantes, no N queries por cliente.
+  - CSV client-side con `downloadCSV` (Lote 1).
+  - `Customer.creditLimit` **no se muestra** — campo sin flujo activo; exponerlo confunde. Se deja en schema sin tocar.
+- **Nivel 2 — Detalle por cliente**:
+  - Cabecera: nombre, teléfono(s), email, RFC, saldo a favor (badge verde solo si > 0).
+  - Secciones: **Compras** (COMPLETED + CANCELLED, link a `/ventas/[id]`) y **Apartados activos** (LAYAWAY, link a `/pedidos/[id]`).
+  - Cancelaciones: visibles con badge "Cancelada" + monto tachado; **no suman** en summary de compras ni en KPIs. Nota al pie explica la regla.
+  - Apartados: `pendiente = Math.max(0, total - Σ CashTransaction(PAYMENT_IN).amount)` — patrón de `pedido-detalle.tsx:110`. Último abono = `max(createdAt)` de los PAYMENT_IN.
+  - `getItemsResumen()`: polimórfico variant/simple/free-form — un variant → `modelo voltaje`, varios → "Mixto", simple único → `simpleProduct.nombre`, varios simples → "Varios productos", free-form → `description`.
+  - Filtro rango de fechas con `parseDateRange` (Lote 1). **Default sin filtro** — solo se aplica si la URL trae `from`/`to`; el botón "Limpiar rango" reinicia.
+  - CSV combinado (compras + apartados) con shape uniforme: columna `Sección` discrimina, campos no aplicables quedan vacíos. Nombre del archivo = `estado-cuenta-{cliente}-{rango|historial}.csv`.
+- **Fuera de alcance v1** (decisiones cerradas): cotizaciones (ya viven en `/customers/[id]` P7-D), `creditLimit` (sin flujo), `ServiceOrder` (las cobradas son Sales con `serviceOrderId` y aparecen en compras).
+- Sidebar: "Estado de cuenta" → `/reportes/clientes`, icon `Wallet`, **todos los roles** (SELLER+MANAGER+ADMIN).
 
 ### P10-C — Rentabilidad por producto
 Precio venta vs. precio mayorista de compra (desde `inventory/receipts` enriquecido P4).
