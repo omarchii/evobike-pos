@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-17 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4 + Lote 5 + Lote 6)  
+Última actualización: 2026-04-17 (P10 completo — Lote 7: P10-I Reporte anual)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -514,7 +514,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 
 ---
 
-## FASE P10 — Reportes expandidos
+## FASE P10 — Reportes expandidos ✅ (Completo — 2026-04-17)
 **Modelo: Sonnet | Dependencias: P4 para rentabilidad**
 
 ### Infraestructura compartida P10 ✅ (Lote 1 — 2026-04-16)
@@ -638,9 +638,25 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - CSV export.
 - Ordenado por `quantity − stockMinimo` asc (más urgente primero).
 
-### P10-I — Reporte anual
-KPIs por mes: ingresos, gastos operativos, compras al proveedor, margen neto.
-Comparativa entre sucursales (solo ADMIN).
+### P10-I — Reporte anual ✅ (Lote 7 — 2026-04-17)
+**Ruta:** `/reportes/anual` — ADMIN only. Sin filtro de sucursal (cross-branch siempre).
+
+**Fuentes (sin doble conteo):**
+- Ingresos: `Sale(status=COMPLETED)` → `total`
+- Gastos no-efectivo: `OperationalExpense(metodoPago IN CARD|TRANSFER|CREDIT_BALANCE, isAnulado=false)` → `monto`
+- Gastos efectivo: `CashTransaction(type=EXPENSE_OUT)` → `amount`
+- Compras (informativo): `PurchaseReceipt` → `totalPagado`
+
+**Margen operativo** = Ingresos − (Gastos no-efectivo + Gastos efectivo). Compras NO restan del margen (CapEx, no OpEx).
+
+**UI:** 5 KPI cards · toggle comparativa/consolidado · gráfica de barras CSS · tabla con tfoot TOTAL · CSV export.
+
+**Filtros URL:** `?year=2026&view=comparativa|consolidado`.
+
+- **Deuda conocida (P10-I — Lote 7):**
+  - **Agregación en memoria (opción A)**: `findMany` + `Map` en lugar de `$queryRaw` con `DATE_TRUNC`. Correcto hasta ~10k registros/año. Si el volumen crece, migrar a raw SQL con `DATE_TRUNC('month', "createdAt") AT TIME ZONE 'America/Merida'`.
+  - **Años disponibles hardcodeados**: los últimos 5 años se calculan desde el año actual, no desde datos reales. Si se necesita más granularidad, derivar con `SELECT DISTINCT EXTRACT(YEAR FROM "createdAt") FROM "Sale"`.
+  - **ATRATO excluido de OperationalExpense**: gastos con `metodoPago=ATRATO` no se incluyen en gastos operativos del reporte. Si el cliente usa ATRATO para gastos op., agregar `ATRATO` al filtro `metodoPago`.
 
 ### Archivos clave
 - `src/app/api/reportes/` (nuevas sub-rutas)
