@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4)  
+Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4 + Lote 5)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -525,7 +525,9 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `branch-scope.ts` — `branchWhere(session, filterBranchId?)` → `{ branchId?: string }`.
 - `date-range.ts` — `parseDateRange`, `getDefaultDateRange`, `toDateString`. El `to` se ajusta a 23:59:59.999.
 - `types.ts` — `ReportKPI`, `ReportFilters`, `ReportRow`.
-- `cost-resolver.ts` — stub de tipos `ResolvedCost`/`CostSource` para Lote 5 (P10-C/D).
+- `cost-resolver.ts` — `resolveCostsBatch(variantIds, simpleIds)`: resolución global en 3 pasos (PURCHASE_RECEIPT desc → catálogo → NONE). Implementado en Lote 5.
+- `line-revenue.ts` — `computeLineRevenues(sale)`: prorrateo de `Sale.discount` proporcional al peso de cada línea. `revenueNeto = revenueConIva / 1.16`. Implementado en Lote 5.
+- `money.ts` — agrega `IVA_RATE = 0.16` (Lote 5).
 
 `src/app/(pos)/reportes/_components/` — 6 componentes:
 - `ReportHeader` — título + icono + filtros + acciones.
@@ -566,13 +568,27 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - **Fuera de alcance v1** (decisiones cerradas): cotizaciones (ya viven en `/customers/[id]` P7-D), `creditLimit` (sin flujo), `ServiceOrder` (las cobradas son Sales con `serviceOrderId` y aparecen en compras).
 - Sidebar: "Estado de cuenta" → `/reportes/clientes`, icon `Wallet`, **todos los roles** (SELLER+MANAGER+ADMIN).
 
-### P10-C — Rentabilidad por producto
-Precio venta vs. precio mayorista de compra (desde `inventory/receipts` enriquecido P4).
-Margen por unidad y por categoría.
+### P10-C — Rentabilidad por producto ✅ (Lote 5 — 2026-04-16)
+- Ruta: `/reportes/rentabilidad` (MANAGER + ADMIN).
+- Fuente: `Sale(COMPLETED)` + `SaleItem` en el rango de fechas + `resolveCostsBatch` global (último RECEIPT → catálogo).
+- Procesamiento: `computeLineRevenues(sale)` por cada venta → prorrateo de `Sale.discount` → `revenueNeto = revenueConIva / 1.16`. Agrega por producto (key `v:{id}` / `s:{id}`). Líneas libres (`isFreeForm` o sin FK) → excluidas del margen, contadas en KPI.
+- KPIs: revenue neto total, costo total, margen bruto ($), margen % ponderado, líneas libres (informativo).
+- Columnas: tipo (badge), código, nombre, unidades, revenue neto, costo total + badge fuente (RECEIPT verde / CATALOG amarillo / NONE rojo), margen $ (coloreado), margen %, ticket promedio.
+- Filtros URL: `from`, `to` (default mes actual), `branchId` (ADMIN), `kind`, `sort` (margen-desc/asc, revenue-desc, unidades-desc). Búsqueda `q` en cliente.
+- Disclaimer en header: "Estimación operativa — costo resuelto por último precio pagado a proveedor, con fallback al costo de catálogo. Líneas libres excluidas del margen."
+- CSV client-side `rentabilidad-productos.csv`.
+- Sidebar: "Rentabilidad por producto", icon `TrendingUp`, roles MANAGER+ADMIN.
+- **Diagnóstico de descuentos** (`prisma/diagnostic-p10c-discount.ts`): BD actual tiene 1 venta COMPLETED, 0 con `Sale.discount > 0`, 0 `SaleItem.discount > 0`. Prorrateo neutral en datos actuales.
 
-### P10-D — Valor de inventario
-Cantidad en stock × precio mayorista = costo del inventario actual por sucursal.
-Requiere `precioMayorista` en `SimpleProduct` y `ProductVariant`.
+### P10-D — Valor de inventario ✅ (Lote 5 — 2026-04-16)
+- Ruta: `/reportes/inventario/valor` (MANAGER + ADMIN).
+- Fuente: `Stock(quantity > 0)` + `resolveCostsBatch` global. Incluye productos inactivos si tienen stock.
+- KPIs: valor total (Velocity Gradient), valor vehículos, valor simples, productos distintos, sucursales con stock (ADMIN).
+- Columnas: sucursal (ADMIN), tipo, código, nombre, stock, costo unitario + badge fuente, valor total.
+- Filtros URL: `branchId` (ADMIN), `kind`, `costSource` (receipt/catalog/none/all), `q`. Todos client-side excepto `branchId`.
+- Orden default: valor total desc. `<tfoot>` con total del subconjunto filtrado.
+- CSV client-side `valor-inventario.csv`.
+- Sidebar: "Valor de inventario", icon `Coins`, roles MANAGER+ADMIN.
 
 ### P10-E — Movimientos de inventario ✅ (Lote 3 — 2026-04-16)
 - Ruta: `/reportes/inventario/movimientos` (MANAGER + ADMIN).

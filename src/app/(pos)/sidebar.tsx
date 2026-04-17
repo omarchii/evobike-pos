@@ -28,6 +28,7 @@ import {
     TrendingUp,
     ArrowUpDown,
     Wallet,
+    Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -73,12 +74,14 @@ const routes: RouteGroup[] = [
         children: [
             { label: "Historial de Ventas", href: "/ventas" },
             { label: "Caja", href: "/reportes/caja", roles: ["MANAGER", "ADMIN"] },
-            { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
             { label: "Comisiones", href: "/reportes/comisiones" },
-            { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
-            { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
-            { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
             { label: "Movimientos de inventario", href: "/reportes/inventario/movimientos", roles: ["MANAGER", "ADMIN"] },
+            { label: "Valor de inventario", href: "/reportes/inventario/valor", roles: ["MANAGER", "ADMIN"] },
+            { label: "Rentabilidad por producto", href: "/reportes/rentabilidad", roles: ["MANAGER", "ADMIN"] },
+            { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
+            { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
+            { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
+            { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
         ],
     },
     { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
@@ -93,6 +96,8 @@ const SUB_ICONS: Record<string, React.ElementType> = {
     "/reportes/clientes": Wallet,
     "/reportes/inventario/stock-minimo": AlertTriangle,
     "/reportes/inventario/movimientos": ArrowUpDown,
+    "/reportes/inventario/valor": Coins,
+    "/reportes/rentabilidad": TrendingUp,
 };
 
 export default function Sidebar({ user }: { user: UserProp }) {
