@@ -30,6 +30,7 @@ import {
     Wallet,
     Coins,
     Truck,
+    CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ const routes: RouteGroup[] = [
             { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
             { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
             { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
+            { label: "Reporte anual", href: "/reportes/anual", roles: ["ADMIN"] },
         ],
     },
     { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
@@ -101,6 +103,7 @@ const SUB_ICONS: Record<string, React.ElementType> = {
     "/reportes/inventario/valor": Coins,
     "/reportes/rentabilidad": TrendingUp,
     "/reportes/compras-proveedor": Truck,
+    "/reportes/anual": CalendarRange,
 };
 
 export default function Sidebar({ user }: { user: UserProp }) {
