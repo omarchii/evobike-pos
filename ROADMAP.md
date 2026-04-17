@@ -664,30 +664,30 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 
 ---
 
-## FASE P11 — Seguimiento de mantenimientos
-**Modelo: Sonnet | Sin schema nuevo | Dependencias: ninguna**
+## FASE P11 — Seguimiento de mantenimientos ✅ 2026-04-17
+**Modelo: Sonnet | Schema: `ServiceCatalog.esMantenimiento` (aditivo) | Dependencias: ninguna**
 
-Ruta: `/mantenimientos` (TECHNICIAN + MANAGER + ADMIN).
+> **Decisión de fusión:** integrado como tab dentro de `/workshop`, NO módulo independiente. Sin ítem nuevo en sidebar. Diseño cerrado con Opus.
 
-> ⚠️ **Antes de empezar:** evaluar fusionar con Taller Mecánico (tab "Mantenimientos" dentro de `/workshop`) en lugar de módulo independiente. Ambos viven sobre `ServiceOrder` + `CustomerBike` y comparten audiencia. Si se fusiona, no se agrega ítem al sidebar — queda como tab junto al Kanban actual.
+### Ruta final
+`/workshop/mantenimientos` (TECHNICIAN + MANAGER + ADMIN). SELLER es redirigido a `/workshop`.
 
-### Lógica
-- Query cruza `CustomerBike` + `Sale` (fecha de compra) + `ServiceOrder` (último servicio `DELIVERED`)
-- Regla: primer mantenimiento a 6 meses de la venta; subsecuentes a 6 meses del último `ServiceOrder` completado
-- Sin mantenimiento en 6 meses = póliza en riesgo
+### Lógica implementada
+- Solo `CustomerBike` con `AssemblyOrder.saleId` → `Sale` (no CANCELLED). Bicis sin venta origen no aparecen.
+- Solo cuenta como mantenimiento: `ServiceOrder` con `status = DELIVERED` + al menos un `ServiceOrderItem` con `serviceCatalog.esMantenimiento = true`.
+- `base = último mantenimiento ?? fecha de compra`. `próximo = base + 6 meses`.
+- 🔴 Vencido: `hoy > próximo`. 🟡 Por vencer: `0 ≤ diff ≤ 30d`. 🟢 Al corriente: `diff > 30d`.
+- Ordenado por `diasRestantes` ASC (más urgente primero).
 
-### UI
-- Tabla con semáforo:
-  - 🔴 Vencido — más de 6 meses sin mantenimiento
-  - 🟡 Por vencer — faltan ≤ 30 días
-  - 🟢 Al corriente — mantenimiento reciente
-- Por unidad: cliente, teléfono, modelo, VIN, fecha compra, último mantenimiento, próximo estimado
-- Botón "Crear orden de taller" directo desde la tabla
-- Filtros: sucursal, estado del semáforo, rango de fechas
-
-### Archivos clave
-- `src/app/(pos)/mantenimientos/page.tsx` (nueva)
-- No requiere API Route nueva — query en Server Component
+### Archivos creados / modificados
+- `prisma/schema.prisma` — `ServiceCatalog.esMantenimiento Boolean @default(false)` (nueva columna)
+- `prisma/migrations/20260417063503_add_mantenimiento_flag_to_service_catalog/migration.sql`
+- `src/app/api/configuracion/servicios/route.ts` — POST acepta `esMantenimiento`
+- `src/app/api/configuracion/servicios/[id]/route.ts` — PATCH acepta `esMantenimiento`
+- `src/app/(pos)/configuracion/servicios/servicios-manager.tsx` — checkbox + badge Mtto
+- `src/app/(pos)/workshop/layout.tsx` — tabs Kanban | Mantenimientos (nuevo)
+- `src/app/(pos)/workshop/mantenimientos/page.tsx` — Server Component con query + post-procesamiento
+- `src/app/(pos)/workshop/mantenimientos/mantenimientos-table.tsx` — Client Component (KPIs, filtros, tabla, CSV)
 
 ---
 ## P12 — Inventario cross-branch + Transferencias entre sucursales
