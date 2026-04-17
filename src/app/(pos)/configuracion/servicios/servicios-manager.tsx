@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Power } from "lucide-react";
+import { Plus, Pencil, Power, Wrench } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,7 @@ interface ServiceRow {
   name: string;
   basePrice: number;
   isActive: boolean;
+  esMantenimiento: boolean;
   branchId: string;
   branchCode: string | null;
   branchName: string | null;
@@ -65,6 +66,7 @@ const upsertSchema = z.object({
   name: z.string().min(1, "Nombre requerido"),
   basePrice: z.number({ error: "Precio ≥ 0" }).nonnegative("Precio ≥ 0"),
   branchId: z.string().uuid("Selecciona una sucursal"),
+  esMantenimiento: z.boolean(),
 });
 type UpsertValues = z.infer<typeof upsertSchema>;
 
@@ -277,7 +279,21 @@ function Table({
               key={s.id}
               style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
             >
-              <td className="px-5 py-3 text-[var(--on-surf)]">{s.name}</td>
+              <td className="px-5 py-3 text-[var(--on-surf)]">
+                <span className="inline-flex items-center gap-2">
+                  {s.name}
+                  {s.esMantenimiento && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-[0.04em]"
+                      style={{ background: "var(--p-container)", color: "var(--on-p-container)" }}
+                      title="Cuenta como mantenimiento"
+                    >
+                      <Wrench className="h-3 w-3" />
+                      Mtto
+                    </span>
+                  )}
+                </span>
+              </td>
               <td className="px-5 py-3 text-right font-medium text-[var(--on-surf)]">
                 {currency(s.basePrice)}
               </td>
@@ -359,6 +375,7 @@ function ServiceDialog({
       name: service?.name ?? "",
       basePrice: service?.basePrice ?? 0,
       branchId: defaultBranchId,
+      esMantenimiento: service?.esMantenimiento ?? false,
     },
   });
 
@@ -373,7 +390,7 @@ function ServiceDialog({
       const body =
         mode === "create"
           ? values
-          : { name: values.name, basePrice: values.basePrice };
+          : { name: values.name, basePrice: values.basePrice, esMantenimiento: values.esMantenimiento };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -447,12 +464,29 @@ function ServiceDialog({
                 ))}
               </select>
               {errors.branchId && (
-                <p className="text-xs mt-1" style={{ color: "#dc2626" }}>
+                <p className="text-xs mt-1" style={{ color: "var(--ter)" }}>
                   {errors.branchId.message}
                 </p>
               )}
             </div>
           )}
+          <label
+            className="flex items-center gap-3 cursor-pointer select-none"
+            style={{
+              padding: "0.75rem",
+              borderRadius: "var(--r-md)",
+              background: "var(--surf-low)",
+            }}
+          >
+            <input
+              type="checkbox"
+              {...register("esMantenimiento")}
+              className="h-4 w-4 rounded accent-[var(--p-bright)]"
+            />
+            <span className="text-sm" style={{ color: "var(--on-surf)" }}>
+              Contar como mantenimiento (para seguimiento de pólizas)
+            </span>
+          </label>
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"

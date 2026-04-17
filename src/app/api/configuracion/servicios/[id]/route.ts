@@ -18,6 +18,7 @@ const patchSchema = z.object({
   name: z.string().min(1).optional(),
   basePrice: z.number().nonnegative().optional(),
   isActive: z.boolean().optional(),
+  esMantenimiento: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -80,6 +81,7 @@ export async function PATCH(
       name: updated.name,
       basePrice: Number(updated.basePrice),
       isActive: updated.isActive,
+      esMantenimiento: updated.esMantenimiento,
       branchId: updated.branchId,
       branchCode: updated.branch?.code ?? null,
       branchName: updated.branch?.name ?? null,

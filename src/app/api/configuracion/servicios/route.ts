@@ -49,6 +49,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     name: s.name,
     basePrice: Number(s.basePrice),
     isActive: s.isActive,
+    esMantenimiento: s.esMantenimiento,
     branchId: s.branchId,
     branchCode: s.branch?.code ?? null,
     branchName: s.branch?.name ?? null,
@@ -61,6 +62,7 @@ const createSchema = z.object({
   name: z.string().min(1, "Nombre requerido"),
   basePrice: z.number().nonnegative("El precio debe ser ≥ 0"),
   branchId: z.string().uuid().optional(),
+  esMantenimiento: z.boolean().optional().default(false),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -116,6 +118,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       name: parsed.data.name,
       basePrice: parsed.data.basePrice,
       branchId,
+      esMantenimiento: parsed.data.esMantenimiento,
     },
     include: { branch: { select: { id: true, code: true, name: true } } },
   });
@@ -127,6 +130,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       name: created.name,
       basePrice: Number(created.basePrice),
       isActive: created.isActive,
+      esMantenimiento: created.esMantenimiento,
       branchId: created.branchId,
       branchCode: created.branch?.code ?? null,
       branchName: created.branch?.name ?? null,

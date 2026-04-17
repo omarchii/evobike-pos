@@ -62,6 +62,7 @@ export default async function ServiciosPage({
           name: s.name,
           basePrice: Number(s.basePrice),
           isActive: s.isActive,
+          esMantenimiento: s.esMantenimiento,
           branchId: s.branchId,
           branchCode: s.branch?.code ?? null,
           branchName: s.branch?.name ?? null,
