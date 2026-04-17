@@ -699,10 +699,51 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 
   ---
 
+## PRE-FASE 6 — Orden de trabajo acordado
+
+Decisión tomada 2026-04-17. El orden correcto antes de entrar a Fase 6 es:
+
+**Paso 1 — Fix timezone global (1 sesión Sonnet)**
+Resolver ANTES del rediseño UI. Si se rediseñan reportes y vistas de ventas con el bug activo, los datos visibles durante desarrollo son incorrectos y hay que reverificar cada vista dos veces.
+- Reemplazar `new Date("YYYY-MM-DD")` por `parseDateRange` / `parseLocalDate` de `src/lib/reportes/date-range.ts`
+- Archivos identificados: `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`
+- También incluir KPIs `fechaVencimiento` en `reportes/compras-proveedor/page.tsx`
+- Una pasada mecánica, sin decisiones de diseño
+
+**Paso 2 — Rediseño UI (múltiples sesiones Sonnet)**
+Consultar `DESIGN.md` antes de cada sesión.
+La deuda de ghost-border Parte 2 (47 instancias) se resuelve naturalmente módulo a módulo durante este paso, no requiere sesión separada.
+
+Orden de módulos (shell → adentro, riesgo ascendente):
+1. Layout shell: `(pos)/layout.tsx` + `sidebar.tsx`
+2. Módulo de referencia: `/reportes/*` (subagentes OK, uno por reporte)
+3. Dashboard / Home
+4. Taller `/workshop` (incluye sub-layout de tabs)
+5. Clientes
+6. Inventario (recepciones, stock, movimientos)
+7. Tesorería
+8. Autorizaciones
+9. Configuración
+10. Catálogo
+11. POS Terminal — ÚLTIMO, sesión aislada, sin subagentes, máximo riesgo de regresión
+
+Regla por módulo: una sesión de Claude Code por módulo. No mezclar dos módulos en la misma sesión.
+UI = solo CSS/tokens. Si el cambio requiere lógica, orden de pasos o datos distintos, es UX — documentar como ítem separado antes de implementar.
+
+**Paso 3 — Fase 6 completa (Opus + deploy)**
+Una vez que el código UI esté estable y limpio.
+Ver sección FASE 6 más abajo para el detalle completo.
+
+---
+
 ## FASE 6 — Hardening y Producción
 **Modelo: Opus | Dependencias: TODO lo anterior**
 
+> **Nota 2026-04-17:** El timezone fix y el ghost-border Parte 2 se ejecutan en el bloque Pre-Fase 6 (ver sección anterior). Fase 6 arranca con esas dos deudas ya cerradas.
+
 ### Tareas
+- Fix timezone global ✅ (resuelto en Pre-Fase 6 Paso 1)
+- Ghost-border Parte 2 ✅ (resuelto durante rediseño UI)
 - Tests de integración: flujos de caja, ventas, montaje, autorización
 - Rate limiting en API Routes
 - Headers de seguridad: CSP, HSTS, X-Frame-Options

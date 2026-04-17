@@ -43,6 +43,12 @@ model User {
   operationalExpensesRegistered OperationalExpense[] @relation("OperationalExpenseRegistradoPor")
   operationalExpensesAnulled    OperationalExpense[] @relation("OperationalExpenseAnuladoPor")
   bankBalanceSnapshots          BankBalanceSnapshot[] @relation("BankBalanceSnapshotRegistradoPor")
+
+  transfersCreadas     StockTransfer[] @relation("TransferCreada")
+  transfersAutorizadas StockTransfer[] @relation("TransferAutorizada")
+  transfersDespachadas StockTransfer[] @relation("TransferDespachada")
+  transfersRecibidas   StockTransfer[] @relation("TransferRecibida")
+  transfersCanceladas  StockTransfer[] @relation("TransferCancelada")
 }
 
 model Branch {
@@ -88,6 +94,9 @@ model Branch {
   purchaseReceipts      PurchaseReceipt[]
   authorizationRequests AuthorizationRequest[]
   operationalExpenses   OperationalExpense[]
+
+  transferenciasEnviadas  StockTransfer[] @relation("TransferenciasSalientes")
+  transferenciasRecibidas StockTransfer[] @relation("TransferenciasEntrantes")
 }
 
 // === CATALOG & INVENTORY ===
@@ -172,11 +181,12 @@ model ProductVariant {
   serviceOrderItems  ServiceOrderItem[]
   inventoryMovements InventoryMovement[]
 
-  batteryLots    BatteryLot[]
-  batteryConfigs BatteryConfiguration[] @relation("ConfiguredBattery")
-  assemblyOrders AssemblyOrder[]
-  customerBikes  CustomerBike[]
-  quotationItems QuotationItem[]
+  batteryLots        BatteryLot[]
+  batteryConfigs     BatteryConfiguration[] @relation("ConfiguredBattery")
+  assemblyOrders     AssemblyOrder[]
+  customerBikes      CustomerBike[]
+  quotationItems     QuotationItem[]
+  stockTransferItems StockTransferItem[]
 
   @@unique([modelo_id, color_id, voltaje_id])
   @@map("ModeloConfiguracion")
@@ -430,6 +440,7 @@ model CustomerBike {
 
   batteryAssignments BatteryAssignment[]
   assemblyOrders     AssemblyOrder[]
+  stockTransferItems StockTransferItem[]
 
   @@unique([serialNumber, branchId])
 }
@@ -572,6 +583,7 @@ enum BatteryStatus {
   INSTALLED
   DEFECTIVE
   WARRANTY_REVIEW
+  IN_TRANSIT
 }
 
 enum AssemblyStatus {
@@ -624,9 +636,10 @@ model Battery {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  lot         BatteryLot          @relation(fields: [lotId], references: [id])
-  branch      Branch              @relation(fields: [branchId], references: [id])
-  assignments BatteryAssignment[]
+  lot                BatteryLot          @relation(fields: [lotId], references: [id])
+  branch             Branch              @relation(fields: [branchId], references: [id])
+  assignments        BatteryAssignment[]
+  stockTransferItems StockTransferItem[]
 }
 
 model AssemblyOrder {
@@ -799,6 +812,7 @@ model SimpleProduct {
   batteryLots        BatteryLot[]
   saleItems          SaleItem[]
   serviceOrderItems  ServiceOrderItem[]
+  stockTransferItems StockTransferItem[]
 
   @@index([categoria, isActive])
   @@index([modeloAplicable])
@@ -937,4 +951,73 @@ model BankBalanceSnapshot {
   createdAt     DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// === TRANSFERENCIAS ENTRE SUCURSALES (Fase P12) ===
+enum StockTransferStatus {
+  SOLICITADA
+  BORRADOR
+  EN_TRANSITO
+  RECIBIDA
+  CANCELADA
+}
+
+model StockTransfer {
+  id           String              @id @default(cuid())
+  folio        String              @unique
+  fromBranchId String
+  toBranchId   String
+  status       StockTransferStatus @default(BORRADOR)
+
+  creadoPor         String
+  autorizadoPor     String?
+  autorizadoAt      DateTime?
+  despachadoPor     String?
+  despachadoAt      DateTime?
+  recibidoPor       String?
+  recibidoAt        DateTime?
+  canceladoPor      String?
+  canceladoAt       DateTime?
+  motivoCancelacion String?
+
+  notas String?
+  items StockTransferItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fromBranch        Branch @relation("TransferenciasSalientes", fields: [fromBranchId], references: [id])
+  toBranch          Branch @relation("TransferenciasEntrantes", fields: [toBranchId], references: [id])
+  creadoPorUser     User   @relation("TransferCreada", fields: [creadoPor], references: [id])
+  autorizadoPorUser User?  @relation("TransferAutorizada", fields: [autorizadoPor], references: [id])
+  despachadoPorUser User?  @relation("TransferDespachada", fields: [despachadoPor], references: [id])
+  recibidoPorUser   User?  @relation("TransferRecibida", fields: [recibidoPor], references: [id])
+  canceladoPorUser  User?  @relation("TransferCancelada", fields: [canceladoPor], references: [id])
+
+  @@index([fromBranchId, status])
+  @@index([toBranchId, status])
+  @@index([createdAt])
+}
+
+model StockTransferItem {
+  id         String @id @default(cuid())
+  transferId String
+
+  productVariantId String?
+  simpleProductId  String?
+  batteryId        String?
+  customerBikeId   String?
+
+  cantidadEnviada  Int
+  cantidadRecibida Int?
+
+  transfer       StockTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
+  simpleProduct  SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
+  battery        Battery?        @relation(fields: [batteryId], references: [id])
+  customerBike   CustomerBike?   @relation(fields: [customerBikeId], references: [id])
+
+  @@index([transferId])
+  @@index([batteryId])
+  @@index([customerBikeId])
 }

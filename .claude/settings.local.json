@@ -23,7 +23,15 @@
       "Bash(git -C /Users/omarchi/Developer/evobike-pos commit -m ' *)",
       "Bash(git -C /Users/omarchi/Developer/evobike-pos add ROADMAP.md)",
       "Bash(git *)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(npx next *)",
+      "Bash(node_modules/.bin/next lint *)",
+      "Bash(node_modules/.bin/next --version)",
+      "Bash(node_modules/.bin/eslint src/ --max-warnings=0)",
+      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/autorizar)",
+      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/despachar)",
+      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/recibir)",
+      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/cancelar)"
     ]
   }
 }

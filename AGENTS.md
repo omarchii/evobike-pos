@@ -257,6 +257,19 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 
 **Fuente de verdad:** `ROADMAP.md`. Esta tabla es un espejo resumido para navegación rápida; actualizar ambos al cerrar una fase.
 
+### Orden de trabajo acordado post-P11 (2026-04-17)
+
+1. Fix timezone global → 1 sesión Sonnet, mecánica
+2. Rediseño UI completo → múltiples sesiones Sonnet, orden definido en ROADMAP.md sección Pre-Fase 6
+3. Fase 6 → Opus + deploy
+
+**Distinción UI vs UX (para sesiones de rediseño):**
+- UI: cambios resolubles solo con CSS/tokens → Sonnet, bajo riesgo, sin diseño previo en chat
+- UX: cambios que afectan flujo, orden de pasos o información mostrada → diseñar en chat con Opus antes de implementar, documentar decisión en AGENTS.md
+
+**Regla de sesión para rediseño UI:**
+Un módulo por sesión de Claude Code. Leer `DESIGN.md` al inicio de cada sesión. `npm run lint` y `npm run build` limpios antes de commit. Verificar light mode y dark mode manualmente antes de commitear cualquier cambio visual.
+
 ### Reglas del módulo de montaje (2H)
 
 - **Permisos**: Todos los roles pueden crear órdenes de montaje. Solo TECHNICIAN, MANAGER y ADMIN pueden completarlas.
