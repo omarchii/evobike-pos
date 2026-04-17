@@ -27,6 +27,7 @@ import {
     AlertTriangle,
     TrendingUp,
     ArrowUpDown,
+    ArrowLeftRight,
     Wallet,
     Coins,
     Truck,
@@ -69,6 +70,7 @@ const routes: RouteGroup[] = [
     { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
     { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },
+    { label: "Transferencias", icon: ArrowLeftRight, href: "/transferencias", roles: ["SELLER", "MANAGER", "ADMIN"] },
     { label: "Autorizaciones", icon: ShieldCheck, href: "/autorizaciones", roles: ["MANAGER", "ADMIN"] },
     {
         label: "Reportes",
@@ -220,7 +222,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                     }
 
                     // Regular flat route
-                    const isActive = pathname === route.href;
+                    const isActive = pathname === route.href || pathname.startsWith(route.href + "/");
                     return (
                         <Link
                             key={route.href}
