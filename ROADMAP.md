@@ -776,12 +776,14 @@ Archivos creados:
 
 Decisión tomada 2026-04-17. El orden correcto antes de entrar a Fase 6 es:
 
-**Paso 1 — Fix timezone global (1 sesión Sonnet)**
-Resolver ANTES del rediseño UI. Si se rediseñan reportes y vistas de ventas con el bug activo, los datos visibles durante desarrollo son incorrectos y hay que reverificar cada vista dos veces.
-- Reemplazar `new Date("YYYY-MM-DD")` por `parseDateRange` / `parseLocalDate` de `src/lib/reportes/date-range.ts`
-- Archivos identificados: `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`
-- También incluir KPIs `fechaVencimiento` en `reportes/compras-proveedor/page.tsx`
-- Una pasada mecánica, sin decisiones de diseño
+**Paso 1 — Fix timezone global ✅ (2026-04-17)**
+Resolvimos ANTES del rediseño UI para no reverificar datos dos veces.
+- `parseLocalDate` exportado desde `src/lib/reportes/date-range.ts`
+- 7 archivos migrados a `parseLocalDate(param, false/true)`: `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`
+- `npm run build` y `npx eslint src/` limpios (un warning pre-existente en `/reportes/rentabilidad/page.tsx` sin relación)
+
+**Excluido de Paso 1 (requiere decisión de diseño) — KPIs `fechaVencimiento` en `reportes/compras-proveedor/page.tsx`:**
+El bug no es de parseo de URL param sino de comparación `fechaVencimiento (DB Date, UTC midnight) < new Date() (local)`. En `America/Merida`, si el operador captura "fecha de vencimiento = 2026-04-17" durante el día local, Prisma persiste `2026-04-17T00:00:00.000Z` que en local es `2026-04-16T18:00:00−06:00` → ya el `.getDate()` devuelve 16, no 17 — el problema no se resuelve con `startOfTodayLocal` porque está corrompido desde el input. Requiere decidir: (a) almacenar `fechaVencimiento` como `String` "YYYY-MM-DD" sin tiempo, (b) normalizar en POST a `endOfLocalDay` antes de persistir, o (c) comparar como strings UTC ignorando tz. Diferido hasta después del rediseño UI o a Fase 6 con la pasada de schema. **No olvidar** — el KPI de vencidas en `/reportes/compras-proveedor` y el `proximoVencimiento` en la agregación por proveedor siguen con drift hasta resolverlo.
 
 **Paso 2 — Rediseño UI (múltiples sesiones Sonnet)**
 Consultar `DESIGN.md` antes de cada sesión.

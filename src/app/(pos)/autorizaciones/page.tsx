@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { AuthorizationsHistory, type AuthorizationRow, type BranchOption } from "./authorizations-history";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +57,14 @@ export default async function AutorizacionesPage({
   }
   if (params.fromDate || params.toDate) {
     where.createdAt = {};
-    if (params.fromDate) where.createdAt.gte = new Date(params.fromDate);
-    if (params.toDate) where.createdAt.lte = new Date(params.toDate);
+    if (params.fromDate) {
+      const from = parseLocalDate(params.fromDate, false);
+      if (from) where.createdAt.gte = from;
+    }
+    if (params.toDate) {
+      const to = parseLocalDate(params.toDate, true);
+      if (to) where.createdAt.lte = to;
+    }
   }
 
   const [records, branches] = await Promise.all([

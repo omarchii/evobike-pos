@@ -10,6 +10,7 @@ import {
     mapCashExpenseToOperational,
 } from "@/lib/tesoreria";
 import { summarizeSession } from "@/lib/cash-register";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 
 interface GastoPorCategoria {
     categoria: ExpenseCategory;
@@ -86,12 +87,9 @@ export async function GET(req: NextRequest): Promise<NextResponse<SummaryRespons
         let from: Date;
         let to: Date;
         if (fromParam || toParam) {
-            const fromDate = fromParam ? new Date(fromParam) : null;
-            const toDate = toParam ? new Date(toParam) : null;
-            if (
-                (fromParam && fromDate && Number.isNaN(fromDate.getTime())) ||
-                (toParam && toDate && Number.isNaN(toDate.getTime()))
-            ) {
+            const fromDate = fromParam ? parseLocalDate(fromParam, false) : null;
+            const toDate = toParam ? parseLocalDate(toParam, true) : null;
+            if ((fromParam && !fromDate) || (toParam && !toDate)) {
                 return NextResponse.json(
                     { success: false, error: "Fechas inválidas" },
                     { status: 400 },

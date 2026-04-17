@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CommissionsTable } from "./commissions-table";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 
 export const dynamic = "force-dynamic";
 
@@ -61,8 +62,10 @@ export default async function ComisionesPage({ searchParams }: PageProps): Promi
 
   const now = new Date();
   const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-  const fromDate = fromParam ? new Date(fromParam) : defaultFrom;
-  const toDate = toParam ? new Date(toParam + "T23:59:59.999Z") : now;
+  const fromDate =
+    (fromParam ? parseLocalDate(fromParam, false) : null) ?? defaultFrom;
+  const toDate =
+    (toParam ? parseLocalDate(toParam, true) : null) ?? now;
 
   const statuses = statusParam ? statusParam.split(",").filter(Boolean) : [];
 

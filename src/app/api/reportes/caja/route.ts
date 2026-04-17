@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 
 interface SessionUser {
   id: string;
@@ -98,8 +99,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // Date range defaults: current month
   const now = new Date();
   const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-  const fromDate = params.from ? new Date(params.from) : defaultFrom;
-  const toDate = params.to ? new Date(params.to + "T23:59:59.999Z") : now;
+  const fromDate =
+    (params.from ? parseLocalDate(params.from, false) : null) ?? defaultFrom;
+  const toDate =
+    (params.to ? parseLocalDate(params.to, true) : null) ?? now;
 
   // Branch enforcement
   const branchId =

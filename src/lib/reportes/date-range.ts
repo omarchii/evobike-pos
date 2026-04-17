@@ -24,7 +24,7 @@ export function getDefaultDateRange(now: Date = new Date()): DateRange {
  * convertiría `2026-04-01` en `2026-03-31 18:00` local). Construir la fecha
  * desde partes locales evita ese corrimiento.
  */
-function parseLocalDate(iso: string, endOfDay: boolean): Date | null {
+export function parseLocalDate(iso: string, endOfDay: boolean): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match) return null;
   const year = Number(match[1]);

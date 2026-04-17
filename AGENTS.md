@@ -258,7 +258,7 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 | P10-H | Reporte de stock mínimo — `/reportes/inventario/stock-minimo`, polimórfico variant+simple, severidad, KPIs, CSV | | P0 | ✅ Completo (2026-04-16) |
 | P10-I | Reporte anual (KPIs por mes, comparativa entre sucursales) | | P4, P9 | ⏳ Pendiente |
 | **P11** | **Seguimiento de mantenimientos** — semáforo de pólizas a 6 meses, tab en `/workshop` | Sonnet | — | ✅ Completo (2026-04-17) |
-| **P12** | **Transferencias entre sucursales** — `StockTransfer`/`StockTransferItem` polimórfico 4-way, máquina de estados con autorización SELLER→MANAGER, integración POS con stock remoto visible | Opus diseño → Sonnet impl | — | ✅ Completo |
+| **P12** | **Transferencias entre sucursales** — `StockTransfer`/`StockTransferItem` polimórfico 4-way, máquina de estados con autorización SELLER→MANAGER, integración POS con stock remoto visible, reportes cross-branch + mermas | Opus diseño → Sonnet impl | — | ✅ Completo (2026-04-17) |
 | P12-A | Integración POS — popover de stock remoto, CTA "Solicitar transferencia", endpoint solicitudes-activas | Sonnet | P12-B | ✅ Completo (2026-04-17) |
 | P12-B | Schema + API + UI de `/transferencias` (crear, autorizar, despachar, recibir, cancelar) | Sonnet | — | ✅ Completo (2026-04-17) |
 | P12-C | Reportes de transferencias por rango + mermas cross-branch | Sonnet | P12-B | ✅ Completo (2026-04-17) |
@@ -268,7 +268,7 @@ Orden y estado vigente. Al terminar una sub-fase, marcar ✅ aquí y actualizar 
 
 ### Orden de trabajo acordado post-P11 (2026-04-17)
 
-1. Fix timezone global → 1 sesión Sonnet, mecánica
+1. Fix timezone global ✅ (2026-04-17) — 7 archivos migrados a `parseLocalDate`; KPIs `fechaVencimiento` en `/reportes/compras-proveedor` excluidos (requieren decisión de schema, documentado en ROADMAP)
 2. Rediseño UI completo → múltiples sesiones Sonnet, orden definido en ROADMAP.md sección Pre-Fase 6
 3. Fase 6 → Opus + deploy
 

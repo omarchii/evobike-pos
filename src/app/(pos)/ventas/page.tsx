@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { SalesHistoryTable } from "./sales-history-table";
 import type { Prisma } from "@prisma/client";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +61,10 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
   // Default date range: last 30 days
   const now = new Date();
   const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const fromDate = fromParam ? new Date(fromParam) : defaultFrom;
-  const toDate = toParam ? new Date(toParam + "T23:59:59.999Z") : now;
+  const fromDate =
+    (fromParam ? parseLocalDate(fromParam, false) : null) ?? defaultFrom;
+  const toDate =
+    (toParam ? parseLocalDate(toParam, true) : null) ?? now;
 
   // Build where clause
   const where: Prisma.SaleWhereInput = {
