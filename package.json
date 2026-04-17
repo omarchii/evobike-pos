@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "db:fresh": "prisma migrate reset --force --skip-seed && FRESH_SEED=1 tsx prisma/seed.ts"
   },
   "prisma": {

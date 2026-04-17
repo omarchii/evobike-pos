@@ -539,6 +539,15 @@ node_modules/.bin/next build      # Build completo — incluye type-check + bund
 
 Ambos comandos son equivalentes o superiores a lint para detectar problemas antes de commitear.
 
+### Ruido aceptado de lint
+
+Tras migrar de `next lint` a `eslint cli` (Next 16 removió `next lint`), estos ítems quedan como ruido **aceptado** — no son regresiones ni bloquean commit:
+
+- `src/app/(pos)/reportes/rentabilidad/page.tsx` — warning `'serializeDecimal' is defined but never used`. Import reservado para reports futuros; dejar hasta que se use o se consolide el módulo.
+- `tmp_query.js` (root) — scratch file tracked históricamente. Ignorado en `eslint.config.mjs` (patrón `tmp_*.js`). No eliminar sin revisar con el owner; no linter-relevant.
+
+Los worktrees de Claude Code (`.claude/worktrees/**`) están globalIgnored porque son copias locales de agentes — nunca son parte del repo.
+
 ## Frontend y UI
 
 > Para cualquier trabajo de UI o modificación visual, **es OBLIGATORIO leer `DESIGN.md`** (tipografías, regla "no-line", glassmorphism, tokens de color en light/dark mode). Si trabajas solo en backend, puedes ignorarlo.

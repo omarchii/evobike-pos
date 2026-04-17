@@ -12,7 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Locales al repo:
+    ".claude/**",      // worktrees y settings de Claude Code (no parte del repo)
+    "prisma/seed*.ts", // seeds de desarrollo
+    "tmp_*.js",        // scratch files en root
+    "tmp_*.ts",
   ]),
+  {
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
+  }
 ]);
 
 export default eslintConfig;
