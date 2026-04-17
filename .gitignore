@@ -47,3 +47,6 @@ next-env.d.ts
 
 # Mockups y referencias visuales (no parte del producto)
 /referencias/
+
+# Claude Code — worktrees de subagents (artefactos locales, no parte del repo)
+.claude/worktrees/
