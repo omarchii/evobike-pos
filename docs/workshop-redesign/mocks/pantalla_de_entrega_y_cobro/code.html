@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EvoBike - Entrega Taller</title>
+<!-- Google Fonts: Space Grotesk & Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "on-primary": "#0e3727",
+                        "inverse-primary": "#3f6654",
+                        "inverse-on-surface": "#2f312f",
+                        "on-secondary-container": "#afc0b5",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#d5e7db",
+                        "surface-container-highest": "#333533",
+                        "background": "#121412",
+                        "surface-bright": "#383a38",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "inverse-surface": "#e2e3e0",
+                        "surface-dim": "#121412",
+                        "outline": "#8b938d",
+                        "on-tertiary-fixed": "#331012",
+                        "tertiary": "#ffdad9",
+                        "surface-container-high": "#282a29",
+                        "on-tertiary-container": "#744647",
+                        "on-secondary": "#25342c",
+                        "surface-container-lowest": "#0c0f0d",
+                        "outline-variant": "#414844",
+                        "primary-fixed": "#c1ecd5",
+                        "on-primary-container": "#335a48",
+                        "on-background": "#e2e3e0",
+                        "secondary-container": "#3f4f46",
+                        "on-surface-variant": "#c1c8c2",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad9",
+                        "surface-container-low": "#1a1c1a",
+                        "secondary": "#b9cbbf",
+                        "on-tertiary": "#4c2526",
+                        "surface-tint": "#a5d0b9",
+                        "on-surface": "#e2e3e0",
+                        "on-primary-fixed": "#002114",
+                        "primary-container": "#a5d0b9",
+                        "on-secondary-fixed": "#101e18",
+                        "tertiary-container": "#f5b7b7",
+                        "surface": "#121412",
+                        "surface-variant": "#333533",
+                        "surface-container": "#1e201e",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "on-tertiary-fixed-variant": "#663a3b",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "on-error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Hide scrollbar for cleaner look */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body h-screen w-full flex overflow-hidden">
+<!-- Shared Component: SideNavBar -->
+<nav class="bg-[#1a1c1a] dark:bg-[#1a1c1a] h-screen w-64 flex flex-col h-full py-6 flex-shrink-0 relative z-20 transition-all">
+<!-- Header -->
+<div class="px-6 mb-8">
+<div class="text-lg font-black text-[#a5d0b9] uppercase font-headline tracking-wider mb-2">EvoFlow Taller</div>
+<div class="flex items-center gap-3 bg-[#121412] p-2 rounded-lg">
+<img alt="Logo de Taller" class="w-8 h-8 rounded-full object-cover" data-alt="Portrait of a female technician wearing safety glasses and a dark grey uniform in a well-lit workshop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAM_Zp4KVeKQCGRBhqt4h1xqxfylQkde4yWRNrshRgdoCSMp8It1pDBOrA4tdBCRw1LhAhMDSI4BJOHRAb5VOqwj61W51l4YuXIhQUsZznV34HM5uRI8RiM--Szk4o-jnBirmEgutt9CkK2LFe9CDihAA-y0CJK8RFn8-NGC4Vbaipoz2gxNrzuif1yhnkLV2tv7C_x5w_giMqFGdiy6lPSroS85gO1tzCc8emAZ6vvMM7at9IoyxO3T9QzTGfjdgfbybY-BM4GCki0"/>
+<div class="flex flex-col">
+<span class="text-xs font-medium text-on-surface">Modo Técnico Activo</span>
+<span class="text-[10px] text-primary">Estado Sistema: OK</span>
+</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 flex flex-col gap-1 font-label text-xs uppercase tracking-wider">
+<!-- Tablero Kanban -->
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">view_kanban</span>
+                Tablero Kanban
+            </a>
+<!-- Recepción -->
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">playlist_add</span>
+                Recepción
+            </a>
+<!-- Órdenes -->
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">assignment</span>
+                Órdenes
+            </a>
+<!-- Ocupación -->
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+                Ocupación
+            </a>
+<!-- Entregas (ACTIVE) -->
+<a class="flex items-center gap-4 text-[#c0ecd4] font-bold bg-[#1e201e] rounded-l-full ml-2 pl-4 py-3 scale-[0.98] transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl fill">handshake</span>
+                Entregas
+            </a>
+<!-- Portal Cliente -->
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">public</span>
+                Portal Cliente
+            </a>
+</div>
+<!-- Footer -->
+<div class="mt-auto px-2 font-label text-xs uppercase">
+<a class="flex items-center gap-4 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full transition-all" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+                Cerrar Sesión
+            </a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 h-screen overflow-y-auto bg-surface relative">
+<!-- Ambient surface tint overlay -->
+<div class="absolute inset-0 bg-surface-tint opacity-5 pointer-events-none z-0"></div>
+<div class="relative z-10 p-8 max-w-7xl mx-auto flex flex-col gap-8">
+<!-- Header section -->
+<header class="flex justify-between items-end pb-4">
+<div>
+<h1 class="font-headline text-4xl font-bold text-on-surface tracking-tight mb-2">Protocolo de Entrega</h1>
+<p class="text-on-surface-variant font-label">Orden #EVO-8924 • Cliente: Roberto Medina</p>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full">
+<span class="material-symbols-outlined text-primary text-sm">verified</span>
+<span class="text-primary text-sm font-medium">Lista para recolección</span>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Left Column (Visuals & Checklist) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Visual Summary Card -->
+<section class="bg-surface-container rounded-xl p-2 relative group overflow-hidden">
+<div class="h-64 w-full rounded-[1.5rem] overflow-hidden relative">
+<img alt="EvoBike Model" class="w-full h-full object-cover opacity-90 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-500" data-alt="Sleek black electric mountain bike positioned diagonally in an industrial workshop setting with dramatic overhead lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAm3044fLrxgfQDWrhd86Ycb4-_vnOVzU1kfhNW1Mcyg0RiVUwj2K6iRjqbHatAzalnxIwHNfDaoJK9c1anmQhb1L0Obpnkf23dZDn-bLslkBZjOqdyP2ROyublw1YXmglJTQtkSiLuqoooSlytFu3LlRQUaLf1dD552BAp57YB52xYD8eSHC-Ox0Uy9Koa7Cp_HXQ5ZdTWjw2OHQEq3Km4bCjVz7nHiLkCu_nbWNN1cUld28hxV0hON0p5Zm9vXSRKMV2Te3X4AyEM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container to-transparent"></div>
+<!-- Tech Info Overlay -->
+<div class="absolute bottom-4 left-4 flex items-center gap-4 bg-surface-container-low/80 backdrop-blur-md p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary">engineering</span>
+<div>
+<p class="text-xs text-on-surface-variant font-label">Técnico Ejecutor</p>
+<p class="text-sm font-medium text-on-surface">Ing. Carlos R.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Checklist & Signature -->
+<section class="bg-surface-container rounded-xl p-8">
+<h2 class="font-headline text-xl text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">fact_check</span>
+                            Checklist de Salida
+                        </h2>
+<div class="flex flex-col gap-3 mb-8">
+<!-- Items using background color shifts instead of borders -->
+<div class="flex justify-between items-center bg-surface-container-low p-4 rounded-lg">
+<span class="text-sm font-medium">Torque de pernos y tornillería general</span>
+<span class="material-symbols-outlined text-primary fill">check_circle</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-4 rounded-lg">
+<span class="text-sm font-medium">Calibración de frenos hidráulicos</span>
+<span class="material-symbols-outlined text-primary fill">check_circle</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-4 rounded-lg">
+<span class="text-sm font-medium">Actualización de firmware (V2.4.1)</span>
+<span class="material-symbols-outlined text-primary fill">check_circle</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-4 rounded-lg">
+<span class="text-sm font-medium">Limpieza de rotor y transmisión</span>
+<span class="material-symbols-outlined text-primary fill">check_circle</span>
+</div>
+</div>
+<!-- Signature Canvas Area -->
+<div class="bg-surface-container-lowest rounded-lg p-6 relative">
+<p class="text-xs text-on-surface-variant mb-4 font-label uppercase tracking-wider">Firma de Conformidad del Cliente</p>
+<div class="h-32 bg-surface-container-low rounded-md w-full flex items-center justify-center cursor-crosshair">
+<span class="text-on-surface-variant/50 text-sm italic">Área de firma digital...</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (Payment & Action) -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Floating Action Card -->
+<section class="bg-surface-container-highest rounded-xl p-6 shadow-[0_20px_40px_rgba(0,33,20,0.15)] flex flex-col gap-6 relative overflow-hidden">
+<!-- Prepaid Notice -->
+<div class="bg-surface-container-low p-4 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">info</span>
+<div>
+<p class="text-sm font-medium text-primary mb-1">Mantenimiento Prepagado</p>
+<p class="text-xs text-on-surface-variant">El servicio de revisión 500km fue cobrado en la compra original (Factura #A-1029).</p>
+</div>
+</div>
+<!-- Extra Charges Table (Simulated without lines) -->
+<div>
+<h3 class="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-4">Cargos Adicionales</h3>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface">Pastillas de freno (Set)</span>
+<span class="font-medium">$450.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface">Sellador Tubeless</span>
+<span class="font-medium">$120.00</span>
+</div>
+</div>
+</div>
+<!-- Payment Method Selector -->
+<div>
+<h3 class="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-4">Método de Pago Restante</h3>
+<div class="grid grid-cols-2 gap-3">
+<button class="bg-surface-container-low text-on-surface hover:bg-surface-container py-3 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-base">payments</span>
+                                    Efectivo
+                                </button>
+<button class="bg-primary-container text-on-primary-container py-3 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-base">credit_card</span>
+                                    Tarjeta
+                                </button>
+<button class="bg-surface-container-low text-on-surface hover:bg-surface-container py-3 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-base">account_balance</span>
+                                    Transf.
+                                </button>
+<button class="bg-surface-container-low text-on-surface hover:bg-surface-container py-3 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-base">storefront</span>
+                                    Atrato
+                                </button>
+</div>
+</div>
+<!-- Total & CTA -->
+<div class="mt-4 pt-6 flex flex-col gap-6 relative z-10">
+<!-- Subtle separator using space and a tiny tonal shift rather than a line -->
+<div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-surface-container-low to-transparent -mx-6 opacity-50"></div>
+<div class="flex justify-between items-end">
+<span class="text-sm text-on-surface-variant">Total a Cobrar</span>
+<span class="font-headline text-4xl font-bold text-primary">$570.00</span>
+</div>
+<!-- Velocity Gradient CTA -->
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed rounded-full py-4 px-6 font-headline font-bold text-lg flex items-center justify-center gap-3 hover:scale-[0.98] transition-transform duration-200">
+                                Confirmar Entrega y Cerrar
+                                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</body></html>

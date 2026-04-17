@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vista de Ocupación - EvoFlow Taller</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "on-primary": "#0e3727",
+                        "inverse-primary": "#3f6654",
+                        "inverse-on-surface": "#2f312f",
+                        "on-secondary-container": "#afc0b5",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#d5e7db",
+                        "surface-container-highest": "#333533",
+                        "background": "#121412",
+                        "surface-bright": "#383a38",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "inverse-surface": "#e2e3e0",
+                        "surface-dim": "#121412",
+                        "outline": "#8b938d",
+                        "on-tertiary-fixed": "#331012",
+                        "tertiary": "#ffdad9",
+                        "surface-container-high": "#282a29",
+                        "on-tertiary-container": "#744647",
+                        "on-secondary": "#25342c",
+                        "surface-container-lowest": "#0c0f0d",
+                        "outline-variant": "#414844",
+                        "primary-fixed": "#c1ecd5",
+                        "on-primary-container": "#335a48",
+                        "on-background": "#e2e3e0",
+                        "secondary-container": "#3f4f46",
+                        "on-surface-variant": "#c1c8c2",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad9",
+                        "surface-container-low": "#1a1c1a",
+                        "secondary": "#b9cbbf",
+                        "on-tertiary": "#4c2526",
+                        "surface-tint": "#a5d0b9",
+                        "on-surface": "#e2e3e0",
+                        "on-primary-fixed": "#002114",
+                        "primary-container": "#a5d0b9",
+                        "on-secondary-fixed": "#101e18",
+                        "tertiary-container": "#f5b7b7",
+                        "surface": "#121412",
+                        "surface-variant": "#333533",
+                        "surface-container": "#1e201e",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "on-tertiary-fixed-variant": "#663a3b",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "on-error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-surface'); font-family: theme('fontFamily.body'); margin: 0; padding: 0; }
+        .glass-panel { background: rgba(30, 32, 30, 0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .ghost-border { box-shadow: inset 0 0 0 1px rgba(65, 72, 68, 0.15); }
+        .ambient-shadow { box-shadow: 0 20px 40px rgba(0, 33, 20, 0.15); }
+        .bg-pattern { background-image: radial-gradient(circle at 50% 50%, rgba(165, 208, 185, 0.05) 0%, transparent 100%); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-background text-on-surface">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen w-64 bg-[#1a1c1a] dark:bg-[#1a1c1a] py-6 flex-shrink-0 z-20">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-black text-[#a5d0b9] uppercase font-headline">EvoFlow Taller</h1>
+<p class="text-xs text-on-surface-variant font-label mt-1">Modo Técnico Activo</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-2">
+<li>
+<a class="flex items-center text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all group" href="#">
+<span class="material-symbols-outlined mr-3">view_kanban</span>
+<span class="font-label text-xs uppercase">Tablero Kanban</span>
+</a>
+</li>
+<li>
+<a class="flex items-center text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all group" href="#">
+<span class="material-symbols-outlined mr-3">playlist_add</span>
+<span class="font-label text-xs uppercase">Recepción</span>
+</a>
+</li>
+<li>
+<a class="flex items-center text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all group" href="#">
+<span class="material-symbols-outlined mr-3">assignment</span>
+<span class="font-label text-xs uppercase">Órdenes</span>
+</a>
+</li>
+<li>
+<a class="flex items-center text-[#c0ecd4] font-bold bg-[#1e201e] rounded-l-full ml-2 pl-4 py-3 scale-98 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label text-xs uppercase">Ocupación</span>
+</a>
+</li>
+<li>
+<a class="flex items-center text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all group" href="#">
+<span class="material-symbols-outlined mr-3">handshake</span>
+<span class="font-label text-xs uppercase">Entregas</span>
+</a>
+</li>
+<li>
+<a class="flex items-center text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all group" href="#">
+<span class="material-symbols-outlined mr-3">public</span>
+<span class="font-label text-xs uppercase">Portal Cliente</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-6 mt-auto">
+<button class="w-full bg-surface-container-highest hover:bg-surface-bright text-on-surface py-3 rounded-full flex items-center justify-center transition-colors ghost-border mb-4">
+<span class="font-label text-sm">Estado Sistema</span>
+</button>
+<a class="flex items-center text-on-surface-variant hover:text-on-surface transition-colors py-2" href="#">
+<span class="material-symbols-outlined mr-3">logout</span>
+<span class="font-label text-xs uppercase">Cerrar Sesión</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-pattern relative z-10">
+<!-- TopNavBar (Mobile mainly, but structured for context) -->
+<header class="md:hidden flex justify-between items-center w-full px-6 py-4 bg-[#121412] dark:bg-[#121412] z-30">
+<h1 class="text-xl font-bold tracking-tight text-[#c0ecd4] font-headline">EvoBike POS</h1>
+<button class="text-[#a5d0b9]">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</button>
+</header>
+<!-- Dashboard Canvas -->
+<div class="flex-1 overflow-y-auto p-6 md:p-10 lg:p-12 space-y-10">
+<!-- Hero Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
+<div>
+<h2 class="font-headline text-4xl md:text-5xl font-bold text-primary mb-2">Vista de Ocupación</h2>
+<p class="font-body text-on-surface-variant text-lg">Monitoreo cinético de capacidad y cuellos de botella.</p>
+</div>
+<div class="mt-4 md:mt-0 flex space-x-3">
+<button class="px-6 py-3 rounded-full bg-surface-container-low text-on-surface font-label text-sm flex items-center hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined mr-2 text-primary">calendar_month</span>
+                        Esta Semana
+                    </button>
+<button class="px-6 py-3 rounded-full bg-primary-container text-on-primary-fixed font-label font-bold text-sm flex items-center hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined mr-2">download</span>
+                        Exportar
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Panel 1: Heatmap (Hero Widget 60% Width) -->
+<div class="lg:col-span-8 bg-surface-container-low rounded-[2rem] p-8 flex flex-col relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50 pointer-events-none"></div>
+<div class="flex justify-between items-start mb-8 relative z-10">
+<div>
+<h3 class="font-headline text-2xl text-on-surface font-semibold mb-1">Mapa de Carga Técnica</h3>
+<p class="font-body text-sm text-on-surface-variant">Ocupación por técnico vs. capacidad horaria</p>
+</div>
+<div class="bg-surface-container-highest rounded-full px-4 py-1.5 flex items-center ghost-border">
+<span class="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse"></span>
+<span class="font-label text-xs text-on-surface">En vivo</span>
+</div>
+</div>
+<!-- Abstract Heatmap Representation -->
+<div class="flex-1 flex flex-col space-y-4 z-10">
+<!-- Tech 1 -->
+<div class="flex items-center">
+<div class="w-24 text-sm font-label text-on-surface-variant truncate pr-4">M. Rivas</div>
+<div class="flex-1 grid grid-cols-5 gap-2 h-12">
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/40 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/80 w-full"></div></div>
+<div class="bg-surface-container rounded-lg ghost-border"></div>
+<div class="bg-error/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-error/90 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/30 w-full"></div></div>
+</div>
+</div>
+<!-- Tech 2 -->
+<div class="flex items-center">
+<div class="w-24 text-sm font-label text-on-surface-variant truncate pr-4">A. Vega</div>
+<div class="flex-1 grid grid-cols-5 gap-2 h-12">
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/60 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/50 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/70 w-full"></div></div>
+<div class="bg-surface-container rounded-lg ghost-border"></div>
+<div class="bg-surface-container rounded-lg ghost-border"></div>
+</div>
+</div>
+<!-- Tech 3 -->
+<div class="flex items-center">
+<div class="w-24 text-sm font-label text-on-surface-variant truncate pr-4">L. Torres</div>
+<div class="flex-1 grid grid-cols-5 gap-2 h-12">
+<div class="bg-surface-container rounded-lg ghost-border"></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/90 w-full"></div></div>
+<div class="bg-error/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-error/80 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/40 w-full"></div></div>
+<div class="bg-primary/20 rounded-lg ghost-border relative overflow-hidden"><div class="absolute inset-0 bg-primary/20 w-full"></div></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Panel 2: Bottlenecks (40% Width) -->
+<div class="lg:col-span-4 bg-surface-container rounded-[2rem] p-8 flex flex-col">
+<div class="flex items-center mb-6">
+<span class="material-symbols-outlined text-error text-3xl mr-3" style="font-variation-settings: 'FILL' 1;">warning</span>
+<h3 class="font-headline text-xl text-on-surface">Cuellos de Botella</h3>
+</div>
+<div class="mb-4">
+<span class="font-headline text-5xl font-bold text-error block mb-1">4</span>
+<span class="font-body text-sm text-on-surface-variant">Órdenes críticas &gt;72h</span>
+</div>
+<div class="flex-1 flex flex-col space-y-4 mt-4">
+<div class="bg-surface-container-highest p-4 rounded-xl ghost-border flex justify-between items-center">
+<div>
+<p class="font-label text-sm text-on-surface font-medium">ORD-892A</p>
+<p class="font-body text-xs text-on-surface-variant">Motor Drive Unit</p>
+</div>
+<div class="text-right">
+<p class="font-headline text-error font-bold">84h</p>
+<p class="font-label text-[10px] text-error">En espera de piezas</p>
+</div>
+</div>
+<div class="bg-surface-container-highest p-4 rounded-xl ghost-border flex justify-between items-center">
+<div>
+<p class="font-label text-sm text-on-surface font-medium">ORD-901B</p>
+<p class="font-body text-xs text-on-surface-variant">Calibración BMS</p>
+</div>
+<div class="text-right">
+<p class="font-headline text-error font-bold">76h</p>
+<p class="font-label text-[10px] text-error">Revisión técnica</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Panel 3: Period Metrics (Full Width) -->
+<div class="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Metric 1 -->
+<div class="bg-surface-container-lowest rounded-[2rem] p-8 relative overflow-hidden ghost-border">
+<div class="absolute top-0 right-0 p-6 opacity-20">
+<span class="material-symbols-outlined text-6xl text-primary">payments</span>
+</div>
+<h4 class="font-headline text-4xl text-primary font-bold mb-2">$42.8k</h4>
+<p class="font-label text-sm text-on-surface-variant uppercase tracking-wider">Ingresos Proyectados</p>
+<div class="mt-4 flex items-center text-primary">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+<span class="font-body text-xs">+12% vs. sem ant.</span>
+</div>
+</div>
+<!-- Metric 2 -->
+<div class="bg-surface-container rounded-[2rem] p-8 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-6 opacity-20">
+<span class="material-symbols-outlined text-6xl text-secondary">timer</span>
+</div>
+<h4 class="font-headline text-4xl text-on-surface font-bold mb-2">4.2h</h4>
+<p class="font-label text-sm text-on-surface-variant uppercase tracking-wider">Ciclo Promedio</p>
+<div class="mt-4 flex items-center text-error">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+<span class="font-body text-xs">+0.5h vs. objetivo</span>
+</div>
+</div>
+<!-- Metric 3 -->
+<div class="bg-surface-container-low rounded-[2rem] p-8 relative overflow-hidden ghost-border">
+<h4 class="font-label text-sm text-on-surface-variant uppercase tracking-wider mb-6">Distribución de Órdenes</h4>
+<div class="space-y-3">
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-label text-on-surface">Mantenimiento Preventivo</span>
+<span class="font-headline text-primary">65%</span>
+</div>
+<div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 65%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-label text-on-surface">Reparación Crítica</span>
+<span class="font-headline text-error">25%</span>
+</div>
+<div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 25%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-label text-on-surface">Garantías</span>
+<span class="font-headline text-secondary">10%</span>
+</div>
+<div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 10%;"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

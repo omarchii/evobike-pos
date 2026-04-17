@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#002114",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#d5e7db",
+                        "secondary-container": "#3f4f46",
+                        "on-secondary-container": "#afc0b5",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "outline": "#8b938d",
+                        "outline-variant": "#414844",
+                        "on-tertiary": "#4c2526",
+                        "on-primary-container": "#335a48",
+                        "surface": "#131313",
+                        "on-primary": "#0e3727",
+                        "on-tertiary-fixed": "#331012",
+                        "surface-variant": "#353534",
+                        "on-secondary-fixed": "#101e18",
+                        "surface-container-highest": "#353534",
+                        "secondary": "#b9cbbf",
+                        "tertiary": "#ffdad9",
+                        "inverse-primary": "#3f6654",
+                        "on-error": "#690005",
+                        "primary-fixed": "#c1ecd5",
+                        "tertiary-container": "#f5b7b7",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "surface-dim": "#131313",
+                        "on-secondary": "#25342c",
+                        "surface-tint": "#a5d0b9",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "tertiary-fixed": "#ffdad9",
+                        "on-tertiary-container": "#744647",
+                        "error": "#ffb4ab",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "inverse-on-surface": "#313030",
+                        "on-background": "#e5e2e1",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "surface-bright": "#393939",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "primary-container": "#a5d0b9",
+                        "on-surface-variant": "#c1c8c2",
+                        "surface-container": "#201f1f",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "on-tertiary-fixed-variant": "#663a3b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .velocity-gradient {
+            background: linear-gradient(135deg, #c0ecd4 0%, #a5d0b9 100%);
+        }
+        .glass-panel {
+            background: rgba(53, 53, 52, 0.6);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(192, 236, 212, 0.2);
+        }
+        .ghost-border {
+            outline: 1px solid rgba(65, 72, 68, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen">
+<!-- SideNavBar (Authority: JSON) -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-40 bg-[#131313] flex flex-col pt-20 pb-8 h-full shadow-[30px_0_50px_rgba(0,0,0,0.12)]">
+<div class="px-8 mb-10">
+<h1 class="font-headline font-black text-white text-xl tracking-tighter">EVOBIKE TALLER</h1>
+<p class="font-headline text-[10px] uppercase tracking-[0.2em] text-primary mt-1">Operaciones Ténicas</p>
+</div>
+<nav class="flex-1">
+<div class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Dashboard</span>
+</div>
+<!-- Active Tab: Recepción -->
+<div class="text-[#c0ecd4] bg-[#353534] rounded-r-full py-3 px-6 mb-2 flex items-center gap-3 active:translate-x-1 duration-300">
+<span class="material-symbols-outlined">build_circle</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Recepción</span>
+</div>
+<div class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Órdenes</span>
+</div>
+<div class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Inventario</span>
+</div>
+<div class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Auditoría</span>
+</div>
+</nav>
+<div class="px-6 mt-auto">
+<div class="text-gray-500 hover:text-gray-200 py-3 px-6 flex items-center gap-3 transition-all duration-300">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Soporte</span>
+</div>
+</div>
+</aside>
+<!-- TopAppBar (Authority: JSON) -->
+<header class="fixed top-0 w-full z-50 bg-[#131313] flex justify-between items-center px-8 h-16 w-full shadow-none bg-[#1c1b1b] no-border tonal-shift">
+<div class="flex items-center gap-8 ml-64">
+<span class="font-headline font-bold text-lg uppercase tracking-wider text-[#c0ecd4]">Recepción de Vehículo</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center bg-surface-container-lowest px-4 py-1.5 rounded-full ghost-border">
+<span class="material-symbols-outlined text-sm text-outline mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs w-48 text-on-surface" placeholder="Buscar VIN o Cliente..." type="text"/>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img alt="Técnico Senior Avatar" class="w-full h-full object-cover" data-alt="professional male technician headshot with serious expression in industrial workshop setting, cinematic soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhVBYFnLh-9OGoRxSvHiL5-jaZHyBwMuauJZBzw_2Wqo998DEm3Qvg4197G0d_Pba2TRcDwYM7eYBFW_VZgRDUOUdpPW-OqnatuB8mB82OVj7d28CuMAIZRMbiBa1T7WjfH5urML2Ibx1TRisF8UY8-ns13N_9HTPT6fGrYgQyk57uW0rXnfCUy-LzQU93BSdpMSOjigLS-N3cQOQj_Zr8QnHkLX0yacWwu4wtAuWRLqbaYFWr1O55QvNOY_AT64B5f8IKzeh9CbO9"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pl-64 pt-16 min-h-screen bg-surface">
+<div class="max-w-6xl mx-auto p-12">
+<!-- Wizard Stepper -->
+<div class="flex items-center justify-between mb-16 px-4">
+<div class="flex flex-col items-center gap-2 opacity-40">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-headline font-bold">01</div>
+<span class="font-label text-[10px] uppercase tracking-widest">Datos Cliente</span>
+</div>
+<div class="h-[1px] flex-1 bg-outline-variant/30 mx-4"></div>
+<div class="flex flex-col items-center gap-2 opacity-40">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-headline font-bold">02</div>
+<span class="font-label text-[10px] uppercase tracking-widest">Inspección Técnica</span>
+</div>
+<div class="h-[1px] flex-1 bg-primary/30 mx-4"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full velocity-gradient text-on-primary flex items-center justify-center font-headline font-bold shadow-[0_0_20px_rgba(192,236,212,0.3)]">03</div>
+<span class="font-label text-[10px] uppercase tracking-widest text-primary font-bold">Evidencia Fotográfica</span>
+</div>
+<div class="h-[1px] flex-1 bg-outline-variant/30 mx-4"></div>
+<div class="flex flex-col items-center gap-2 opacity-40">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-headline font-bold">04</div>
+<span class="font-label text-[10px] uppercase tracking-widest">Firma y Cierre</span>
+</div>
+</div>
+<!-- Header Section -->
+<div class="mb-12">
+<h2 class="font-headline text-5xl font-bold tracking-tight text-on-surface mb-2">Registro de <span class="text-primary italic">Estado</span></h2>
+<p class="text-on-surface-variant font-light max-w-xl">Capture evidencia detallada de cualquier daño preexistente, componentes de alto valor o el estado general de la batería antes del ingreso.</p>
+</div>
+<!-- Drag & Drop Area -->
+<div class="mb-12 group">
+<div class="relative border-2 border-dashed border-outline-variant rounded-xl p-16 flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-primary text-3xl">cloud_upload</span>
+</div>
+<h3 class="font-headline text-xl font-medium text-white mb-1">Arrastre imágenes aquí</h3>
+<p class="text-on-surface-variant text-sm mb-6">Soporta JPG, PNG y HEIC hasta 20MB cada una</p>
+<button class="velocity-gradient text-on-primary px-8 py-3 rounded-xl font-headline font-bold uppercase text-xs tracking-widest active:scale-95 duration-200">
+                        Seleccionar Archivos
+                    </button>
+</div>
+</div>
+<!-- Evidence Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Thumbnail Item 01 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group">
+<div class="aspect-[4/3] relative overflow-hidden bg-surface-container-highest">
+<img alt="Vista lateral bicicleta eléctrica" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="close-up of a premium electric bicycle frame in a dark garage, dramatic side lighting emphasizing texture and green accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_caJOK7Vy6QvuVVlNb2wxxI5hLBIM_r8Lss0HrTu4I28IEnyuGEiIN2KeDsReqTzSd2R7miDJPbIHTP_GPLLmca4Mpx4PrYoafwK0fbvBw2W6Z7Aar5fYVeboU8S5eqbYcFi2my4L9PULBCYHY6FUQr5cp4J1_i_qMA4mm1j416F2bxLwyRnHj6xvNo3uHh8qFbspT8oyxTf47SY_LonTVZpn1vFkXyWWEvk2cbSWBaI2AxAzQV8xJYrR3SSjEkqOtZg1H_NiEzQ6"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-highest/80 backdrop-blur-md text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Recepción</span>
+</div>
+<button class="absolute top-4 right-4 w-8 h-8 rounded-full bg-error/20 hover:bg-error text-error hover:text-on-error backdrop-blur-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="p-4">
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary/30 rounded-lg py-3 px-4 text-sm text-on-surface-variant placeholder:text-outline/50 transition-all font-body" placeholder="Añadir descripción opcional..." type="text"/>
+</div>
+</div>
+<!-- Thumbnail Item 02 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group">
+<div class="aspect-[4/3] relative overflow-hidden bg-surface-container-highest">
+<img alt="Detalle motor eléctrico" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="technical close-up of an e-bike mid-drive motor with visible wiring and metallic textures, high-end editorial lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHCPizKd62Ax7bkRgICidKimwy0kdkbCzzs9b7b9TR2nWHON0asJMKFgioicXprybBVpj3tvKX07JWOsutnMjEnUGid6coF-aUOfANNDY3wvASxk8WCfeBk_L9t87bjJWRX2Teyp8UdtRz0nxzymNhCr0Lw7Q04ed1R1XLOMhZR5IV-BIsMaujlL4vuIUJgRwq_8St13_mVSKo0-I40R1tOxzJl4W1Un2iribyTSnoLUXVPyhbzpkNt5uOreDwXh2gHJ2U5rMHrf7m"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-highest/80 backdrop-blur-md text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Recepción</span>
+</div>
+<button class="absolute top-4 right-4 w-8 h-8 rounded-full bg-error/20 hover:bg-error text-error hover:text-on-error backdrop-blur-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="p-4">
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary/30 rounded-lg py-3 px-4 text-sm text-on-surface placeholder:text-outline/50 transition-all font-body" type="text" value="Arañazos leves en carcasa motor"/>
+</div>
+</div>
+<!-- Thumbnail Item 03 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group">
+<div class="aspect-[4/3] relative overflow-hidden bg-surface-container-highest">
+<img alt="Panel de control e-bike" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="modern e-bike digital display panel illuminated in a dark setting, displaying battery and speed metrics, futuristic look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfgIfzk90ID7p3LWcJIwJfB4m7vewJvBJOFb6cdBudze4Pz7AHw8x2BZT-BptltKSCKr7CAYpU7RAP-XR-EduziHleb-chBtumN49wXB9-1oJesk1wYXk2TiCja1E7O3Om4UNNwfbWGcYZZUkwYxnLFfXYOweMSYTbpxc8UrhYDry4rLjg8sbaK3aPxkaiBZoKzh-OOSdaajtVhS7pYt5HhXzUsjGOOfMiIMFMYgCK9BXgfMWKXZzmDG8lUp-IsJHEilg6qzJCeRXO"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-highest/80 backdrop-blur-md text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Recepción</span>
+</div>
+<button class="absolute top-4 right-4 w-8 h-8 rounded-full bg-error/20 hover:bg-error text-error hover:text-on-error backdrop-blur-md flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="p-4">
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary/30 rounded-lg py-3 px-4 text-sm text-on-surface-variant placeholder:text-outline/50 transition-all font-body" placeholder="Añadir descripción opcional..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Footer Navigation -->
+<div class="mt-20 flex items-center justify-between border-t border-outline-variant/10 pt-8">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors group">
+<span class="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span class="font-headline font-bold uppercase text-xs tracking-widest">Paso Anterior</span>
+</button>
+<button class="velocity-gradient text-on-primary px-12 py-4 rounded-xl font-headline font-bold uppercase text-sm tracking-widest shadow-xl flex items-center gap-3 active:scale-95 duration-200">
+                    Siguiente: Firma
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Contextual Glass Modal (Task-Focused suppression of general nav UI if needed, but here it acts as a focused summary) -->
+<div class="fixed bottom-8 right-8 z-50">
+<div class="glass-panel p-6 rounded-2xl shadow-2xl w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-headline text-[10px] uppercase tracking-widest text-primary font-bold">Estado Actual</span>
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-xs text-on-surface-variant">Archivos cargados</p>
+<h4 class="font-headline text-2xl font-black">03 <span class="text-sm font-normal text-outline">/ 10</span></h4>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-1/3"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant italic leading-tight">Recomendamos al menos una foto de cada ángulo principal del chasis.</p>
+</div>
+</div>
+</body></html>

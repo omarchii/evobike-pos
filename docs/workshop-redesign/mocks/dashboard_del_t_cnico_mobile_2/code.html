@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard Técnico - EvoBike POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "on-primary": "#0e3727",
+                        "inverse-primary": "#3f6654",
+                        "inverse-on-surface": "#2f312f",
+                        "on-secondary-container": "#afc0b5",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#d5e7db",
+                        "surface-container-highest": "#333533",
+                        "background": "#121412",
+                        "surface-bright": "#383a38",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "inverse-surface": "#e2e3e0",
+                        "surface-dim": "#121412",
+                        "outline": "#8b938d",
+                        "on-tertiary-fixed": "#331012",
+                        "tertiary": "#ffdad9",
+                        "surface-container-high": "#282a29",
+                        "on-tertiary-container": "#744647",
+                        "on-secondary": "#25342c",
+                        "surface-container-lowest": "#0c0f0d",
+                        "outline-variant": "#414844",
+                        "primary-fixed": "#c1ecd5",
+                        "on-primary-container": "#335a48",
+                        "on-background": "#e2e3e0",
+                        "secondary-container": "#3f4f46",
+                        "on-surface-variant": "#c1c8c2",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad9",
+                        "surface-container-low": "#1a1c1a",
+                        "secondary": "#b9cbbf",
+                        "on-tertiary": "#4c2526",
+                        "surface-tint": "#a5d0b9",
+                        "on-surface": "#e2e3e0",
+                        "on-primary-fixed": "#002114",
+                        "primary-container": "#a5d0b9",
+                        "on-secondary-fixed": "#101e18",
+                        "tertiary-container": "#f5b7b7",
+                        "surface": "#121412",
+                        "surface-variant": "#333533",
+                        "surface-container": "#1e201e",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "on-tertiary-fixed-variant": "#663a3b",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        .glass-panel {
+            background: rgba(51, 53, 51, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-fixed">
+<!-- Top Navigation Area (Mobile) -->
+<header class="bg-[#121412] dark:bg-[#121412] flex justify-between items-center w-full px-6 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center overflow-hidden ring-2 ring-surface-container-highest">
+<img alt="Perfil del Tcnico" class="w-full h-full object-cover" data-alt="Close up portrait of a male mechanic wearing a dark cap and work shirt, professional lighting, shallow depth of field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTfLGnnKTklAe87bCk0nBhmnT-67ncMIrVWeKDD93-P-euSZbHca1Yh0Ofq2y1yRCavLQhIPrKw47Kwo8UL8gyNwoNFAsNma9GQw3Bd1Bchqd9lu7B7c_--3BntqQvHe5Bjb9AkSiXk0XUlBkwpvpYNr8EQaujJwbZHrXMCiiKXM-W_qci2PSM1qelTeE6ED3_mQdNP7gkJIFb4aMT7Sie8hqe8oxzapUeGiR884Giu0dXz1oQxUMdXpd9EyE-jST3Uhz78QjzhcTE"/>
+</div>
+<div>
+<h1 class="text-xl font-bold tracking-tight text-[#c0ecd4] font-[Space Grotesk] leading-none">Carlos R.</h1>
+<span class="text-xs text-[#8e918e] font-body">EvoFlow Taller</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button aria-label="Notificaciones" class="w-11 h-11 flex items-center justify-center text-[#a5d0b9] hover:bg-[#1a1c1a] transition-colors duration-200 rounded-full">
+<span class="material-symbols-outlined text-2xl" data-icon="notifications">notifications</span>
+</button>
+<div class="flex items-center justify-center bg-surface-container-highest px-3 py-1.5 rounded-full">
+<span class="font-headline font-bold text-primary mr-1 text-lg leading-none">8</span>
+<span class="material-symbols-outlined text-sm text-outline" data-icon="build">build</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-md mx-auto px-4 pb-24 pt-2">
+<!-- Welcome KPI Header -->
+<section class="mb-6">
+<div class="bg-surface-container-low rounded-xl p-5 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+<div class="flex justify-between items-end">
+<div>
+<p class="text-sm text-outline font-body mb-1">12 activas hoy</p>
+<h2 class="text-5xl font-headline font-bold text-on-surface tracking-tighter">12</h2>
+</div>
+<button aria-label="Nueva Orden" class="w-[44px] h-[44px] bg-primary-container text-on-primary-fixed rounded-full flex items-center justify-center hover:bg-primary transition-colors shadow-[0_20px_40px_rgba(0,33,20,0.15)]">
+<span class="material-symbols-outlined" data-icon="add" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Quick Filters (Chips) -->
+<section class="mb-6 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
+<div class="flex gap-2 min-w-max">
+<button class="h-[44px] px-5 bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors rounded-full font-body text-sm flex items-center gap-2">
+    Todas
+</button>
+<button class="h-[44px] px-5 bg-surface-container-highest text-primary rounded-full font-body text-sm font-medium flex items-center gap-2 ring-1 ring-primary/20">
+<span class="material-symbols-outlined text-sm" data-icon="build_circle">build_circle</span>
+    En Trabajo
+</button>
+<button class="h-[44px] px-5 bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors rounded-full font-body text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="hourglass_empty">hourglass_empty</span>
+    Esperando algo
+</button>
+<button class="h-[44px] px-5 bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors rounded-full font-body text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="fact_check">fact_check</span>
+    Listas para QA
+</button>
+</div>
+</section>
+<!-- Order List (Compact Vertical) -->
+<section class="space-y-3">
+<!-- Order Card 1: Active -->
+<article class="bg-surface-container rounded-lg p-3 flex items-center gap-4 relative overflow-hidden group py-4">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="w-16 h-16 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0">
+<img alt="Bici" class="w-full h-full object-cover opacity-80 mix-blend-luminosity group-hover:mix-blend-normal transition-all" data-alt="Close up of a modern electric bicycle wheel and motor hub, dark grey background, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfNY1vK8BpIX8GB8ubsbboxrSRQyw3XmXoTVz-56N67rKMVA2itVY_EajigsbIKeESusUJQGoT_q9KWoFOuKis8r9GBXNscuSdMMKjnf1fbESV-cZO0_gIPQB4xdbK1nxXiQjst4AaYo6roBY-QmZDx5ATblXxcO7WWtkSf1lMqh4IbaTUATmWyvqg29Z-xzHSpgTtyirwDzeHJLkml-7DM0Xi33a4CP4XmhG0jfe4Q17nZMYxMBOTIPqZQ1-lkYL3N764f3Ol6Hb9"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<span class="font-headline font-bold text-on-surface text-lg leading-none">#ORD-992</span>
+<span class="text-xs font-body text-primary bg-primary/10 px-2 py-0.5 rounded"><span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>En Banco</span></span>
+</div>
+<h3 class="text-sm font-body text-on-surface-variant truncate">EvoCity Pro - Falla de motor</h3>
+<div class="flex items-center gap-3 mt-2 text-xs text-outline">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+<span>45m</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="person">person</span>
+<span class="truncate">Ana M.</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Order Card 2 -->
+<article class="bg-surface-container rounded-lg p-3 flex items-center gap-4 py-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0">
+<img alt="Bici" class="w-full h-full object-cover opacity-60 mix-blend-luminosity" data-alt="Detail shot of a bicycle suspension fork and disc brake, dark moody lighting, metallic textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEpfuH0um07J7FVbtW3aPROKKbZEebN5mf-stVrqucdxzEYbbBxZemthKtr65xlb6dsIMmjreuFT54DNOhVJSUznwF1nO0nkJ7J-MrRNcfWfUdV6asY2wwctUVO2ptvCfEcOiidQn8EFyCs-vtzgyEo6A-oqUCTvaXFPOR67feW5UH415tdZOdZeAdZUnpWJING-H8Dxlpz39SJGAcYanmQWKLMChXj95itI-tA-UG6EGvmjkZaPOMZ0QAJiwwei59j3RyvXfYgtJo"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<span class="font-headline font-bold text-on-surface text-lg leading-none">#ORD-988</span>
+<span class="text-xs font-body text-secondary bg-surface-container-highest px-2 py-0.5 rounded"><span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>Diagnóstico</span></span>
+</div>
+<h3 class="text-sm font-body text-on-surface-variant truncate">EvoGravel X - Frenos</h3>
+<div class="flex items-center gap-3 mt-2 text-xs text-outline">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+<span>2h</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="person">person</span>
+<span class="truncate">Luis G.</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Order Card 3 -->
+<article class="bg-surface-container rounded-lg p-3 flex items-center gap-4 py-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0">
+<img alt="Bici" class="w-full h-full object-cover opacity-60 mix-blend-luminosity" data-alt="Close up of a bicycle chain and gears, dark industrial setting, macro photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBd5-AGT-TlP_1-5Xvw-ZpwphK74UTmwCR507OYaUOo1z5XAzC3NA-mxRkxRjMXDkS6wJRWm5EVu6Kss2VLG-EsgJlV6FHjmgDpATpcPVnjjwzAM1H4GI6KdVS-hIQFb168rRG1URFPo39Xy9vR8Gs8RzekCKqmHbeslpkxrkO6prSwTGyYkBD30m2KlXzgkt0f-X0URT5-CTNF6QWGUQ2II8T7e0N72jG6huxHSBifP4vokC1ZCGr-0xmCD0zw1dDdmwu_djcuch1h"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<span class="font-headline font-bold text-on-surface text-lg leading-none">#ORD-985</span>
+<span class="text-xs font-body text-secondary bg-surface-container-highest px-2 py-0.5 rounded"><span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>Diagnóstico</span></span>
+</div>
+<h3 class="text-sm font-body text-on-surface-variant truncate">EvoCommuter - Batería</h3>
+<div class="flex items-center gap-3 mt-2 text-xs text-outline">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+<span>Ayer</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="person">person</span>
+<span class="truncate">Cliente Nuevo</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Order Card 4: Waiting Parts -->
+<article class="bg-surface-container rounded-lg p-3 flex items-center gap-4 opacity-75 py-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0 relative">
+<div class="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-outline" data-icon="inventory_2">inventory_2</span>
+</div>
+<img alt="Bici" class="w-full h-full object-cover grayscale mix-blend-luminosity" data-alt="Bicycle frame detail, abstract angle, dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABqTBHIRpf6ILLHX-qR3GzOYAHaZ9FVOoyBLLAAtQAxwJXwvn75I4tgZ-rKQYseg8PFfX6rxJottBif7I5RhZdcL0vUHCpwclaUbBS4LGNCvm7VAgmJAatvikNcJS3xwJYVKIaWbTdGgFivbe73QM14CwZBUsXTvKEiLQLtne_gQnQ2ddj8d5SkpxqF5oLJnNxehnKtLfU-QowfkoZvjbqp86X8RcwTP6xpJF4ru4nvbtGEcL436HoL6xxqKRt-9z7X1aqBCGNT5Dw"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<span class="font-headline font-bold text-on-surface text-lg leading-none">#ORD-970</span>
+<span class="text-xs font-body text-error bg-error/10 px-2 py-0.5 rounded"><span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-error"></span>Espera Pieza</span></span>
+</div>
+<h3 class="text-sm font-body text-on-surface-variant truncate">EvoCity Std - Controlador</h3>
+<div class="flex items-center gap-3 mt-2 text-xs text-outline">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span>
+<span>Hace 3d</span>
+</div>
+</div>
+</div>
+</article>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Mobile Destination Shell) -->
+<nav class="bg-[#121412] dark:bg-[#121412] flex justify-between items-center w-full px-8 py-3 fixed bottom-0 left-0 right-0 z-50 md:hidden border-t-0 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+<button class="flex flex-col items-center justify-center w-12 h-12 text-[#a5d0b9] border-b-2 border-[#a5d0b9] pb-1 scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined mb-1" data-icon="build" data-weight="fill" style="font-variation-settings: 'FILL' 1;">build</span>
+<span class="text-[10px] font-body font-medium">Taller</span>
+</button>
+<button class="flex flex-col items-center justify-center w-12 h-12 text-[#8e918e] hover:bg-[#1a1c1a] transition-colors duration-200 rounded-lg scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined mb-1" data-icon="inventory_2">inventory_2</span>
+<span class="text-[10px] font-body font-medium">Inventario</span>
+</button>
+<button class="flex flex-col items-center justify-center w-12 h-12 text-[#8e918e] hover:bg-[#1a1c1a] transition-colors duration-200 rounded-lg scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined mb-1" data-icon="bar_chart">bar_chart</span>
+<span class="text-[10px] font-body font-medium">Reportes</span>
+</button>
+<button class="flex flex-col items-center justify-center w-12 h-12 text-[#8e918e] hover:bg-[#1a1c1a] transition-colors duration-200 rounded-lg scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="text-[10px] font-body font-medium">Ajustes</span>
+</button>
+</nav>
+</body></html>

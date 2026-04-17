@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Recepción - Paso 4</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "on-primary": "#0e3727",
+                        "inverse-primary": "#3f6654",
+                        "inverse-on-surface": "#2f312f",
+                        "on-secondary-container": "#afc0b5",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#d5e7db",
+                        "surface-container-highest": "#333533",
+                        "background": "#121412",
+                        "surface-bright": "#383a38",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "inverse-surface": "#e2e3e0",
+                        "surface-dim": "#121412",
+                        "outline": "#8b938d",
+                        "on-tertiary-fixed": "#331012",
+                        "tertiary": "#ffdad9",
+                        "surface-container-high": "#282a29",
+                        "on-tertiary-container": "#744647",
+                        "on-secondary": "#25342c",
+                        "surface-container-lowest": "#0c0f0d",
+                        "outline-variant": "#414844",
+                        "primary-fixed": "#c1ecd5",
+                        "on-primary-container": "#335a48",
+                        "on-background": "#e2e3e0",
+                        "secondary-container": "#3f4f46",
+                        "on-surface-variant": "#c1c8c2",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad9",
+                        "surface-container-low": "#1a1c1a",
+                        "secondary": "#b9cbbf",
+                        "on-tertiary": "#4c2526",
+                        "surface-tint": "#a5d0b9",
+                        "on-surface": "#e2e3e0",
+                        "on-primary-fixed": "#002114",
+                        "primary-container": "#a5d0b9",
+                        "on-secondary-fixed": "#101e18",
+                        "tertiary-container": "#f5b7b7",
+                        "surface": "#121412",
+                        "surface-variant": "#333533",
+                        "surface-container": "#1e201e",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "on-tertiary-fixed-variant": "#663a3b",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "on-error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem",
+                        lg: "2rem",
+                        xl: "3rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Space Grotesk", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121412;
+            color: #e2e3e0;
+        }
+        h1, h2, h3, h4, h5, h6, .font-headline {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .velocity-gradient {
+            background: linear-gradient(45deg, #c0ecd4, #a5d0b9);
+        }
+        /* Hide scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Intent implies focused task: Form Wizard. Suppressing standard shell navigations according to the "Automatic Suppression" rule -->
+<!-- Top Bar for Context (Mobile only, replaces SideNav on small screens conceptually but keeping it minimal for a wizard) -->
+<header class="md:hidden flex items-center justify-between p-6 bg-surface-container-lowest z-10 sticky top-0">
+<div class="flex items-center gap-3">
+<button class="text-on-surface hover:text-primary transition-colors p-2 rounded-full bg-surface-container-low">
+<span class="material-symbols-outlined text-xl">arrow_back</span>
+</button>
+<span class="font-headline font-bold text-lg tracking-tight text-primary">Recepción</span>
+</div>
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-surface-container-high"></div>
+<div class="w-2 h-2 rounded-full bg-surface-container-high"></div>
+<div class="w-2 h-2 rounded-full bg-surface-container-high"></div>
+<div class="w-6 h-2 rounded-full bg-primary"></div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col md:flex-row h-screen overflow-hidden">
+<!-- Left Pane: Wizard Form -->
+<section class="flex-1 overflow-y-auto p-6 md:p-12 pb-32 md:pb-12 bg-surface">
+<div class="max-w-3xl mx-auto space-y-10">
+<!-- Header -->
+<header class="space-y-4">
+<div class="hidden md:flex gap-2 mb-8">
+<div class="h-1 flex-1 bg-surface-container-high rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container-high rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container-high rounded-full"></div>
+<div class="h-1 flex-1 bg-primary rounded-full relative">
+<span class="absolute -top-6 right-0 text-xs font-label text-primary font-medium tracking-wider uppercase">Paso 4/4</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-primary">
+<span class="material-symbols-outlined text-3xl" data-weight="fill" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+<h1 class="font-headline text-4xl md:text-5xl font-bold tracking-tight">Detalles Finales</h1>
+</div>
+<p class="font-body text-on-surface-variant text-lg">Completa la información técnica para generar la orden de servicio.</p>
+</header>
+<form class="space-y-8">
+<!-- Diagnóstico -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-4 transition-all duration-300 focus-within:bg-surface-container group">
+<label class="block font-headline text-lg font-medium text-on-surface flex items-center gap-2" for="diagnostico">
+<span class="material-symbols-outlined text-primary text-xl">plumbing</span>
+                            Diagnóstico Inicial
+                        </label>
+<div class="relative bg-surface-container-highest rounded-xl p-1 focus-within:ring-1 focus-within:ring-primary focus-within:ring-opacity-50 transition-all">
+<textarea class="w-full bg-transparent border-none text-on-surface font-body resize-none focus:ring-0 placeholder-on-surface-variant/50 p-4" id="diagnostico" placeholder="Describe los síntomas, ruidos o problemas reportados..." rows="4"></textarea>
+</div>
+</div>
+<!-- Tipo de Orden -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-6">
+<label class="block font-headline text-lg font-medium text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">category</span>
+                            Tipo de Orden
+                        </label>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Option 1: Pagada (Selected state simulation) -->
+<label class="relative cursor-pointer group">
+<input checked="" class="peer sr-only" name="order_type" type="radio" value="pagada"/>
+<div class="h-full bg-surface-container p-6 rounded-xl border border-transparent peer-checked:bg-surface-container-highest peer-checked:border-primary/20 transition-all duration-200 flex flex-col items-center justify-center gap-3 text-center">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant peer-checked:text-primary transition-colors">payments</span>
+<span class="font-headline font-medium text-on-surface peer-checked:text-primary">Regular (Pagada)</span>
+</div>
+<div class="absolute top-3 right-3 w-3 h-3 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-opacity shadow-[0_0_8px_rgba(192,236,212,0.6)]"></div>
+</label>
+<!-- Option 2: Garantía -->
+<label class="relative cursor-pointer group">
+<input class="peer sr-only" name="order_type" type="radio" value="garantia"/>
+<div class="h-full bg-surface-container p-6 rounded-xl border border-transparent peer-checked:bg-surface-container-highest peer-checked:border-primary/20 hover:bg-surface-container-highest/50 transition-all duration-200 flex flex-col items-center justify-center gap-3 text-center">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant peer-checked:text-primary transition-colors">verified_user</span>
+<span class="font-headline font-medium text-on-surface peer-checked:text-primary">Garantía</span>
+</div>
+<div class="absolute top-3 right-3 w-3 h-3 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-opacity shadow-[0_0_8px_rgba(192,236,212,0.6)]"></div>
+</label>
+<!-- Option 3: Cortesía -->
+<label class="relative cursor-pointer group">
+<input class="peer sr-only" name="order_type" type="radio" value="cortesia"/>
+<div class="h-full bg-surface-container p-6 rounded-xl border border-transparent peer-checked:bg-surface-container-highest peer-checked:border-primary/20 hover:bg-surface-container-highest/50 transition-all duration-200 flex flex-col items-center justify-center gap-3 text-center">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant peer-checked:text-primary transition-colors">volunteer_activism</span>
+<span class="font-headline font-medium text-on-surface peer-checked:text-primary">Cortesía</span>
+</div>
+<div class="absolute top-3 right-3 w-3 h-3 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-opacity shadow-[0_0_8px_rgba(192,236,212,0.6)]"></div>
+</label>
+</div>
+</div>
+<!-- Promesa & Técnico -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Promesa de Entrega -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-4">
+<label class="block font-headline text-lg font-medium text-on-surface flex items-center gap-2" for="fecha_entrega">
+<span class="material-symbols-outlined text-primary text-xl">event_available</span>
+                                Promesa de Entrega
+                            </label>
+<div class="relative bg-surface-container-highest rounded-xl flex items-center p-2 focus-within:ring-1 focus-within:ring-primary focus-within:ring-opacity-50">
+<span class="material-symbols-outlined text-on-surface-variant ml-3">calendar_month</span>
+<input class="w-full bg-transparent border-none text-on-surface font-body focus:ring-0 p-3 [color-scheme:dark]" id="fecha_entrega" type="date"/>
+</div>
+</div>
+<!-- Asignación Técnico -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] space-y-4">
+<label class="block font-headline text-lg font-medium text-on-surface flex items-center gap-2" for="tecnico">
+<span class="material-symbols-outlined text-primary text-xl">engineering</span>
+                                Asignación
+                            </label>
+<div class="relative bg-surface-container-highest rounded-xl flex items-center p-2 focus-within:ring-1 focus-within:ring-primary focus-within:ring-opacity-50">
+<span class="material-symbols-outlined text-on-surface-variant ml-3">person</span>
+<select class="w-full bg-transparent border-none text-on-surface font-body focus:ring-0 p-3 appearance-none" id="tecnico">
+<option class="bg-surface-container-highest text-on-surface-variant" disabled="" selected="" value="">Seleccionar Técnico...</option>
+<option class="bg-surface-container-highest text-on-surface" value="1">Carlos Mendoza (Experto Eléctrico)</option>
+<option class="bg-surface-container-highest text-on-surface" value="2">Ana Silva (Mecánica General)</option>
+<option class="bg-surface-container-highest text-on-surface" value="3">Taller General (Auto-asignar)</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 text-on-surface-variant pointer-events-none">arrow_drop_down</span>
+</div>
+</div>
+</div>
+</form>
+</div>
+</section>
+<!-- Right Pane: Summary Panel -->
+<aside class="w-full md:w-[400px] lg:w-[480px] bg-surface-container-lowest border-l-0 md:border-l border-transparent z-20 flex flex-col h-full absolute md:relative bottom-0 transition-transform transform translate-y-full md:translate-y-0 rounded-t-3xl md:rounded-none">
+<!-- Mobile Toggle (Decorative) -->
+<div class="w-12 h-1.5 bg-surface-container-high rounded-full mx-auto mt-4 md:hidden"></div>
+<div class="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 flex flex-col">
+<div class="space-y-2">
+<h2 class="font-headline text-2xl font-bold text-on-surface tracking-tight">Resumen de Orden</h2>
+<p class="font-body text-sm text-on-surface-variant">Vehículo: EcoRider Pro 2023</p>
+</div>
+<!-- Tonal Separation without lines -->
+<div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
+<!-- Servicelist -->
+<ul class="space-y-4">
+<li class="flex justify-between items-start group">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-primary">build</span>
+</div>
+<div>
+<p class="font-body text-sm font-medium text-on-surface">Mantenimiento Preventivo</p>
+<p class="font-body text-xs text-on-surface-variant">Revisión general y ajustes</p>
+</div>
+</div>
+<span class="font-headline font-medium text-sm">$45.00</span>
+</li>
+<li class="flex justify-between items-start group">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-primary">battery_charging_full</span>
+</div>
+<div>
+<p class="font-body text-sm font-medium text-on-surface">Reemplazo Batería 36V</p>
+<p class="font-body text-xs text-on-surface-variant">Pieza original OEM</p>
+</div>
+</div>
+<span class="font-headline font-medium text-sm">$120.00</span>
+</li>
+</ul>
+<div class="h-4"></div> <!-- Spacer replacing line -->
+<!-- Totals -->
+<div class="space-y-3 bg-surface-container p-5 rounded-xl">
+<div class="flex justify-between text-sm">
+<span class="font-body text-on-surface-variant">Subtotal</span>
+<span class="font-body text-on-surface">$165.00</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="font-body text-on-surface-variant">Impuestos (IVA 16%)</span>
+<span class="font-body text-on-surface">$26.40</span>
+</div>
+<div class="flex justify-between items-end pt-2">
+<span class="font-headline text-lg font-bold text-on-surface">Total Estimado</span>
+<span class="font-headline text-3xl font-bold text-primary tracking-tight">$191.40</span>
+</div>
+</div>
+</div>
+<!-- Spacer to push button down if needed -->
+<div class="flex-1"></div>
+<!-- Primary Action -->
+<div class="pt-4">
+<button class="w-full py-5 px-6 rounded-full velocity-gradient text-on-primary-fixed font-headline font-bold text-lg tracking-wide hover:scale-[0.98] transition-transform duration-200 flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(192,236,212,0.15)]">
+<span class="material-symbols-outlined">print</span>
+                        Finalizar Recepción e Imprimir Etiqueta
+                    </button>
+<button class="w-full py-4 mt-3 text-on-surface-variant font-body text-sm font-medium hover:text-on-surface transition-colors">
+                        Guardar Borrador
+                    </button>
+</div>
+</div>
+</aside>
+</main>
+</body></html>

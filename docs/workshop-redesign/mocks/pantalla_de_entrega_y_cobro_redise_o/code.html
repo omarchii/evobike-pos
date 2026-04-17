@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#002114",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#d5e7db",
+                        "secondary-container": "#3f4f46",
+                        "on-secondary-container": "#afc0b5",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "outline": "#8b938d",
+                        "outline-variant": "#414844",
+                        "on-tertiary": "#4c2526",
+                        "on-primary-container": "#335a48",
+                        "surface": "#131313",
+                        "on-primary": "#0e3727",
+                        "on-tertiary-fixed": "#331012",
+                        "surface-variant": "#353534",
+                        "on-secondary-fixed": "#101e18",
+                        "surface-container-highest": "#353534",
+                        "secondary": "#b9cbbf",
+                        "tertiary": "#ffdad9",
+                        "inverse-primary": "#3f6654",
+                        "on-error": "#690005",
+                        "primary-fixed": "#c1ecd5",
+                        "tertiary-container": "#f5b7b7",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "surface-dim": "#131313",
+                        "on-secondary": "#25342c",
+                        "surface-tint": "#a5d0b9",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "tertiary-fixed": "#ffdad9",
+                        "on-tertiary-container": "#744647",
+                        "error": "#ffb4ab",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "inverse-on-surface": "#313030",
+                        "on-background": "#e5e2e1",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "surface-bright": "#393939",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "primary-container": "#a5d0b9",
+                        "on-surface-variant": "#c1c8c2",
+                        "surface-container": "#201f1f",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "surface-container-high": "#2a2a2a",
+                        "on-tertiary-fixed-variant": "#663a3b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .velocity-gradient {
+            background: linear-gradient(135deg, #c0ecd4 0%, #a5d0b9 100%);
+        }
+        .glass-panel {
+            background: rgba(53, 53, 52, 0.6);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(192, 236, 212, 0.2);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #131313;
+            color: #e5e2e1;
+        }
+        h1, h2, h3, .folio {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#131313] flex justify-between items-center px-8 h-16 w-full">
+<div class="flex items-center gap-6">
+<span class="text-2xl font-bold tracking-tighter text-[#c0ecd4] font-headline uppercase">EVOBIKE TALLER</span>
+<div class="hidden md:flex items-center gap-8 font-headline font-bold text-lg uppercase tracking-wider">
+<span class="text-gray-400 hover:bg-[#353534] transition-colors duration-300 px-3 py-1 rounded cursor-pointer">Dashboard</span>
+<span class="text-gray-400 hover:bg-[#353534] transition-colors duration-300 px-3 py-1 rounded cursor-pointer">Recepción</span>
+<span class="text-[#c0ecd4] font-bold px-3 py-1 rounded">Órdenes</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0ecd4] cursor-pointer p-2 rounded-full hover:bg-[#353534]">notifications</span>
+<span class="material-symbols-outlined text-[#c0ecd4] cursor-pointer p-2 rounded-full hover:bg-[#353534]">settings</span>
+<img alt="Técnico Senior Avatar" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Professional senior bike technician avatar with a friendly expression in a workshop setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4cm2ERdU80Y38dntmu1KQeOedgNbX3hTIrKrgF1BYA5fHkdZw6C5-78m0ELQxDSYq5rUDZ1D2VNYL3KZ-i62l6cUC4kIx8PGt4jeAvpYlHSvQOo8FegUWPcLwI47yWVwhBobrDQ7rAHnH-zh5uxA53LjydwrYb8doFaL5fmuKPXbw2_aIHsDGux2_iNdLYqI8tuZXwfTawHQKriQ2yV6CoUWJJmUdPoIW8s681ge38w3oznEC8JAepASGbKF3Vdj5Fcoi9l2zQasT"/>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-40 bg-[#131313] flex flex-col pt-20 pb-8 shadow-[30px_0_50px_rgba(0,0,0,0.12)] hidden lg:flex">
+<div class="px-6 mb-10">
+<h2 class="font-headline font-black text-white text-xl uppercase tracking-tighter">Taller Central</h2>
+<p class="font-headline text-xs uppercase font-medium tracking-widest text-[#c0ecd4]">Operaciones Técnicas</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 cursor-pointer transition-all duration-300 hover:bg-[#1c1b1b]">
+<span class="material-symbols-outlined mr-4">dashboard</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Dashboard</span>
+</div>
+<div class="flex items-center text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 cursor-pointer transition-all duration-300 hover:bg-[#1c1b1b]">
+<span class="material-symbols-outlined mr-4">build_circle</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Recepción</span>
+</div>
+<div class="flex items-center text-[#c0ecd4] bg-[#353534] rounded-r-full py-3 px-6 mb-2 cursor-pointer transition-all duration-300">
+<span class="material-symbols-outlined mr-4">assignment</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Órdenes</span>
+</div>
+<div class="flex items-center text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 cursor-pointer transition-all duration-300 hover:bg-[#1c1b1b]">
+<span class="material-symbols-outlined mr-4">inventory_2</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Inventario</span>
+</div>
+<div class="flex items-center text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 cursor-pointer transition-all duration-300 hover:bg-[#1c1b1b]">
+<span class="material-symbols-outlined mr-4">history_edu</span>
+<span class="font-headline text-sm uppercase font-medium tracking-widest">Auditoría</span>
+</div>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full velocity-gradient text-on-primary font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 mb-6 active:scale-95 duration-200">
+<span class="material-symbols-outlined">add</span>
+<span class="font-headline text-sm uppercase tracking-widest">Nueva Orden</span>
+</button>
+<div class="flex items-center text-gray-500 hover:text-gray-200 py-2 cursor-pointer">
+<span class="material-symbols-outlined mr-3">help_outline</span>
+<span class="font-headline text-xs uppercase font-medium tracking-widest">Soporte</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 px-8 pb-12">
+<header class="mb-10 flex justify-between items-end">
+<div>
+<h1 class="text-5xl font-black tracking-tighter text-on-surface">Entrega y Cobro</h1>
+<p class="text-outline mt-2 font-body text-sm uppercase tracking-[0.2em]">Fase Final de Servicio Taller</p>
+</div>
+<div class="text-right">
+<div class="bg-surface-container-highest px-4 py-1 rounded-full inline-block border border-outline-variant/20 mb-2">
+<span class="text-xs font-bold text-primary tracking-widest uppercase">Caja Abierta #42</span>
+</div>
+<p class="text-outline text-xs">Asignado a: Carlos Méndez (Admin)</p>
+</div>
+</header>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<!-- Column 1: Resumen Visual -->
+<section class="space-y-6">
+<div class="bg-surface-container-low p-8 rounded-2xl relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-outline text-xs uppercase tracking-widest block mb-1">Folio del Servicio</span>
+<h2 class="folio text-4xl font-bold text-white">#EVO-2024-089</h2>
+</div>
+<span class="bg-primary/20 text-primary px-3 py-1 rounded text-[10px] font-black uppercase tracking-tighter border border-primary/30">
+                            Pre-pagado
+                        </span>
+</div>
+<div class="rounded-xl overflow-hidden mb-6 aspect-video">
+<img alt="Bicicleta Servicio" class="w-full h-full object-cover" data-alt="High-end electric mountain bike in a professional studio setting with moody cinematic lighting and dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcc_jD7ggXVLl2kAq1o8zQMEVMZ0nYrVEpiUEO_q3xnPxL7U7uftdE1h0P97uPbi2MvchqUs1Ca6fGV_0h34_BFFRGWtb3pALiiS0tgBbyA7sSeqCMcIogZUzqv7VgbsPGUEPsnnrubU0ayFl7BkL1cSDFMutUVTmXNeVDJbj0McbTxZL3tyjLuuE9qWpxOWqH8vTfF_QYkUSl1wwOvP3V-Drb7Qk8CNol5M4RTrDivzQh5rNO95F8hFOFMjMh3lQTdl5ppBsXw5Oc"/>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-high rounded-xl">
+<img alt="Técnico Ejecutor" class="w-12 h-12 rounded-full object-cover" data-alt="Portrait of a professional mechanic in uniform with a focused expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSa39HjfmGdSxXkPG7lzrJ0ULIFzhucAA6NsiloiSf_C-NmVhewKCCYjhC0x2Yxou-jMioMj-YM_11mqnlrspJ7xIaPXJ8zbcSaACOZ2v2z0vbNmZLDoy-0xLuq3sWGdAIoZ66eAVgDtZV0O6QA0w0-Vz6E-CpGWzeHMwJIHThCNBil74R6lZBuCqksj3uIERfI8pXiq-GJPlTM4H8zKDj98DYCtXmqDAB8tBzJ3W5NmNFY_FUMPwDe4RjO2jqnUuKEWJ9yHmcpOf7"/>
+<div>
+<p class="text-[10px] text-outline uppercase tracking-widest">Técnico Ejecutor</p>
+<p class="font-headline font-bold text-on-surface">Roberto "Speedy" G.</p>
+</div>
+<div class="ml-auto flex gap-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-8 rounded-2xl">
+<h3 class="font-headline font-bold uppercase tracking-widest text-sm mb-4">Detalles del Cliente</h3>
+<p class="text-2xl font-bold text-white mb-1">Alejandro Villagrán</p>
+<p class="text-outline text-sm">Specialized Turbo Levo Gen 3</p>
+<div class="mt-4 flex gap-2">
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs text-on-surface-variant">Cliente VIP</span>
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs text-on-surface-variant">Miembro Club Evo</span>
+</div>
+</div>
+</section>
+<!-- Column 2: Protocolo de Entrega -->
+<section class="bg-surface-container-low p-8 rounded-2xl flex flex-col">
+<h3 class="font-headline font-black uppercase tracking-widest text-lg mb-8 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">verified</span>
+                    Protocolo de Entrega
+                </h3>
+<div class="space-y-6 flex-1">
+<label class="flex items-center gap-4 group cursor-pointer">
+<input class="w-6 h-6 rounded border-outline-variant bg-surface-container-highest text-primary focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+<div class="flex-1 border-b border-outline-variant/10 pb-2 group-hover:border-primary/30 transition-colors">
+<p class="text-sm font-bold text-on-surface">Inspección Estética</p>
+<p class="text-xs text-outline">Limpieza profunda y revisión de acabados.</p>
+</div>
+</label>
+<label class="flex items-center gap-4 group cursor-pointer">
+<input class="w-6 h-6 rounded border-outline-variant bg-surface-container-highest text-primary focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+<div class="flex-1 border-b border-outline-variant/10 pb-2 group-hover:border-primary/30 transition-colors">
+<p class="text-sm font-bold text-on-surface">Torque y Seguridad</p>
+<p class="text-xs text-outline">Verificación de tornillería crítica (8-12Nm).</p>
+</div>
+</label>
+<label class="flex items-center gap-4 group cursor-pointer">
+<input class="w-6 h-6 rounded border-outline-variant bg-surface-container-highest text-primary focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+<div class="flex-1 border-b border-outline-variant/10 pb-2 group-hover:border-primary/30 transition-colors">
+<p class="text-sm font-bold text-on-surface">Test Drive Realizado</p>
+<p class="text-xs text-outline">Prueba funcional de cambios y frenado.</p>
+</div>
+</label>
+<label class="flex items-center gap-4 group cursor-pointer">
+<input class="w-6 h-6 rounded border-outline-variant bg-surface-container-highest text-primary focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+<div class="flex-1 border-b border-outline-variant/10 pb-2 group-hover:border-primary/30 transition-colors">
+<p class="text-sm font-bold text-on-surface">Actualización de Firmware</p>
+<p class="text-xs text-outline">Software motor y batería al día.</p>
+</div>
+</label>
+<label class="flex items-center gap-4 group cursor-pointer">
+<input class="w-6 h-6 rounded border-outline-variant bg-surface-container-highest text-primary focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+<div class="flex-1 border-b border-outline-variant/10 pb-2 group-hover:border-primary/30 transition-colors">
+<p class="text-sm font-bold text-on-surface">Entrega de Refacciones</p>
+<p class="text-xs text-outline">Se devuelven piezas sustituidas al cliente.</p>
+</div>
+</label>
+</div>
+<div class="mt-12">
+<p class="text-[10px] text-outline uppercase tracking-[0.2em] mb-3">Firma de Conformidad Cliente</p>
+<div class="bg-surface-container-lowest h-40 rounded-xl border border-outline-variant/20 flex items-center justify-center group cursor-crosshair">
+<span class="text-outline-variant text-xs group-hover:text-primary transition-colors italic">Toque para firmar digitalmente</span>
+</div>
+</div>
+</section>
+<!-- Column 3: Cobro y Cierre -->
+<section class="bg-surface-container-low p-8 rounded-2xl flex flex-col">
+<h3 class="font-headline font-black uppercase tracking-widest text-lg mb-8">Liquidación Final</h3>
+<div class="space-y-4 mb-10">
+<div class="flex justify-between items-center">
+<span class="text-outline text-sm">Mano de obra (Master Service)</span>
+<span class="text-on-surface font-mono">$1,850.00</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline text-sm">Refacciones (Cadena &amp; Pastillas)</span>
+<span class="text-on-surface font-mono">$2,420.00</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline text-sm">IVA (16%)</span>
+<span class="text-on-surface font-mono">$683.20</span>
+</div>
+<div class="pt-4 border-t border-outline-variant/30 flex justify-between items-end">
+<span class="font-headline font-bold text-xl text-white uppercase tracking-tighter">Total a Pagar</span>
+<span class="font-headline font-black text-4xl text-primary">$4,953.20</span>
+</div>
+</div>
+<div class="mb-10">
+<p class="text-[10px] text-outline uppercase tracking-[0.2em] mb-4">Método de Pago</p>
+<div class="grid grid-cols-2 gap-3">
+<button class="bg-surface-container-highest p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-primary/10 transition-all border border-transparent hover:border-primary/40 group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">payments</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Efectivo</span>
+</button>
+<button class="bg-primary/20 p-4 rounded-xl flex flex-col items-center gap-2 border border-primary/40 group">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">credit_card</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-primary">Tarjeta</span>
+</button>
+<button class="bg-surface-container-highest p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-primary/10 transition-all border border-transparent hover:border-primary/40 group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">account_balance</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Transferencia</span>
+</button>
+<button class="bg-surface-container-highest p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-primary/10 transition-all border border-transparent hover:border-primary/40 group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">qr_code_2</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Pago QR</span>
+</button>
+<button class="bg-surface-container-highest p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-primary/10 transition-all border border-transparent hover:border-primary/40 group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">confirmation_number</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Vale/Cupón</span>
+</button>
+<button class="bg-surface-container-highest p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-primary/10 transition-all border border-transparent hover:border-primary/40 group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">more_horiz</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Otro</span>
+</button>
+</div>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex items-center gap-3 px-4 py-3 bg-secondary-container/20 rounded-xl border border-secondary-container/30">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-xs font-medium text-secondary-fixed">Caja activa: Validación de terminal lista</span>
+</div>
+<button class="w-full velocity-gradient text-on-primary font-black py-5 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all duration-200">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span class="font-headline text-sm uppercase tracking-[0.15em]">Confirmar entrega y cobrar</span>
+</button>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar for Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container flex justify-around py-4 z-50">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="text-[10px] uppercase font-bold tracking-widest">Orden</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-500">
+<span class="material-symbols-outlined">build_circle</span>
+<span class="text-[10px] uppercase font-bold tracking-widest">Protocolo</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-500">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span class="text-[10px] uppercase font-bold tracking-widest">Cobro</span>
+</button>
+</nav>
+</body></html>

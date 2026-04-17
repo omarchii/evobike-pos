@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EvoBike POS - Tablero Kanban</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#3b4a42",
+                      "primary": "#c0ecd4",
+                      "secondary-fixed-dim": "#b9cbbf",
+                      "on-primary": "#0e3727",
+                      "inverse-primary": "#3f6654",
+                      "inverse-on-surface": "#2f312f",
+                      "on-secondary-container": "#afc0b5",
+                      "error": "#ffb4ab",
+                      "secondary-fixed": "#d5e7db",
+                      "surface-container-highest": "#333533",
+                      "background": "#121412",
+                      "surface-bright": "#383a38",
+                      "on-primary-fixed-variant": "#274e3d",
+                      "inverse-surface": "#e2e3e0",
+                      "surface-dim": "#121412",
+                      "outline": "#8b938d",
+                      "on-tertiary-fixed": "#331012",
+                      "tertiary": "#ffdad9",
+                      "surface-container-high": "#282a29",
+                      "on-tertiary-container": "#744647",
+                      "on-secondary": "#25342c",
+                      "surface-container-lowest": "#0c0f0d",
+                      "outline-variant": "#414844",
+                      "primary-fixed": "#c1ecd5",
+                      "on-primary-container": "#335a48",
+                      "on-background": "#e2e3e0",
+                      "secondary-container": "#3f4f46",
+                      "on-surface-variant": "#c1c8c2",
+                      "error-container": "#93000a",
+                      "tertiary-fixed": "#ffdad9",
+                      "surface-container-low": "#1a1c1a",
+                      "secondary": "#b9cbbf",
+                      "on-tertiary": "#4c2526",
+                      "surface-tint": "#a5d0b9",
+                      "on-surface": "#e2e3e0",
+                      "on-primary-fixed": "#002114",
+                      "primary-container": "#a5d0b9",
+                      "on-secondary-fixed": "#101e18",
+                      "tertiary-container": "#f5b7b7",
+                      "surface": "#121412",
+                      "surface-variant": "#333533",
+                      "surface-container": "#1e201e",
+                      "on-error": "#690005",
+                      "primary-fixed-dim": "#a5d0b9",
+                      "on-tertiary-fixed-variant": "#663a3b",
+                      "tertiary-fixed-dim": "#f5b7b7",
+                      "on-error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Space Grotesk"
+                      ],
+                      "body": [
+                              "Inter"
+                      ],
+                      "label": [
+                              "Inter"
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Scrollbar for Kanban */
+        .kanban-scroll::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .kanban-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb {
+            background-color: #333533;
+            border-radius: 9999px;
+        }
+        .glass-gradient {
+            background: linear-gradient(135deg, rgba(192, 236, 212, 0.15) 0%, rgba(165, 208, 185, 0.05) 100%);
+            backdrop-filter: blur(24px);
+        }
+      </style>
+</head>
+<body class="bg-background text-on-surface font-body h-screen flex overflow-hidden">
+<!-- SideNavBar (from JSON) -->
+<nav class="bg-[#1a1c1a] dark:bg-[#1a1c1a] h-screen w-64 flex flex-col h-full py-6 shrink-0 relative z-20">
+<!-- Header -->
+<div class="px-6 mb-8 flex flex-col gap-2">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center text-primary overflow-hidden shrink-0">
+<span class="material-symbols-outlined text-3xl">build_circle</span>
+</div>
+<div>
+<h1 class="text-lg font-black text-[#a5d0b9] uppercase font-headline tracking-wider">EvoFlow Taller</h1>
+<p class="text-xs text-on-surface-variant font-label">Modo Técnico Activo</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto kanban-scroll pr-2 flex flex-col gap-1">
+<!-- Tablero Kanban (Active) -->
+<a class="flex items-center gap-3 text-[#c0ecd4] font-bold bg-[#1e201e] rounded-l-full ml-2 pl-4 py-3 group" href="#">
+<span class="material-symbols-outlined filled text-xl">view_kanban</span>
+<span class="font-label text-xs uppercase tracking-wider">Tablero Kanban</span>
+</a>
+<a class="flex items-center gap-3 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">playlist_add</span>
+<span class="font-label text-xs uppercase tracking-wider">Recepción</span>
+</a>
+<a class="flex items-center gap-3 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">assignment</span>
+<span class="font-label text-xs uppercase tracking-wider">Órdenes</span>
+</a>
+<a class="flex items-center gap-3 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span class="font-label text-xs uppercase tracking-wider">Ocupación</span>
+</a>
+<a class="flex items-center gap-3 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">handshake</span>
+<span class="font-label text-xs uppercase tracking-wider">Entregas</span>
+</a>
+<a class="flex items-center gap-3 text-[#8e918e] pl-6 py-3 hover:text-white hover:bg-[#333533] rounded-l-full ml-2 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">public</span>
+<span class="font-label text-xs uppercase tracking-wider">Portal Cliente</span>
+</a>
+</div>
+<!-- Footer -->
+<div class="px-4 mt-auto pt-6 flex flex-col gap-4">
+<button class="w-full py-3 bg-surface-container-highest text-primary-container rounded-full font-label text-sm hover:bg-surface-bright transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">monitor_heart</span>
+                Estado Sistema
+            </button>
+<a class="flex items-center gap-3 text-[#8e918e] pl-4 py-2 hover:text-error transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+<span class="font-label text-xs uppercase tracking-wider">Cerrar Sesión</span>
+</a>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col min-w-0 bg-background relative z-10">
+<!-- TopNavBar (adapted from JSON for context) -->
+<header class="bg-[#121412] dark:bg-[#121412] flex justify-between items-center w-full px-8 py-3 shrink-0 relative z-20">
+<div class="flex items-center gap-6">
+<!-- Search (Conceptual) -->
+<div class="relative w-64 group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">search</span>
+</div>
+<input class="w-full bg-surface-container-low text-on-surface text-sm rounded-full pl-10 pr-4 py-2 border-none focus:ring-0 focus:bg-surface-container transition-colors placeholder:text-on-surface-variant/50 outline-none" placeholder="Buscar folio, cliente..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-[#1a1c1a] transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-[#1a1c1a] transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="ml-2 px-6 py-2 bg-primary-container text-on-primary-fixed font-label text-sm font-semibold rounded-full hover:bg-primary transition-colors flex items-center gap-2 glass-gradient">
+<span class="material-symbols-outlined text-lg">add</span>
+                    Nueva Orden
+                </button>
+<div class="ml-4 w-10 h-10 rounded-full bg-surface-container overflow-hidden ring-2 ring-transparent hover:ring-outline-variant transition-all cursor-pointer">
+<img alt="Perfil del Técnico" class="w-full h-full object-cover" data-alt="close up portrait of a male mechanic wearing a dark grey uniform smiling slightly against a blurry workshop background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvYfi8V_K7Vi6V1zvH1NbDsHBaGCSyD9eCi2MlASlhdN0S9-_GXHBQeKW5GLuGr9nKUBgqSo6ucrLE9PW7OIU3MjESLoQShDH8EN_k0sMqGZV8KtgA1bDHO1RDArexEa-GMENa9mhHFKn5QA67pTk7LP5PxvxooYJ8vEDqwmUUkdhVWj3viQ0qB-5vFxyQffV8ZxT15jJO2Yv9qhEUzegLano00BJCw0KK3SKMyW_R9yVCkYZLNz9FlKIcO6NSGp8O0VKajYlMQXnj"/>
+</div>
+</div>
+</header>
+<!-- Filters & Toolbar -->
+<div class="px-8 py-4 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-surface-container-lowest">
+<h2 class="text-2xl font-headline font-bold text-on-surface flex items-center gap-3">
+                Resumen Taller
+                <span class="text-sm font-body text-on-surface-variant font-normal bg-surface-container px-3 py-1 rounded-full">12 Activas</span>
+</h2>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full text-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-lg">engineering</span>
+                    Todos los Técnicos
+                    <span class="material-symbols-outlined text-base">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full text-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-lg">storefront</span>
+                    Sucursal Norte
+                    <span class="material-symbols-outlined text-base">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full text-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-lg">flag</span>
+                    Prioridad
+                    <span class="material-symbols-outlined text-base">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Kanban Board Container -->
+<div class="flex-1 overflow-x-auto overflow-y-hidden kanban-scroll px-8 pb-8 pt-4 flex gap-6">
+<!-- Column 1: Recibida -->
+<div class="w-80 shrink-0 flex flex-col h-full">
+<!-- Column Header -->
+<div class="flex items-center justify-between mb-4 px-2">
+<h3 class="font-headline font-semibold text-on-surface text-lg"><span class="material-symbols-outlined text-sm cursor-pointer hover:text-primary transition-colors">chevron_left</span> Recibida</h3>
+<span class="text-xs font-label bg-surface-container-highest text-on-surface-variant px-2 py-1 rounded-full font-headline font-bold">2</span>
+</div>
+<!-- Cards Container -->
+<div class="flex-1 overflow-y-auto kanban-scroll flex flex-col gap-4 pb-4">
+<!-- Card -->
+<div class="bg-surface-container rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container-highest transition-colors group relative overflow-hidden"><div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-xl z-10">PRE-PAGADO</div>
+<!-- Left indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-container-low group-hover:bg-primary-container transition-colors"></div>
+<!-- Header -->
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-primary text-xl">#EV-0942</span>
+<span class="text-xs font-label text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                2h
+                            </span>
+</div>
+<!-- Customer & Bike -->
+<div>
+<p class="font-body text-sm text-on-surface mb-1">Carlos Mendoza</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">EvoCity Pro</span><span class="text-[10px] font-label text-on-secondary-container bg-secondary-container px-2 py-0.5 rounded">Garantía</span><span class="flex items-center gap-1 text-[10px] font-label text-on-surface-variant border border-outline-variant px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px] text-primary">check_circle</span> Stock OK</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-primary-container bg-primary-container/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_charging_full</span>
+                                    98%
+                                </span>
+</div>
+</div>
+<!-- Footer -->
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<!-- Tonal Separation (No-Line) -->
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container-highest"></div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
+                                    --
+                                </div>
+<span class="text-xs text-on-surface-variant font-label">Sin asignar</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+</div>
+</div>
+<!-- Card -->
+<div class="bg-surface-container rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container-highest transition-colors group relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-container-low group-hover:bg-primary-container transition-colors"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-primary text-xl">#EV-0945</span>
+<span class="text-xs font-label text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                30m
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface mb-1">Ana Silva</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">EcoTrail X</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-error bg-error/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_alert</span>
+                                    12%
+                                </span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container-highest"></div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
+                                    --
+                                </div>
+<span class="text-xs text-on-surface-variant font-label">Sin asignar</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 2: En Diagnóstico -->
+<div class="w-80 shrink-0 flex flex-col h-full bg-surface-container-lowest rounded-2xl p-2 pb-0">
+<div class="flex items-center justify-between mb-4 px-2 pt-2">
+<h3 class="font-headline font-semibold text-on-surface text-lg"><span class="material-symbols-outlined text-sm cursor-pointer hover:text-primary transition-colors">chevron_left</span> En Diagnóstico</h3>
+<span class="text-xs font-label bg-surface-container text-on-surface px-2 py-1 rounded-full">1</span>
+</div>
+<div class="flex-1 overflow-y-auto kanban-scroll flex flex-col gap-4 pb-4">
+<!-- Card -->
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container transition-colors group relative overflow-hidden ring-1 ring-error-container">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-tint opacity-50 group-hover:opacity-100 transition-colors"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-primary-container text-xl">#EV-0938</span>
+<span class="text-xs font-label text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-error">warning</span>
+                                1d
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface mb-1">Roberto López</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container px-2 py-1 rounded">EvoCity Pro</span><span class="text-[10px] font-label text-on-primary-container bg-primary-container/20 px-2 py-0.5 rounded">Mantenimiento</span><span class="flex items-center gap-1 text-[10px] font-label text-error border border-error/30 px-2 py-0.5 rounded"><span class="material-symbols-outlined text-[12px]">shopping_cart</span> Pendiente</span><span class="text-[10px] font-label text-on-secondary-container bg-secondary-container px-2 py-0.5 rounded">Garantía</span><span class="flex items-center gap-1 text-[10px] font-label text-on-surface-variant border border-outline-variant px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px] text-primary">check_circle</span> Stock OK</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-secondary bg-secondary/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_charging_50</span>
+                                    55%
+                                </span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container"></div>
+<div class="flex items-center gap-2">
+<img alt="Técnico" class="w-6 h-6 rounded-full object-cover" data-alt="small circular portrait of a man with glasses and short hair on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs6g182Lo7lQaWhTWHJke9I508HlQ9hFW_eaMUS308s3jdkSIh1BceU4HYDJ8RbFG2NszH9UEIFTOrZ6gF384NUKgr-Vm0q6PyWplro2NNRQc1eYDD5RvDc3EE04MsOe2Inv8wjqOQvEZ6X6LFMAuoVHpOt4yX3O0ZQo-1Zkn1JeFqKYGZVSYvUUrKTdrEdKbQb0YstMkfGjFre6qPhjurlI94NO_LP0vLsQweWOhGG-XlHNxd4iufEHZnQd2BlIfDhNs9ZfENLjae"/>
+<span class="text-xs text-on-surface font-label">J. Ramos</span>
+</div>
+<!-- High Priority Chip -->
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-error-container text-on-error-container">URGENTE</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 3: En Trabajo -->
+<div class="w-80 shrink-0 flex flex-col h-full bg-surface-container-low rounded-2xl p-2 pb-0">
+<div class="flex items-center justify-between mb-4 px-2 pt-2">
+<h3 class="font-headline font-semibold text-primary text-lg flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> <span class="material-symbols-outlined text-sm cursor-pointer hover:text-primary transition-colors">chevron_left</span> En Trabajo</h3>
+<span class="text-xs font-label bg-surface-container-highest text-primary-container px-2 py-1 rounded-full">2</span>
+</div>
+<div class="flex-1 overflow-y-auto kanban-scroll flex flex-col gap-4 pb-4">
+<!-- Active Card (Glassmorphism highlight) -->
+<div class="bg-surface-container-highest rounded-xl p-5 flex flex-col gap-4 cursor-pointer group relative overflow-hidden glass-gradient ring-1 ring-primary/20">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-on-surface text-xl drop-shadow-md">#EV-0930</span>
+<span class="text-xs font-label text-primary-container flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">timelapse</span>
+                                4h
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface mb-1 font-medium">Empresa Logística SA</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container-lowest/50 px-2 py-1 rounded">CargoMax 500</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-primary bg-primary/20 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_full</span>
+                                    100%
+                                </span>
+</div>
+</div>
+<!-- Progress Bar (No-Line approach) -->
+<div class="mt-1 flex gap-1">
+<div class="h-1 flex-1 bg-primary rounded-full"></div>
+<div class="h-1 flex-1 bg-primary rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container-lowest rounded-full"></div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="flex items-center gap-2">
+<img alt="Técnico Activo" class="w-6 h-6 rounded-full object-cover ring-2 ring-primary" data-alt="close up portrait of a male mechanic wearing a dark grey uniform smiling slightly against a blurry workshop background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGVd-hNMfJvcDBTW5KkneZ15ElHWAdjfg8NANvwxxDl1oJqhku_0CVP5I2_mwI8OJMn2qKd5S4I2K168SgVl2i22zu4qyO9h1aAwrBnFu11oGLM26Zw_SxkM5SdF1g0y9j2lbM1h-9l56W1UYEQIUx19Ng9xqB74BfxRp4o3rfnbcvp2ixRQ28A6w2XFXtLmzkxK6KWP4uXAyREgdbv16UU6vvUioZtgYA5G__rPq5EcxfPGv6RkELoy1-hf7B4glYAfP6XR9OanyC"/>
+<span class="text-xs text-on-surface font-label font-medium">Tú (Activo)</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-secondary-container text-on-secondary-container">FLOTILLA</span>
+</div>
+</div>
+<!-- Card -->
+<div class="bg-surface-container rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container-highest transition-colors group relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-tint opacity-80"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-primary-container text-xl">#EV-0935</span>
+<span class="text-xs font-label text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                1d
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface mb-1">María García</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">EvoCity Lite</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-error bg-error/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_0_bar</span>
+                                    0% (Ext)
+                                </span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container-highest"></div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-[10px] font-bold text-on-surface">
+                                    MR
+                                </div>
+<span class="text-xs text-on-surface-variant font-label">M. Ruiz</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-surface-tint"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 4: Esperando Refacciones -->
+<div class="w-80 shrink-0 flex flex-col h-full bg-surface-container-lowest rounded-2xl p-2 pb-0 opacity-80">
+<div class="flex items-center justify-between mb-4 px-2 pt-2">
+<h3 class="font-headline font-semibold text-on-surface-variant text-lg">Esp. Refacciones</h3>
+<span class="text-xs font-label bg-surface-container text-on-surface-variant px-2 py-1 rounded-full">1</span>
+</div>
+<div class="flex-1 overflow-y-auto kanban-scroll flex flex-col gap-4 pb-4">
+<!-- Card -->
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container transition-colors group relative overflow-hidden ring-1 ring-tertiary-container">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-outline-variant"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-outline text-xl">#EV-0915</span>
+<span class="text-xs font-label text-error flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">calendar_clock</span>
+                                5d
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface-variant mb-1">Luis Hernández</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-outline bg-surface-container px-2 py-1 rounded">Motor X</span>
+</div>
+</div>
+<!-- Blocked Reason -->
+<div class="bg-surface-container-highest rounded-lg p-2 flex items-start gap-2">
+<span class="material-symbols-outlined text-outline text-sm mt-0.5">inventory_2</span>
+<p class="text-xs font-label text-outline">Controlador v2.0 ETA: 12/Oct</p>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container"></div>
+<div class="flex items-center gap-2">
+<img alt="Técnico" class="w-6 h-6 rounded-full object-cover grayscale opacity-70" data-alt="small circular portrait of a man with glasses and short hair on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6Fh1P7fTo6dfVy-YxIGqhUK-k7cjAip8wcLmPk5K6753NlAT0ud54xfhkPPB8eGsoI0DhZPGoFKLpn6-1E0nMmGPURyAaBMZwpoHmV4zB78x5XKcHuziLiyY2k7c6oXntK0_P04DjxDTPrJnsAX8ZGMMjoH7GpYdsENHRiRvpDcwmdUhh1EDQYzDZKxDfmf1BCdb4Ymu4T0cC6BUK2Xo9ExQFk2bOBe0Kwt3WUXJjjM0k47VDNH0TyWvkPabGTPyWFc3W0ncTFF_y"/>
+<span class="text-xs text-outline font-label">J. Ramos</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 5: Esperando Aprobación (Empty State Example) -->
+<div class="w-80 shrink-0 flex flex-col h-full bg-surface-container-lowest rounded-2xl p-2 pb-0">
+<div class="flex items-center justify-between mb-4 px-2 pt-2">
+<h3 class="font-headline font-semibold text-on-surface-variant text-lg">Esp. Aprobación</h3>
+<span class="text-xs font-label bg-surface-container text-on-surface-variant px-2 py-1 rounded-full">0</span>
+</div>
+<div class="flex-1 flex items-center justify-center pb-8">
+<div class="flex flex-col items-center gap-3 text-on-surface-variant/50">
+<span class="material-symbols-outlined text-4xl">mark_email_read</span>
+<p class="text-sm font-label">Sin cotizaciones pendientes</p>
+</div>
+</div>
+</div>
+<!-- Column 6: Lista para Entrega -->
+<div class="w-80 shrink-0 flex flex-col h-full bg-surface-container-lowest rounded-2xl p-2 pb-0 border-r-4 border-r-transparent hover:border-r-surface-container-low transition-colors">
+<div class="flex items-center justify-between mb-4 px-2 pt-2">
+<h3 class="font-headline font-semibold text-on-surface text-lg">Lista para Entrega</h3>
+<span class="text-xs font-label bg-primary-container text-on-primary-container font-bold px-2 py-1 rounded-full">1</span>
+</div>
+<div class="flex-1 overflow-y-auto kanban-scroll flex flex-col gap-4 pb-4">
+<!-- Card -->
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-4 cursor-pointer hover:bg-surface-container transition-colors group relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+<div class="flex justify-between items-start">
+<span class="font-headline font-bold text-secondary text-xl line-through decoration-secondary/50">#EV-0912</span>
+<span class="text-xs font-label text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                                Lista
+                            </span>
+</div>
+<div>
+<p class="font-body text-sm text-on-surface mb-1">Diana Torres</p>
+<div class="flex items-center gap-2">
+<span class="text-xs font-label text-on-surface-variant bg-surface-container px-2 py-1 rounded">EcoTrail X</span>
+<span class="flex items-center gap-1 text-[10px] font-label text-primary bg-primary/20 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]">battery_full</span>
+                                    100%
+                                </span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2 pt-4 relative">
+<div class="absolute top-0 left-0 right-0 h-px bg-surface-container"></div>
+<button class="w-full py-2 bg-surface-container-highest text-on-surface rounded-lg font-label text-xs hover:bg-surface-bright transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">sms</span>
+                                Notificar Cliente
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Spacer for horizontal scroll -->
+<div class="w-8 shrink-0"></div>
+<div class="w-12 shrink-0 flex flex-col items-center py-4 bg-surface-container-low rounded-l-2xl border-l border-outline-variant h-full group cursor-pointer hover:w-16 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant mb-4">pause_circle</span>
+<div class="[writing-mode:vertical-lr] rotate-180 font-headline font-bold text-on-surface-variant tracking-widest uppercase text-sm">Pausadas (3)</div>
+</div></div>
+</main>
+</body></html>

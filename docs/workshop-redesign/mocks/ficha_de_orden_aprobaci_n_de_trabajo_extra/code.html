@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#002114",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#d5e7db",
+                        "secondary-container": "#3f4f46",
+                        "on-secondary-container": "#afc0b5",
+                        "tertiary-fixed-dim": "#f5b7b7",
+                        "outline": "#8b938d",
+                        "outline-variant": "#414844",
+                        "on-tertiary": "#4c2526",
+                        "on-primary-container": "#335a48",
+                        "surface": "#131313",
+                        "on-primary": "#0e3727",
+                        "on-tertiary-fixed": "#331012",
+                        "surface-variant": "#353534",
+                        "on-secondary-fixed": "#101e18",
+                        "surface-container-highest": "#353534",
+                        "secondary": "#b9cbbf",
+                        "tertiary": "#ffdad9",
+                        "inverse-primary": "#3f6654",
+                        "on-error": "#690005",
+                        "primary-fixed": "#c1ecd5",
+                        "tertiary-container": "#f5b7b7",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#3b4a42",
+                        "primary": "#c0ecd4",
+                        "surface-dim": "#131313",
+                        "on-secondary": "#25342c",
+                        "surface-tint": "#a5d0b9",
+                        "primary-fixed-dim": "#a5d0b9",
+                        "tertiary-fixed": "#ffdad9",
+                        "on-tertiary-container": "#744647",
+                        "error": "#ffb4ab",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "inverse-on-surface": "#313030",
+                        "on-background": "#e5e2e1",
+                        "secondary-fixed-dim": "#b9cbbf",
+                        "surface-bright": "#393939",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "primary-container": "#a5d0b9",
+                        "on-surface-variant": "#c1c8c2",
+                        "surface-container": "#201f1f",
+                        "on-primary-fixed-variant": "#274e3d",
+                        "surface-container-high": "#2a2a2a",
+                        "on-tertiary-fixed-variant": "#663a3b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(53, 53, 52, 0.6);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(192, 236, 212, 0.2);
+        }
+        .velocity-gradient {
+            background: linear-gradient(135deg, #c0ecd4 0%, #a5d0b9 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar Shell -->
+<nav class="fixed top-0 w-full z-50 bg-[#131313] flex justify-between items-center px-8 h-16 w-full">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold tracking-tighter text-[#c0ecd4] font-headline uppercase">EVOBIKE TALLER</span>
+<div class="hidden md:flex items-center bg-surface-container-low px-4 py-1.5 rounded-full">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-outline-variant" placeholder="Buscar orden o VIN..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="material-symbols-outlined text-gray-400 hover:text-[#c0ecd4] transition-colors">notifications</button>
+<button class="material-symbols-outlined text-gray-400 hover:text-[#c0ecd4] transition-colors">settings</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a senior technical specialist in a modern workshop setting with soft overhead lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEzhLc1oT3MVKUWRSR9AB0sfPDg49ztOGZoEE3V-SEgWwCTP6wBpaVmHCsiJB7pJ2I5Vlbsj8a3-HA8S937uwq3Sp5Ew1p9gVKcaJFd1Iuy_-8Lo7OVhhagSacRmLiJ0qjuhsS61B8Zi1bqv-6E4A8GTquyuu-VpBkQBT1j5nWErLxmF2M_RmMdOpP3qyGdiKnag0vztuYBHE_l_RuaM8kOfAFXP27ON1wOlIOhWR6YXzZULq6GKPf27Gds96v_3aOH29wQZ7VNdFh"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-40 bg-[#131313] flex flex-col pt-20 pb-8 shadow-[30px_0_50px_rgba(0,0,0,0.12)] hidden lg:flex">
+<div class="px-6 mb-10">
+<p class="font-headline font-black text-white text-xl">Taller Central</p>
+<p class="font-headline text-[10px] uppercase tracking-widest text-[#c0ecd4]">Operaciones Técnicas</p>
+</div>
+<nav class="flex-1">
+<a class="flex items-center gap-4 text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 transition-all font-headline text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-4 text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 transition-all font-headline text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">build_circle</span> Recepción
+            </a>
+<a class="flex items-center gap-4 text-[#c0ecd4] bg-[#353534] rounded-r-full py-3 px-6 mb-2 transition-all font-headline text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">assignment</span> Órdenes
+            </a>
+<a class="flex items-center gap-4 text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 transition-all font-headline text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">inventory_2</span> Inventario
+            </a>
+<a class="flex items-center gap-4 text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 transition-all font-headline text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">history_edu</span> Auditoría
+            </a>
+</nav>
+<div class="px-6">
+<button class="w-full velocity-gradient text-on-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 mb-8">
+<span class="material-symbols-outlined">add</span> Nueva Orden
+            </button>
+<a class="flex items-center gap-4 text-gray-500 hover:text-gray-200 font-headline text-sm uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined">help_outline</span> Soporte
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 px-8 pb-12 min-h-screen bg-surface-container-low">
+<!-- Header Info -->
+<div class="mb-10 flex justify-between items-end">
+<div>
+<span class="font-headline text-primary text-sm tracking-[0.2em] font-bold uppercase">Orden de Trabajo</span>
+<h1 class="font-headline text-5xl font-black tracking-tighter text-white mt-1">#EVO-4921</h1>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container px-4 py-2 rounded-xl text-right">
+<p class="text-[10px] uppercase text-outline tracking-widest">Cliente</p>
+<p class="font-medium text-on-surface">Marcos Valentini</p>
+</div>
+<div class="bg-surface-container px-4 py-2 rounded-xl text-right">
+<p class="text-[10px] uppercase text-outline tracking-widest">Estado</p>
+<div class="flex items-center gap-2 text-primary">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<p class="font-bold">Diagnóstico</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Technical Details -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Vehicle Card -->
+<div class="bg-surface-container-highest p-8 rounded-full border-none relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-full opacity-10 grayscale group-hover:grayscale-0 transition-all duration-700">
+<img class="w-full h-full object-cover" data-alt="High-end electric motorcycle detail showing clean lines and metallic finish in a studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjFeSgKE0z8_xx0HYg6CmKF1iHNa8F-45n35BC0jg7Pio4Sn9-Vq_hKI4ulddjHaKtQmd5aQyM5MXzqc7BQeQAtqBrCfHF-hUFzt7fCqdyPkL38BWWRxqky4rqobEA0qZ2teVTdYiXLy83tWhWbM44qA3gI9eFq6VgZlAuqWIWxCRe26lN-jcT27AOiBH0VrpfprT3o2Bwcth6xhSYY7EYLlJ8MkSpvFKM7yqOvilWsDKZR66gjs7oQPFbHCttaBfY1DV39xxMHPnU"/>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">electric_bolt</span>
+<h2 class="font-headline text-2xl font-bold uppercase">EvoMax S-Pro (2023)</h2>
+</div>
+<div class="grid grid-cols-3 gap-8">
+<div>
+<p class="text-[10px] uppercase text-outline tracking-[0.2em] mb-1">VIN / Chasis</p>
+<p class="font-mono text-sm tracking-wider">EVO77291BXX90</p>
+</div>
+<div>
+<p class="text-[10px] uppercase text-outline tracking-[0.2em] mb-1">Kilometraje</p>
+<p class="font-headline text-xl font-bold">1,240 KM</p>
+</div>
+<div>
+<p class="text-[10px] uppercase text-outline tracking-[0.2em] mb-1">Batería</p>
+<p class="font-headline text-xl font-bold text-primary">94% <span class="text-[10px] text-outline font-normal">SOH</span></p>
+</div>
+</div>
+</div>
+</div>
+<!-- Diagnosis/Main Tasks -->
+<div class="bg-surface-container p-8 rounded-full">
+<h3 class="font-headline text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">description</span>
+                        Motivo de Ingreso
+                    </h3>
+<p class="text-on-surface-variant leading-relaxed mb-8 italic">
+                        "El cliente reporta una vibración inusual en la rueda trasera al superar los 45km/h y una disminución leve en la potencia de frenado regenerativo."
+                    </p>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-medium">Revisión de Alineación</p>
+<p class="text-xs text-outline">Tarea Completada</p>
+</div>
+</div>
+<span class="text-sm font-mono text-outline">ORD-01</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="font-medium">Limpieza de Bornes</p>
+<p class="text-xs text-outline">Tarea Completada</p>
+</div>
+</div>
+<span class="text-sm font-mono text-outline">ORD-02</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Actions -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Approval Trigger -->
+<div class="bg-surface-container-high p-8 rounded-full border border-primary/10">
+<h3 class="font-headline text-xl font-bold mb-4">Aprobación Pendiente</h3>
+<p class="text-sm text-on-surface-variant mb-6">Se han detectado componentes adicionales que requieren reemplazo para garantizar la seguridad.</p>
+<div class="bg-surface-container-lowest p-4 rounded-xl mb-6">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs text-outline uppercase tracking-widest">Presupuesto Extra</span>
+<span class="font-headline text-xl font-bold text-primary">$18.450,00</span>
+</div>
+</div>
+<button class="w-full velocity-gradient text-on-primary font-bold py-4 rounded-xl flex items-center justify-center gap-2 group">
+                        Gestionar Aprobación
+                        <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<!-- Technician Note -->
+<div class="bg-surface-container p-6 rounded-full">
+<div class="flex items-center gap-3 mb-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a young technician in work gear with a confident expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3fvqN6ZUw1ojn2ST755Z02HaKXLjZj_XhkW5NxYsq_QjCNzTz_fRlSzXWICKxaLX-vaPq6WpEQX29vOBkUmy4T5aAMGv1lkShmPl2wmAvPzF2XJiOS4AOU6PgaoaW4gv_R9dzhvnROoY8EscwSJG3MY90k5sS67EyQWUF9d2471V0PmZjXegkb8D06gWGNXXIiNOtiOo21M9_ERigszvjNwpiw2crE30aQxrCvD6XS4LSN8Vza5ZHHvfyrG3M4ZFEUl61soAeqHUp"/>
+<div>
+<p class="text-xs text-outline uppercase tracking-tighter">Asignado a</p>
+<p class="text-sm font-bold">Ramiro González</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low rounded-xl text-xs text-on-surface-variant italic">
+                        "Se requiere cambio de rodamiento trasero. El desgaste es irregular."
+                    </div>
+</div>
+</div>
+</div>
+</main>
+<!-- RIGHT DRAWER: Approval Flow (Glassmorphism) -->
+<div class="fixed inset-0 z-[100] flex justify-end">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-surface/80 backdrop-blur-sm"></div>
+<!-- Drawer Panel -->
+<div class="relative w-full max-w-md h-screen glass-panel shadow-2xl flex flex-col animate-slide-in">
+<!-- Header -->
+<div class="p-8 pb-4 flex justify-between items-center">
+<div>
+<h2 class="font-headline text-2xl font-black tracking-tight text-white uppercase">Aprobar Adicionales</h2>
+<p class="text-xs text-primary font-bold tracking-[0.2em] uppercase mt-1">Presupuesto Extra</p>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Items List -->
+<div class="flex-1 overflow-y-auto px-8 py-4 space-y-4">
+<div class="bg-white/5 p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="font-bold text-on-surface">Rodamiento NTN 6204-2RS</p>
+<p class="text-xs text-outline">Componente Crítico</p>
+</div>
+<span class="font-mono text-sm font-bold text-primary">$12.500</span>
+</div>
+<div class="flex items-center gap-2 mt-4 text-[10px] text-primary/60 uppercase font-bold">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                        Incluye mano de obra de montaje
+                    </div>
+</div>
+<div class="bg-white/5 p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="font-bold text-on-surface">Kit de Retenes traseros</p>
+<p class="text-xs text-outline">Mantenimiento preventivo</p>
+</div>
+<span class="font-mono text-sm font-bold text-primary">$5.950</span>
+</div>
+</div>
+<!-- Blocking State: Missing Phone -->
+<!-- <div class="bg-error-container/20 p-4 rounded-xl flex gap-3 border border-error/20">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                    <p class="text-xs text-error">Cliente sin teléfono registrado. El envío por WhatsApp está bloqueado hasta actualizar la ficha.</p>
+                </div> -->
+</div>
+<!-- Footer Section: Channel Selector & Actions -->
+<div class="p-8 bg-surface-container-highest rounded-t-[2rem]">
+<div class="mb-6 flex justify-between items-end border-b border-white/5 pb-4">
+<span class="font-headline font-bold text-lg">Total Adicional</span>
+<span class="font-headline font-black text-3xl text-primary">$18.450,00</span>
+</div>
+<!-- Selector de Canal -->
+<div class="space-y-6">
+<div class="flex gap-2 p-1 bg-surface-container-low rounded-full">
+<button class="flex-1 py-2 px-4 rounded-full text-xs font-bold bg-primary text-on-primary-fixed transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">chat</span> WhatsApp
+                        </button>
+<button class="flex-1 py-2 px-4 rounded-full text-xs font-bold text-outline hover:text-white transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">edit_note</span> Registro Manual
+                        </button>
+</div>
+<!-- WhatsApp Preview Section -->
+<div class="space-y-3">
+<p class="text-[10px] uppercase tracking-widest text-outline">Vista previa del mensaje</p>
+<div class="bg-[#075e54]/20 p-4 rounded-2xl rounded-tr-none border-l-4 border-[#25d366]">
+<p class="text-sm text-on-surface leading-relaxed">
+                                Hola *Marcos*, durante la revisión de tu *EvoMax* detectamos desgaste en los rodamientos. El costo extra es de *$18.450*. ¿Deseas autorizar la reparación?
+                            </p>
+</div>
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-outline text-sm">phone_iphone</span>
+<span class="text-xs text-on-surface-variant font-mono">+54 9 11 5822-4911</span>
+</div>
+</div>
+<!-- Manual Input (Hidden by default, shown when manual selected) -->
+<div class="hidden space-y-4">
+<div class="flex gap-4">
+<label class="flex-1 flex items-center gap-3 p-4 bg-white/5 rounded-2xl cursor-pointer border border-transparent hover:border-primary/30 transition-all">
+<input class="text-primary focus:ring-0 bg-transparent border-outline" name="manual_status" type="radio"/>
+<span class="font-bold text-sm">Aprobar</span>
+</label>
+<label class="flex-1 flex items-center gap-3 p-4 bg-white/5 rounded-2xl cursor-pointer border border-transparent hover:border-error/30 transition-all">
+<input class="text-error focus:ring-0 bg-transparent border-outline" name="manual_status" type="radio"/>
+<span class="font-bold text-sm">Rechazar</span>
+</label>
+</div>
+<textarea class="w-full bg-surface-container-lowest border-none rounded-xl text-sm p-4 h-24 focus:ring-1 focus:ring-primary" placeholder="Motivo o comentario adicional..."></textarea>
+</div>
+<!-- Final Action -->
+<button class="w-full py-5 velocity-gradient text-on-primary-fixed font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-primary/10">
+<span class="material-symbols-outlined">send</span>
+                        Enviar para aprobación
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

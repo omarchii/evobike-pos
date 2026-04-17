@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#002114",
+                      "error-container": "#93000a",
+                      "secondary-fixed": "#d5e7db",
+                      "secondary-container": "#3f4f46",
+                      "on-secondary-container": "#afc0b5",
+                      "tertiary-fixed-dim": "#f5b7b7",
+                      "outline": "#8b938d",
+                      "outline-variant": "#414844",
+                      "on-tertiary": "#4c2526",
+                      "on-primary-container": "#335a48",
+                      "surface": "#131313",
+                      "on-primary": "#0e3727",
+                      "on-tertiary-fixed": "#331012",
+                      "surface-variant": "#353534",
+                      "on-secondary-fixed": "#101e18",
+                      "surface-container-highest": "#353534",
+                      "secondary": "#b9cbbf",
+                      "tertiary": "#ffdad9",
+                      "inverse-primary": "#3f6654",
+                      "on-error": "#690005",
+                      "primary-fixed": "#c1ecd5",
+                      "tertiary-container": "#f5b7b7",
+                      "inverse-surface": "#e5e2e1",
+                      "surface-container-low": "#1c1b1b",
+                      "on-secondary-fixed-variant": "#3b4a42",
+                      "primary": "#c0ecd4",
+                      "surface-dim": "#131313",
+                      "on-secondary": "#25342c",
+                      "surface-tint": "#a5d0b9",
+                      "primary-fixed-dim": "#a5d0b9",
+                      "tertiary-fixed": "#ffdad9",
+                      "on-tertiary-container": "#744647",
+                      "error": "#ffb4ab",
+                      "on-error-container": "#ffdad6",
+                      "background": "#131313",
+                      "inverse-on-surface": "#313030",
+                      "on-background": "#e5e2e1",
+                      "secondary-fixed-dim": "#b9cbbf",
+                      "surface-bright": "#393939",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-surface": "#e5e2e1",
+                      "primary-container": "#a5d0b9",
+                      "on-surface-variant": "#c1c8c2",
+                      "surface-container": "#201f1f",
+                      "on-primary-fixed-variant": "#274e3d",
+                      "surface-container-high": "#2a2a2a",
+                      "on-tertiary-fixed-variant": "#663a3b"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Space Grotesk"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .velocity-gradient {
+            background: linear-gradient(135deg, #c0ecd4 0%, #a5d0b9 100%);
+        }
+        .glass-modal {
+            background: rgba(53, 53, 52, 0.6);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(192, 236, 212, 0.2);
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .headline-font { font-family: 'Space Grotesk', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 bg-[#131313] flex justify-between items-center px-8 h-16 w-full shadow-none font-['Space_Grotesk'] font-bold text-lg uppercase tracking-wider">
+<div class="flex items-center gap-4">
+<span class="text-2xl font-bold tracking-tighter text-[#c0ecd4]">EVOBIKE TALLER</span>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-[#c0ecd4]">notifications</span>
+<span class="material-symbols-outlined text-[#c0ecd4]">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a senior bike technician with greying hair, focused and professional expression, workshop background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgtgfVTNuKyFtHlnWqr6sIX7HpaLp1CFe39DQRSa0hMW6BGrq-rD9HkF2nEyxvaanM6yLjs3y-9G3S6I24FzPuEBAuVocB_-1LLi8D75PWx8IHeoqADrsOUwBvqkHV9VAGD12x_rwjQOn7ATkcp16s-r9YD7M1enTSPjanUIuZJ5jMy4NzVRq1XDx5iJCjlz3EVKD69Pk1fgs8i0SdfW7saZQkp3sMWKG5tfLJuxz_2amC-DCO1o9irq_JmriDACZ5sEktHDJ4oxIG"/>
+</div>
+</div>
+</nav>
+<!-- Side Navigation Bar -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-40 bg-[#131313] flex flex-col pt-20 pb-8 h-full shadow-[30px_0_50px_rgba(0,0,0,0.12)]">
+<div class="px-6 mb-8">
+<h2 class="font-['Space_Grotesk'] font-black text-white text-xl">Taller Central</h2>
+<p class="text-[10px] uppercase tracking-[0.2em] text-gray-500">Operaciones Ténicas</p>
+</div>
+<div class="flex flex-col flex-grow">
+<a class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+            </a>
+<a class="text-[#c0ecd4] bg-[#353534] rounded-r-full py-3 px-6 mb-2 flex items-center gap-3 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">build_circle</span> Recepción
+            </a>
+<a class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">assignment</span> Órdenes
+            </a>
+<a class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">inventory_2</span> Inventario
+            </a>
+<a class="text-gray-500 hover:text-gray-200 py-3 px-6 mb-2 flex items-center gap-3 transition-all duration-300 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">history_edu</span> Auditoría
+            </a>
+</div>
+<div class="mt-auto px-6">
+<a class="text-gray-500 hover:text-gray-200 py-3 flex items-center gap-3 font-['Space_Grotesk'] text-sm uppercase font-medium tracking-widest" href="#">
+<span class="material-symbols-outlined">help_outline</span> Soporte
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-32 px-12 min-h-screen bg-surface">
+<!-- Wizard Header -->
+<header class="mb-12 flex items-end justify-between">
+<div class="max-w-2xl">
+<span class="text-primary font-label text-xs uppercase tracking-[0.3em] mb-4 block">Paso 01 / 04</span>
+<h1 class="text-5xl font-headline font-bold text-on-surface tracking-tighter leading-none mb-4">Wizard de Recepción</h1>
+<p class="text-on-surface-variant text-lg max-w-lg font-light leading-relaxed">Identificación del cliente y vinculación del activo para la generación del ticket de entrada.</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-1 flex bg-primary rounded-full"></div>
+<div class="w-12 h-1 flex bg-surface-container-highest rounded-full"></div>
+<div class="w-12 h-1 flex bg-surface-container-highest rounded-full"></div>
+<div class="w-12 h-1 flex bg-surface-container-highest rounded-full"></div>
+</div>
+</header>
+<div class="grid grid-cols-12 gap-8">
+<!-- Left Column: Search & Discovery -->
+<div class="col-span-12 lg:col-span-5 space-y-8">
+<!-- Search Component -->
+<div class="bg-surface-container-low p-1 rounded-full flex items-center px-6 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full py-4 px-4 font-headline text-sm tracking-widest text-on-surface placeholder:text-outline-variant" placeholder="BUSCAR POR NOMBRE, DNI O MATRÍCULA..." type="text"/>
+</div>
+<!-- Tonal Search Results -->
+<div class="space-y-2">
+<h3 class="text-[10px] uppercase tracking-[0.2em] text-outline mb-4 px-2">Sugerencias Recientes</h3>
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">CARLOS M. RODRÍGUEZ</p>
+<p class="text-xs text-outline font-body">DNI: 48552991-X</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">ELENA SERRANO</p>
+<p class="text-xs text-outline font-body">DNI: 21009844-Z</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Confirmed Client Block (Editorial Style) -->
+<div class="bg-surface-container-low rounded-2xl p-8 space-y-6 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4">
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full">CONFIRMADO</span>
+</div>
+<div class="flex items-start gap-6">
+<div class="relative">
+<img class="w-24 h-24 object-cover rounded-2xl grayscale hover:grayscale-0 transition-all duration-500" data-alt="High-contrast studio portrait of a middle-aged man with sharp features, wearing a black turtleneck, moody lighting, editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeyWX8NdxY0RHYNehr5G3c1ZEE0rNe46NCAGTXUe8pGBJnIU6btdnnfUVTH_zPlqmtlBwTS1cUE1MEnMeBgCWc6QxotsZAwXLXg32XHzD-5rEX7iz0gxNcM-SYnvXtlWnKQIDmw1e4_sFlKMwIt2Tj7v04tPIP9Mx8iet6ZkZGFWXlBMawalEtqSbOYrU5XgtcP5UgJ5RVU8y1_Kkm81rrd4lflwJDEOZv1UMbO3pT7AoOUPxzIgnm1XNKXzgx0Kth2JjdsWYTjwph"/>
+<div class="absolute -bottom-2 -right-2 bg-primary w-8 h-8 rounded-lg flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-on-primary text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div>
+<h2 class="text-3xl font-headline font-bold text-on-surface leading-none mb-2">MARCUS VANDELAY</h2>
+<p class="text-outline-variant font-body mb-4">Cliente Platinum • Miembro desde 2021</p>
+<div class="flex gap-2">
+<span class="bg-surface-container-highest px-3 py-1 rounded text-[10px] font-medium tracking-wider text-on-surface-variant">42 SERVICIOS</span>
+<span class="bg-surface-container-highest px-3 py-1 rounded text-[10px] font-medium tracking-wider text-on-surface-variant">3 ACTIVOS</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Asset Selection -->
+<div class="col-span-12 lg:col-span-7 space-y-6">
+<div class="flex justify-between items-center mb-2">
+<h3 class="font-headline text-xl font-bold">Selección de Activo</h3>
+<button class="text-primary text-xs font-bold tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity uppercase">
+<span class="material-symbols-outlined text-sm">add_circle</span> Bici Externa / Nueva
+                    </button>
+</div>
+<!-- Asset Card 01 -->
+<div class="bg-surface-container-low rounded-2xl p-6 flex items-center gap-8 border-l-4 border-primary group hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="w-32 h-32 bg-surface-container-lowest rounded-xl p-2 shrink-0">
+<img class="w-full h-full object-contain mix-blend-lighten" data-alt="Close-up of a sleek carbon fiber electric road bike, minimalist black frame, detail on the motor area, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWbPowHAsPLWnguxDUaU-HN5lwfaJArZW7nvKAtNHbDVlL7atSKd-sXA5dpG-ZYhPlvcZLx4LJDBl46B6xRuCuJtDMD-Dij1FWeaztsWGU1ZAFM4ejlP8ASpfOkxBHISuS71WYv8cZHhG8woi602YCyt1_H2hw4vxD4A0PveHnPtQCPA4VjK4CrWMYCjppBluNGWZCEX7HIKfsb9skRdttFaiuqf8Irjn5FuishfN2R0aTbMFHaX9rmmSQctvKpWhv4zuYgv0y5NRq"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs text-primary font-bold tracking-widest mb-1">E-SERIES PERFORMANCE</p>
+<h4 class="text-2xl font-headline font-bold text-on-surface">Specialized Vado 5.0</h4>
+</div>
+<div class="text-right">
+<span class="text-[10px] text-outline block mb-1">SEMÁFORO P11</span>
+<div class="flex gap-1 justify-end">
+<div class="w-3 h-3 rounded-full bg-primary shadow-[0_0_8px_rgba(192,236,212,0.4)]"></div>
+<div class="w-3 h-3 rounded-full bg-surface-container-highest"></div>
+<div class="w-3 h-3 rounded-full bg-surface-container-highest"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6 mt-4">
+<div class="space-y-1">
+<p class="text-[10px] text-outline-variant font-medium uppercase">VIN / Serial</p>
+<p class="font-mono text-sm text-on-surface-variant">SV29-X8842-KM0</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20"></div>
+<div class="space-y-1">
+<p class="text-[10px] text-outline-variant font-medium uppercase">Último Servicio</p>
+<p class="font-body text-sm text-on-surface-variant">12 Oct 2023</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Maintenance Banner (Embedded in flow) -->
+<div class="bg-tertiary-container/10 p-6 rounded-2xl flex items-center gap-4 relative overflow-hidden">
+<div class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-tertiary-container/20 to-transparent"></div>
+<span class="material-symbols-outlined text-tertiary-container text-3xl">error_outline</span>
+<div>
+<p class="text-tertiary-container font-headline font-bold">MANTENIMIENTO PREVENTIVO PENDIENTE</p>
+<p class="text-on-tertiary-container/80 text-sm font-body">Este activo requiere revisión de motor y firmware v2.4 según protocolo del fabricante.</p>
+</div>
+<button class="ml-auto bg-tertiary-container text-on-tertiary-container px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity">Ver Detalles</button>
+</div>
+<!-- Asset Card 02 (Secondary state) -->
+<div class="bg-surface-container-low rounded-2xl p-6 flex items-center gap-8 group hover:bg-surface-container-high transition-all cursor-pointer opacity-60 hover:opacity-100">
+<div class="w-32 h-32 bg-surface-container-lowest rounded-xl p-2 shrink-0">
+<img class="w-full h-full object-contain mix-blend-lighten" data-alt="Electric mountain bike with thick tires, orange and black accents, rugged design, professional studio product photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnVAWAfPiHEi5zNmCddShDyEA8hCJySHO_GAk-RBt20r9Dcoj94pvWhczWUqoWbN1275-pboF76S1YeKoOm91Q0Mdk8yzTUmDSu1AAa5VgCa43jlQ8kLFX0JL4vWtYcFT_NHPj8Bmo3iuYD4OaupzYbEG8Nph3J6qU7pkLeVe9YTyMDmWe8_erowNReASDXqzVn4p_Bpkf_KohxEWPYSruokGRVJhpXSEtyZL3Wv6LRCPuqg1AVXPZyMbleJf7vdmG2YCnNw1GTbUs"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs text-outline font-bold tracking-widest mb-1">M-TERRAIN EXPLORE</p>
+<h4 class="text-2xl font-headline font-bold text-on-surface">Trek Rail 9.8 XT</h4>
+</div>
+<div class="text-right">
+<span class="text-[10px] text-outline block mb-1">SEMÁFORO P11</span>
+<div class="flex gap-1 justify-end">
+<div class="w-3 h-3 rounded-full bg-primary/20"></div>
+<div class="w-3 h-3 rounded-full bg-[#f5b7b7] shadow-[0_0_8px_rgba(245,183,183,0.4)]"></div>
+<div class="w-3 h-3 rounded-full bg-surface-container-highest"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6 mt-4">
+<div class="space-y-1">
+<p class="text-[10px] text-outline-variant font-medium uppercase">VIN / Serial</p>
+<p class="font-mono text-sm text-on-surface-variant">TR-XT-9921-22A</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20"></div>
+<div class="space-y-1">
+<p class="text-[10px] text-outline-variant font-medium uppercase">Último Servicio</p>
+<p class="font-body text-sm text-on-surface-variant">En mora (+240 días)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Wizard Footer -->
+<footer class="fixed bottom-0 left-64 right-0 h-24 glass-modal z-50 px-12 flex items-center justify-between">
+<div class="flex items-center gap-12">
+<div>
+<p class="text-[10px] text-outline uppercase font-bold tracking-widest mb-1">CLIENTE SELECCIONADO</p>
+<p class="font-headline font-bold text-on-surface">MARCUS VANDELAY</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20"></div>
+<div>
+<p class="text-[10px] text-outline uppercase font-bold tracking-widest mb-1">BICICLETA</p>
+<p class="font-headline font-bold text-on-surface">SPECIALIZED VADO 5.0</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-8 py-3 text-sm font-bold text-outline-variant hover:text-on-surface transition-colors uppercase tracking-widest">Cancelar</button>
+<button class="velocity-gradient px-12 py-3 rounded-full text-on-primary font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-3 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all duration-300">
+                Siguiente: Síntomas <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</footer>
+</body></html>

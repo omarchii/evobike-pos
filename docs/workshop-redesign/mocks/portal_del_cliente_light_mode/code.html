@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Portal Público del Cliente - EvoBike</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#3b4a42",
+                      "primary": "#c0ecd4",
+                      "secondary-fixed-dim": "#b9cbbf",
+                      "on-primary": "#0e3727",
+                      "inverse-primary": "#3f6654",
+                      "inverse-on-surface": "#2f312f",
+                      "on-secondary-container": "#afc0b5",
+                      "error": "#ffb4ab",
+                      "secondary-fixed": "#d5e7db",
+                      "surface-container-highest": "#333533",
+                      "background": "#121412",
+                      "surface-bright": "#383a38",
+                      "on-primary-fixed-variant": "#274e3d",
+                      "inverse-surface": "#e2e3e0",
+                      "surface-dim": "#121412",
+                      "outline": "#8b938d",
+                      "on-tertiary-fixed": "#331012",
+                      "tertiary": "#ffdad9",
+                      "surface-container-high": "#282a29",
+                      "on-tertiary-container": "#744647",
+                      "on-secondary": "#25342c",
+                      "surface-container-lowest": "#0c0f0d",
+                      "outline-variant": "#414844",
+                      "primary-fixed": "#c1ecd5",
+                      "on-primary-container": "#335a48",
+                      "on-background": "#e2e3e0",
+                      "secondary-container": "#3f4f46",
+                      "on-surface-variant": "#c1c8c2",
+                      "error-container": "#93000a",
+                      "tertiary-fixed": "#ffdad9",
+                      "surface-container-low": "#1a1c1a",
+                      "secondary": "#b9cbbf",
+                      "on-tertiary": "#4c2526",
+                      "surface-tint": "#a5d0b9",
+                      "on-surface": "#e2e3e0",
+                      "on-primary-fixed": "#002114",
+                      "primary-container": "#a5d0b9",
+                      "on-secondary-fixed": "#101e18",
+                      "tertiary-container": "#f5b7b7",
+                      "surface": "#121412",
+                      "surface-variant": "#333533",
+                      "surface-container": "#1e201e",
+                      "on-error": "#690005",
+                      "primary-fixed-dim": "#a5d0b9",
+                      "on-tertiary-fixed-variant": "#663a3b",
+                      "tertiary-fixed-dim": "#f5b7b7",
+                      "on-error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Space Grotesk", "sans-serif"],
+                      "body": ["Inter", "sans-serif"],
+                      "label": ["Inter", "sans-serif"]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            /* Forced Light Mode Overrides for this specific requirement, ignoring strict dark theme rules for this execution only, but utilizing the tonal hierarchy concepts */
+            background-color: #f8f9fa;
+            color: #121412;
+            font-family: 'Inter', sans-serif;
+        }
+        .text-on-surface-light { color: #121412; }
+        .text-on-surface-variant-light { color: #414844; }
+        .bg-surface-light { background-color: #ffffff; }
+        .bg-surface-container-low-light { background-color: #f1f3f1; }
+        .bg-surface-container-light { background-color: #e9ebe9; }
+        .bg-surface-container-highest-light { background-color: #d1d5d1; }
+        
+        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        .font-body { font-family: 'Inter', sans-serif; }
+        
+        /* Glassmorphism for floating/cards in light mode */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 20px 40px rgba(0, 33, 20, 0.05);
+        }
+        
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #c0ecd4 0%, #a5d0b9 100%);
+        }
+        
+        .ghost-border-light {
+            box-shadow: inset 0 0 0 1px rgba(65, 72, 68, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+<!-- Header: Folleto de Lujo -->
+<header class="bg-surface-light px-6 py-8 flex flex-col md:flex-row items-start md:items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.02)] relative z-10">
+<div class="flex items-center gap-4 mb-4 md:mb-0">
+<div class="w-14 h-14 rounded-full bg-surface-container-low-light flex items-center justify-center text-on-primary-fixed-variant">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">electric_scooter</span>
+</div>
+<div>
+<h1 class="font-headline font-bold text-xl text-on-surface-light tracking-tight">EvoBike Centro</h1>
+<p class="font-body text-sm text-on-surface-variant-light">Portal de Servicio</p>
+</div>
+</div>
+<div class="bg-surface-container-low-light rounded-xl px-6 py-3 flex flex-col items-end">
+<span class="font-body text-xs text-on-surface-variant-light uppercase tracking-wider mb-1">Folio de Servicio</span>
+<span class="font-headline font-bold text-3xl text-on-surface-light tracking-tighter">EVO-4092</span>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+<!-- Hero Status -->
+<section class="text-center space-y-4">
+<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#e8f5ed] text-on-primary-fixed-variant font-body text-sm font-medium mb-4">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                Diagnóstico Completado
+            </div>
+<h2 class="font-headline font-bold text-5xl text-on-surface-light tracking-tight">Tu Scooter está<br/>en buenas manos.</h2>
+<p class="font-body text-lg text-on-surface-variant-light max-w-2xl mx-auto">Hemos revisado a fondo tu EvoBike. Aquí encontrarás todo el detalle de lo que encontramos y los siguientes pasos.</p>
+</section>
+<!-- Timeline Visual -->
+<section class="bg-surface-light rounded-[3rem] p-8 md:p-12 ghost-border-light relative overflow-hidden">
+<!-- Decorative background element -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-[#e8f5ed] rounded-full blur-[80px] -mr-32 -mt-32 opacity-50 pointer-events-none"></div>
+<h3 class="font-headline font-bold text-2xl text-on-surface-light mb-12">Progreso del Servicio</h3>
+<div class="relative">
+<!-- Track Line -->
+<div class="absolute left-6 md:left-[50%] top-0 bottom-0 w-1 bg-surface-container-low-light -ml-0.5 z-0"></div>
+<div class="space-y-12 relative z-10">
+<!-- Step 1: Done -->
+<div class="flex flex-col md:flex-row items-start md:items-center group">
+<div class="hidden md:flex w-1/2 justify-end pr-12 text-right">
+<div class="font-body text-sm text-on-surface-variant-light">Ayer, 09:30 AM</div>
+</div>
+<div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-container text-on-primary-fixed shrink-0 z-10 md:mx-auto absolute left-0 md:static">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div class="ml-16 md:ml-0 md:w-1/2 md:pl-12">
+<div class="font-body text-sm text-on-surface-variant-light md:hidden mb-1">Ayer, 09:30 AM</div>
+<h4 class="font-headline font-bold text-lg text-on-surface-light">Recepción</h4>
+<p class="font-body text-sm text-on-surface-variant-light mt-1">Recibimos tu vehículo e ingresamos los datos iniciales al sistema.</p>
+</div>
+</div>
+<!-- Step 2: Done -->
+<div class="flex flex-col md:flex-row items-start md:items-center group">
+<div class="hidden md:flex w-1/2 justify-end pr-12 text-right">
+<div class="font-body text-sm text-on-surface-variant-light">Hoy, 11:15 AM</div>
+</div>
+<div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-container text-on-primary-fixed shrink-0 z-10 md:mx-auto absolute left-0 md:static">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">troubleshoot</span>
+</div>
+<div class="ml-16 md:ml-0 md:w-1/2 md:pl-12">
+<div class="font-body text-sm text-on-surface-variant-light md:hidden mb-1">Hoy, 11:15 AM</div>
+<h4 class="font-headline font-bold text-lg text-on-surface-light">Diagnóstico Profundo</h4>
+<p class="font-body text-sm text-on-surface-variant-light mt-1">Nuestros técnicos revisaron la batería, frenos y sistema eléctrico.</p>
+</div>
+</div>
+<!-- Step 3: Current (Action Required) -->
+<div class="flex flex-col md:flex-row items-start md:items-center group">
+<div class="hidden md:flex w-1/2 justify-end pr-12 text-right">
+<div class="font-body text-sm text-primary font-medium">Ahorita</div>
+</div>
+<div class="flex items-center justify-center w-12 h-12 rounded-full bg-white border-4 border-primary text-primary shrink-0 z-10 md:mx-auto absolute left-0 md:static shadow-[0_0_20px_rgba(192,236,212,0.6)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pending_actions</span>
+</div>
+<div class="ml-16 md:ml-0 md:w-1/2 md:pl-12">
+<div class="font-body text-sm text-primary font-medium md:hidden mb-1">Ahorita</div>
+<h4 class="font-headline font-bold text-lg text-on-surface-light">Esperando tu Confirmación</h4>
+<p class="font-body text-sm text-on-surface-variant-light mt-1">Encontramos un detalle extra. Revisa la tarjeta de abajo.</p>
+</div>
+</div>
+<!-- Step 4: Pending -->
+<div class="flex flex-col md:flex-row items-start md:items-center opacity-40 group">
+<div class="hidden md:flex w-1/2 justify-end pr-12 text-right">
+<div class="font-body text-sm text-on-surface-variant-light">Pendiente</div>
+</div>
+<div class="flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest-light text-on-surface-variant-light shrink-0 z-10 md:mx-auto absolute left-0 md:static">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">handyman</span>
+</div>
+<div class="ml-16 md:ml-0 md:w-1/2 md:pl-12">
+<div class="font-body text-sm text-on-surface-variant-light md:hidden mb-1">Pendiente</div>
+<h4 class="font-headline font-bold text-lg text-on-surface-light">Manos a la Obra</h4>
+<p class="font-body text-sm text-on-surface-variant-light mt-1">Realizaremos los ajustes aprobados.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Asymmetric Section: Approval & Evidence -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Featured Card: Approval Request (Takes up more space to feel like a 'Hero KPI' equivalent) -->
+<section class="lg:col-span-7">
+<div class="bg-surface-light rounded-[3rem] p-8 md:p-10 ghost-border-light h-full flex flex-col justify-between relative overflow-hidden">
+<!-- Subtle attention gradient -->
+<div class="absolute inset-0 bg-gradient-to-br from-[#fff8e1] to-transparent opacity-50 pointer-events-none"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-[#f59e0b] text-3xl">warning</span>
+<h3 class="font-headline font-bold text-2xl text-on-surface-light">Recomendación Adicional</h3>
+</div>
+<p class="font-body text-base text-on-surface-variant-light leading-relaxed mb-6">
+                            Durante el diagnóstico, notamos que las pastillas de freno trasero están al 15% de su vida útil. Aunque no era el motivo principal de tu visita, te recomendamos cambiarlas ahora para evitar dañar el disco y por tu seguridad.
+                        </p>
+<div class="bg-surface-container-low-light rounded-2xl p-6 mb-8">
+<div class="flex justify-between items-center mb-2">
+<span class="font-body font-medium text-on-surface-light">Cambio de Pastillas Traseras (Cerámicas)</span>
+<span class="font-headline font-bold text-xl text-on-surface-light">$450.00</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body text-sm text-on-surface-variant-light">Mano de obra incluida</span>
+<span class="font-body text-sm text-on-surface-variant-light">MXN</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-4 relative z-10 mt-auto">
+<button class="flex-1 px-8 py-4 rounded-full font-body font-medium text-on-surface-light bg-surface-container-light hover:bg-surface-container-highest-light transition-colors duration-200">
+                            Rechazar por ahora
+                        </button>
+<button class="flex-1 px-8 py-4 rounded-full font-body font-bold text-on-primary-fixed kinetic-gradient shadow-[0_10px_20px_rgba(165,208,185,0.3)] hover:scale-[1.02] transition-transform duration-200">
+                            Aprobar Trabajo Extra
+                        </button>
+</div>
+</div>
+</section>
+<!-- Evidence Gallery -->
+<section class="lg:col-span-5 flex flex-col gap-6">
+<h3 class="font-headline font-bold text-xl text-on-surface-light px-2">Evidencia Fotográfica</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Photo 1 -->
+<div class="aspect-square rounded-3xl overflow-hidden bg-surface-container-low-light relative group">
+<img alt="Fotografía de detalle de la llanta trasera de un scooter eléctrico en un taller iluminado" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Close-up photo of electric scooter rear tire and brake assembly in a bright modern repair shop, shallow depth of field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChoTWiFXy--ZMQXqvH6z1xXs_A3Rg0kSbM4CpyLqnc9xpUrvLb-l0F_QqSfrJW8nWRduMIf9-W3bZrTuLUXvMJCh09cana9bai7iojFgU4bKCNfG6h0DQOVtPTTmpIRG8azqUSdEJOsRkrmVxWAgMthvXKhCHFKj97AR0ahhOr2O5BSO5WewKwYZY4rYmWX4kxXMuacaddWf4Dk7PPhJuPH_tsv9ktXdXo-AlamxPlxSpT4RarGw8KT_7nSAWhpZ9E-kHuA02t3XpM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+<span class="font-body text-xs text-white font-medium">Estado inicial llanta</span>
+</div>
+</div>
+<!-- Photo 2 -->
+<div class="aspect-square rounded-3xl overflow-hidden bg-surface-container-low-light relative group">
+<img alt="Fotografía macro de cables eléctricos internos de un scooter mostrando desgaste" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Macro photography of internal electrical wiring of an EV scooter showing slight wear, technical lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASKGk_j0geYZsBsBijKXhlJbvxZQNWQs7ZvE7nSRaojYrwuWRMk0JZUw9xCJ1u1AeCbM8ADFhEDlCBqAgLvUfkWh_hQIiUSRlzWJi2BhI7uK9G1QWBicWGGu7o1oyThnVk_Qb4zA-YzVZW672SXiHuB2YVHBPY7gOGrmfw93BiP4xJRVJelI_NzYV_kpxZnQSz1B9jkhGIoSZuv2OfaYWU8EJex6mMi4ZpYsfEsWl6X8L6H-q03v4Gh9-QmGDDAjwr-uFWsSngFpcy"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+<span class="font-body text-xs text-white font-medium">Revisión de arnés</span>
+</div>
+</div>
+<!-- Photo 3 - Spans full width -->
+<div class="col-span-2 h-40 rounded-3xl overflow-hidden bg-surface-container-low-light relative group">
+<img alt="Fotografía de pastillas de freno desgastadas junto a unas nuevas sobre una mesa de trabajo limpia" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Worn brake pads placed next to brand new ones on a clean dark metal workbench, top-down view, crisp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA99nLv9LXBX6hsekRdN2r39Aw0Vf5nU-Ppt1nG3RYDsyAK8KAFEQMcd_Dzc5Zv83sXfRGLOrGpT6ReoyBtXjkYup4wyLywNx6LVrx5i1BT3t0F6sc2VvFFwFTCt7TgQlKCaTgyLquenQUUuGwuTv3i8FoPdJLY4xg5B2K67QXe42YsFapyGq5xUt8QYg4BBZAKO5UTZnteuhIpUMs7xsxVxQmuJf4iZaVWL8RZTxArYToWYjytiI4PS82sWhBsTWXB1rWj7olDR3tX"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-5">
+<span class="font-body text-sm text-white font-medium mb-1">Pastillas actuales vs Nuevas</span>
+<span class="font-body text-xs text-white/80">Evidencia para recomendación extra</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer sticky CTA -->
+<footer class="fixed bottom-0 w-full bg-surface-light/90 backdrop-blur-md ghost-border-light py-4 px-6 z-50">
+<div class="max-w-5xl mx-auto flex items-center justify-between">
+<div class="hidden sm:block">
+<p class="font-body text-sm text-on-surface-variant-light">¿Tienes dudas sobre el diagnóstico?</p>
+</div>
+<button class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#25D366] text-white font-body font-medium hover:bg-[#128C7E] transition-colors shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat</span>
+                Hablar con un Asesor
+            </button>
+</div>
+</footer>
+</body></html>
