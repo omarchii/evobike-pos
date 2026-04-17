@@ -147,6 +147,53 @@ export default async function PointOfSalePage() {
   const branchName = authUser?.branchName ?? "";
   const userRole = authUser?.role ?? "SELLER";
 
+  // Remote stock: other branches, quantity > 0, for visible products only
+  const visibleVariantIds = rawVariants.map((v) => v.id);
+  const visibleSimpleIds = rawSimpleProducts.map((sp) => sp.id);
+
+  const rawRemoteStocks =
+    branchId && (visibleVariantIds.length > 0 || visibleSimpleIds.length > 0)
+      ? await prisma.stock.findMany({
+          where: {
+            branchId: { not: branchId },
+            quantity: { gt: 0 },
+            OR: [
+              ...(visibleVariantIds.length > 0
+                ? [{ productVariantId: { in: visibleVariantIds } }]
+                : []),
+              ...(visibleSimpleIds.length > 0
+                ? [{ simpleProductId: { in: visibleSimpleIds } }]
+                : []),
+            ],
+          },
+          select: {
+            productVariantId: true,
+            simpleProductId: true,
+            branchId: true,
+            quantity: true,
+            branch: { select: { name: true } },
+          },
+        })
+      : [];
+
+  // Serialize as [key, entries[]][] — Map not JSON-serializable
+  const remoteStockMapRaw = new Map<
+    string,
+    { branchId: string; branchName: string; quantity: number }[]
+  >();
+  for (const s of rawRemoteStocks) {
+    const key = s.productVariantId
+      ? `v:${s.productVariantId}`
+      : s.simpleProductId
+        ? `s:${s.simpleProductId}`
+        : null;
+    if (!key) continue;
+    const arr = remoteStockMapRaw.get(key) ?? [];
+    arr.push({ branchId: s.branchId, branchName: s.branch.name, quantity: s.quantity });
+    remoteStockMapRaw.set(key, arr);
+  }
+  const remoteStockEntries = Array.from(remoteStockMapRaw.entries());
+
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden">
       <PosTerminal
@@ -159,6 +206,7 @@ export default async function PointOfSalePage() {
         sellerName={sellerName}
         branchName={branchName}
         userRole={userRole}
+        remoteStockEntries={remoteStockEntries}
       />
     </div>
   );

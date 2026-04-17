@@ -10,7 +10,12 @@ import {
   Check,
   X,
   Loader2,
+  ArrowLeftRight,
 } from "lucide-react";
+import { RemoteStockPopover } from "./_components/remote-stock-popover";
+import type { RemoteStockEntry } from "./_components/remote-stock-popover";
+import { RequestTransferDialog } from "./_components/request-transfer-dialog";
+import type { TransferProduct } from "./_components/request-transfer-dialog";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -198,22 +203,31 @@ function ModelCard({
   modelo,
   isSelected,
   onSelect,
+  onRequestTransfer,
 }: {
   modelo: ModeloData;
   isSelected: boolean;
   onSelect: (m: ModeloData) => void;
+  onRequestTransfer?: () => void;
 }) {
   const hasStock = modelo.totalStockInBranch > 0;
+  const canTransfer = !hasStock && !!onRequestTransfer;
+  const isInteractive = hasStock || canTransfer;
   return (
     <div
       role="button"
-      tabIndex={hasStock ? 0 : -1}
-      onClick={() => hasStock && onSelect(modelo)}
-      onKeyDown={(e) =>
-        (e.key === "Enter" || e.key === " ") && hasStock && onSelect(modelo)
-      }
+      tabIndex={isInteractive ? 0 : -1}
+      onClick={() => {
+        if (hasStock) onSelect(modelo);
+        else if (canTransfer) onRequestTransfer!();
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (hasStock) onSelect(modelo);
+        else if (canTransfer) onRequestTransfer!();
+      }}
       className={`relative text-left transition-all group overflow-hidden
-        ${hasStock ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
+        ${isInteractive ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
       style={{
         background: "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
@@ -335,26 +349,40 @@ function ModelCard({
           >
             ${modelo.minPrice.toLocaleString("es-MX")}
           </p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(modelo);
-            }}
-            className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #1B4332, #2ECC71)",
-              color: "#fff",
-              border: "none",
-              fontSize: 18,
-              lineHeight: 1,
-            }}
-            aria-label={`Agregar ${modelo.nombre}`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+          {canTransfer ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRequestTransfer!(); }}
+              className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+              style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "var(--warn)", color: "#fff", border: "none",
+              }}
+              aria-label={`Solicitar ${modelo.nombre}`}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(modelo);
+              }}
+              className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                color: "#fff",
+                border: "none",
+                fontSize: 18,
+                lineHeight: 1,
+              }}
+              aria-label={`Agregar ${modelo.nombre}`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -364,18 +392,29 @@ function ModelCard({
 function SimpleProductCard({
   sp,
   onAdd,
+  onRequestTransfer,
 }: {
   sp: SimpleProductData;
   onAdd: (sp: SimpleProductData) => void;
+  onRequestTransfer?: () => void;
 }) {
   const hasStock = sp.stockInBranch > 0;
+  const canTransfer = !hasStock && !!onRequestTransfer;
+  const isInteractive = hasStock || canTransfer;
   return (
     <div
       role="button"
-      tabIndex={hasStock ? 0 : -1}
-      onClick={() => hasStock && onAdd(sp)}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && hasStock && onAdd(sp)}
-      className={`relative text-left transition-all group overflow-hidden ${hasStock ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
+      tabIndex={isInteractive ? 0 : -1}
+      onClick={() => {
+        if (hasStock) onAdd(sp);
+        else if (canTransfer) onRequestTransfer!();
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (hasStock) onAdd(sp);
+        else if (canTransfer) onRequestTransfer!();
+      }}
+      className={`relative text-left transition-all group overflow-hidden ${isInteractive ? "cursor-pointer hover:shadow-lg" : "opacity-60 cursor-default"}`}
       style={{
         background: "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
@@ -446,24 +485,38 @@ function SimpleProductCard({
           <p style={{ fontSize: 14, fontWeight: 700, color: "var(--p-bright)" }}>
             ${sp.precioPublico.toLocaleString("es-MX")}
           </p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasStock) onAdd(sp);
-            }}
-            className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #1B4332, #2ECC71)",
-              color: "#fff",
-              border: "none",
-            }}
-            aria-label={`Agregar ${sp.nombre}`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+          {canTransfer ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRequestTransfer!(); }}
+              className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+              style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "var(--warn)", color: "#fff", border: "none",
+              }}
+              aria-label={`Solicitar ${sp.nombre}`}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasStock) onAdd(sp);
+              }}
+              className="flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                color: "#fff",
+                border: "none",
+              }}
+              aria-label={`Agregar ${sp.nombre}`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -471,6 +524,9 @@ function SimpleProductCard({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
+
+// P12-A: remote stock type shared with _components
+type RemoteStockMap = Map<string, RemoteStockEntry[]>;
 
 export default function PosTerminal({
   modelos,
@@ -482,6 +538,7 @@ export default function PosTerminal({
   sellerName,
   branchName,
   userRole,
+  remoteStockEntries = [],
 }: {
   modelos: ModeloData[];
   customers?: CustomerData[];
@@ -492,6 +549,7 @@ export default function PosTerminal({
   sellerName: string;
   branchName: string;
   userRole: string;
+  remoteStockEntries?: [string, RemoteStockEntry[]][];
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -1055,6 +1113,42 @@ export default function PosTerminal({
   // ── Selected customer
   const selectedCustomer = localCustomers.find((c) => c.id === selectedCustomerId);
 
+  // ── P12-A: remote stock map + transfer dialog state ───────────────────────
+  // DO NOT modify cart, checkout, or payment logic below this block.
+  const remoteStockMap = useMemo<RemoteStockMap>(
+    () => new Map(remoteStockEntries),
+    [remoteStockEntries],
+  );
+
+  const [transferDialogProduct, setTransferDialogProduct] = useState<TransferProduct | null>(null);
+
+  const getModelRemoteStock = useCallback(
+    (modelo: ModeloData): RemoteStockEntry[] => {
+      const byBranch = new Map<string, RemoteStockEntry>();
+      for (const v of modelo.variants) {
+        for (const e of remoteStockMap.get(`v:${v.id}`) ?? []) {
+          const ex = byBranch.get(e.branchId);
+          if (ex) ex.quantity += e.quantity;
+          else byBranch.set(e.branchId, { ...e });
+        }
+      }
+      return Array.from(byBranch.values());
+    },
+    [remoteStockMap],
+  );
+
+  const buildVariantOptions = useCallback(
+    (modelo: ModeloData) =>
+      modelo.variants
+        .map((v) => ({
+          id: v.id,
+          label: `${v.colorNombre} · ${v.voltajeLabel}`,
+          remoteStock: remoteStockMap.get(`v:${v.id}`) ?? [],
+        }))
+        .filter((opt) => opt.remoteStock.length > 0),
+    [remoteStockMap],
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -1164,9 +1258,45 @@ export default function PosTerminal({
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-3 pt-1">
-                  {filteredSimpleProducts.map((sp) => (
-                    <SimpleProductCard key={sp.id} sp={sp} onAdd={handleAddSimpleProduct} />
-                  ))}
+                  {filteredSimpleProducts.map((sp) => {
+                    const spRemote = remoteStockMap.get(`s:${sp.id}`) ?? [];
+                    return (
+                      <div key={sp.id} className="relative">
+                        <SimpleProductCard
+                          sp={sp}
+                          onAdd={handleAddSimpleProduct}
+                          onRequestTransfer={
+                            spRemote.length > 0 && sp.stockInBranch === 0
+                              ? () =>
+                                  setTransferDialogProduct({
+                                    kind: "simple",
+                                    id: sp.id,
+                                    name: sp.nombre,
+                                    remoteStock: spRemote,
+                                  })
+                              : undefined
+                          }
+                        />
+                        {spRemote.length > 0 && (
+                          <RemoteStockPopover
+                            productKey={`s:${sp.id}`}
+                            productName={sp.nombre}
+                            localStock={sp.stockInBranch}
+                            remoteStock={spRemote}
+                            myBranchName={branchName}
+                            onSolicitar={() =>
+                              setTransferDialogProduct({
+                                kind: "simple",
+                                id: sp.id,
+                                name: sp.nombre,
+                                remoteStock: spRemote,
+                              })
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -1182,14 +1312,48 @@ export default function PosTerminal({
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 pt-1">
-              {filteredModelos.map((modelo) => (
-                <ModelCard
-                  key={modelo.id}
-                  modelo={modelo}
-                  isSelected={selectedModelo?.id === modelo.id}
-                  onSelect={handleSelectModelo}
-                />
-              ))}
+              {filteredModelos.map((modelo) => {
+                const modelRemote = getModelRemoteStock(modelo);
+                const hasRemote = modelRemote.length > 0;
+                const variantOpts = hasRemote ? buildVariantOptions(modelo) : [];
+                return (
+                  <div key={modelo.id} className="relative">
+                    <ModelCard
+                      modelo={modelo}
+                      isSelected={selectedModelo?.id === modelo.id}
+                      onSelect={handleSelectModelo}
+                      onRequestTransfer={
+                        hasRemote && modelo.totalStockInBranch === 0
+                          ? () =>
+                              setTransferDialogProduct({
+                                kind: "modelo",
+                                id: modelo.id,
+                                name: modelo.nombre,
+                                variantOptions: variantOpts,
+                              })
+                          : undefined
+                      }
+                    />
+                    {hasRemote && (
+                      <RemoteStockPopover
+                        productKey={`m:${modelo.id}`}
+                        productName={modelo.nombre}
+                        localStock={modelo.totalStockInBranch}
+                        remoteStock={modelRemote}
+                        myBranchName={branchName}
+                        onSolicitar={() =>
+                          setTransferDialogProduct({
+                            kind: "modelo",
+                            id: modelo.id,
+                            name: modelo.nombre,
+                            variantOptions: variantOpts,
+                          })
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -2947,6 +3111,17 @@ export default function PosTerminal({
           </div>
         );
       })()}
+
+      {/* ══ P12-A: REQUEST TRANSFER DIALOG ══════════════════════════════════════ */}
+      {transferDialogProduct && (
+        <RequestTransferDialog
+          open={!!transferDialogProduct}
+          onOpenChange={(o) => { if (!o) setTransferDialogProduct(null); }}
+          product={transferDialogProduct}
+          myBranchId={branchId}
+          myBranchName={branchName}
+        />
+      )}
     </div>
   );
 }

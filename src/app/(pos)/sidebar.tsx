@@ -32,6 +32,7 @@ import {
     Coins,
     Truck,
     CalendarRange,
+    Repeat2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,8 @@ const routes: RouteGroup[] = [
             { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
             { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
             { label: "Reporte anual", href: "/reportes/anual", roles: ["ADMIN"] },
+            { label: "Transferencias", href: "/reportes/transferencias", roles: ["MANAGER", "ADMIN"] },
+            { label: "Mermas en transferencias", href: "/reportes/transferencias/mermas", roles: ["MANAGER", "ADMIN"] },
         ],
     },
     { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
@@ -106,6 +109,8 @@ const SUB_ICONS: Record<string, React.ElementType> = {
     "/reportes/rentabilidad": TrendingUp,
     "/reportes/compras-proveedor": Truck,
     "/reportes/anual": CalendarRange,
+    "/reportes/transferencias": Repeat2,
+    "/reportes/transferencias/mermas": AlertTriangle,
 };
 
 export default function Sidebar({ user }: { user: UserProp }) {

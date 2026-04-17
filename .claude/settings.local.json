@@ -31,7 +31,8 @@
       "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/autorizar)",
       "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/despachar)",
       "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/recibir)",
-      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/cancelar)"
+      "Bash(mkdir -p /Users/omarchi/Developer/evobike-pos/src/app/api/transferencias/\\\\[id\\\\]/cancelar)",
+      "Bash(grep -E \"\\\\.tsx?$\")"
     ]
   }
 }

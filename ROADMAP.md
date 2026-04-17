@@ -692,12 +692,85 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 > **Mejora 2026-04-17:** `NewOrderDialog` ahora acepta `initialCustomerBikeId` vía query param; el botón "Crear orden de taller" de `/workshop/mantenimientos` navega a `/customers/[id]?customerBikeId=X` y pre-selecciona cliente + bici directamente.
 
 ---
-## P12 — Inventario cross-branch + Transferencias entre sucursales
-  P12-A: Visibilidad de stock global en POS (lectura)
-  P12-B: Flujo de transferencias (modelo, API, UI)
-  P12-C: Reportes de movimientos cross-branch
+## FASE P12 — Transferencias entre sucursales
 
-  ---
+### P12-B — Schema + API + UI ✅ (2026-04-17)
+**Modelo: Opus diseño → Sonnet implementación (3 sesiones CC separadas)**
+
+**Schema aditivo** (migración `20260417075847_add_stock_transfer`):
+- `StockTransfer` con cabecera (folio único, fromBranchId, toBranchId, status, 5 pares de audit: creado/autorizado/despachado/recibido/cancelado por+at, motivoCancelacion, notas)
+- `StockTransferItem` polimórfico 4-way (productVariantId XOR simpleProductId XOR batteryId XOR customerBikeId, enforced con CHECK en SQL)
+- `BatteryStatus` extendido con `IN_TRANSIT` (aditivo al final del enum)
+- CHECKs adicionales: `fromBranchId <> toBranchId`, cantidades válidas
+
+**Enum `StockTransferStatus`:** SOLICITADA | BORRADOR | EN_TRANSITO | RECIBIDA | CANCELADA
+
+**Máquina de estados:**
+```
+SOLICITADA (SELLER pull) ──autorizar──► BORRADOR ──despachar──► EN_TRANSITO ──recibir──► RECIBIDA
+     ▲                        │
+BORRADOR direct           CANCELADA
+(MANAGER push)         (con reversa si venía de EN_TRANSITO)
+```
+
+**Roles (regla oro):** cualquier SELLER+ crea `SOLICITADA` con `toBranchId = su branch`; solo MANAGER+ADMIN transicionan BORRADOR/EN_TRANSITO/CANCELADA (excepto auto-cancelación del creador en SOLICITADA). Solo MANAGER+ADMIN del `toBranchId` reciben.
+
+**APIs (`/api/transferencias/`):**
+- `POST /` — crear (SELLER→SOLICITADA, MANAGER/ADMIN→BORRADOR con opción `enviarAhora`)
+- `GET /` — lista paginada con scoping por rol, filtros `?status/?direccion/?desde/?hasta`
+- `GET /[id]` — detalle con visibility check
+- `PATCH /[id]` — editar items/notas (solo BORRADOR)
+- `POST /[id]/autorizar` — SOLICITADA → BORRADOR|EN_TRANSITO (body: `despacharInmediato`)
+- `POST /[id]/despachar` — BORRADOR → EN_TRANSITO
+- `POST /[id]/recibir` — EN_TRANSITO → RECIBIDA (body: items con cantidadRecibida; enforce coverage completo)
+- `POST /[id]/cancelar` — * → CANCELADA (motivo min 5 chars; reversa automática si venía de EN_TRANSITO)
+
+**Contabilidad de inventario:**
+- Despacho: `TRANSFER_OUT` + decrement Stock (variant/simple), Battery muta a destino con IN_TRANSIT, CustomerBike muta con su Battery asignada (INSTALLED se conserva)
+- Recepción: `TRANSFER_IN` + upsert Stock destino. **NO genera ADJUSTMENT por recepción parcial** — la merma es visible en `cantidadEnviada > cantidadRecibida` y el neto contable ya está cubierto por `TRANSFER_OUT(n) + TRANSFER_IN(m)`. Battery→IN_STOCK; CustomerBike no-op.
+- Reversa (cancelar EN_TRANSITO): `ADJUSTMENT` positivo en origen + restore Battery/CustomerBike a fromBranchId
+- Invariante: todos los movimientos llevan `referenceId = transfer.id` para reconstrucción histórica
+
+**Folio:** `TRF-{branchCode}-{seq4}` con seq único por fromBranchId.
+
+**UI `/transferencias`:**
+- Lista con tabs Solicitudes / Borradores / En tránsito / Historial, badges de count para acciones pendientes del usuario
+- Detalle con timeline de eventos, tabla de items, barra de acciones sticky contextual por rol + estado
+- Modal crear polimórfico (4 tipos), `useFieldArray` para items, fetch lazy de disponibles por branch
+- Modales separados: autorizar (2 opciones), recibir (cantidades editables con warning de faltante), cancelar (motivo + warning reversa)
+- Sidebar: ítem "Transferencias" con icono `ArrowLeftRight`, visible SELLER+MANAGER+ADMIN
+
+### P12-A — Integración POS ✅ (2026-04-17)
+**Modelo: Opus diseño → Sonnet implementación (CC-4 con advertencia pos-terminal.tsx)**
+
+Cambios puramente aditivos a `pos-terminal.tsx`:
+- Icon `ArrowLeftRight` en cada card (variants + simples) abre `RemoteStockPopover`
+- Cuando `stockLocal === 0 && remoteStock.length > 0`: botón primario del card cambia a "Solicitar transferencia" con tono accent
+- `RequestTransferDialog` crea siempre `SOLICITADA` desde el POS (SELLER pull hacia su branch)
+- Warning no-bloqueante de duplicados vía `GET /api/transferencias/solicitudes-activas` (guard: `targetBranchId === session.branchId` excepto ADMIN; además el where de Prisma filtra por `toBranchId` — doble barrera)
+- Query paralela en `page.tsx` del POS: `Stock` con `branchId: { not: session.branchId }`, filtrada por IDs visibles en el grid
+
+**Scope explícitamente excluido:** baterías con serial y customer-bikes ensambladas NO se solicitan desde el POS (no existen como tiles en el grid y los casos de uso son raros). Para esos, `/transferencias` con modal 4-way.
+
+**Zero cambios** en: `handleAddToCart`, `handleCheckout`, `handlePayment`, lógica de carrito, VIN selector, free-form items, tab switcher, búsqueda, comisiones.
+
+### P12-C — Reportes cross-branch ✅ (2026-04-17)
+
+Dos reportes de solo-lectura sobre la data ya modelada en P12-B. Sin schema nuevo, sin mutaciones.
+
+**`/reportes/transferencias`** — transferencias por rango con filtros de status, sucursal origen/destino (ADMIN) y folio. KPIs: total en rango, en tránsito, recibidas, canceladas. Tabla paginada (50/página) con link al detalle. CSV exportable.
+
+**`/reportes/transferencias/mermas`** — ítems con `cantidadRecibida < cantidadEnviada` en transferencias RECIBIDA. Vistas "detalle", "por producto" y "por sucursal" computadas client-side. Drill-down sin round-trip al servidor. CSV siempre en vista detalle completa.
+
+Archivos creados:
+- `src/lib/reportes/transferencias.ts` — `formatProducto`, `computeMermaUnidades`
+- `src/app/(pos)/reportes/transferencias/page.tsx`
+- `src/app/(pos)/reportes/transferencias/transferencias-report-client.tsx`
+- `src/app/(pos)/reportes/transferencias/mermas/page.tsx`
+- `src/app/(pos)/reportes/transferencias/mermas/mermas-report-client.tsx`
+- `src/app/(pos)/sidebar.tsx` — entradas de navegación añadidas
+
+---
 
 ## PRE-FASE 6 — Orden de trabajo acordado
 
