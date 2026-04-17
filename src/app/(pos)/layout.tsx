@@ -8,6 +8,8 @@ import { Bell, HelpCircle, Search, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { OrphanedSessionBanner } from "./orphaned-session-banner";
+import { BranchSwitcher } from "@/components/pos/branch-switcher";
+import { getAdminActiveBranch } from "@/lib/actions/branch";
 
 interface SessionUser {
     id: string;
@@ -23,13 +25,24 @@ function getInitials(name?: string | null) {
     return name.substring(0, 2).toUpperCase();
 }
 
-function Topbar({ user }: { user: { name?: string | null; branchName?: string | null } }) {
+interface TopbarProps {
+    user: { name?: string | null; branchName?: string | null };
+    isAdmin: boolean;
+    activeBranchId: string;
+    activeBranchName: string;
+}
+
+function Topbar({ user, isAdmin, activeBranchId, activeBranchName }: TopbarProps) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between px-6 bg-[var(--surf-lowest)]/90 backdrop-blur-md border-b border-[var(--ghost-border)] shrink-0 transition-colors duration-200">
-            {/* Left: Branch chip */}
-            <div className="px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
-                BRANCH: {user.branchName ?? "—"}
-            </div>
+            {/* Left: Branch chip / switcher */}
+            {isAdmin ? (
+                <BranchSwitcher activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
+            ) : (
+                <div className="px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
+                    BRANCH: {user.branchName ?? "—"}
+                </div>
+            )}
 
             {/* Center: Search */}
             <div className="relative w-80 mx-6">
@@ -76,14 +89,27 @@ export default async function PosLayout({
     }
 
     const user = session.user as unknown as SessionUser;
+    const isAdmin = user.role === "ADMIN";
+
+    // For admin: use cookie-stored active branch, falling back to their assigned branch
+    let activeBranchId = user.branchId ?? "";
+    let activeBranchName = user.branchName ?? "—";
+
+    if (isAdmin) {
+        const saved = await getAdminActiveBranch();
+        if (saved) {
+            activeBranchId = saved.id;
+            activeBranchName = saved.name;
+        }
+    }
 
     return (
         <div className="flex h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200">
             <Sidebar user={user} />
             <div className="flex flex-col flex-1 overflow-hidden">
-                <Topbar user={user} />
+                <Topbar user={user} isAdmin={isAdmin} activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
                 <main className="flex-1 overflow-y-auto relative">
-                    <OrphanedSessionBanner branchId={user.branchId} />
+                    <OrphanedSessionBanner branchId={activeBranchId} />
                     <div className="p-8">
                         {children}
                     </div>
