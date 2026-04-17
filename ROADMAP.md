@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-16 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4 + Lote 5)  
+Última actualización: 2026-04-17 (P10 Lote 1 + Lote 2 + Lote 3 + Lote 4 + Lote 5 + Lote 6)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -612,9 +612,16 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - CSV export.
 - Sidebar: `hasSpecificSibling` fix para que `/reportes/caja` no quede activo cuando la ruta es `/reportes/caja/historial`.
 
-### P10-G — Compras al proveedor (reporte agregado)
-Historial desde `inventory/receipts` enriquecido.
-**Alcance reducido post P4-C**: el listado operativo de cuentas por pagar (filtros por estadoPago, proveedor, rango vencimiento) ya lo cubre `/inventario/recepciones`. P10-G queda como reporte agregado: totales mensuales por proveedor, análisis de vencimientos por período, export CSV.
+### P10-G — Compras al proveedor ✅ (Lote 6 — 2026-04-17)
+- Ruta: `/reportes/compras-proveedor` (MANAGER + ADMIN).
+- Fuente: `PurchaseReceipt` — todas las del rango (PAGADA + PENDIENTE + CREDITO). Filtro por `createdAt`.
+- KPIs: total comprado (Velocity Gradient), total pagado, cuentas por pagar, cuentas vencidas (count + monto en trend), proveedores distintos.
+- **Vista principal — agregado por proveedor**: normalización `proveedor.trim().toLowerCase()` en memoria, nombre canónico por frecuencia (desempate alfabético), columnas: proveedor (link drill-down), recepciones, total comprado, pagado, pendiente (ámbar/rojo según estado vencimiento), próximo vencimiento (badge coloreado).
+- **Vista secundaria — serie mensual**: tabla con barras CSS proporcionales al mes de mayor compra (gradiente #1b4332 → #2ecc71). Columnas: mes, total comprado, recepciones, proveedores distintos.
+- **Drill-down**: click en proveedor abre `/inventario/recepciones?proveedor=<nombre>&branchId=<...>&from=...&to=...` (vista operativa existente).
+- Filtros URL: `from`, `to`, `branchId` (ADMIN), `estadoPago` (`all/pagada/pendiente`), `q` (búsqueda text en proveedor). KPIs excluyen el filtro `q` — solo aplican `estadoPago`.
+- CSV doble: `compras-por-proveedor-{rango}.csv` + `compras-por-mes-{rango}.csv`, botones separados por sección.
+- Sidebar: "Compras al proveedor", icon `Truck`, roles MANAGER+ADMIN. Insertado entre "Rentabilidad por producto" y "Stock mínimo".
 
 ### P10-H — Reporte de stock mínimo ✅ (Lote 2 — 2026-04-16)
 - Ruta: `/reportes/inventario/stock-minimo` (MANAGER + ADMIN).
