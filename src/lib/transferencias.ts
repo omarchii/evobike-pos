@@ -274,6 +274,11 @@ export async function ejecutarDespachoItems(
           `La bicicleta (ID: ${item.customerBikeId}) está asignada a un cliente y no puede transferirse`,
         );
       }
+      if (bike.batteryAssignments.length === 0) {
+        throw new TransferCustomerBikeError(
+          `La bicicleta (ID: ${item.customerBikeId}) no tiene batería instalada y no puede transferirse`,
+        );
+      }
       await tx.customerBike.update({
         where: { id: item.customerBikeId },
         data: { branchId: transfer.toBranchId },

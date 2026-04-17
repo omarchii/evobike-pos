@@ -61,8 +61,19 @@ export async function POST(
         );
       }
 
-      // Validate all body item IDs reference actual transfer items
+      // Validate body covers every item in the transfer (no partial reception)
       const itemMap = new Map(transfer.items.map((i) => [i.id, i]));
+
+      if (input.items.length !== transfer.items.length) {
+        throw new TransferStateError("El body debe incluir todos los ítems de la transferencia");
+      }
+      const bodyIds = new Set(input.items.map((b) => b.id));
+      for (const transferItem of transfer.items) {
+        if (!bodyIds.has(transferItem.id)) {
+          throw new TransferStateError(`Falta el ítem ${transferItem.id} en el body de recepción`);
+        }
+      }
+
       for (const bodyItem of input.items) {
         const transferItem = itemMap.get(bodyItem.id);
         if (!transferItem) {
@@ -114,19 +125,6 @@ export async function POST(
               referenceId: transfer.id,
             },
           });
-          const diff = transferItem.cantidadEnviada - bodyItem.cantidadRecibida;
-          if (diff > 0) {
-            await tx.inventoryMovement.create({
-              data: {
-                productVariantId: transferItem.productVariantId,
-                branchId: transfer.fromBranchId,
-                userId: user.id,
-                quantity: -diff,
-                type: "ADJUSTMENT",
-                referenceId: transfer.id,
-              },
-            });
-          }
         } else if (transferItem.simpleProductId) {
           await tx.stock.upsert({
             where: {
@@ -152,19 +150,6 @@ export async function POST(
               referenceId: transfer.id,
             },
           });
-          const diff = transferItem.cantidadEnviada - bodyItem.cantidadRecibida;
-          if (diff > 0) {
-            await tx.inventoryMovement.create({
-              data: {
-                simpleProductId: transferItem.simpleProductId,
-                branchId: transfer.fromBranchId,
-                userId: user.id,
-                quantity: -diff,
-                type: "ADJUSTMENT",
-                referenceId: transfer.id,
-              },
-            });
-          }
         } else if (transferItem.batteryId) {
           await tx.battery.update({
             where: { id: transferItem.batteryId },
