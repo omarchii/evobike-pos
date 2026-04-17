@@ -772,6 +772,63 @@ Archivos creados:
 
 ---
 
+## FASE P13 — Rediseño del módulo de Taller
+
+**Estado:** A ✅ | B 🔜 | C ⏳ | D ⏳ | E ⏳ | F ⏳
+
+Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
+y el alcance completo. Las decisiones de Sub-fase A están documentadas
+en `AGENTS.md §Decisiones clave`.
+
+### Sub-fase A — Schema y APIs ✅
+Schema aditivo + migración `workshop_redesign_schema` + helpers en
+`src/lib/workshop*.ts` + 7 endpoints nuevos + 5 modificados + backfill
+idempotente. Sin UI.
+
+### Sub-fase B — Kanban rediseñado 🔜
+Tablero con 7 columnas derivadas de `status + subStatus`. DnD con
+transiciones validadas server-side. Chip de `type` y avatar de
+`assignedTech`. **Donde diseñar:** chat ligero (Sonnet) + Code.
+**Subagentes:** no. **Sesiones estimadas:** 2.
+**Riesgo:** alto (UI en uso diario).
+
+### Sub-fase C — Wizard de recepción
+Formulario multi-step que crea orden con `type`, `assignedTechId`, ítems
+con `laborMinutes`. Selector de `CustomerBike`. El tipo `POLICY_MAINTENANCE`
+solo se ofrece si hay `customerBikeId`; la verificación de vigencia es
+advertencia, no bloqueo (helper `assertPolicyActive` es no-op hoy).
+**Donde diseñar:** chat (Sonnet) + Code. **Subagentes:** no.
+**Sesiones estimadas:** 2.
+
+### Sub-fase D — Ficha técnica + drawer de aprobación
+Rediseño de ficha existente + componente nuevo de aprobación con cálculo
+en vivo, disparador de WhatsApp y lógica de `subStatus`. Gate del botón
+"Marcar entregada" por `qaPassedAt != null` salvo `COURTESY`. Sección QA
+solo visible con `status = COMPLETED`.
+**Donde diseñar:** chat con **Opus** (lógica de negocio entrelazada) + Code.
+**Subagentes:** sí — 1 para el drawer standalone, main para ficha.
+**Sesiones estimadas:** 2-3. **Riesgo:** alto.
+
+### Sub-fase E — Pantalla de entrega + PDFs
+UI que oculta panel de cobro cuando `type ∈ {WARRANTY, COURTESY,
+POLICY_MAINTENANCE}`. PDF de comprobante con leyenda según `type`.
+**Donde diseñar:** chat (estructura PDF) + Code. **Subagentes:** sí si
+son plantillas separadas por tipo; no si es una con leyenda dinámica
+(cerrar esto en el chat de diseño). **Sesiones estimadas:** 2.
+
+### Sub-fase F — Portal público
+Página `/taller/public/[token]` fuera de `(pos)/`, mobile-first, light
+mode forzado. Consume endpoints públicos ya creados en Sub-fase A.
+**Donde diseñar:** chat (layout + UX) + Code. **Subagentes:** no.
+**Sesiones estimadas:** 1-2. **Riesgo:** bajo.
+
+### Testing de P13 completo
+Se integra al scope de Fase 6 (hardening de producción). Tests por flujo
+con subagentes: recepción, aprobación interna, aprobación pública,
+entrega con cada `type`, QA gating.
+
+---
+
 ## PRE-FASE 6 — Orden de trabajo acordado
 
 Decisión tomada 2026-04-17. El orden correcto antes de entrar a Fase 6 es:

@@ -121,7 +121,18 @@ export async function POST(
 
       await tx.serviceOrder.update({
         where: { id: serviceOrderId },
-        data: { status: "CANCELLED" },
+        data: { status: "CANCELLED", subStatus: null },
+      });
+
+      // Auto-rechazar approvals pendientes para evitar que queden visibles
+      // en el portal público del cliente tras la cancelación.
+      await tx.serviceOrderApproval.updateMany({
+        where: { serviceOrderId, status: "PENDING" },
+        data: {
+          status: "REJECTED",
+          respondedAt: new Date(),
+          respondedNote: `Orden cancelada: ${motivo}`,
+        },
       });
     });
 

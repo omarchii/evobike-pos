@@ -49,6 +49,12 @@ model User {
   transfersDespachadas StockTransfer[] @relation("TransferDespachada")
   transfersRecibidas   StockTransfer[] @relation("TransferRecibida")
   transfersCanceladas  StockTransfer[] @relation("TransferCancelada")
+
+  // Workshop redesign (Sub-fase A). `serviceOrders` (arriba, default relation) = quien la registró.
+  serviceOrdersAssigned        ServiceOrder[]         @relation("ServiceOrderAssignedTech")
+  serviceOrdersServiced        ServiceOrder[]         @relation("ServiceOrderServicedBy")
+  serviceOrdersQaPassed        ServiceOrder[]         @relation("ServiceOrderQaPassedBy")
+  serviceOrderApprovalsCreated ServiceOrderApproval[]
 }
 
 model Branch {
@@ -97,6 +103,10 @@ model Branch {
 
   transferenciasEnviadas  StockTransfer[] @relation("TransferenciasSalientes")
   transferenciasRecibidas StockTransfer[] @relation("TransferenciasEntrantes")
+
+  // Workshop redesign (Sub-fase A)
+  hourlyRate             Decimal? @db.Decimal(10, 2)
+  whatsappTemplateTaller String?
 }
 
 // === CATALOG & INVENTORY ===
@@ -454,6 +464,38 @@ enum ServiceOrderStatus {
   CANCELLED
 }
 
+// Workshop redesign (Sub-fase A) — enums nuevos
+enum ChargeModel {
+  FIXED
+  HOURLY
+}
+
+enum ServiceOrderType {
+  PAID
+  WARRANTY
+  COURTESY
+  POLICY_MAINTENANCE
+}
+
+enum ServiceOrderSubStatus {
+  WAITING_PARTS
+  WAITING_APPROVAL
+  PAUSED
+}
+
+enum ServiceOrderApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ServiceOrderApprovalChannel {
+  WHATSAPP_PUBLIC
+  PHONE_CALL
+  IN_PERSON
+  OTHER
+}
+
 model ServiceOrder {
   id             String             @id @default(uuid())
   folio          String             @unique
@@ -476,6 +518,26 @@ model ServiceOrder {
   items        ServiceOrderItem[]
   sale         Sale?
   prepaid      Boolean            @default(false)
+
+  // Workshop redesign (Sub-fase A) — aditivo, todos nullable o con default
+  assignedTechId       String?
+  assignedTech         User?                  @relation("ServiceOrderAssignedTech", fields: [assignedTechId], references: [id])
+  servicedByUserId     String?
+  servicedByUser       User?                  @relation("ServiceOrderServicedBy", fields: [servicedByUserId], references: [id])
+  type                 ServiceOrderType       @default(PAID)
+  subStatus            ServiceOrderSubStatus? // solo relevante mientras status = IN_PROGRESS
+  qaPassedAt           DateTime?
+  qaPassedByUserId     String?
+  qaPassedByUser       User?                  @relation("ServiceOrderQaPassedBy", fields: [qaPassedByUserId], references: [id])
+  qaNotes              String?
+  publicToken          String?                @unique
+  publicTokenEnabled   Boolean                @default(true)
+  approvals            ServiceOrderApproval[]
+
+  @@index([branchId, status])
+  @@index([assignedTechId])
+  @@index([servicedByUserId])
+  @@index([status, subStatus])
 }
 
 model ServiceOrderItem {
@@ -493,6 +555,11 @@ model ServiceOrderItem {
   productVariant      ProductVariant? @relation(fields: [productVariantId], references: [id])
   simpleProduct       SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
   serviceCatalog      ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
+
+  // Workshop redesign (Sub-fase A)
+  laborMinutes Int?                         // solo cuando serviceCatalog.chargeModel = HOURLY
+  isExtra      Boolean  @default(false)     // true = agregado post-diagnóstico (requiere approval)
+  createdAt    DateTime @default(now())
 }
 
 // === COMMISSIONS ===
@@ -550,8 +617,34 @@ model ServiceCatalog {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Workshop redesign (Sub-fase A) — mano de obra mixta (decisión #3 BRIEF)
+  chargeModel      ChargeModel @default(FIXED)
+  estimatedMinutes Int?        // informativo en FIXED; base de cálculo en HOURLY
+
   branch            Branch             @relation(fields: [branchId], references: [id])
   serviceOrderItems ServiceOrderItem[]
+}
+
+// === SERVICE ORDER APPROVAL (Workshop redesign Sub-fase A) ===
+// Aprobación del cliente (o registro interno) para trabajo extra propuesto
+// post-diagnóstico. `itemsJson` es snapshot; al aprobarse se crean los
+// ServiceOrderItem reales con isExtra=true en el endpoint /respond.
+model ServiceOrderApproval {
+  id              String                       @id @default(uuid())
+  serviceOrderId  String
+  itemsJson       Json                         // [{ nombre, cantidad, precio, subtotal }]
+  totalEstimado   Decimal                      @db.Decimal(10, 2)
+  status          ServiceOrderApprovalStatus   @default(PENDING)
+  channel         ServiceOrderApprovalChannel? // null mientras status = PENDING
+  requestedAt     DateTime                     @default(now())
+  respondedAt     DateTime?
+  respondedNote   String?
+  createdByUserId String
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+
+  @@index([serviceOrderId, status])
 }
 
 // === VOLTAGE CHANGE LOG ===

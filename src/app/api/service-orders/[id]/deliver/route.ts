@@ -9,6 +9,12 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
+import {
+  assertQaPassed,
+  assertPolicyActive,
+  QaNotPassedError,
+  PolicyNotActiveError,
+} from "@/lib/workshop";
 
 interface AuthUser {
   id: string;
@@ -17,7 +23,9 @@ interface AuthUser {
 }
 
 const deliverSchema = z.object({
-  // Payment fields only required when not prepaid
+  // Payment fields: solo aplican cuando type = PAID y !prepaid.
+  // Para WARRANTY/COURTESY/POLICY_MAINTENANCE se aceptan en el payload
+  // (backward compat con UIs viejas) pero se ignoran con console.warn.
   paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "ATRATO"]).optional(),
   amount: z.number().nonnegative().optional(),
   secondaryPaymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "ATRATO"]).optional(),
@@ -25,11 +33,13 @@ const deliverSchema = z.object({
 });
 
 // POST /api/service-orders/[id]/deliver
-// Entrega la orden.
-// - Si prepaid === false: crea Sale + CashTransaction (requiere caja abierta).
-// - Si prepaid === true: usa la Sale ya existente, no cobra de nuevo.
-// En ambos casos: descuenta Stock y crea InventoryMovement(WORKSHOP_USAGE) para cada
-// item con productVariantId que no tenga inventoryMovementId aún (D3 del spec).
+// Matriz por ServiceOrder.type (decisión #7 BRIEF + matriz QA #9):
+//   PAID                → exige QA; flujo actual (caja, CashTransaction).
+//                         Si prepaid: usa la Sale existente, no cobra de nuevo.
+//   WARRANTY            → exige QA; crea Sale(total=0) sin CashTransaction.
+//   POLICY_MAINTENANCE  → exige QA + assertPolicyActive (no-op hoy); idem.
+//   COURTESY            → exento de QA; crea Sale(total=0) sin CashTransaction.
+// En los tres tipos no-PAID el descuento de stock (WORKSHOP_USAGE) se mantiene.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -96,6 +106,21 @@ export async function POST(
       );
     }
 
+    // ── QA gate (exento COURTESY) ──
+    assertQaPassed(order);
+
+    // ── Coherencia prepaid × type ──
+    if (order.prepaid && order.type !== "PAID") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Orden con cobro anticipado pero tipo distinto a PAID — revisar inconsistencia",
+        },
+        { status: 422 },
+      );
+    }
+
     // ── Pre-validate stock (outside transaction for clear error messages) ──
     // Aggregate total quantities needed per productVariantId (D3/T4 spec).
     // Only process items without inventoryMovementId — those are pending stock deduction.
@@ -129,10 +154,15 @@ export async function POST(
       0
     );
 
-    // ── Validate payment data for non-prepaid orders ──
+    // ── Determinar flujo de cobro según type ──
+    //   PAID !prepaid  → requiere payment data + caja abierta
+    //   PAID  prepaid  → usa Sale existente
+    //   otros          → crea Sale(total=0), ignora payment data con warn
     let activeSessionId: string | null = null;
-    if (!order.prepaid) {
-      if (!input.paymentMethod || (input.amount === undefined)) {
+    const requiresPaymentFlow = order.type === "PAID" && !order.prepaid;
+
+    if (requiresPaymentFlow) {
+      if (!input.paymentMethod || input.amount === undefined) {
         return NextResponse.json(
           { success: false, error: "Método y monto de pago requeridos" },
           { status: 400 }
@@ -152,22 +182,35 @@ export async function POST(
       }
       assertSessionFreshOrThrow(activeSession);
       activeSessionId = activeSession.id;
-    } else {
+    } else if (order.type === "PAID" && order.prepaid) {
       if (!order.sale) {
         return NextResponse.json(
           { success: false, error: "No se encontró la venta asociada al cobro previo" },
           { status: 422 }
         );
       }
+    } else {
+      // WARRANTY / COURTESY / POLICY_MAINTENANCE → sin cobro.
+      // Si el payload trajo campos de pago, dejamos traza (no silent-ignore).
+      if (
+        input.paymentMethod ||
+        input.amount !== undefined ||
+        input.secondaryPaymentMethod ||
+        input.secondaryAmount !== undefined
+      ) {
+        console.warn(
+          `[service-orders/${serviceOrderId}/deliver] ignorando datos de pago — type=${order.type} no cobra.`,
+        );
+      }
     }
 
-    // ── Single transaction: cobro + stock + status ──
+    // ── Single transaction ──
     const result = await prisma.$transaction(async (tx) => {
       let saleId: string;
       let folio: string;
 
-      if (!order.prepaid) {
-        // Branch A: crear Sale + CashTransaction
+      if (requiresPaymentFlow) {
+        // Branch A — PAID no prepaid: crear Sale + CashTransaction
         const updatedBranch = await tx.branch.update({
           where: { id: branchId },
           data: { lastSaleFolioNumber: { increment: 1 } },
@@ -211,17 +254,50 @@ export async function POST(
               type: "PAYMENT_IN",
               method: input.secondaryPaymentMethod,
               amount: input.secondaryAmount!,
-              collectionStatus: input.secondaryPaymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
+              collectionStatus:
+                input.secondaryPaymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
             },
           });
         }
 
         saleId = sale.id;
         folio = newFolio;
-      } else {
-        // Branch B: ya cobrado previamente
+      } else if (order.type === "PAID" && order.prepaid) {
+        // Branch B — PAID prepaid: ya cobrado previamente
         saleId = order.sale!.id;
         folio = order.sale!.folio;
+      } else {
+        // Branch C — WARRANTY / COURTESY / POLICY_MAINTENANCE:
+        // crea Sale(total=0) para traza, sin CashTransaction.
+        if (order.type === "POLICY_MAINTENANCE") {
+          await assertPolicyActive(order.customerBikeId ?? "", tx);
+        }
+
+        const updatedBranch = await tx.branch.update({
+          where: { id: branchId },
+          data: { lastSaleFolioNumber: { increment: 1 } },
+          select: { lastSaleFolioNumber: true, code: true },
+        });
+        const newFolio = `${updatedBranch.code}T-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
+
+        const sale = await tx.sale.create({
+          data: {
+            folio: newFolio,
+            branchId,
+            userId,
+            customerId: order.customerId,
+            status: "COMPLETED",
+            subtotal: 0,
+            discount: 0,
+            total: 0,
+            warrantyDocReady: true,
+            serviceOrderId: order.id,
+            internalNote: `Servicio sin cobro — tipo ${order.type}`,
+          },
+        });
+
+        saleId = sale.id;
+        folio = newFolio;
       }
 
       // Common: descuento de stock + InventoryMovement por cada item sin movement
@@ -276,6 +352,12 @@ export async function POST(
           error: "La caja del día anterior debe cerrarse antes de registrar nuevas operaciones.",
         },
         { status: 409 },
+      );
+    }
+    if (error instanceof QaNotPassedError || error instanceof PolicyNotActiveError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 422 },
       );
     }
     console.error("[api/service-orders/[id]/deliver POST]", error);

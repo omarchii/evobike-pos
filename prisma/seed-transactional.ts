@@ -24,6 +24,7 @@ import {
   FormaPagoProveedor,
   EstadoPagoProveedor,
 } from "@prisma/client";
+import { generatePublicToken } from "../src/lib/workshop";
 
 type Tx = Omit<
   PrismaClient,
@@ -1315,6 +1316,14 @@ async function seedServiceOrders(ctx: SeedContext): Promise<void> {
                 targetStatus === ServiceOrderStatus.DELIVERED
                   ? ServiceOrderStatus.COMPLETED // lo movemos manualmente abajo
                   : targetStatus,
+              // Workshop redesign Sub-fase A: paridad dev con órdenes reales.
+              publicToken: generatePublicToken(),
+              // Si vamos a DELIVERED, simula el QA pasado para respetar el
+              // gate del endpoint real cuando alguien prueba /deliver contra
+              // órdenes de seed.
+              ...(targetStatus === ServiceOrderStatus.DELIVERED
+                ? { qaPassedAt: new Date(), qaPassedByUserId: techId }
+                : {}),
             },
           });
           for (const it of items) {
