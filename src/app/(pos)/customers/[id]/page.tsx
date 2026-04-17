@@ -19,11 +19,17 @@ import Link from "next/link";
 import { AddBalanceDialog } from "./add-balance-dialog";
 import QuotationStatusBadge from "@/components/quotation-status-badge";
 import { getEffectiveStatus, formatMXN, formatDate } from "@/lib/quotations";
+import { NewOrderDialog } from "@/app/(pos)/workshop/new-order-dialog";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomerProfilePage(props: { params: Promise<{ id: string }> }) {
+export default async function CustomerProfilePage(props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
     const params = await props.params;
+    const searchParams = await props.searchParams;
+    const customerBikeId = typeof searchParams.customerBikeId === "string" ? searchParams.customerBikeId : undefined;
 
     const [customer, cotizaciones] = await Promise.all([
         prisma.customer.findUnique({
@@ -74,6 +80,21 @@ export default async function CustomerProfilePage(props: { params: Promise<{ id:
                         <h1 className="text-3xl font-bold tracking-tight">{customer.name}</h1>
                         <p className="text-slate-500">Perfil unificado del cliente CRM</p>
                     </div>
+                    <NewOrderDialog
+                        initialCustomer={{
+                            id: customer.id,
+                            name: customer.name,
+                            phone: customer.phone,
+                            bikes: customer.bikes.map((b) => ({
+                                id: b.id,
+                                brand: b.brand,
+                                model: b.model,
+                                serialNumber: b.serialNumber,
+                            })),
+                        }}
+                        initialCustomerBikeId={customerBikeId}
+                        openOnMount={!!customerBikeId}
+                    />
                 </div>
             </div>
 

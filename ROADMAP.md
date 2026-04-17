@@ -689,6 +689,8 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `src/app/(pos)/workshop/mantenimientos/page.tsx` — Server Component con query + post-procesamiento
 - `src/app/(pos)/workshop/mantenimientos/mantenimientos-table.tsx` — Client Component (KPIs, filtros, tabla, CSV)
 
+> **Mejora 2026-04-17:** `NewOrderDialog` ahora acepta `initialCustomerBikeId` vía query param; el botón "Crear orden de taller" de `/workshop/mantenimientos` navega a `/customers/[id]?customerBikeId=X` y pre-selecciona cliente + bici directamente.
+
 ---
 ## P12 — Inventario cross-branch + Transferencias entre sucursales
   P12-A: Visibilidad de stock global en POS (lectura)

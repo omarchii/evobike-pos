@@ -488,15 +488,14 @@ export function MantenimientosTable({
                     <td className="px-4 py-3">
                       {r.customerId ? (
                         <Link
-                          href={`/customers/${r.customerId}`}
+                          href={`/customers/${r.customerId}?customerBikeId=${r.bikeId}`}
                           className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
                           style={{
                             background: "var(--surf-high)",
                             color: "var(--on-surf)",
                           }}
-                          title="Ver cliente para crear orden de taller"
+                          title="Crear orden de taller con esta unidad pre-seleccionada"
                         >
-                          {/* TODO P11: pre-populate NewOrderDialog via URL param once dialog supports customerBikeId query param */}
                           Crear orden de taller
                         </Link>
                       ) : (

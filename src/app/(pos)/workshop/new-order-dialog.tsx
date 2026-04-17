@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +19,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { Search, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface SerialResult {
     id: string;
@@ -34,8 +34,33 @@ interface SerialResult {
     }
 }
 
-export function NewOrderDialog() {
+interface CustomerBike {
+    id: string;
+    brand: string | null;
+    model: string | null;
+    serialNumber: string;
+}
+
+interface InitialCustomer {
+    id: string;
+    name: string;
+    phone?: string | null;
+    bikes: CustomerBike[];
+}
+
+interface NewOrderDialogProps {
+    initialCustomerBikeId?: string;
+    openOnMount?: boolean;
+    initialCustomer?: InitialCustomer;
+}
+
+export function NewOrderDialog({
+    initialCustomerBikeId,
+    openOnMount = false,
+    initialCustomer,
+}: NewOrderDialogProps = {}) {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [vinSearch, setVinSearch] = useState("");
@@ -50,6 +75,32 @@ export function NewOrderDialog() {
         bikeInfo: "",
         diagnosis: "",
     });
+
+    useEffect(() => {
+        if (!initialCustomer || !initialCustomerBikeId) return;
+        const bike = initialCustomer.bikes.find((b) => b.id === initialCustomerBikeId);
+        if (!bike) return;
+        setFormData({
+            customerId: initialCustomer.id,
+            customerBikeId: bike.id,
+            customerName: initialCustomer.name,
+            customerPhone: initialCustomer.phone || "",
+            bikeInfo: `${bike.brand || "Bicicleta/Scooter"} ${bike.model || ""}`.trim() + ` - VIN: ${bike.serialNumber}`,
+            diagnosis: "",
+        });
+    }, [initialCustomer, initialCustomerBikeId]);
+
+    useEffect(() => {
+        if (openOnMount) setOpen(true);
+    }, [openOnMount]);
+
+    const handleClose = () => {
+        setOpen(false);
+        resetForm();
+        if (initialCustomerBikeId) {
+            router.replace(pathname, { scroll: false });
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,8 +120,7 @@ export function NewOrderDialog() {
 
         if (result.success) {
             toast.success(`Orden ${result.data!.folio} creada exitosamente`, { id: "new-order" });
-            setOpen(false);
-            resetForm();
+            handleClose();
             router.refresh();
         } else {
             toast.error(result.error || "No se pudo crear la orden", { id: "new-order" });
@@ -126,7 +176,7 @@ export function NewOrderDialog() {
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(newOpen) => { if (!newOpen) handleClose(); else setOpen(true); }}>
             <DialogTrigger asChild>
                 <Button className="bg-slate-900 text-white hover:bg-slate-800">
                     <PlusCircle className="mr-2 h-4 w-4" /> Nueva Orden
@@ -219,7 +269,7 @@ export function NewOrderDialog() {
                         </div>
                     </div>
                     <DialogFooter className="mt-6">
-                        <Button type="button" variant="outline" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
+                        <Button type="button" variant="outline" onClick={handleClose}>Cancelar</Button>
                         <Button type="submit" disabled={loading} className="bg-slate-900 hover:bg-slate-800">
                             {loading ? "Guardando..." : "Ingresar Bici"}
                         </Button>
