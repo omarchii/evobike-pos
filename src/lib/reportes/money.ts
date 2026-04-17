@@ -2,6 +2,9 @@
  * Helpers de serialización y formato monetario para reportes.
  */
 
+/** IVA estándar Mérida (no frontera). */
+export const IVA_RATE = 0.16;
+
 /**
  * Convierte un `Prisma.Decimal` (o cualquier valor con `.toNumber()`) a `number`.
  * Retorna 0 si el valor es nulo o indefinido.
