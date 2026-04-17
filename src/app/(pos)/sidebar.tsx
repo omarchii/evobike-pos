@@ -29,6 +29,7 @@ import {
     ArrowUpDown,
     Wallet,
     Coins,
+    Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ const routes: RouteGroup[] = [
             { label: "Movimientos de inventario", href: "/reportes/inventario/movimientos", roles: ["MANAGER", "ADMIN"] },
             { label: "Valor de inventario", href: "/reportes/inventario/valor", roles: ["MANAGER", "ADMIN"] },
             { label: "Rentabilidad por producto", href: "/reportes/rentabilidad", roles: ["MANAGER", "ADMIN"] },
+            { label: "Compras al proveedor", href: "/reportes/compras-proveedor", roles: ["MANAGER", "ADMIN"] },
             { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
             { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
             { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
@@ -98,6 +100,7 @@ const SUB_ICONS: Record<string, React.ElementType> = {
     "/reportes/inventario/movimientos": ArrowUpDown,
     "/reportes/inventario/valor": Coins,
     "/reportes/rentabilidad": TrendingUp,
+    "/reportes/compras-proveedor": Truck,
 };
 
 export default function Sidebar({ user }: { user: UserProp }) {
