@@ -9,6 +9,8 @@ import { BranchSwitcher } from "@/components/pos/branch-switcher";
 import { getAdminActiveBranch } from "@/lib/actions/branch";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
+import { CommandPalette } from "./command-palette";
+import { SearchTrigger } from "./search-trigger";
 
 interface SessionUser {
     id: string;
@@ -38,6 +40,11 @@ function Topbar({ user, isAdmin, canSeeNotifications, activeBranchId, activeBran
                     BRANCH: {user.branchName ?? "—"}
                 </div>
             )}
+
+            {/* Center: Command palette trigger */}
+            <div className="flex-1 flex justify-center px-6">
+                <SearchTrigger />
+            </div>
 
             {/* Right: Notifications + Theme toggle + User menu */}
             <div className="flex items-center gap-3">
@@ -110,6 +117,7 @@ export default async function PosLayout({
             </div>
             {/* Chrome de aplicación — fuera de <main>. Renderiza en portal. */}
             <CashSessionManager />
+            <CommandPalette role={user.role as "SELLER" | "TECHNICIAN" | "MANAGER" | "ADMIN"} />
             <style>{`
                 @media print {
                     [data-shell="topbar"], [data-shell="sidebar"] { display: none !important; }
