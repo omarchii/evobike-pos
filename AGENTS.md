@@ -544,6 +544,8 @@ node_modules/.bin/next build      # Build completo — incluye type-check + bund
 
 Ambos comandos son equivalentes o superiores a lint para detectar problemas antes de commitear.
 
+**Build requiere red saliente** — `src/app/layout.tsx` usa `next/font/google` (Inter + Space Grotesk), que descarga las fuentes desde `fonts.googleapis.com` en build time. En sandboxes sin internet (entornos de agentes, CI corporativo) `next build` falla con `Failed to fetch Inter/Space Grotesk from Google Fonts` — es ambiental, no una regresión del código. En ese caso, `tsc --noEmit` + `npx eslint src/` cubren la validación funcional; el build final se corre en una máquina con red. Self-hosting de las fuentes está documentado como deuda en `ROADMAP.md` §Fase 6.
+
 ### Ruido aceptado de lint
 
 Tras migrar de `next lint` a `eslint cli` (Next 16 removió `next lint`), estos ítems quedan como ruido **aceptado** — no son regresiones ni bloquean commit:
