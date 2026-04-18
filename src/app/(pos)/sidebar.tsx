@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-    LayoutDashboard,
+    Home,
     ShoppingCart,
     Wrench,
     Package,
@@ -44,7 +44,7 @@ const SECTIONS: NavSection[] = [
     {
         label: "OPERACIÓN",
         items: [
-            { label: "Inicio", icon: LayoutDashboard, href: "/" },
+            { label: "Inicio", icon: Home, href: "/" },
             { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
             { label: "Pedidos", icon: BookmarkCheck, href: "/pedidos" },
             { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
