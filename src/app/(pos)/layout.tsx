@@ -8,6 +8,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { OrphanedSessionBanner } from "./orphaned-session-banner";
 import { BranchSwitcher } from "@/components/pos/branch-switcher";
 import { getAdminActiveBranch } from "@/lib/actions/branch";
+import { NotificationBell } from "./notification-bell";
 
 interface SessionUser {
     id: string;
@@ -26,11 +27,12 @@ function getInitials(name?: string | null) {
 interface TopbarProps {
     user: { name?: string | null; branchName?: string | null };
     isAdmin: boolean;
+    canSeeNotifications: boolean;
     activeBranchId: string;
     activeBranchName: string;
 }
 
-function Topbar({ user, isAdmin, activeBranchId, activeBranchName }: TopbarProps) {
+function Topbar({ user, isAdmin, canSeeNotifications, activeBranchId, activeBranchName }: TopbarProps) {
     return (
         <header data-shell="topbar" className="sticky top-0 z-10 flex h-16 items-center justify-between px-6 bg-[var(--surf-bright)] shrink-0 transition-colors duration-200">
             {/* Left: Branch chip / switcher */}
@@ -42,8 +44,9 @@ function Topbar({ user, isAdmin, activeBranchId, activeBranchName }: TopbarProps
                 </div>
             )}
 
-            {/* Right: Theme toggle + Avatar */}
+            {/* Right: Notifications + Theme toggle + Avatar */}
             <div className="flex items-center gap-3">
+                {canSeeNotifications && <NotificationBell />}
                 <ThemeToggle />
                 <Avatar className="h-8 w-8" aria-label={`Usuario ${user.name ?? ""}`.trim()}>
                     <AvatarFallback className="text-white text-xs font-medium" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
@@ -68,6 +71,7 @@ export default async function PosLayout({
 
     const user = session.user as unknown as SessionUser;
     const isAdmin = user.role === "ADMIN";
+    const canSeeNotifications = user.role === "MANAGER" || user.role === "ADMIN";
 
     // For admin: use cookie-stored active branch, falling back to their assigned branch
     let activeBranchId = user.branchId ?? "";
@@ -91,7 +95,7 @@ export default async function PosLayout({
             </a>
             <Sidebar user={user} />
             <div className="flex flex-col flex-1 overflow-hidden">
-                <Topbar user={user} isAdmin={isAdmin} activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
+                <Topbar user={user} isAdmin={isAdmin} canSeeNotifications={canSeeNotifications} activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
                 <main id="main-content" className="flex-1 overflow-y-auto relative">
                     <OrphanedSessionBanner branchId={activeBranchId} />
                     <div className="p-8">
