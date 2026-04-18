@@ -11,6 +11,7 @@ import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
 import { SearchTrigger } from "./search-trigger";
+import { Breadcrumbs } from "./breadcrumbs";
 
 interface SessionUser {
     id: string;
@@ -108,6 +109,7 @@ export default async function PosLayout({
                         activeBranchId={activeBranchId}
                         activeBranchName={activeBranchName}
                     />
+                    <Breadcrumbs />
                     <main id="main-content" className="flex-1 overflow-y-auto relative">
                         <div className="p-8">
                             {children}
