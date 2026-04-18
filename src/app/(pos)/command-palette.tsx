@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Command as CommandPrimitive } from "cmdk";
 import {
-    LayoutDashboard,
+    Home,
     ShoppingCart,
     Wrench,
     Package,
@@ -65,7 +65,7 @@ interface StaticItem {
 }
 
 const NAV_ITEMS: StaticItem[] = [
-    { label: "Ir a Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Ir a Inicio", href: "/", icon: Home },
     { label: "Ir a Punto de Venta", href: "/point-of-sale", icon: ShoppingCart },
     { label: "Ir a Pedidos", href: "/pedidos", icon: BookmarkCheck },
     { label: "Ir a Taller", href: "/workshop", icon: Wrench },

@@ -122,7 +122,7 @@ export default async function MovimientosInventarioPage({
 
   const user = session.user as unknown as SessionUser;
   if (user.role !== "ADMIN" && user.role !== "MANAGER") {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const isAdmin = user.role === "ADMIN";

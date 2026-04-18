@@ -449,7 +449,7 @@ function CloseCorteDialog({
     const onFinalize = (): void => {
         handleOpenChange(false);
         if (variant === "danger") {
-            router.push("/dashboard");
+            router.push("/");
         } else {
             router.refresh();
         }

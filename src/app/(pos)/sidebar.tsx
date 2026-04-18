@@ -44,7 +44,7 @@ const SECTIONS: NavSection[] = [
     {
         label: "OPERACIÓN",
         items: [
-            { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+            { label: "Inicio", icon: LayoutDashboard, href: "/" },
             { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
             { label: "Pedidos", icon: BookmarkCheck, href: "/pedidos" },
             { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
@@ -108,7 +108,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
         >
             {/* Logo */}
             <div className="px-5 pt-6 pb-4">
-                <Link href="/dashboard" className="flex items-center">
+                <Link href="/" className="flex items-center">
                     <div className="relative w-full h-[36px]">
                         <Image
                             src="/evobike-logo.webp"

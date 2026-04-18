@@ -84,11 +84,11 @@ export default async function ReportesCajaPage({ searchParams }: PageProps): Pro
   const user = session?.user as unknown as SessionUser | undefined;
 
   if (!user || (user.role !== "MANAGER" && user.role !== "ADMIN")) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const branchId = user.branchId;
-  if (!branchId) redirect("/dashboard");
+  if (!branchId) redirect("/");
 
   const params = await searchParams;
   const view = (getString(params.view) ?? "sessions") as "sessions" | "period";

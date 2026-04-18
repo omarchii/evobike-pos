@@ -284,7 +284,6 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 - `src/app/api/configuracion/usuarios/[id]/pin/` — set/clear PIN
 - `src/components/pos/authorization/` — hook + panel + cancel modal compartidos
 - `src/app/(pos)/autorizaciones/` — historial
-- `src/app/(pos)/dashboard/authorization-inbox.tsx` — bandeja
 - `src/app/api/sales/route.ts` ⚠️ — consume en path normal + frozen
 - `src/app/api/sales/[id]/cancel/route.ts` ⚠️ — gate relajado + consume
 - `src/app/(pos)/point-of-sale/pos-terminal.tsx` ⚠️ — migración del flujo de descuento

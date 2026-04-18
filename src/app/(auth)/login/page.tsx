@@ -55,7 +55,7 @@ export default function LoginPage() {
             }
 
             toast.success("¡Bienvenido a EVOBIKE POS!");
-            router.push("/dashboard");
+            router.push("/");
             router.refresh();
         } catch {
             toast.error("Error del sistema. Intenta nuevamente.");

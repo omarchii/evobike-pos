@@ -69,14 +69,14 @@ export default async function StockMinimoPage({
   const user = session?.user as unknown as SessionUser | undefined;
 
   if (!user || (user.role !== "MANAGER" && user.role !== "ADMIN")) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const isAdmin = user.role === "ADMIN";
   const params = await searchParams;
   const branchIdParam = isAdmin ? getString(params.branchId) : undefined;
 
-  if (!isAdmin && !user.branchId) redirect("/dashboard");
+  if (!isAdmin && !user.branchId) redirect("/");
 
   const effectiveBranchId: string | null = isAdmin
     ? (branchIdParam ?? null)

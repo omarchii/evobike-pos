@@ -18,7 +18,7 @@ interface SessionUser {
 export default async function NuevaCotizacionPage() {
   const session = await getServerSession(authOptions);
   const user = session?.user as SessionUser | undefined;
-  if (!user?.branchId) redirect("/dashboard");
+  if (!user?.branchId) redirect("/");
 
   const { branchId } = user;
 

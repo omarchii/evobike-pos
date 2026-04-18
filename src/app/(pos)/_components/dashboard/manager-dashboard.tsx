@@ -204,7 +204,7 @@ export function ManagerDashboard({
         } else {
             params.set("period", newPeriod);
         }
-        router.push(`/dashboard?${params.toString()}`);
+        router.push(`/?${params.toString()}`);
     }
 
     return (

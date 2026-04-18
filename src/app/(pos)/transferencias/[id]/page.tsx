@@ -27,7 +27,7 @@ export default async function TransferenciaDetallePage({
   const role = user.role;
 
   if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const { id } = await params;

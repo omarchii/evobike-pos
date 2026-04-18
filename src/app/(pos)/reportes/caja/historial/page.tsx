@@ -66,7 +66,7 @@ export default async function HistorialCortesPage({
   const user = session?.user as unknown as SessionUser | undefined;
 
   if (!user || (user.role !== "MANAGER" && user.role !== "ADMIN")) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const isAdmin = user.role === "ADMIN";
@@ -90,7 +90,7 @@ export default async function HistorialCortesPage({
     ? (branchIdParam ?? null)
     : (user.branchId ?? null);
 
-  if (!isAdmin && !effectiveBranchId) redirect("/dashboard");
+  if (!isAdmin && !effectiveBranchId) redirect("/");
 
   const where: Prisma.CashRegisterSessionWhereInput = {
     status: "CLOSED",

@@ -59,7 +59,7 @@ export default async function TesoreriaPage({
 
     const user = session.user as SessionUser;
     if (user.role !== "ADMIN" && user.role !== "MANAGER") {
-        redirect("/dashboard");
+        redirect("/");
     }
 
     const isAdmin = user.role === "ADMIN";

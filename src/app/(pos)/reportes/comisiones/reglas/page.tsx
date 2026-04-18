@@ -45,7 +45,7 @@ export default async function ReglasComisionesPage({
   const user = session?.user as unknown as SessionUser | undefined;
 
   if (!user || (user.role !== "MANAGER" && user.role !== "ADMIN")) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const { branchId: qBranchId } = await searchParams;
@@ -62,7 +62,7 @@ export default async function ReglasComisionesPage({
         : {}
       : { branchId: user.branchId ?? undefined };
 
-  if (user.role !== "ADMIN" && !user.branchId) redirect("/dashboard");
+  if (user.role !== "ADMIN" && !user.branchId) redirect("/");
 
   const [rules, modelos] = await Promise.all([
     prisma.commissionRule.findMany({

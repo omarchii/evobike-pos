@@ -22,7 +22,7 @@ export default async function RecepcionDetailPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
   const { role, branchId } = session.user as unknown as SessionUser;
-  if (role !== "ADMIN" && role !== "MANAGER") redirect("/dashboard");
+  if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const { id } = await params;
 

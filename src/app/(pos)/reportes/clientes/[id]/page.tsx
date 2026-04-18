@@ -158,7 +158,7 @@ export default async function ClienteDetallePage({
     user.role !== "MANAGER" &&
     user.role !== "SELLER"
   ) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const { id } = await params;

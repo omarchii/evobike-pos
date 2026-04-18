@@ -79,13 +79,13 @@ export default async function ComisionesPage({ searchParams }: PageProps): Promi
   if (user.role === "SELLER") {
     where.userId = user.id;
   } else if (user.role === "MANAGER") {
-    if (!user.branchId) redirect("/dashboard");
+    if (!user.branchId) redirect("/");
     where.user = { branchId: user.branchId };
     if (userIdParam) where.userId = userIdParam;
   } else if (user.role === "ADMIN") {
     if (userIdParam) where.userId = userIdParam;
   } else {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const [records, sellers] = await Promise.all([

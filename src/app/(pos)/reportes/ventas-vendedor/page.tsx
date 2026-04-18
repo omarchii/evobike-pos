@@ -163,7 +163,7 @@ export default async function VentasVendedorPage({
 
   const user = session.user as unknown as SessionUser;
   if (user.role !== "ADMIN" && user.role !== "MANAGER") {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const isAdmin = user.role === "ADMIN";

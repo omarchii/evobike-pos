@@ -103,7 +103,7 @@ interface AuthorizationInboxProps {
  * Cleanup riguroso: setInterval limpiado en el return del useEffect, flag `cancelled`
  * via AbortController para que un fetch en vuelo no escriba state tras unmount.
  *
- * Consumido desde `/dashboard` (manager) y `/cash-register`.
+ * Consumido desde `/` (manager dashboard) y `/cash-register`.
  */
 export function AuthorizationInbox({
   title = "Autorizaciones pendientes",

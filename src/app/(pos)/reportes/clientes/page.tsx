@@ -64,7 +64,7 @@ export default async function ClientesReportPage({
     user.role !== "MANAGER" &&
     user.role !== "SELLER"
   ) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const isAdmin = user.role === "ADMIN";

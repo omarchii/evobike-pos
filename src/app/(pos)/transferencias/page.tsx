@@ -34,7 +34,7 @@ export default async function TransferenciasPage({
   const role = user.role;
 
   if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const params = await searchParams;
