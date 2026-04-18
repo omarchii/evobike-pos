@@ -120,7 +120,10 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 - **Glassmorphism oficial**: `color-mix(in srgb, var(--surf-bright) 88%, transparent)` + `backdrop-filter: blur(20px)`. No reemplazar por `rgba` fijo.
 - **Velocity Gradient**: máximo 2 instancias por vista (KPI destacado + CTA primario). Excepciones permitidas: toggles de rango temporal y barras de progreso comparativo. Ver `DESIGN.md §10`.
 - **Tipografía**: Space Grotesk (`var(--font-display)`) exclusivo de títulos de página (`1.5rem / 700 / -0.01em`) y KPIs (`2.75rem / 700 / -0.02em`). Inter para todo lo demás. No mezclar `font-semibold` en body copy. El token `var(--font-heading)` **no existe** — usar `var(--font-display)`.
-- **No-Line rule**: separación entre secciones/headers/paneles por cambio tonal de surface, nunca `border-b` con color sólido. Las tablas son excepción (pueden usar `var(--ghost-border)` en header).
+- **No-Line rule**: separación entre secciones/headers/paneles por cambio tonal de surface, nunca `border-b` con color sólido. Las tablas son excepción (pueden usar `var(--ghost-border)` en header). **El topbar del shell también aplica** — no usar `border-b` ni `backdrop-blur`; el chrome de aplicación va plano sobre `var(--surf-bright)` (decisión 2026-04-17 Sub-sesión 1-A: glassmorphism reservado a elementos flotantes — modales, dropdowns, drawers — no a estructura).
+- **Conteo de Velocity Gradient en el shell**: el chip BRANCH (non-admin) y el avatar del footer del sidebar ya consumen las **2 instancias permitidas por vista** del DESIGN.md §10. Cualquier vista hija con KPI destacado o CTA primario gradient excede el límite — pendiente decisión global (ver ROADMAP.md Sub-sesión 1-B).
+- **Accesibilidad del shell**: skip link `<a href="#main-content">Saltar al contenido</a>` siempre como primer focusable; `aria-current="page"` en links activos del sidebar; `data-shell="topbar"` y `data-shell="sidebar"` para `@media print` (oculta chrome) y `prefers-reduced-motion` (cancela transiciones del sidebar).
+- **Shell es desktop-first**: no hay drawer/sheet móvil. Sidebar es siempre visible (`w-64 shrink-0`). Estrategia mobile pendiente para Fase 6 o post-launch.
 - **Antes de commitear UI**: correr checklist de `DESIGN.md §10` y probar la vista en light y dark mode vía el `ThemeToggle` del topbar.
 
 ### Imports

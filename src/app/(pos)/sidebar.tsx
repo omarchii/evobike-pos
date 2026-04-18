@@ -11,9 +11,9 @@ import {
     Users,
     LogOut,
     Settings,
-    ArchiveRestore,
+    BookmarkCheck,
     Vault,
-    Cog,
+    Bike,
     FileText,
     BarChart2,
     History,
@@ -66,9 +66,9 @@ const routes: RouteGroup[] = [
     { label: "Caja", icon: Vault, href: "/cash-register" },
     { label: "Tesorería", icon: Landmark, href: "/tesoreria", roles: ["MANAGER", "ADMIN"] },
     { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
-    { label: "Montaje", icon: Cog, href: "/assembly" },
+    { label: "Montaje", icon: Bike, href: "/assembly" },
     { label: "Inventario", icon: Package, href: "/inventario" },
-    { label: "Pedidos", icon: ArchiveRestore, href: "/pedidos" },
+    { label: "Pedidos", icon: BookmarkCheck, href: "/pedidos" },
     { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
     { label: "Clientes", icon: Users, href: "/customers" },
     { label: "Transferencias", icon: ArrowLeftRight, href: "/transferencias", roles: ["SELLER", "MANAGER", "ADMIN"] },
@@ -128,7 +128,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0">
+        <div data-shell="sidebar" className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0">
             {/* Logo */}
             <div className="px-5 pt-6 pb-4">
                 <Link href="/dashboard" className="flex items-center">
@@ -185,7 +185,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                                     )}
                                 </button>
                                 {reportesOpen && (
-                                    <div className="ml-4 pl-3 mt-0.5 space-y-0.5 border-l border-[rgba(178,204,192,0.2)]">
+                                    <div className="ml-4 pl-3 mt-0.5 space-y-0.5">
                                         {visibleChildren.map((child) => {
                                             // Use exact match when a sibling is more specific (e.g. /reportes/caja vs /reportes/caja/historial)
                                             const hasSpecificSibling = visibleChildren.some(
@@ -199,6 +199,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                                                 <Link
                                                     key={child.href}
                                                     href={child.href}
+                                                    aria-current={isActive ? "page" : undefined}
                                                     className={cn(
                                                         "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
                                                         isActive
@@ -232,6 +233,7 @@ export default function Sidebar({ user }: { user: UserProp }) {
                         <Link
                             key={route.href}
                             href={route.href!}
+                            aria-current={isActive ? "page" : undefined}
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                                 isActive

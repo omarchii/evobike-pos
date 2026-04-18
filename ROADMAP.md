@@ -856,9 +856,13 @@ La deuda de ghost-border Parte 2 (47 instancias) se resuelve naturalmente módul
 
 Orden de módulos (shell → adentro, riesgo ascendente):
 1. Layout shell: `(pos)/layout.tsx` + `sidebar.tsx`
+   - **Sub-sesión 1-A ✅ (2026-04-17)** — CSS-puro + a11y. Topbar plano `var(--surf-bright)` sin border ni blur (No-Line rule); eliminados botones huérfanos del topbar (Search decorativo, Bell sin handler, Settings ruta inexistente, Help sin handler); iconos: Cog→Bike (Montaje), ArchiveRestore→BookmarkCheck (Pedidos); skip link "Saltar al contenido" + `id="main-content"`; `aria-current="page"` en sidebar links activos; `data-shell` attrs + `@media print` (oculta shell) y `prefers-reduced-motion` (cancela transiciones sidebar); ghost-border hardcoded del submenú Reportes eliminado (Opción 3 — sin sustituto). **No se commiteó cambio funcional**: bell/notifications/feed se diseñan en 1-B.
+   - **Sub-sesión 1-B ⏳ — UX del shell (pendiente)** — feed real de notificaciones (campanita con badge, fuentes: autorizaciones pendientes, órdenes de taller esperando aprobación, recepciones sin factura, cortes huérfanos), avatar dropdown funcional, sub-agrupar Reportes (Ventas/Inventario/Operación/Ejecutivo), sub-agrupar Caja+Tesorería en "Finanzas", labels de sección (Operación/Gestión/Admin), reposicionar `OrphanedSessionBanner` arriba del topbar, mover `CashSessionManager` fuera de `<main>`. **Decisión pendiente antes de 1-B:** resolver conteo de Velocity Gradient en shell (chip BRANCH + avatar footer ya consumen las 2 instancias permitidas por DESIGN.md §10 — cualquier KPI/CTA en vista hija excede). Opciones: (a) avatar footer pierde gradient, (b) chip BRANCH pasa a `bg-[var(--surf-high)]`.
+   - **Sub-sesión 1-C ⏳ — Command Palette (Cmd+K)** — sesión propia. Requiere endpoint `/api/search` unificado (clientes, órdenes taller por folio/VIN/placa, ventas, productos). Decisión de scope antes de implementar.
+   - **Sub-sesión 1-D ⏳ — Breadcrumbs** — sesión propia. Requiere mapping de rutas con labels en español.
 2. Módulo de referencia: `/reportes/*` (subagentes OK, uno por reporte)
 3. Dashboard / Home
-4. Taller `/workshop` (incluye sub-layout de tabs)
+4. Taller `/workshop` (incluye sub-layout de tabs) — **NOTA**: P13 sub-fases B-F construyen UI nueva sobre tokens. Si P13 se ejecuta primero, este módulo del Paso 2 se omite. Coordinar antes de empezar.
 5. Clientes
 6. Inventario (recepciones, stock, movimientos)
 7. Tesorería
@@ -869,6 +873,12 @@ Orden de módulos (shell → adentro, riesgo ascendente):
 
 Regla por módulo: una sesión de Claude Code por módulo. No mezclar dos módulos en la misma sesión.
 UI = solo CSS/tokens. Si el cambio requiere lógica, orden de pasos o datos distintos, es UX — documentar como ítem separado antes de implementar.
+
+**Deuda detectada en Sesión 1-A (diferida, no resolver hasta tener decisión):**
+- `text-white` y `color: "#ffffff"` hardcoded sobre Velocity Gradient en chip BRANCH (`layout.tsx`), avatar topbar (`layout.tsx`) y avatar footer sidebar (`sidebar.tsx`). Token correcto `--on-p` existe (light `#ffffff`, dark `#131313`). Migración directa a `var(--on-p)` flipea texto a oscuro sobre gradient verde-oscuro→verde-brillante en dark, lo cual probablemente NO es lo deseado (DESIGN.md §10 dice que el blanco sobre gradient es excepción permanente). Decidir antes de migrar.
+- `ThemeToggle` (`(pos)/theme-toggle.tsx`) usa `text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300` — viola anti-pattern §10 ("`bg-slate-*`, `bg-zinc-*`, `bg-gray-*` → surface tokens"). Migrar en pasada de iconos del topbar (Sub-sesión 1-B).
+- `BranchSwitcher` botón sin `aria-haspopup`/`aria-expanded`. Tiene texto visible así que es usable, pero no semánticamente correcto. Pasada de a11y de componentes (no en scope del shell).
+- Shell es desktop-first; **no hay drawer móvil**. Ausencia de estrategia mobile en el proyecto. Decisión para Fase 6 o post-launch.
 
 **Paso 3 — Fase 6 completa (Opus + deploy)**
 Una vez que el código UI esté estable y limpio.
