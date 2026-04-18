@@ -6,7 +6,7 @@ import type { AuthorizationType, CashRegisterSession } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrphanedSession } from "@/lib/cash-register";
-import { formatRelative } from "@/lib/notifications/format-relative";
+import { formatRelative } from "@/lib/format-relative";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos públicos del feed — consumidos por <NotificationBell>

@@ -645,6 +645,7 @@ model ServiceOrderApproval {
   createdBy    User         @relation(fields: [createdByUserId], references: [id])
 
   @@index([serviceOrderId, status])
+  @@index([status, requestedAt])
 }
 
 // === VOLTAGE CHANGE LOG ===

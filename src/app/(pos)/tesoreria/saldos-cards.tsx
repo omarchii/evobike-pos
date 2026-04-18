@@ -1,6 +1,7 @@
 import { Wallet, Landmark } from "lucide-react";
 import { BankBalanceTrigger } from "./bank-balance-trigger";
-import { formatCurrency, formatRelativeTime } from "./shared-tokens";
+import { formatCurrency } from "./shared-tokens";
+import { formatRelative } from "@/lib/format-relative";
 
 interface Props {
     saldoEfectivoCajon: number;
@@ -79,7 +80,7 @@ export function SaldosCards({
                     style={{ color: "var(--on-surf-var)" }}
                 >
                     {saldoBancarioActualizadoEn
-                        ? `Actualizado ${formatRelativeTime(saldoBancarioActualizadoEn)}`
+                        ? `Actualizado ${formatRelative(saldoBancarioActualizadoEn)}`
                         : "Sin registros todavía"}
                 </p>
             </div>
