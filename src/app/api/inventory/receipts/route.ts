@@ -35,7 +35,10 @@ const receiptSchema = z
     folioFacturaProveedor: z.string().trim().min(1).optional(),
     formaPagoProveedor: z.enum(FORMA_PAGO),
     estadoPago: z.enum(ESTADO_PAGO),
-    fechaVencimiento: z.coerce.date().optional(),
+    fechaVencimiento: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato inválido (YYYY-MM-DD)")
+      .optional(),
     notas: z.string().trim().min(1).optional(),
     items: z.array(lineSchema).min(1, "No hay productos en esta recepción"),
   })
@@ -98,8 +101,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
   if (vencDesdeParam || vencHastaParam) {
     where.fechaVencimiento = {
-      ...(vencDesdeParam ? { gte: new Date(vencDesdeParam) } : {}),
-      ...(vencHastaParam ? { lte: new Date(vencHastaParam) } : {}),
+      ...(vencDesdeParam ? { gte: vencDesdeParam } : {}),
+      ...(vencHastaParam ? { lte: vencHastaParam } : {}),
     };
   }
 
@@ -136,7 +139,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       facturaUrl: r.facturaUrl,
       formaPagoProveedor: r.formaPagoProveedor,
       estadoPago: r.estadoPago,
-      fechaVencimiento: r.fechaVencimiento?.toISOString() ?? null,
+      fechaVencimiento: r.fechaVencimiento,
       fechaPago: r.fechaPago?.toISOString() ?? null,
       totalPagado: r.totalPagado.toString(),
       createdAt: r.createdAt.toISOString(),

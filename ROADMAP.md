@@ -839,8 +839,16 @@ Resolvimos ANTES del rediseño UI para no reverificar datos dos veces.
 - 7 archivos migrados a `parseLocalDate(param, false/true)`: `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`
 - `npm run build` y `npx eslint src/` limpios (un warning pre-existente en `/reportes/rentabilidad/page.tsx` sin relación)
 
-**Excluido de Paso 1 (requiere decisión de diseño) — KPIs `fechaVencimiento` en `reportes/compras-proveedor/page.tsx`:**
-El bug no es de parseo de URL param sino de comparación `fechaVencimiento (DB Date, UTC midnight) < new Date() (local)`. En `America/Merida`, si el operador captura "fecha de vencimiento = 2026-04-17" durante el día local, Prisma persiste `2026-04-17T00:00:00.000Z` que en local es `2026-04-16T18:00:00−06:00` → ya el `.getDate()` devuelve 16, no 17 — el problema no se resuelve con `startOfTodayLocal` porque está corrompido desde el input. Requiere decidir: (a) almacenar `fechaVencimiento` como `String` "YYYY-MM-DD" sin tiempo, (b) normalizar en POST a `endOfLocalDay` antes de persistir, o (c) comparar como strings UTC ignorando tz. Diferido hasta después del rediseño UI o a Fase 6 con la pasada de schema. **No olvidar** — el KPI de vencidas en `/reportes/compras-proveedor` y el `proximoVencimiento` en la agregación por proveedor siguen con drift hasta resolverlo.
+**Paso 1.5 — Fix `fechaVencimiento` de PurchaseReceipt ✅ (2026-04-17)**
+Cerrado con la **opción (a)**: `fechaVencimiento` migrado de `DateTime?` a `String?` ("YYYY-MM-DD") — fecha calendario sin tz. El bug original era de persistencia: input local + `z.coerce.date()` guardaba UTC medianoche que en `America/Merida (UTC-6)` retrocedía un día al leerse como local.
+- Migración `20260417200000_fecha_vencimiento_to_string/migration.sql` con cast `TO_CHAR(... AT TIME ZONE 'UTC', 'YYYY-MM-DD')` para preservar el día original capturado
+- Schema: `fechaVencimiento String?` (índice B-tree sigue válido; lex order en YYYY-MM-DD = cronológico)
+- POST `/api/inventory/receipts`: `z.coerce.date()` → `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
+- Filtros `vencimientoDesde`/`vencimientoHasta`: comparación directa de strings, sin `new Date()`
+- Lecturas (`/reportes/compras-proveedor`): `todayYMD = toDateString(new Date())` y comparaciones de string; `proximoVencimiento` ahora es `string | null`
+- Parsers de display (`recepcion-detail.tsx`, `recepciones-list.tsx`, `receipt-status-badge.tsx`, `compras-proveedor-client.tsx`): `formatDate`/`daysUntil`/`vencBadge` usan `parseLocalDate(value, false) ?? new Date(value)` para aceptar tanto YYYY-MM-DD (sin tz) como ISO datetime (`createdAt`, `fechaPago`, `receivedAt`)
+- `seed-transactional.ts` emite `toYMD(...)` en vez de `new Date(...)`
+- `npm run build` y `npx eslint src/` limpios
 
 **Paso 2 — Rediseño UI (múltiples sesiones Sonnet)**
 Consultar `DESIGN.md` antes de cada sesión.
@@ -874,7 +882,7 @@ Ver sección FASE 6 más abajo para el detalle completo.
 > **Nota 2026-04-17:** El timezone fix y el ghost-border Parte 2 se ejecutan en el bloque Pre-Fase 6 (ver sección anterior). Fase 6 arranca con esas dos deudas ya cerradas.
 
 ### Tareas
-- Fix timezone global ✅ (resuelto en Pre-Fase 6 Paso 1)
+- Fix timezone global ✅ (resuelto en Pre-Fase 6 Paso 1 y Paso 1.5)
 - Ghost-border Parte 2 ✅ (resuelto durante rediseño UI)
 - Tests de integración: flujos de caja, ventas, montaje, autorización
 - Rate limiting en API Routes

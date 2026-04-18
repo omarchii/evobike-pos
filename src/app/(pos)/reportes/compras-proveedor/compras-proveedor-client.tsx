@@ -11,6 +11,7 @@ import { ReportDateFilter } from "@/app/(pos)/reportes/_components/report-date-f
 import { ReportBranchFilter } from "@/app/(pos)/reportes/_components/report-branch-filter";
 import { ReportEmptyState } from "@/app/(pos)/reportes/_components/report-empty-state";
 import { downloadCSV } from "@/lib/reportes/csv";
+import { parseLocalDate, toDateString } from "@/lib/reportes/date-range";
 import { formatMXN } from "@/lib/reportes/money";
 import type { ReportKPI } from "@/lib/reportes/types";
 import type {
@@ -93,8 +94,9 @@ const INPUT_STYLE: CSSProperties = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-MX", {
+function formatDate(value: string): string {
+  const d = parseLocalDate(value, false) ?? new Date(value);
+  return d.toLocaleDateString("es-MX", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -102,16 +104,18 @@ function formatDate(iso: string): string {
 }
 
 function vencBadge(
-  iso: string | null,
+  ymd: string | null,
   tieneVencida: boolean,
 ): { label: string; color: "red" | "amber" | null } | null {
-  if (!iso) return tieneVencida ? { label: "Vencida", color: "red" } : null;
-  const d = new Date(iso);
+  if (!ymd) return tieneVencida ? { label: "Vencida", color: "red" } : null;
   const now = new Date();
-  if (d < now) return { label: formatDate(iso), color: "red" };
-  const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  if (d <= sevenDays) return { label: formatDate(iso), color: "amber" };
-  return { label: formatDate(iso), color: null };
+  const todayYMD = toDateString(now);
+  const sevenDaysYMD = toDateString(
+    new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+  );
+  if (ymd < todayYMD) return { label: formatDate(ymd), color: "red" };
+  if (ymd <= sevenDaysYMD) return { label: formatDate(ymd), color: "amber" };
+  return { label: formatDate(ymd), color: null };
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@ export interface ProveedorRow {
   totalComprado: number;
   pagado: number;
   pendiente: number;
-  proximoVencimiento: string | null; // ISO — earliest fechaVencimiento among PENDIENTE/CREDITO
+  proximoVencimiento: string | null; // "YYYY-MM-DD" — earliest fechaVencimiento among PENDIENTE/CREDITO
   tieneVencida: boolean;
   branchId: string;
 }
@@ -156,7 +156,9 @@ export default async function ComprasProveedorPage({
     : filteredReceipts;
 
   // ── KPIs ───────────────────────────────────────────────────────────────
-  const now = new Date();
+  // Hoy como "YYYY-MM-DD" local — fechaVencimiento es una fecha calendario
+  // (String) y se compara lexicográficamente contra el día local del servidor.
+  const todayYMD = toDateString(new Date());
   let totalComprado = 0;
   let totalPagado = 0;
   let cuentasPorPagar = 0;
@@ -169,7 +171,7 @@ export default async function ComprasProveedorPage({
       totalPagado += r.totalPagado;
     } else {
       cuentasPorPagar += r.totalPagado;
-      if (r.fechaVencimiento && r.fechaVencimiento < now) {
+      if (r.fechaVencimiento && r.fechaVencimiento < todayYMD) {
         cuentasVencidas += 1;
         cuentasVencidasMonto += r.totalPagado;
       }
@@ -196,7 +198,7 @@ export default async function ComprasProveedorPage({
     totalComprado: number;
     pagado: number;
     pendiente: number;
-    proximoVencimiento: Date | null;
+    proximoVencimiento: string | null;
     tieneVencida: boolean;
     branchId: string;
   }
@@ -218,7 +220,7 @@ export default async function ComprasProveedorPage({
       if (isPendiente) {
         existing.pendiente += r.totalPagado;
         if (r.fechaVencimiento) {
-          if (r.fechaVencimiento < now) {
+          if (r.fechaVencimiento < todayYMD) {
             existing.tieneVencida = true;
           }
           if (
@@ -241,7 +243,7 @@ export default async function ComprasProveedorPage({
         proximoVencimiento:
           isPendiente && r.fechaVencimiento ? r.fechaVencimiento : null,
         tieneVencida: isPendiente
-          ? !!(r.fechaVencimiento && r.fechaVencimiento < now)
+          ? !!(r.fechaVencimiento && r.fechaVencimiento < todayYMD)
           : false,
         branchId: r.branchId,
       });
@@ -265,9 +267,7 @@ export default async function ComprasProveedorPage({
         totalComprado: agg.totalComprado,
         pagado: agg.pagado,
         pendiente: agg.pendiente,
-        proximoVencimiento: agg.proximoVencimiento
-          ? agg.proximoVencimiento.toISOString()
-          : null,
+        proximoVencimiento: agg.proximoVencimiento,
         tieneVencida: agg.tieneVencida,
         branchId: agg.branchId,
       };

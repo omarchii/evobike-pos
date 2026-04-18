@@ -933,7 +933,7 @@ model PurchaseReceipt {
   facturaUrl            String?
   formaPagoProveedor    FormaPagoProveedor
   estadoPago            EstadoPagoProveedor
-  fechaVencimiento      DateTime?
+  fechaVencimiento      String?             // "YYYY-MM-DD" — fecha calendario sin tz
   fechaPago             DateTime?
   totalPagado           Decimal             @db.Decimal(12, 2)
   notas                 String?

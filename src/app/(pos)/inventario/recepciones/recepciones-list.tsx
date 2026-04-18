@@ -12,6 +12,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { ReceiptStatusBadge, daysUntil } from "@/components/inventario/receipt-status-badge";
+import { parseLocalDate } from "@/lib/reportes/date-range";
 import type { SerializedReceiptListItem, ReceiptFilters } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -24,8 +25,9 @@ function formatMXN(value: number): string {
   }).format(value);
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-MX", {
+function formatDate(value: string): string {
+  const d = parseLocalDate(value, false) ?? new Date(value);
+  return d.toLocaleDateString("es-MX", {
     day: "2-digit",
     month: "short",
     year: "numeric",

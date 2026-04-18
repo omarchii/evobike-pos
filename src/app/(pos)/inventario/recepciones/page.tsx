@@ -56,8 +56,8 @@ export default async function RecepcionesPage({
     ...(vencDesdeParam || vencHastaParam
       ? {
           fechaVencimiento: {
-            ...(vencDesdeParam ? { gte: new Date(vencDesdeParam) } : {}),
-            ...(vencHastaParam ? { lte: new Date(vencHastaParam) } : {}),
+            ...(vencDesdeParam ? { gte: vencDesdeParam } : {}),
+            ...(vencHastaParam ? { lte: vencHastaParam } : {}),
           },
         }
       : {}),
@@ -104,7 +104,7 @@ export default async function RecepcionesPage({
     facturaUrl: r.facturaUrl,
     formaPagoProveedor: r.formaPagoProveedor as "CONTADO" | "CREDITO" | "TRANSFERENCIA",
     estadoPago: r.estadoPago as "PAGADA" | "PENDIENTE" | "CREDITO",
-    fechaVencimiento: r.fechaVencimiento?.toISOString() ?? null,
+    fechaVencimiento: r.fechaVencimiento,
     fechaPago: r.fechaPago?.toISOString() ?? null,
     totalPagado: Number(r.totalPagado),
     createdAt: r.createdAt.toISOString(),

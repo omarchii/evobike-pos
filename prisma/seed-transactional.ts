@@ -48,6 +48,13 @@ function randomDateInLastMonths(months: number): Date {
   return new Date(now - Math.floor(Math.random() * span));
 }
 
+function toYMD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function branchPrefix(name: string): string {
   return name
     .replace(/[^a-zA-Z0-9]/g, "")
@@ -1680,7 +1687,7 @@ async function seedPurchaseReceipts(ctx: SeedContext): Promise<void> {
         folioFacturaProveedor: `FAC-2026-0${isLeo ? "089" : "511"}`,
         formaPagoProveedor: FormaPagoProveedor.CREDITO,
         estadoPago: EstadoPagoProveedor.CREDITO,
-        fechaVencimiento: new Date(now + (isLeo ? -5 : 7) * day),
+        fechaVencimiento: toYMD(new Date(now + (isLeo ? -5 : 7) * day)),
         fechaPago: null,
         totalPagado: dec(isLeo ? 176800 : 142350),
         notas: isLeo

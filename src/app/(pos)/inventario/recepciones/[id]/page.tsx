@@ -127,7 +127,7 @@ export default async function RecepcionDetailPage({
     facturaUrl: receipt.facturaUrl,
     formaPagoProveedor: receipt.formaPagoProveedor,
     estadoPago: receipt.estadoPago,
-    fechaVencimiento: receipt.fechaVencimiento?.toISOString() ?? null,
+    fechaVencimiento: receipt.fechaVencimiento,
     fechaPago: receipt.fechaPago?.toISOString() ?? null,
     totalPagado: Number(receipt.totalPagado),
     notas: receipt.notas,

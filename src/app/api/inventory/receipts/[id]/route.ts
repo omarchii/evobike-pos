@@ -143,7 +143,7 @@ export async function GET(
         facturaUrl: receipt.facturaUrl,
         formaPagoProveedor: receipt.formaPagoProveedor,
         estadoPago: receipt.estadoPago,
-        fechaVencimiento: receipt.fechaVencimiento?.toISOString() ?? null,
+        fechaVencimiento: receipt.fechaVencimiento,
         fechaPago: receipt.fechaPago?.toISOString() ?? null,
         totalPagado: receipt.totalPagado.toString(),
         notas: receipt.notas,

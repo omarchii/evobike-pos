@@ -3,10 +3,12 @@
  *  No requiere "use client" — sin hooks ni APIs de browser.
  */
 
-function daysUntil(iso: string): number {
+import { parseLocalDate } from "@/lib/reportes/date-range";
+
+function daysUntil(value: string): number {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const due = new Date(iso);
+  const due = parseLocalDate(value, false) ?? new Date(value);
   due.setHours(0, 0, 0, 0);
   return Math.round((due.getTime() - now.getTime()) / 86_400_000);
 }
