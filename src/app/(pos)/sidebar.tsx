@@ -9,36 +9,18 @@ import {
     Wrench,
     Package,
     Users,
-    LogOut,
     Settings,
     BookmarkCheck,
     Vault,
     Bike,
     FileText,
     BarChart2,
-    History,
-    Banknote,
-    CircleDollarSign,
-    ChevronDown,
-    ChevronRight,
     ShieldCheck,
     Landmark,
-    ClipboardList,
-    AlertTriangle,
-    TrendingUp,
-    ArrowUpDown,
     ArrowLeftRight,
-    Wallet,
-    Coins,
-    Truck,
-    CalendarRange,
-    Repeat2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { signOut } from "next-auth/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
 
 interface UserProp {
     name?: string | null;
@@ -46,89 +28,84 @@ interface UserProp {
     branchName?: string | null;
 }
 
-interface SubRoute {
+interface NavItem {
     label: string;
+    icon: React.ElementType;
     href: string;
     roles?: string[]; // undefined = all roles
 }
 
-interface RouteGroup {
+interface NavSection {
     label: string;
-    icon: React.ElementType;
-    href?: string; // if set, clicking the item navigates directly (no sub-items)
-    children?: SubRoute[];
-    roles?: string[]; // undefined = all roles
+    items: NavItem[];
 }
 
-const routes: RouteGroup[] = [
-    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-    { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
-    { label: "Caja", icon: Vault, href: "/cash-register" },
-    { label: "Tesorería", icon: Landmark, href: "/tesoreria", roles: ["MANAGER", "ADMIN"] },
-    { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
-    { label: "Montaje", icon: Bike, href: "/assembly" },
-    { label: "Inventario", icon: Package, href: "/inventario" },
-    { label: "Pedidos", icon: BookmarkCheck, href: "/pedidos" },
-    { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
-    { label: "Clientes", icon: Users, href: "/customers" },
-    { label: "Transferencias", icon: ArrowLeftRight, href: "/transferencias", roles: ["SELLER", "MANAGER", "ADMIN"] },
-    { label: "Autorizaciones", icon: ShieldCheck, href: "/autorizaciones", roles: ["MANAGER", "ADMIN"] },
+const SECTIONS: NavSection[] = [
     {
-        label: "Reportes",
-        icon: BarChart2,
-        children: [
-            { label: "Historial de Ventas", href: "/ventas" },
-            { label: "Caja", href: "/reportes/caja", roles: ["MANAGER", "ADMIN"] },
-            { label: "Comisiones", href: "/reportes/comisiones" },
-            { label: "Movimientos de inventario", href: "/reportes/inventario/movimientos", roles: ["MANAGER", "ADMIN"] },
-            { label: "Valor de inventario", href: "/reportes/inventario/valor", roles: ["MANAGER", "ADMIN"] },
-            { label: "Rentabilidad por producto", href: "/reportes/rentabilidad", roles: ["MANAGER", "ADMIN"] },
-            { label: "Compras al proveedor", href: "/reportes/compras-proveedor", roles: ["MANAGER", "ADMIN"] },
-            { label: "Stock mínimo", href: "/reportes/inventario/stock-minimo", roles: ["MANAGER", "ADMIN"] },
-            { label: "Historial de cortes", href: "/reportes/caja/historial", roles: ["MANAGER", "ADMIN"] },
-            { label: "Estado de cuenta", href: "/reportes/clientes", roles: ["SELLER", "MANAGER", "ADMIN"] },
-            { label: "Ventas por vendedor", href: "/reportes/ventas-vendedor", roles: ["MANAGER", "ADMIN"] },
-            { label: "Reporte anual", href: "/reportes/anual", roles: ["ADMIN"] },
-            { label: "Transferencias", href: "/reportes/transferencias", roles: ["MANAGER", "ADMIN"] },
-            { label: "Mermas en transferencias", href: "/reportes/transferencias/mermas", roles: ["MANAGER", "ADMIN"] },
+        label: "OPERACIÓN",
+        items: [
+            { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+            { label: "Punto de Venta", icon: ShoppingCart, href: "/point-of-sale" },
+            { label: "Pedidos", icon: BookmarkCheck, href: "/pedidos" },
+            { label: "Taller Mecánico", icon: Wrench, href: "/workshop" },
+            { label: "Montaje", icon: Bike, href: "/assembly" },
         ],
     },
-    { label: "Configuración", icon: Settings, href: "/configuracion", roles: ["ADMIN", "MANAGER"] },
+    {
+        label: "GESTIÓN",
+        items: [
+            { label: "Clientes", icon: Users, href: "/customers" },
+            { label: "Inventario", icon: Package, href: "/inventario" },
+            { label: "Cotizaciones", icon: FileText, href: "/cotizaciones" },
+            {
+                label: "Transferencias",
+                icon: ArrowLeftRight,
+                href: "/transferencias",
+                roles: ["SELLER", "MANAGER", "ADMIN"],
+            },
+            { label: "Reportes", icon: BarChart2, href: "/reportes" },
+        ],
+    },
+    {
+        label: "ADMIN",
+        items: [
+            { label: "Caja", icon: Vault, href: "/cash-register" },
+            {
+                label: "Tesorería",
+                icon: Landmark,
+                href: "/tesoreria",
+                roles: ["MANAGER", "ADMIN"],
+            },
+            {
+                label: "Autorizaciones",
+                icon: ShieldCheck,
+                href: "/autorizaciones",
+                roles: ["MANAGER", "ADMIN"],
+            },
+            {
+                label: "Configuración",
+                icon: Settings,
+                href: "/configuracion",
+                roles: ["ADMIN", "MANAGER"],
+            },
+        ],
+    },
 ];
 
-const SUB_ICONS: Record<string, React.ElementType> = {
-    "/ventas": History,
-    "/reportes/caja": Banknote,
-    "/reportes/caja/historial": ClipboardList,
-    "/reportes/comisiones": CircleDollarSign,
-    "/reportes/ventas-vendedor": TrendingUp,
-    "/reportes/clientes": Wallet,
-    "/reportes/inventario/stock-minimo": AlertTriangle,
-    "/reportes/inventario/movimientos": ArrowUpDown,
-    "/reportes/inventario/valor": Coins,
-    "/reportes/rentabilidad": TrendingUp,
-    "/reportes/compras-proveedor": Truck,
-    "/reportes/anual": CalendarRange,
-    "/reportes/transferencias": Repeat2,
-    "/reportes/transferencias/mermas": AlertTriangle,
-};
+function getInitials(name?: string | null): string {
+    if (!name) return "U";
+    return name.substring(0, 2).toUpperCase();
+}
 
 export default function Sidebar({ user }: { user: UserProp }) {
     const pathname = usePathname();
     const role = user.role ?? "";
 
-    // Auto-open Reportes if current path is under /ventas or /reportes
-    const isInReportes =
-        pathname.startsWith("/ventas") || pathname.startsWith("/reportes");
-    const [reportesOpen, setReportesOpen] = useState(isInReportes);
-
-    const getInitials = (name?: string | null) => {
-        if (!name) return "U";
-        return name.substring(0, 2).toUpperCase();
-    };
-
     return (
-        <div data-shell="sidebar" className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0">
+        <div
+            data-shell="sidebar"
+            className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0"
+        >
             {/* Logo */}
             <div className="px-5 pt-6 pb-4">
                 <Link href="/dashboard" className="flex items-center">
@@ -145,141 +122,70 @@ export default function Sidebar({ user }: { user: UserProp }) {
 
             {/* Nav */}
             <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-                {routes.map((route) => {
-                    // Filter by role if specified
-                    if (route.roles && !route.roles.includes(role)) return null;
+                {SECTIONS.map((section, sectionIdx) => {
+                    const visibleItems = section.items.filter(
+                        (item) => !item.roles || item.roles.includes(role),
+                    );
+                    if (visibleItems.length === 0) return null;
 
-                    if (route.children) {
-                        // Group with sub-items
-                        const visibleChildren = route.children.filter(
-                            (child) => !child.roles || child.roles.includes(role),
-                        );
-                        if (visibleChildren.length === 0) return null;
-
-                        const isGroupActive = visibleChildren.some(
-                            (child) => pathname === child.href || pathname.startsWith(child.href + "/"),
-                        );
-
-                        return (
-                            <div key={route.label}>
-                                <button
-                                    onClick={() => setReportesOpen((v) => !v)}
-                                    className={cn(
-                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                                        isGroupActive
-                                            ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
-                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
-                                    )}
-                                >
-                                    <route.icon
-                                        className={cn(
-                                            "h-5 w-5 shrink-0",
-                                            isGroupActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]",
-                                        )}
-                                    />
-                                    <span className="flex-1 text-left">{route.label}</span>
-                                    {reportesOpen ? (
-                                        <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
-                                    ) : (
-                                        <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
-                                    )}
-                                </button>
-                                {reportesOpen && (
-                                    <div className="ml-4 pl-3 mt-0.5 space-y-0.5">
-                                        {visibleChildren.map((child) => {
-                                            // Use exact match when a sibling is more specific (e.g. /reportes/caja vs /reportes/caja/historial)
-                                            const hasSpecificSibling = visibleChildren.some(
-                                                (other) => other !== child && other.href.startsWith(child.href + "/"),
-                                            );
-                                            const isActive = hasSpecificSibling
-                                                ? pathname === child.href
-                                                : pathname === child.href || pathname.startsWith(child.href + "/");
-                                            const SubIcon = SUB_ICONS[child.href];
-                                            return (
-                                                <Link
-                                                    key={child.href}
-                                                    href={child.href}
-                                                    aria-current={isActive ? "page" : undefined}
-                                                    className={cn(
-                                                        "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-                                                        isActive
-                                                            ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
-                                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
-                                                    )}
-                                                >
-                                                    {SubIcon && (
-                                                        <SubIcon
-                                                            className={cn(
-                                                                "h-4 w-4 shrink-0",
-                                                                isActive
-                                                                    ? "text-[var(--p)]"
-                                                                    : "text-[var(--on-surf-var)]",
-                                                            )}
-                                                        />
-                                                    )}
-                                                    {child.label}
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    }
-
-                    // Regular flat route
-                    const isActive = pathname === route.href || pathname.startsWith(route.href + "/");
                     return (
-                        <Link
-                            key={route.href}
-                            href={route.href!}
-                            aria-current={isActive ? "page" : undefined}
-                            className={cn(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                                isActive
-                                    ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
-                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
-                            )}
-                        >
-                            <route.icon
-                                className={cn(
-                                    "h-5 w-5 shrink-0",
-                                    isActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]",
-                                )}
-                            />
-                            {route.label}
-                        </Link>
+                        <div key={section.label} className={sectionIdx === 0 ? "" : "mt-4"}>
+                            <div
+                                className="px-3 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.05em] text-[var(--on-surf-var)]"
+                                aria-hidden="true"
+                            >
+                                {section.label}
+                            </div>
+                            {visibleItems.map((item) => {
+                                const isActive =
+                                    pathname === item.href ||
+                                    pathname.startsWith(item.href + "/");
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        aria-current={isActive ? "page" : undefined}
+                                        className={cn(
+                                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                                            isActive
+                                                ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                                                : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
+                                        )}
+                                    >
+                                        <item.icon
+                                            className={cn(
+                                                "h-5 w-5 shrink-0",
+                                                isActive
+                                                    ? "text-[var(--p)]"
+                                                    : "text-[var(--on-surf-var)]",
+                                            )}
+                                        />
+                                        {item.label}
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     );
                 })}
             </nav>
 
             {/* Footer */}
-            <div className="px-3 pb-4 pt-3 space-y-3">
+            <div className="px-3 pb-4 pt-3">
                 <div className="flex items-center gap-3 px-2">
                     <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback
-                            className="text-xs font-medium"
-                            style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", color: "#ffffff" }}
-                        >
+                        <AvatarFallback className="bg-[var(--surf-high)] text-[var(--on-surf)] text-xs font-medium">
                             {getInitials(user?.name)}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-medium text-[var(--on-surf)] truncate">{user?.name}</span>
+                        <span className="text-sm font-medium text-[var(--on-surf)] truncate">
+                            {user?.name}
+                        </span>
                         <span className="text-xs text-[var(--on-surf-var)] truncate">
                             {user?.role} · {user?.branchName}
                         </span>
                     </div>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)] px-2"
-                    onClick={() => signOut({ callbackUrl: "/login" })}
-                >
-                    <LogOut className="h-4 w-4 mr-2 shrink-0" />
-                    Cerrar Sesión
-                </Button>
             </div>
         </div>
     );

@@ -22,7 +22,7 @@ export function ThemeToggle() {
         <button
             aria-label="Cambiar modo"
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            className="text-[var(--on-surf-var)] hover:text-[var(--on-surf)] transition-colors"
         >
             {mounted ? (
                 isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />

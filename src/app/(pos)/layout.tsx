@@ -3,12 +3,12 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "./sidebar";
 import { CashSessionManager } from "@/components/pos/cash-session-manager";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { OrphanedSessionBanner } from "./orphaned-session-banner";
 import { BranchSwitcher } from "@/components/pos/branch-switcher";
 import { getAdminActiveBranch } from "@/lib/actions/branch";
 import { NotificationBell } from "./notification-bell";
+import { UserMenu } from "./user-menu";
 
 interface SessionUser {
     id: string;
@@ -19,13 +19,8 @@ interface SessionUser {
     branchName: string | null;
 }
 
-function getInitials(name?: string | null) {
-    if (!name) return "U";
-    return name.substring(0, 2).toUpperCase();
-}
-
 interface TopbarProps {
-    user: { name?: string | null; branchName?: string | null };
+    user: SessionUser;
     isAdmin: boolean;
     canSeeNotifications: boolean;
     activeBranchId: string;
@@ -44,15 +39,16 @@ function Topbar({ user, isAdmin, canSeeNotifications, activeBranchId, activeBran
                 </div>
             )}
 
-            {/* Right: Notifications + Theme toggle + Avatar */}
+            {/* Right: Notifications + Theme toggle + User menu */}
             <div className="flex items-center gap-3">
                 {canSeeNotifications && <NotificationBell />}
                 <ThemeToggle />
-                <Avatar className="h-8 w-8" aria-label={`Usuario ${user.name ?? ""}`.trim()}>
-                    <AvatarFallback className="text-white text-xs font-medium" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
-                        {getInitials(user.name)}
-                    </AvatarFallback>
-                </Avatar>
+                <UserMenu
+                    name={user.name ?? "Usuario"}
+                    email={user.email ?? ""}
+                    role={user.role}
+                    branchName={user.branchName}
+                />
             </div>
         </header>
     );
@@ -86,24 +82,34 @@ export default async function PosLayout({
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200">
+        <div className="flex flex-col h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200">
             <a
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-xl focus:bg-[var(--surf-bright)] focus:text-[var(--on-surf)] focus:outline-none focus:ring-2 focus:ring-[var(--p)] focus:shadow-[var(--shadow)]"
             >
                 Saltar al contenido
             </a>
-            <Sidebar user={user} />
-            <div className="flex flex-col flex-1 overflow-hidden">
-                <Topbar user={user} isAdmin={isAdmin} canSeeNotifications={canSeeNotifications} activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
-                <main id="main-content" className="flex-1 overflow-y-auto relative">
-                    <OrphanedSessionBanner branchId={activeBranchId} />
-                    <div className="p-8">
-                        {children}
-                    </div>
-                    <CashSessionManager />
-                </main>
+            {/* Alert bar full-width arriba del shell (banner aparece solo si hay caja huérfana) */}
+            <OrphanedSessionBanner branchId={activeBranchId} />
+            <div className="flex flex-1 overflow-hidden">
+                <Sidebar user={user} />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                    <Topbar
+                        user={user}
+                        isAdmin={isAdmin}
+                        canSeeNotifications={canSeeNotifications}
+                        activeBranchId={activeBranchId}
+                        activeBranchName={activeBranchName}
+                    />
+                    <main id="main-content" className="flex-1 overflow-y-auto relative">
+                        <div className="p-8">
+                            {children}
+                        </div>
+                    </main>
+                </div>
             </div>
+            {/* Chrome de aplicación — fuera de <main>. Renderiza en portal. */}
+            <CashSessionManager />
             <style>{`
                 @media print {
                     [data-shell="topbar"], [data-shell="sidebar"] { display: none !important; }
