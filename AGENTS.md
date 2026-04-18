@@ -30,10 +30,29 @@ Los Client Components llaman a estas rutas con `fetch`.
 **Autenticación:**
 NextAuth con JWT. El token lleva `role`, `branchId`, `branchName`.
 Todas las API routes validan sesión y respetan `branchId`.
+Tipo canónico del usuario en sesión: `SessionUser` en `src/lib/auth-types.ts`
+(hoy consumido por el shell; pages y API routes declaran variantes inline —
+deuda diferida, ver ROADMAP Fase 6). Label de rol en español:
+`roleLabel()` en `src/lib/auth-labels.ts`.
 
 **Multi-sucursal:**
 Toda entidad mayor tiene `branch_id`.
 Siempre filtrar por la sucursal del usuario, excepto ADMIN.
+
+**Shell del POS (`(pos)/layout.tsx`):**
+- Ruta raíz `/` es el dashboard (Server Component en `src/app/(pos)/page.tsx`,
+  switch por rol). **No existe `/dashboard`**: el legacy hace
+  `permanentRedirect('/')` solo para bookmarks.
+- `src/middleware.ts` inyecta header `x-pathname` en cada request para que
+  Server Components puedan leer la ruta actual vía `headers()`.
+- `<Breadcrumbs />` (Server Component en `src/app/(pos)/breadcrumbs.tsx`) se
+  monta debajo del topbar; mapping estático en
+  `src/lib/breadcrumbs/route-labels.ts`, resolver dinámico de entidades en
+  `src/lib/breadcrumbs/resolve-dynamic.ts`. Oculto en `HIDDEN_ROUTES`
+  (`/` y `/point-of-sale`).
+- `OrphanedSessionBanner` arriba del topbar; `CashSessionManager` renderiza
+  en portal fuera de `<main>`. `CommandPalette` (Cmd+K) abre vía evento
+  global `command-palette:open`.
 
 ---
 
