@@ -59,6 +59,22 @@ export async function resolveDynamicLabel(
             });
             return q?.folio ?? null;
         }
+        case "/transferencias": {
+            const branchFilter =
+                ctx.role === "ADMIN"
+                    ? {}
+                    : {
+                          OR: [
+                              { fromBranchId: ctx.branchId },
+                              { toBranchId: ctx.branchId },
+                          ],
+                      };
+            const t = await prisma.stockTransfer.findFirst({
+                where: { id, ...branchFilter },
+                select: { folio: true },
+            });
+            return t?.folio ?? null;
+        }
         case "/inventario/recepciones": {
             const r = await prisma.purchaseReceipt.findFirst({
                 where: { id, ...branchFilter },

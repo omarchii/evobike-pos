@@ -10,27 +10,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { roleLabel } from "@/lib/auth-labels";
 
 interface UserMenuProps {
     name: string;
     email: string;
     role: string;
     branchName: string | null;
-}
-
-function roleLabel(role: string): string {
-    switch (role) {
-        case "SELLER":
-            return "Vendedor";
-        case "TECHNICIAN":
-            return "Técnico";
-        case "MANAGER":
-            return "Gerente";
-        case "ADMIN":
-            return "Administrador";
-        default:
-            return role;
-    }
 }
 
 function getInitials(name: string): string {

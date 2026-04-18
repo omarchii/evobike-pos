@@ -12,15 +12,7 @@ import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
 import { SearchTrigger } from "./search-trigger";
 import { Breadcrumbs } from "./breadcrumbs";
-
-interface SessionUser {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    role: string;
-    branchId: string | null;
-    branchName: string | null;
-}
+import type { SessionUser } from "@/lib/auth-types";
 
 interface TopbarProps {
     user: SessionUser;
