@@ -78,15 +78,6 @@ export default function LoginPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 to-transparent z-0"></div>
 
-                {/* Decorative Leaves */}
-                <Image
-                    src="/leaves.png"
-                    width={400}
-                    height={400}
-                    className="absolute -top-10 -right-20 opacity-30 invert drop-shadow-2xl"
-                    alt="Leaves"
-                />
-
                 <div className="z-10 text-center text-white px-12 max-w-lg">
                     <div className="bg-white/10 p-8 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl">
                         <Image
