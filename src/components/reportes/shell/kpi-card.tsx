@@ -96,8 +96,8 @@ export function KpiCard({ kpi }: KpiCardProps) {
 
   return (
     <div
-      className="col-span-1 rounded-[var(--r-lg)] p-4 flex flex-col gap-2"
-      style={{ background: "var(--surf-lowest)" }}
+      className="col-span-1 rounded-[var(--r-lg)] flex flex-col gap-2"
+      style={{ background: "var(--surf-lowest)", padding: "var(--density-card)" }}
     >
       <p
         className="text-[0.5625rem] font-medium uppercase tracking-[0.05em]"

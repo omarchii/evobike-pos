@@ -16,6 +16,9 @@ import type { SessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePinned } from "@/lib/reportes/pinned-defaults";
 import type { ReportRole } from "@/lib/reportes/reports-config";
+import { resolveDensity, densityClassName } from "@/lib/user/ui-preferences";
+import { DensityProvider } from "@/components/shell/density-context";
+import { TweaksButton } from "./tweaks-button";
 
 interface TopbarProps {
     user: SessionUser;
@@ -42,10 +45,11 @@ function Topbar({ user, isAdmin, canSeeNotifications, activeBranchId, activeBran
                 <SearchTrigger />
             </div>
 
-            {/* Right: Notifications + Theme toggle + User menu */}
+            {/* Right: Notifications + Theme toggle + Tweaks + User menu */}
             <div className="flex items-center gap-3">
                 {canSeeNotifications && <NotificationBell />}
                 <ThemeToggle />
+                <TweaksButton />
                 <UserMenu
                     name={user.name ?? "Usuario"}
                     email={user.email ?? ""}
@@ -84,18 +88,20 @@ export default async function PosLayout({
         }
     }
 
-    // Compute effective pinned reports for sidebar cluster
+    // Compute effective pinned reports for sidebar cluster + read density preference
     const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { pinnedReports: true },
+        select: { pinnedReports: true, uiPreferences: true },
     });
     const effectivePinnedReports = getEffectivePinned(
         user.role as ReportRole,
         dbUser?.pinnedReports ?? [],
     );
+    const density = resolveDensity(dbUser?.uiPreferences);
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200">
+        <DensityProvider value={density}>
+        <div className={`flex flex-col h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200 ${densityClassName(density)}`}>
             <a
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-xl focus:bg-[var(--surf-bright)] focus:text-[var(--on-surf)] focus:outline-none focus:ring-2 focus:ring-[var(--p)] focus:shadow-[var(--shadow)]"
@@ -135,5 +141,6 @@ export default async function PosLayout({
                 }
             `}</style>
         </div>
+        </DensityProvider>
     );
 }

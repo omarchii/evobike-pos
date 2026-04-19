@@ -159,7 +159,7 @@ export function SalesTable({ rows, onRowClick }: SalesTableProps) {
                 key={row.id}
                 onClick={() => onRowClick(row.id)}
                 className="cursor-pointer transition-colors"
-                style={{ borderTop: "1px solid var(--ghost-border)" }}
+                style={{ borderTop: "1px solid var(--ghost-border)", height: "var(--density-row)" }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.background = "var(--surf-high)";
                 }}
@@ -168,36 +168,36 @@ export function SalesTable({ rows, onRowClick }: SalesTableProps) {
                 }}
               >
                 <td
-                  className="px-4 py-2.5 text-xs font-semibold tabular-nums"
-                  style={{ color: "var(--p)" }}
+                  className="px-4 text-xs font-semibold tabular-nums"
+                  style={{ color: "var(--p)", paddingBlock: "var(--density-cell-y)" }}
                 >
                   {row.folio}
                 </td>
-                <td className="px-4 py-2.5 text-xs" style={{ color: "var(--on-surf-var)" }}>
+                <td className="px-4 text-xs" style={{ color: "var(--on-surf-var)", paddingBlock: "var(--density-cell-y)" }}>
                   {formatDate(new Date(row.fecha), "short")}
                 </td>
-                <td className="px-4 py-2.5 text-xs font-medium" style={{ color: "var(--on-surf)" }}>
+                <td className="px-4 text-xs font-medium" style={{ color: "var(--on-surf)", paddingBlock: "var(--density-cell-y)" }}>
                   {row.clienteNombre}
                 </td>
-                <td className="px-4 py-2.5 text-xs" style={{ color: "var(--on-surf-var)" }}>
+                <td className="px-4 text-xs" style={{ color: "var(--on-surf-var)", paddingBlock: "var(--density-cell-y)" }}>
                   {row.vendedorNombre}
                 </td>
-                <td className="px-4 py-2.5 text-xs" style={{ color: "var(--on-surf-var)" }}>
+                <td className="px-4 text-xs" style={{ color: "var(--on-surf-var)", paddingBlock: "var(--density-cell-y)" }}>
                   {row.metodoPago}
                 </td>
                 <td
-                  className="px-4 py-2.5 text-xs tabular-nums"
-                  style={{ color: "var(--on-surf-var)" }}
+                  className="px-4 text-xs tabular-nums"
+                  style={{ color: "var(--on-surf-var)", paddingBlock: "var(--density-cell-y)" }}
                 >
                   {row.items}
                 </td>
                 <td
-                  className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums"
-                  style={{ color: "var(--on-surf)" }}
+                  className="px-4 text-right text-xs font-semibold tabular-nums"
+                  style={{ color: "var(--on-surf)", paddingBlock: "var(--density-cell-y)" }}
                 >
                   {formatMXN(row.total)}
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-4" style={{ paddingBlock: "var(--density-cell-y)" }}>
                   <span
                     className="rounded-[var(--r-full)] px-2 py-0.5 text-[0.625rem] font-medium"
                     style={{
