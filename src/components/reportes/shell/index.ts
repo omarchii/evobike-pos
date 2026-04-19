@@ -15,3 +15,7 @@ export { DateRangeChip } from "./date-range-chip";
 export { useReportFilters } from "./use-report-filters";
 export { ExportDrawer } from "./export-drawer";
 export type { ExportDrawerProps } from "./export-drawer";
+export { ThresholdsModal } from "./thresholds-modal";
+export type { ThresholdsModalProps } from "./thresholds-modal";
+export { ThresholdsProvider, useThresholds, useThresholdForMetric } from "./thresholds-context";
+export type { ThresholdRow } from "./thresholds-context";
