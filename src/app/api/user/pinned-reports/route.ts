@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PINNED_DEFAULTS_BY_ROLE } from "@/lib/reportes/pinned-defaults";
+import type { ReportRole } from "@/lib/reportes/reports-config";
 
 const patchSchema = z.object({
     slug: z.string().min(1, "El slug es obligatorio"),
@@ -48,10 +50,17 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { pinnedReports: true },
+        select: { pinnedReports: true, role: true },
     });
 
-    const current = user?.pinnedReports ?? [];
+    // Si DB está vacío Y action=remove → hidratar defaults del rol antes de remover
+    // (evita no-op cuando el usuario nunca ha guardado pins explícitos)
+    let baseline = user?.pinnedReports ?? [];
+    if (baseline.length === 0 && action === "remove") {
+        baseline = PINNED_DEFAULTS_BY_ROLE[user?.role as ReportRole] ?? [];
+    }
+
+    const current = baseline;
     let updated: string[];
 
     if (action === "add") {
