@@ -107,14 +107,14 @@ export default function Sidebar({ user }: { user: UserProp }) {
             className="flex flex-col h-full bg-[var(--surf-low)] transition-colors duration-200 w-64 shrink-0"
         >
             {/* Logo */}
-            <div className="px-5 pt-6 pb-4">
-                <Link href="/" className="flex items-center">
+            <div className="px-5 pt-6 pb-8">
+                <Link href="/" className="flex items-center justify-center">
                     <div className="relative w-full h-[36px]">
                         <Image
                             src="/evobike-logo.webp"
                             alt="EVOBIKE Logo"
                             fill
-                            className="object-contain object-left"
+                            className="object-contain"
                         />
                     </div>
                 </Link>
