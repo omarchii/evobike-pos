@@ -4,7 +4,7 @@ import type { BranchPDFData } from "@/lib/pdf/types";
 // Re-exportar para que los consumidores importen desde @/lib/branch
 export type { BranchPDFData } from "@/lib/pdf/types";
 
-export type TipoDocPDF = "cotizacion" | "pedido" | "ticket" | "poliza";
+export type TipoDocPDF = "cotizacion" | "pedido" | "ticket" | "poliza" | "reporte";
 
 export class BranchNotConfiguredError extends Error {
   constructor(public readonly missingFields: string[]) {
@@ -44,13 +44,13 @@ const BASE_FIELDS: Array<{ key: BranchFieldKey; label: string }> = [
   { key: "sealImageUrl", label: "Sello de sucursal" },
 ];
 
-const EXTRA_BY_TYPE: Record<
-  Exclude<TipoDocPDF, "ticket">,
-  { key: BranchFieldKey; label: string }
+const EXTRA_BY_TYPE: Partial<
+  Record<TipoDocPDF, { key: BranchFieldKey; label: string }>
 > = {
   cotizacion: { key: "terminosCotizacion", label: "Términos de cotización" },
   pedido: { key: "terminosPedido", label: "Términos de pedido" },
   poliza: { key: "terminosPoliza", label: "Términos de póliza" },
+  // 'ticket' y 'reporte' no requieren plantilla de términos
 };
 
 function isPlaceholder(value: string | null | undefined): boolean {
@@ -76,8 +76,9 @@ export async function assertBranchConfiguredForPDF(
   }
 
   const requirements = [...BASE_FIELDS];
-  if (tipoDoc !== "ticket") {
-    requirements.push(EXTRA_BY_TYPE[tipoDoc]);
+  const extra = EXTRA_BY_TYPE[tipoDoc];
+  if (extra) {
+    requirements.push(extra);
   }
 
   const record = branch as unknown as Record<string, string | null | undefined>;
