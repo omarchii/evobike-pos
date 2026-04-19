@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, BellOff } from "lucide-react";
 
@@ -17,6 +17,25 @@ import type {
 } from "@/app/api/notifications/feed/route";
 
 const POLL_INTERVAL_MS = 30_000;
+const DISMISSED_KEY = "evobike:notifications:dismissed";
+
+function loadDismissed(): Set<string> {
+    if (typeof window === "undefined") return new Set();
+    try {
+        const raw = window.localStorage.getItem(DISMISSED_KEY);
+        if (!raw) return new Set();
+        const parsed = JSON.parse(raw) as unknown;
+        if (!Array.isArray(parsed)) return new Set();
+        return new Set(parsed.filter((x): x is string => typeof x === "string"));
+    } catch {
+        return new Set();
+    }
+}
+
+function saveDismissed(ids: Set<string>): void {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+}
 
 const CATEGORY_ROOT_HREF: Record<NotificationCategory, string> = {
     autorizaciones: "/autorizaciones",
@@ -33,6 +52,7 @@ function badgeLabel(total: number): string {
 export function NotificationBell() {
     const [data, setData] = useState<NotificationFeedResponse | null>(null);
     const [error, setError] = useState<boolean>(false);
+    const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
 
     useEffect(() => {
         let cancelled = false;
@@ -54,6 +74,14 @@ export function NotificationBell() {
                 if (!cancelled) {
                     setData(payload);
                     setError(false);
+                    setDismissed((prev) => {
+                        const visibleIds = new Set(
+                            payload.groups.flatMap((g) => g.items.map((i) => i.id)),
+                        );
+                        const next = new Set([...prev].filter((id) => visibleIds.has(id)));
+                        if (next.size !== prev.size) saveDismissed(next);
+                        return next;
+                    });
                 }
             } catch (err) {
                 console.error("[NotificationBell] fetch error", err);
@@ -93,9 +121,45 @@ export function NotificationBell() {
         };
     }, []);
 
-    const total = data?.total ?? 0;
-    const groups = data?.groups ?? [];
-    const visibleGroups = groups.filter((g) => g.count > 0);
+    const dismissItem = useCallback((id: string) => {
+        setDismissed((prev) => {
+            if (prev.has(id)) return prev;
+            const next = new Set(prev);
+            next.add(id);
+            saveDismissed(next);
+            return next;
+        });
+    }, []);
+
+    const dismissAll = useCallback(() => {
+        if (!data) return;
+        const ids = data.groups.flatMap((g) => g.items.map((i) => i.id));
+        if (ids.length === 0) return;
+        setDismissed((prev) => {
+            const next = new Set(prev);
+            for (const id of ids) next.add(id);
+            saveDismissed(next);
+            return next;
+        });
+    }, [data]);
+
+    const { total, visibleGroups, hasDismissibleVisible } = useMemo(() => {
+        const groups = data?.groups ?? [];
+        let total = 0;
+        let dismissibleCount = 0;
+        const visibleGroups: NotificationGroup[] = [];
+        for (const g of groups) {
+            const items = g.items.filter((i) => !dismissed.has(i.id));
+            const dismissedInVisible = g.items.length - items.length;
+            const adjustedCount = Math.max(0, g.count - dismissedInVisible);
+            total += adjustedCount;
+            dismissibleCount += items.length;
+            if (adjustedCount > 0 && items.length > 0) {
+                visibleGroups.push({ ...g, items, count: adjustedCount });
+            }
+        }
+        return { total, visibleGroups, hasDismissibleVisible: dismissibleCount > 0 };
+    }, [data, dismissed]);
 
     return (
         <DropdownMenu>
@@ -131,9 +195,19 @@ export function NotificationBell() {
                     >
                         Notificaciones
                     </h2>
-                    <span className="text-xs text-[var(--on-surf-var)]">
-                        {total === 0 ? "Sin novedades" : `${total} pendientes`}
-                    </span>
+                    {hasDismissibleVisible ? (
+                        <button
+                            type="button"
+                            onClick={dismissAll}
+                            className="text-xs font-medium text-[var(--p)] hover:underline"
+                        >
+                            Limpiar todo
+                        </button>
+                    ) : (
+                        <span className="text-xs text-[var(--on-surf-var)]">
+                            {total === 0 ? "Sin novedades" : `${total} pendientes`}
+                        </span>
+                    )}
                 </div>
 
                 {error && !data && (
@@ -157,7 +231,11 @@ export function NotificationBell() {
                 {total > 0 && (
                     <div className="max-h-[60vh] overflow-y-auto pb-2">
                         {visibleGroups.map((group) => (
-                            <NotificationGroupBlock key={group.category} group={group} />
+                            <NotificationGroupBlock
+                                key={group.category}
+                                group={group}
+                                onDismiss={dismissItem}
+                            />
                         ))}
                     </div>
                 )}
@@ -166,7 +244,13 @@ export function NotificationBell() {
     );
 }
 
-function NotificationGroupBlock({ group }: { group: NotificationGroup }) {
+function NotificationGroupBlock({
+    group,
+    onDismiss,
+}: {
+    group: NotificationGroup;
+    onDismiss: (id: string) => void;
+}) {
     const remaining = group.count - group.items.length;
     return (
         <div className="border-t border-transparent pt-2">
@@ -179,22 +263,38 @@ function NotificationGroupBlock({ group }: { group: NotificationGroup }) {
                 </span>
             </div>
             {group.items.map((item) => (
-                <DropdownMenuItem
+                <div
                     key={item.id}
-                    asChild
-                    className="mx-2 cursor-pointer rounded-lg px-3 py-2 focus:bg-[var(--surf-high)]"
+                    className="group/item relative mx-2 rounded-lg focus-within:bg-[var(--surf-high)] hover:bg-[var(--surf-high)]"
                 >
-                    <Link href={item.href}>
-                        <div className="flex w-full flex-col gap-0.5">
-                            <span className="text-sm font-semibold text-[var(--on-surf)]">
-                                {item.title}
-                            </span>
-                            <span className="text-xs text-[var(--on-surf-var)]">
-                                {item.description}
-                            </span>
-                        </div>
-                    </Link>
-                </DropdownMenuItem>
+                    <DropdownMenuItem
+                        asChild
+                        className="cursor-pointer rounded-lg px-3 py-2 pr-9 focus:bg-transparent data-[highlighted]:bg-transparent"
+                    >
+                        <Link href={item.href}>
+                            <div className="flex w-full flex-col gap-0.5">
+                                <span className="text-sm font-semibold text-[var(--on-surf)]">
+                                    {item.title}
+                                </span>
+                                <span className="text-xs text-[var(--on-surf-var)]">
+                                    {item.description}
+                                </span>
+                            </div>
+                        </Link>
+                    </DropdownMenuItem>
+                    <button
+                        type="button"
+                        aria-label="Marcar como leída"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDismiss(item.id);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--on-surf-var)] opacity-0 transition-opacity hover:bg-[var(--surf-bright)] hover:text-[var(--on-surf)] group-hover/item:opacity-100 focus:opacity-100"
+                    >
+                        <span aria-hidden="true" className="text-base leading-none">×</span>
+                    </button>
+                </div>
             ))}
             {remaining > 0 && (
                 <Link
