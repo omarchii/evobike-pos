@@ -1,6 +1,6 @@
 # ROADMAP evobike-pos2 — Post Fase 5
 
-Última actualización: 2026-04-17 (P10 completo — Lote 7: P10-I Reporte anual)  
+Última actualización: 2026-04-19 (Fase S — S1/S2/S3 completos; S4/S5 diferidos a rediseño POS/Taller)  
 Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al completar cada fase.
 
 ---
@@ -830,6 +830,44 @@ entrega con cada `type`, QA gating.
 
 ---
 
+## FASE S — Expansión catálogo canónico de baterías (18 configs V×Ah)
+
+Decisión tomada 2026-04-18. El catálogo real de Evobike tiene 18 configuraciones V+Ah de batería y ~48 modelos en 7 categorías — el schema anterior solo manejaba `(Modelo, Color, Voltaje)` sin eje de capacidad (Ah). Plan original en `memoria/project_battery_catalog_expansion.md`.
+
+### S1 — Schema aditivo + seed canónico ✅ (2026-04-19, commit `6cc3e8c`)
+Eje `Capacidad` (Ah) en `ProductVariant` (nullable); `@@unique` ampliado a 4 campos. `Modelo.categoria` nullable + `ModeloCategoria` con BASE/PLUS/CARGA_PESADA (BICICLETA deprecated). Seed: 12 capacidades, 1 modelo `BATERIA EVOBIKE` con 18 variants, 51 modelos vehículo categorizados, 87 `BatteryConfiguration`. Rename legacy `ECLIPSE → ECLIPCE`. Modelos nuevos: NUBE, CIELO, SCOOTER S7, RYDER PRO, EVOTANK 160/180 HIBRIDO.
+
+### S1-followup — Fix seed de variants y configs faltantes ✅ (2026-04-19, commit `fbe73a2`)
+39 variants nuevos en `modelo_configuracion.csv` para los 6 modelos recién creados; fix de `voltaje_id=N/A` en SCOOTER M1-S6 y JUGUETE (EVOKID/FOXY/CROSS KID → 24V; RICOCHET/PHYTON/M3/M4/M5 → 36V; M1/M2/S6 → 48V). AGUILA (60V+72V) y FAMILY (48V+60V) agregados a `BATTERY_ROWS`. `prisma.productVariant.upsert` ahora actualiza `modelo/color/voltaje` (antes solo precio). Resultado: 494 variants activos, 91 BatteryConfigurations, 0 gaps. Utilidad `scripts/check_gaps.mjs` para validar.
+
+### S2 — UI catálogo con matriz V×Ah + modelos por categoría ✅ (2026-04-19, commit `fc08de2`)
+Tab Modelos: chips por 7 categorías + agrupación visual; dialog oculta select de esBateria. Tab Baterías nuevo: matriz 5V × 12Ah con celdas precio+stock; endpoint dedicado `/api/configuracion/baterias`. Tab Config. Baterías: selector filtrado por voltaje + label `{V}V · {Ah}Ah · {SKU}`; API valida match voltaje batería vs. config. Tab Variantes filtra baterías (solo vehículos).
+
+### S3 — Recepción acoplada vehículo+batería ✅ (2026-04-19, commits `45be6fd` + `35d78d6`)
+Schema: `AssemblyOrder.batteryConfigurationId` + `Battery.assemblyOrderId` (ambos FK nullable). API recepción resuelve `BatteryConfiguration` por `(modeloId, voltajeId, capacidadId)`, crea `AssemblyOrder PENDING` con reserva de lote de baterías; soporta "batería llega después" que difiere la reserva. UI form: panel "Acoplamiento batería por unidad" aparece cuando la variante tiene configs; selector V·Ah·SKU cuando hay >1 config; checkbox "llega después" por línea. API assembly: `available-batteries` respeta config reservada; `cancel` revierte reserva. Cierra deuda de Fase 2H-D. **Fix `35d78d6`:** ScrollArea de Radix sustituido por `overflow-y-auto` nativo (no propagaba altura con contenido dinámico).
+
+**Deuda diferida en S3 (aterrizar con rediseño de Inventario — Paso 2 módulo 6):**
+- Validación UI completa end-to-end pausada por rediseño pendiente del módulo. Pruebas parciales: Caso A (1 config) funcional; Casos B (multi-Ah), C (llega después) y D (cancelación libera reserva) sin validar en navegador.
+- La UI actual del form de recepción funciona pero está destinada a rediseño — evitar seguir parchando cosméticos.
+
+### S4 — POS: selector de config al vender ⏸️ (aterrizar con rediseño del POS Terminal — Paso 2 módulo 11)
+Cuando el vendedor cierra venta de un modelo con >1 config (ej. EVOTANK 180 72V → 45Ah o 52Ah), hoy el sistema asigna la primera arbitrariamente. Scope:
+- UI del POS: selector inline de `BatteryConfiguration` cuando el variant tiene >1 config para su voltaje.
+- Schema: ampliar `VoltageChangeLog` a "cambio de config completa" (V+Ah) para trazar cambios pre-venta.
+- API de venta: validar que la config elegida corresponda al variant vendido.
+
+**Por qué se pospone:** el POS Terminal es el último módulo del rediseño (riesgo máximo de regresión). Meter el selector antes implica reescribir UI dos veces.
+
+### S5 — Taller: Kanban por capacidad de batería ⏸️ (aterrizar con rediseño de Taller — Paso 2 módulo 4 / P13 Sub-fase B)
+Hoy el chip Kanban agrupa por `(modelo, voltaje)`. Con S1, dos EVOTANK 72V con baterías distintas (45Ah vs 52Ah) se ven idénticos — el técnico no sabe cuál montar. Scope:
+- Ampliar key del chip a `(modeloId, voltajeId, capacidadId)`.
+- Actualizar `assertPolicyActive` (validación de stock de batería específica) y `batteryAvailabilityMap`.
+- Filtrado/agrupación en UI Kanban.
+
+**Por qué se pospone:** P13 Sub-fase B (rediseño del Kanban) ya está planeado y va a reescribir la UI del tablero completo. S5 se integra como parte del rediseño, no como parche aparte.
+
+---
+
 ## PRE-FASE 6 — Orden de trabajo acordado
 
 Decisión tomada 2026-04-17. El orden correcto antes de entrar a Fase 6 es:
@@ -867,14 +905,14 @@ Orden de módulos (shell → adentro, riesgo ascendente):
   - **Sesión 0 ✅ (2026-04-18) — Port primitivos del handoff** — Portados mecánicamente del handoff de diseño. `src/lib/format/index.ts` (formatters `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`; locale `es-MX`, timezone `America/Merida`). Primitivos en `src/components/primitives/`: `icon.tsx` (41 glyphs tipados, union `IconName`), `chip.tsx` (5 variantes semánticas), `delta.tsx` (indicador de cambio con color y glyph, 3 formatos), `sparkline.tsx` (SVG manual sin deps), `spark-bars.tsx` (SVG manual), `progress-split.tsx` (barra segmentada). Paleta datavis `--data-1..8` (light + dark WCAG AA) y tokens faltantes mergeados en `globals.css`. `DESIGN.md §6` y `§8` actualizados. **Deuda diferida (Sesión 13 — V10 Stock Crítico):** `<Chip>` cubre 5 variantes; el handoff define una 6.ª `nostock` con fondo sólido `--ter` + texto blanco (distinto de `error` que usa `--ter-container`). Agregar variante `critical` a `ChipVariant` solo cuando V10 lo requiera.
   - **Sesión 1 ✅ (2026-04-18) — Infra de charts: Recharts + wrapper con tokens EvoFlow** — `recharts@3.8.0` instalado vía `npx shadcn@latest add chart` (compat verificada: React 19 nativo, ESM, sin conflictos Turbopack Next 16). `src/components/ui/chart.tsx` generado por shadcn — no editar. `--chart-1..5` hardcoded por shadcn reemplazados en `globals.css` → `var(--data-1..5)` en `:root` y `.dark`. Wrapper `src/components/primitives/chart.tsx`: re-exports del shadcn chart, `buildChartConfig(SeriesSpec[])` (asigna `--data-1..8` cíclico), `ChartTooltipContentGlass` (glassmorphism oficial), constantes `CHART_AXIS_TICK_STYLE` / `CHART_AXIS_LINE_STYLE` / `CHART_GRID_STYLE` tipadas como atributos SVG (no CSS — Recharts renderiza SVG). **Regla:** reportes NUNCA importan de `"recharts"` ni `"@/components/ui/chart"` directos — siempre vía `@/components/primitives/chart`. `DESIGN.md §3` y `§6` actualizados. `npx prisma validate` + `npm run lint` + `npm run build` limpios (Exit 0).
 3. Dashboard / Home
-4. Taller `/workshop` (incluye sub-layout de tabs) — **NOTA**: P13 sub-fases B-F construyen UI nueva sobre tokens. Si P13 se ejecuta primero, este módulo del Paso 2 se omite. Coordinar antes de empezar.
+4. Taller `/workshop` (incluye sub-layout de tabs) — **NOTA**: P13 sub-fases B-F construyen UI nueva sobre tokens. Si P13 se ejecuta primero, este módulo del Paso 2 se omite. Coordinar antes de empezar. **Aterrizar aquí Fase S5 (Kanban por capacidad de batería).**
 5. Clientes
-6. Inventario (recepciones, stock, movimientos)
+6. Inventario (recepciones, stock, movimientos) — **Aterrizar aquí el backlog de normalización de catálogo de baterías + refactor de ingreso/mostrado.** Ver `memoria/project_inventario_refactor_backlog.md` para los 9 ítems (CSVs por nombre en vez de ID, `PriceHistory`, costeo por lote, importar facturas, scan de seriales, vista por modelo colapsable, heatmap stock bajo, filtro reverse batería compatible).
 7. Tesorería
 8. Autorizaciones
 9. Configuración
 10. Catálogo
-11. POS Terminal — ÚLTIMO, sesión aislada, sin subagentes, máximo riesgo de regresión
+11. POS Terminal — ÚLTIMO, sesión aislada, sin subagentes, máximo riesgo de regresión. **Aterrizar aquí Fase S4 (selector de config de batería al vender + VoltageChangeLog ampliado).**
 
 Regla por módulo: una sesión de Claude Code por módulo. No mezclar dos módulos en la misma sesión.
 UI = solo CSS/tokens. Si el cambio requiere lógica, orden de pasos o datos distintos, es UX — documentar como ítem separado antes de implementar.
