@@ -17,6 +17,7 @@ const eslintConfig = defineConfig([
     "prisma/seed*.ts", // seeds de desarrollo
     "tmp_*.js",        // scratch files en root
     "tmp_*.ts",
+    "docs/**",         // handoff de diseño y specs — no son código del proyecto
   ]),
   {
     ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
