@@ -342,6 +342,15 @@ background: var(--surface-container-high);
 
 ## 8. CSS Custom Properties — Implementación
 
+### Paleta datavis (`--data-1` a `--data-8`)
+
+Tokens para series de gráficos. Definidos en `globals.css` bajo `:root` y `.dark`. Reglas de uso (spec §3):
+
+- **Heatmaps e intensidad:** solo `--data-1` variando opacity 10–100%.
+- **Comparaciones ≤3 series:** `--data-1` + `--data-2` + `--data-3`.
+- **Rankings top 8:** usar en orden.
+- **No mezclar con `--ter`** como serie (se confunde con error). Excepción: aging buckets (semántica "mejor → peor", de `--data-1` a `--ter` progresivamente).
+
 Pegar en `globals.css`:
 
 ```css
@@ -517,3 +526,23 @@ Si una vista excede el máximo y no entra en esas excepciones, usar `bg-[var(--p
 3. ¿Los títulos de página usan Space Grotesk? ¿Los KPIs tienen `tracking-[-0.02em]`?
 4. ¿Probé la vista en light y dark mode? (ver Topbar → ThemeToggle)
 5. ¿Los separadores son cambio tonal de surface, no `border-b` con color?
+
+---
+
+### Primitivos del módulo reportes
+
+Ubicación: `src/components/primitives/`. **No son shadcn.** Custom del proyecto,
+portados del handoff del rediseño v1 de `/reportes`.
+
+- `<Icon name />` — 41 glyphs tipados (`IconName` union). Props: `name`, `size?` (default 20), `strokeWidth?` (default 1.5), `className?`.
+- `<Chip variant label icon? />` — 5 variantes semánticas: `neutral`, `success`, `warn`, `error`, `info`.
+- `<Delta value format? showIcon? />` — indicador de cambio con color y glyph. `format`: `"percent"` (default) | `"currency"` | `"number"`.
+- `<Sparkline data color? fill? strokeWidth? />` — SVG manual, sin deps, sin interacción. `data: number[]`.
+- `<SparkBars data color? highlightLast? gap? />` — SVG manual. `data: number[]`.
+- `<ProgressSplit segments height? showLabels? />` — barra segmentada para composición (ej. "Pagado 60% · Pendiente 40%").
+
+Todos aceptan `color?: string` con default `var(--data-1)` y respetan tokens.
+Para gráficos principales con tooltip/zoom/legend → Recharts (Sesión 1+).
+
+Formatters en `src/lib/format/index.ts`: `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`.
+Locale: `es-MX`, timezone: `America/Merida`.
