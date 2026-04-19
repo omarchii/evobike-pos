@@ -17,6 +17,7 @@ import {
   getVendedoresOptions,
 } from "./queries";
 import { SalesView } from "./view";
+import { getMetricsForReport } from "@/lib/reportes/alert-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -93,14 +94,36 @@ export default async function VentasEIngresosPage({
   // Queries en paralelo
   const compareRange = previousComparableRange({ from, to }, compareMode);
   const compareFilters = { ...filters, from: compareRange.from, to: compareRange.to };
+  const metricKeys = getMetricsForReport("ventas-e-ingresos");
 
-  const [kpis, chartData, tableRows, compareKpis, vendedoresOptions] = await Promise.all([
-    getSalesKpis(effectiveBranchId, filters),
-    getSalesChart(effectiveBranchId, filters),
-    getSalesTable(effectiveBranchId, filters),
-    compareEnabled ? getSalesKpis(effectiveBranchId, compareFilters) : Promise.resolve(null),
-    getVendedoresOptions(effectiveBranchId),
-  ]);
+  const [kpis, chartData, tableRows, compareKpis, vendedoresOptions, branches, rawThresholds] =
+    await Promise.all([
+      getSalesKpis(effectiveBranchId, filters),
+      getSalesChart(effectiveBranchId, filters),
+      getSalesTable(effectiveBranchId, filters),
+      compareEnabled ? getSalesKpis(effectiveBranchId, compareFilters) : Promise.resolve(null),
+      getVendedoresOptions(effectiveBranchId),
+      prisma.branch.findMany({
+        where: isAdmin ? {} : { id: user.branchId ?? undefined },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.alertThreshold.findMany({
+        where: {
+          metricKey: { in: metricKeys },
+          ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+        },
+      }),
+    ]);
+
+  const thresholds = rawThresholds.map((t) => ({
+    id: t.id,
+    metricKey: t.metricKey,
+    branchId: t.branchId,
+    thresholdValue: Number(t.thresholdValue),
+    comparator: t.comparator as "LT" | "LTE" | "GT" | "GTE" | "EQ",
+    isActive: t.isActive,
+  }));
 
   return (
     <SalesView
@@ -116,6 +139,9 @@ export default async function VentasEIngresosPage({
       compareMode={compareMode}
       compareEnabled={compareEnabled}
       isAdmin={isAdmin}
+      currentBranchId={effectiveBranchId}
+      branches={branches.map((b) => ({ id: b.id, label: `${b.name} (${b.code})` }))}
+      thresholds={thresholds}
     />
   );
 }

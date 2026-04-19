@@ -9,9 +9,12 @@ import {
   CompareToggle,
   DateRangeChip,
   ExportDrawer,
+  ThresholdsModal,
+  ThresholdsProvider,
 } from "@/components/reportes/shell";
 import type { KpiSpec } from "@/components/reportes/shell";
 import type { FilterSpec } from "@/components/reportes/shell";
+import type { ThresholdRow } from "@/components/reportes/shell";
 import { formatMXN, formatNumber } from "@/lib/format";
 import type { CompareMode } from "@/lib/reportes/date-range";
 import { SalesChart } from "./sales-chart";
@@ -32,6 +35,9 @@ type SalesViewProps = {
   compareMode: CompareMode;
   compareEnabled: boolean;
   isAdmin: boolean;
+  currentBranchId: string | null;
+  branches: Array<{ id: string; label: string }>;
+  thresholds: ThresholdRow[];
 };
 
 const METODO_OPTIONS = [
@@ -42,8 +48,15 @@ const METODO_OPTIONS = [
   { value: "ATRATO", label: "Atrato" },
 ];
 
-function buildKpis(kpis: SalesKpis, compareKpis: SalesKpis | null): KpiSpec[] {
-  function delta(current: number, prev: number | undefined): { value: number; format: "percent" } | undefined {
+function buildKpis(
+  kpis: SalesKpis,
+  compareKpis: SalesKpis | null,
+  branchId: string | null,
+): KpiSpec[] {
+  function delta(
+    current: number,
+    prev: number | undefined,
+  ): { value: number; format: "percent" } | undefined {
     if (prev === undefined || prev === 0) return undefined;
     return { value: (current - prev) / prev, format: "percent" };
   }
@@ -53,9 +66,12 @@ function buildKpis(kpis: SalesKpis, compareKpis: SalesKpis | null): KpiSpec[] {
       key: "ingresoTotal",
       label: "Ingreso total",
       value: formatMXN(kpis.ingresoTotal),
+      rawValue: kpis.ingresoTotal,
       delta: delta(kpis.ingresoTotal, compareKpis?.ingresoTotal),
       sparkline: kpis.sparkline,
       featured: true,
+      metricKey: "SALES_DAILY_MIN",
+      branchId,
     },
     {
       key: "ticketPromedio",
@@ -73,12 +89,17 @@ function buildKpis(kpis: SalesKpis, compareKpis: SalesKpis | null): KpiSpec[] {
       key: "margenBruto",
       label: "Margen bruto",
       value: formatMXN(kpis.margenBruto),
+      rawValue: kpis.margenBruto,
       delta: delta(kpis.margenBruto, compareKpis?.margenBruto),
+      metricKey: "MARGIN_PCT_MIN",
+      branchId,
     },
     {
       key: "topVendedor",
       label: "Top vendedor",
-      value: kpis.topVendedor ? `${kpis.topVendedor.nombre.split(" ")[0]} · ${formatMXN(kpis.topVendedor.total, { compact: true })}` : "—",
+      value: kpis.topVendedor
+        ? `${kpis.topVendedor.nombre.split(" ")[0]} · ${formatMXN(kpis.topVendedor.total, { compact: true })}`
+        : "—",
     },
   ];
 }
@@ -95,11 +116,15 @@ export function SalesView({
   initialMetodo,
   compareMode,
   compareEnabled,
+  currentBranchId,
+  branches,
+  thresholds,
 }: SalesViewProps) {
   const [selectedSaleId, setSelectedSaleId] = React.useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [thresholdsOpen, setThresholdsOpen] = React.useState(false);
 
-  const kpiSpecs = buildKpis(kpis, compareEnabled ? compareKpis : null);
+  const kpiSpecs = buildKpis(kpis, compareEnabled ? compareKpis : null, currentBranchId);
 
   const filterSpecs: FilterSpec[] = [
     {
@@ -148,60 +173,73 @@ export function SalesView({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-6 pb-12">
-      <DetailHeader
-        title="Ventas e ingresos"
-        subtitle="Ingresos por período, método de pago y vendedor"
-        onExport={() => setDrawerOpen(true)}
-        onSaveView={handleSaveView}
-      />
-
-      {/* Filter bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <DateRangeChip fromValue={initialFrom} toValue={initialTo} />
-        <FilterPanel specs={filterSpecs} />
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>
-            Comparar con:
-          </span>
-          <CompareToggle value={compareMode} />
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="mb-6">
-        <KpiGrid kpis={kpiSpecs} />
-      </div>
-
-      {/* Chart */}
-      <div className="mb-6">
-        <SalesChart data={chartData} />
-      </div>
-
-      {/* Table */}
-      <SalesTable rows={tableRows} onRowClick={setSelectedSaleId} />
-
-      {/* Modal */}
-      {selectedSaleId && (
-        <SaleDetailModal
-          saleId={selectedSaleId}
-          onClose={() => setSelectedSaleId(null)}
+    <ThresholdsProvider value={thresholds}>
+      <div className="mx-auto max-w-7xl px-6 pb-12">
+        <DetailHeader
+          title="Ventas e ingresos"
+          subtitle="Ingresos por período, método de pago y vendedor"
+          onExport={() => setDrawerOpen(true)}
+          onSaveView={handleSaveView}
+          onOpenThresholds={() => setThresholdsOpen(true)}
         />
-      )}
 
-      {/* Export drawer */}
-      <ExportDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        slug="ventas-e-ingresos"
-        filters={currentFilters}
-        rowCount={tableRows.length}
-        columnLabels={[
-          "Folio", "Fecha", "Cliente", "Vendedor",
-          "Método de pago", "# Ítems", "Subtotal",
-          "Descuento", "Total", "Estado",
-        ]}
-      />
-    </div>
+        {/* Filter bar */}
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <DateRangeChip fromValue={initialFrom} toValue={initialTo} />
+          <FilterPanel specs={filterSpecs} />
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>
+              Comparar con:
+            </span>
+            <CompareToggle value={compareMode} />
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="mb-6">
+          <KpiGrid kpis={kpiSpecs} />
+        </div>
+
+        {/* Chart */}
+        <div className="mb-6">
+          <SalesChart data={chartData} />
+        </div>
+
+        {/* Table */}
+        <SalesTable rows={tableRows} onRowClick={setSelectedSaleId} />
+
+        {/* Modal */}
+        {selectedSaleId && (
+          <SaleDetailModal
+            saleId={selectedSaleId}
+            onClose={() => setSelectedSaleId(null)}
+          />
+        )}
+
+        {/* Export drawer */}
+        <ExportDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          slug="ventas-e-ingresos"
+          filters={currentFilters}
+          rowCount={tableRows.length}
+          columnLabels={[
+            "Folio", "Fecha", "Cliente", "Vendedor",
+            "Método de pago", "# Ítems", "Subtotal",
+            "Descuento", "Total", "Estado",
+          ]}
+        />
+
+        {/* Thresholds modal */}
+        <ThresholdsModal
+          open={thresholdsOpen}
+          onClose={() => setThresholdsOpen(false)}
+          reportSlug="ventas-e-ingresos"
+          branchOptions={branches}
+          currentBranchId={currentBranchId}
+          initialThresholds={thresholds}
+        />
+      </div>
+    </ThresholdsProvider>
   );
 }
