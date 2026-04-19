@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { Building2, Users, Wrench, CircleDollarSign, Package } from "lucide-react";
+import { Building2, Users, Wrench, CircleDollarSign, Package, AlertTriangle } from "lucide-react";
 
 interface SessionUser {
   id: string;
@@ -61,6 +61,15 @@ const CARDS: ConfigCard[] = [
       "Modelos, variantes y SimpleProduct (accesorios, cargadores, refacciones, baterías). MANAGER puede ver alertas de stock.",
     href: "/configuracion/catalogo",
     icon: Package,
+    roles: ["ADMIN", "MANAGER"],
+    available: true,
+  },
+  {
+    label: "Umbrales",
+    description:
+      "Configura alertas cuando un KPI cruce un valor mínimo o máximo. Los reportes muestran un badge inline cuando se cruza el umbral.",
+    href: "/configuracion/umbrales",
+    icon: AlertTriangle,
     roles: ["ADMIN", "MANAGER"],
     available: true,
   },
