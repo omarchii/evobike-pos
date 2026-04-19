@@ -77,7 +77,7 @@ El gradiente de acento es idéntico en ambos modos:
 background: linear-gradient(135deg, #1b4332 0%, #2ecc71 100%);
 ```
 
-**Usos — máximo 2 instancias por vista:**
+**Usos — máximo 3 instancias por vista:**
 
 - Fondo del KPI card más importante (ej: Ventas hoy)
 - Botón Primary CTA principal
@@ -454,7 +454,7 @@ Pegar en `globals.css`:
 
 - Usar `#2ECC71` exclusivamente para elementos de acción — CTAs, focus states, progreso. Los neutrales hacen el trabajo estructural.
 - Usar `surface-container-low` como fondo del sidebar. El tinte verde acompaña la identidad sin saturar.
-- Aplicar el Velocity Gradient solo en el KPI card más importante y en el botón Primary. Máximo 2 instancias por vista.
+- Aplicar el Velocity Gradient solo en el KPI card más importante y en el botón Primary. Máximo 3 instancias por vista; la 3ª se reserva a elementos del shell (chip BRANCH non-admin y avatar footer sidebar).
 - Usar `on-surface` (`#131B2E` / `#e8f0eb`) para todo texto principal. Nunca `#000000`.
 - Usar `xl` (1.5rem) o `lg` (1rem) de border-radius en prácticamente todo.
 - Space Grotesk exclusivamente para títulos de página y valores KPI. Inter para todo lo demás.
@@ -516,7 +516,7 @@ No reemplazar estos patrones por `rgba` hardcoded.
 
 ### Velocity Gradient — usos permitidos
 
-Máximo 2 instancias por vista (KPI destacado + CTA primario). Se aceptan usos adicionales **solo** en:
+Máximo 3 instancias por vista (KPI destacado + CTA primario + elemento del shell). Las instancias del shell (chip BRANCH non-admin, avatar footer sidebar) cuentan como la 3ª permitida. Se aceptan usos adicionales **solo** en:
 - Chips/pills de estado "activo" en toggles de filtros de rango temporal
 - Barras de progreso de comparativos (branch vs branch, modelo vs modelo)
 
