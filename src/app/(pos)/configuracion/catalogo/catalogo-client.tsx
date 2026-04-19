@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabModelos } from "./tab-modelos";
 import { TabVariantes } from "./tab-variantes";
+import { TabBaterias } from "./tab-baterias";
 import { TabBatteryConfigs } from "./tab-battery-configs";
 import { TabSimpleProducts } from "./tab-simple-products";
 import { TabAlertas } from "./tab-alertas";
@@ -11,7 +12,9 @@ import type {
   ModeloRow,
   ColorRow,
   VoltajeRow,
+  CapacidadRow,
   VarianteRow,
+  BatteryVariantRow,
   BatteryConfigRow,
   SimpleProductRow,
   BranchRow,
@@ -21,7 +24,9 @@ interface InitialData {
   modelos: ModeloRow[];
   colores: ColorRow[];
   voltajes: VoltajeRow[];
+  capacidades: CapacidadRow[];
   variantes: VarianteRow[];
+  batteryVariants: BatteryVariantRow[];
   batteryConfigs: BatteryConfigRow[];
   simpleProducts: SimpleProductRow[];
   branches: BranchRow[];
@@ -43,7 +48,11 @@ export function CatalogoClient({
   const [modelos, setModelos] = useState<ModeloRow[]>(initialData.modelos);
   const [colores] = useState<ColorRow[]>(initialData.colores);
   const [voltajes] = useState<VoltajeRow[]>(initialData.voltajes);
+  const [capacidades] = useState<CapacidadRow[]>(initialData.capacidades);
   const [variantes, setVariantes] = useState<VarianteRow[]>(initialData.variantes);
+  const [batteryVariants, setBatteryVariants] = useState<BatteryVariantRow[]>(
+    initialData.batteryVariants,
+  );
   const [batteryConfigs, setBatteryConfigs] = useState<BatteryConfigRow[]>(
     initialData.batteryConfigs,
   );
@@ -56,7 +65,8 @@ export function CatalogoClient({
       <TabsList className="w-full flex-wrap justify-start gap-1 h-auto p-1">
         {isAdmin && <TabsTrigger value="modelos">Modelos</TabsTrigger>}
         {isAdmin && <TabsTrigger value="variantes">Variantes</TabsTrigger>}
-        {isAdmin && <TabsTrigger value="baterias">Config. Baterías</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="baterias">Baterías</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="battery-configs">Config. Baterías</TabsTrigger>}
         {isAdmin && <TabsTrigger value="simples">Productos Simples</TabsTrigger>}
         <TabsTrigger value="alertas">Alertas de Stock</TabsTrigger>
       </TabsList>
@@ -73,21 +83,36 @@ export function CatalogoClient({
       {isAdmin && (
         <TabsContent value="variantes">
           <TabVariantes
-            variantes={variantes}
-            modelos={modelos}
+            variantes={variantes.filter((v) => !v.modelo_esBateria)}
+            modelos={modelos.filter((m) => !m.esBateria)}
             colores={colores}
             voltajes={voltajes}
-            onChange={setVariantes}
+            onChange={(next) =>
+              setVariantes([
+                ...variantes.filter((v) => v.modelo_esBateria),
+                ...next,
+              ])
+            }
           />
         </TabsContent>
       )}
       {isAdmin && (
         <TabsContent value="baterias">
+          <TabBaterias
+            variants={batteryVariants}
+            voltajes={voltajes}
+            capacidades={capacidades}
+            onChange={setBatteryVariants}
+          />
+        </TabsContent>
+      )}
+      {isAdmin && (
+        <TabsContent value="battery-configs">
           <TabBatteryConfigs
             configs={batteryConfigs}
             modelos={modelos}
             voltajes={voltajes}
-            variantes={variantes}
+            batteryVariants={batteryVariants}
             onChange={setBatteryConfigs}
           />
         </TabsContent>

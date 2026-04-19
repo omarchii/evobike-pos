@@ -10,7 +10,16 @@ interface SessionUser {
   role: string;
 }
 
-const CATEGORIAS = ["BICICLETA", "TRICICLO", "SCOOTER", "JUGUETE", "CARGA"] as const;
+const CATEGORIAS = [
+  "BICICLETA", // deprecated
+  "JUGUETE",
+  "SCOOTER",
+  "BASE",
+  "PLUS",
+  "CARGA",
+  "CARGA_PESADA",
+  "TRICICLO",
+] as const;
 
 function requireAdmin(user: SessionUser | undefined): NextResponse | null {
   if (!user || user.role !== "ADMIN") {
@@ -50,7 +59,7 @@ const patchSchema = z.object({
   nombre: z.string().min(1).optional(),
   descripcion: z.string().nullable().optional(),
   requiere_vin: z.boolean().optional(),
-  categoria: z.enum(CATEGORIAS).optional(),
+  categoria: z.enum(CATEGORIAS).nullable().optional(), // null = modelo de batería
   esBateria: z.boolean().optional(),
   isActive: z.boolean().optional(),
   colorIds: z.array(z.string().uuid()).optional(),

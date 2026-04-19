@@ -41,14 +41,26 @@ export function modalStyle(): React.CSSProperties {
 
 export const CATEGORIA_LABELS: Record<string, string> = {
   BICICLETA: "Bicicleta", // deprecated — se conserva para retrocompatibilidad
-  TRICICLO: "Triciclo",
-  SCOOTER: "Scooter",
   JUGUETE: "Juguete",
-  CARGA: "Carga",
-  CARGA_PESADA: "Carga pesada",
+  SCOOTER: "Scooter",
   BASE: "Base",
   PLUS: "Plus",
+  CARGA: "Carga",
+  CARGA_PESADA: "Carga pesada",
+  TRICICLO: "Triciclo",
 };
+
+// 7 categorías activas — orden de visualización.
+// BICICLETA (deprecated) no aparece aquí, pero se mapea vía CATEGORIA_LABELS si quedan registros.
+export const CATEGORIAS_ACTIVAS = [
+  "JUGUETE",
+  "SCOOTER",
+  "BASE",
+  "PLUS",
+  "CARGA",
+  "CARGA_PESADA",
+  "TRICICLO",
+] as const;
 
 export const SIMPLE_CATEGORIA_LABELS: Record<string, string> = {
   ACCESORIO: "Accesorio",
@@ -103,15 +115,42 @@ export interface VarianteRow {
   isActive: boolean;
 }
 
+export interface CapacidadRow {
+  id: string;
+  valorAh: number;
+  nombre: string;
+  isActive: boolean;
+}
+
+export interface BatteryVariantRow {
+  id: string;
+  sku: string;
+  voltajeId: string;
+  voltajeValor: number;
+  voltajeLabel: string;
+  capacidadId: string;
+  capacidadValorAh: number;
+  capacidadNombre: string;
+  precioPublico: number;
+  costo: number;
+  stockMinimo: number;
+  stockMaximo: number;
+  stockTotal: number;
+  isActive: boolean;
+}
+
 export interface BatteryConfigRow {
   id: string;
   modeloId: string;
   modeloNombre: string;
   voltajeId: string;
+  voltajeValor: number;
   voltajeLabel: string;
   batteryVariantId: string;
   batteryVariantSku: string;
   batteryVariantModelo: string;
+  batteryCapacidadAh: number | null; // null para variantes legacy sin capacidad
+  batteryCapacidadNombre: string | null;
   quantity: number;
 }
 

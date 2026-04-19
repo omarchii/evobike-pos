@@ -21,8 +21,12 @@ function requireAdmin(user: SessionUser | undefined): NextResponse | null {
 }
 
 const patchSchema = z.object({
-  quantity: z.number().int().positive().optional(),
-  batteryVariantId: z.string().min(1).optional(),
+  sku: z.string().min(1).optional(),
+  precioPublico: z.number().nonnegative().optional(),
+  costo: z.number().nonnegative().optional(),
+  stockMinimo: z.number().int().nonnegative().optional(),
+  stockMaximo: z.number().int().nonnegative().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -35,12 +39,14 @@ export async function PATCH(
   if (denied) return denied;
 
   const { id } = await params;
+
   let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ success: false, error: "JSON inválido" }, { status: 400 });
   }
+
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -49,65 +55,49 @@ export async function PATCH(
     );
   }
 
-  const existing = await prisma.batteryConfiguration.findUnique({ where: { id } });
-  if (!existing) {
+  const existing = await prisma.productVariant.findUnique({
+    where: { id },
+    include: { modelo: true },
+  });
+  if (!existing || !existing.modelo.esBateria) {
     return NextResponse.json(
-      { success: false, error: "Configuración no encontrada" },
+      { success: false, error: "Variante de batería no encontrada" },
       { status: 404 },
     );
   }
 
-  if (parsed.data.batteryVariantId) {
-    const bv = await prisma.productVariant.findUnique({
-      where: { id: parsed.data.batteryVariantId },
-      include: { modelo: true },
-    });
-    if (!bv || !bv.modelo.esBateria) {
-      return NextResponse.json(
-        { success: false, error: "La variante seleccionada no es una batería" },
-        { status: 400 },
-      );
-    }
-    if (bv.voltaje_id !== existing.voltajeId) {
-      return NextResponse.json(
-        { success: false, error: "El voltaje de la batería no coincide con la configuración" },
-        { status: 400 },
-      );
-    }
-    const dup = await prisma.batteryConfiguration.findUnique({
-      where: {
-        modeloId_voltajeId_batteryVariantId: {
-          modeloId: existing.modeloId,
-          voltajeId: existing.voltajeId,
-          batteryVariantId: parsed.data.batteryVariantId,
-        },
-      },
-    });
+  if (parsed.data.sku && parsed.data.sku !== existing.sku) {
+    const dup = await prisma.productVariant.findUnique({ where: { sku: parsed.data.sku } });
     if (dup && dup.id !== id) {
       return NextResponse.json(
-        { success: false, error: "Ya existe esa configuración" },
+        { success: false, error: "Ya existe una variante con ese SKU" },
         { status: 409 },
       );
     }
   }
 
-  const updated = await prisma.batteryConfiguration.update({
+  const data: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(parsed.data)) {
+    if (v !== undefined) data[k] = v;
+  }
+
+  const updated = await prisma.productVariant.update({
     where: { id },
-    data: parsed.data,
+    data,
     include: {
-      modelo: { select: { id: true, nombre: true } },
       voltaje: { select: { id: true, valor: true, label: true } },
-      batteryVariant: {
-        select: {
-          id: true,
-          sku: true,
-          modelo: { select: { id: true, nombre: true } },
-          capacidad: { select: { id: true, valorAh: true, nombre: true } },
-        },
-      },
+      capacidad: { select: { id: true, valorAh: true, nombre: true } },
+      stocks: { select: { quantity: true } },
     },
   });
-  return NextResponse.json({ success: true, data: updated });
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...updated,
+      stockTotal: updated.stocks.reduce((s, x) => s + x.quantity, 0),
+    },
+  });
 }
 
 export async function DELETE(
@@ -120,13 +110,22 @@ export async function DELETE(
   if (denied) return denied;
 
   const { id } = await params;
-  const existing = await prisma.batteryConfiguration.findUnique({ where: { id } });
-  if (!existing) {
+
+  const existing = await prisma.productVariant.findUnique({
+    where: { id },
+    include: { modelo: true },
+  });
+  if (!existing || !existing.modelo.esBateria) {
     return NextResponse.json(
-      { success: false, error: "Configuración no encontrada" },
+      { success: false, error: "Variante de batería no encontrada" },
       { status: 404 },
     );
   }
-  await prisma.batteryConfiguration.delete({ where: { id } });
+
+  await prisma.productVariant.update({
+    where: { id },
+    data: { isActive: false },
+  });
+
   return NextResponse.json({ success: true, data: { id } });
 }

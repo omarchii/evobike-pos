@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Power, ImagePlus } from "lucide-react";
 import {
@@ -15,11 +15,12 @@ import {
   LABEL_STYLE,
   modalStyle,
   CATEGORIA_LABELS,
+  CATEGORIAS_ACTIVAS,
   type ModeloRow,
   type ColorRow,
 } from "./shared";
 
-const CATEGORIAS = ["BICICLETA", "TRICICLO", "SCOOTER", "JUGUETE", "CARGA"];
+type CategoriaFilter = "TODAS" | (typeof CATEGORIAS_ACTIVAS)[number];
 
 export function TabModelos({
   modelos,
@@ -33,6 +34,7 @@ export function TabModelos({
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<ModeloRow | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [categoriaFilter, setCategoriaFilter] = useState<CategoriaFilter>("TODAS");
 
   async function handleToggle(m: ModeloRow): Promise<void> {
     if (m.isActive) {
@@ -76,126 +78,192 @@ export function TabModelos({
     }
   }
 
-  const visible = showInactive ? modelos : modelos.filter((m) => m.isActive);
+  // Este tab muestra sólo modelos de vehículo. Modelos de batería (esBateria=true) viven en el tab Baterías.
+  const vehiculos = useMemo(
+    () => modelos.filter((m) => !m.esBateria),
+    [modelos],
+  );
+
+  const visible = useMemo(() => {
+    let list = showInactive ? vehiculos : vehiculos.filter((m) => m.isActive);
+    if (categoriaFilter !== "TODAS") {
+      list = list.filter((m) => m.categoria === categoriaFilter);
+    }
+    return list;
+  }, [vehiculos, showInactive, categoriaFilter]);
+
+  // Agrupar por categoría (sólo cuando filtro = TODAS; si hay filtro específico, una sola sección).
+  const grouped = useMemo(() => {
+    if (categoriaFilter !== "TODAS") {
+      return [{ categoria: categoriaFilter, rows: visible }];
+    }
+    const order = [...CATEGORIAS_ACTIVAS, "BICICLETA", "SIN_CATEGORIA"] as const;
+    const buckets = new Map<string, ModeloRow[]>();
+    for (const m of visible) {
+      const key = m.categoria ?? "SIN_CATEGORIA";
+      const arr = buckets.get(key) ?? [];
+      arr.push(m);
+      buckets.set(key, arr);
+    }
+    return order
+      .filter((k) => (buckets.get(k) ?? []).length > 0)
+      .map((k) => ({ categoria: k, rows: buckets.get(k)! }));
+  }, [visible, categoriaFilter]);
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-[var(--on-surf-var)]">
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          Mostrar inactivos
-        </label>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-          style={{ background: "var(--p)", color: "#ffffff" }}
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo modelo
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <FilterChip
+            active={categoriaFilter === "TODAS"}
+            onClick={() => setCategoriaFilter("TODAS")}
+            count={vehiculos.filter((m) => showInactive || m.isActive).length}
+          >
+            Todas
+          </FilterChip>
+          {CATEGORIAS_ACTIVAS.map((c) => {
+            const count = vehiculos.filter(
+              (m) => m.categoria === c && (showInactive || m.isActive),
+            ).length;
+            return (
+              <FilterChip
+                key={c}
+                active={categoriaFilter === c}
+                onClick={() => setCategoriaFilter(c)}
+                count={count}
+              >
+                {CATEGORIA_LABELS[c]}
+              </FilterChip>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-[var(--on-surf-var)]">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            Mostrar inactivos
+          </label>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "var(--p)", color: "#ffffff" }}
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo modelo
+          </button>
+        </div>
       </div>
 
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
-                <Th>Img</Th>
-                <Th>Nombre</Th>
-                <Th>Categoría</Th>
-                <Th>Colores</Th>
-                <Th>VIN</Th>
-                <Th>Batería</Th>
-                <Th>Estado</Th>
-                <Th align="right">Acciones</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-5 py-6 text-center text-sm text-[var(--on-surf-var)]">
-                    Sin modelos.
-                  </td>
-                </tr>
-              )}
-              {visible.map((m) => (
-                <tr
-                  key={m.id}
-                  style={{
-                    borderBottom: "1px solid rgba(178,204,192,0.08)",
-                    opacity: m.isActive ? 1 : 0.55,
-                  }}
-                >
-                  <td className="px-5 py-3">
-                    {m.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.imageUrl}
-                        alt={m.nombre}
-                        style={{
-                          width: 40,
-                          height: 40,
-                          objectFit: "cover",
-                          borderRadius: "var(--r-md)",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: "var(--r-md)",
-                          background: "var(--surf-high)",
-                        }}
-                      />
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--on-surf)]">{m.nombre}</td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {m.categoria ? (CATEGORIA_LABELS[m.categoria] ?? m.categoria) : "—"}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {m.colorIds.length}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {m.requiere_vin ? "Sí" : "No"}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {m.esBateria ? "Sí" : "—"}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {m.isActive ? "Activo" : "Inactivo"}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <IconButton onClick={() => setEditing(m)} title="Editar">
-                        <Pencil className="h-4 w-4" />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleToggle(m)}
-                        title={m.isActive ? "Desactivar" : "Activar"}
-                      >
-                        <Power
-                          className="h-4 w-4"
-                          style={{
-                            color: m.isActive ? "var(--sec)" : "var(--on-surf-var)",
-                          }}
-                        />
-                      </IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="space-y-3">
+        {grouped.length === 0 && (
+          <div
+            className="rounded-2xl p-6 text-center text-sm text-[var(--on-surf-var)]"
+            style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
+          >
+            Sin modelos en esta categoría.
+          </div>
+        )}
+        {grouped.map((g) => (
+          <div
+            key={g.categoria}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
+          >
+            <div
+              className="px-5 py-3 flex items-center justify-between"
+              style={{ borderBottom: "1px solid var(--ghost-border)" }}
+            >
+              <div
+                className="text-xs font-medium uppercase tracking-widest"
+                style={{ color: "var(--on-surf-var)" }}
+              >
+                {g.categoria === "SIN_CATEGORIA"
+                  ? "Sin categoría"
+                  : (CATEGORIA_LABELS[g.categoria] ?? g.categoria)}
+              </div>
+              <div className="text-xs text-[var(--on-surf-var)]">{g.rows.length}</div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--ghost-border)" }}>
+                    <Th>Img</Th>
+                    <Th>Nombre</Th>
+                    <Th>Colores</Th>
+                    <Th>VIN</Th>
+                    <Th>Estado</Th>
+                    <Th align="right">Acciones</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((m) => (
+                    <tr
+                      key={m.id}
+                      style={{
+                        borderBottom: "1px solid rgba(178,204,192,0.08)",
+                        opacity: m.isActive ? 1 : 0.55,
+                      }}
+                    >
+                      <td className="px-5 py-3">
+                        {m.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.imageUrl}
+                            alt={m.nombre}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              objectFit: "cover",
+                              borderRadius: "var(--r-md)",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "var(--r-md)",
+                              background: "var(--surf-high)",
+                            }}
+                          />
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--on-surf)]">{m.nombre}</td>
+                      <td className="px-5 py-3 text-[var(--on-surf-var)]">{m.colorIds.length}</td>
+                      <td className="px-5 py-3 text-[var(--on-surf-var)]">
+                        {m.requiere_vin ? "Sí" : "No"}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--on-surf-var)]">
+                        {m.isActive ? "Activo" : "Inactivo"}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <IconButton onClick={() => setEditing(m)} title="Editar">
+                            <Pencil className="h-4 w-4" />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleToggle(m)}
+                            title={m.isActive ? "Desactivar" : "Activar"}
+                          >
+                            <Power
+                              className="h-4 w-4"
+                              style={{
+                                color: m.isActive ? "var(--sec)" : "var(--on-surf-var)",
+                              }}
+                            />
+                          </IconButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
       </div>
 
       {showCreate && (
@@ -227,6 +295,43 @@ function Th({ children, align = "left" }: { children: React.ReactNode; align?: "
     >
       {children}
     </th>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  count,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+      style={{
+        background: active ? "var(--p)" : "var(--surf-low)",
+        color: active ? "#ffffff" : "var(--on-surf)",
+      }}
+    >
+      {children}
+      <span
+        className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px]"
+        style={{
+          background: active
+            ? "rgba(255,255,255,0.25)"
+            : "var(--surf-high)",
+          color: active ? "#ffffff" : "var(--on-surf-var)",
+        }}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 
@@ -273,7 +378,10 @@ function ModeloDialog({
   const [saving, setSaving] = useState(false);
   const [nombre, setNombre] = useState(modelo?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(modelo?.descripcion ?? "");
-  const [categoria, setCategoria] = useState(modelo?.categoria ?? "BICICLETA");
+  // `categoria` es null cuando esBateria=true (coherente con el schema).
+  const [categoria, setCategoria] = useState<string | null>(
+    modelo?.categoria ?? (modelo?.esBateria ? null : "BASE"),
+  );
   const [requiereVin, setRequiereVin] = useState(modelo?.requiere_vin ?? true);
   const [esBateria, setEsBateria] = useState(modelo?.esBateria ?? false);
   const [colorIds, setColorIds] = useState<string[]>(modelo?.colorIds ?? []);
@@ -327,7 +435,7 @@ function ModeloDialog({
       const payload = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || null,
-        categoria,
+        categoria: esBateria ? null : categoria,
         requiere_vin: requiereVin,
         esBateria,
         colorIds,
@@ -435,19 +543,21 @@ function ModeloDialog({
               onChange={(e) => setDescripcion(e.target.value)}
             />
           </Field>
-          <Field label="Categoría">
-            <select
-              style={SELECT_STYLE}
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-            >
-              {CATEGORIAS.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORIA_LABELS[c]}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {!esBateria && (
+            <Field label="Categoría">
+              <select
+                style={SELECT_STYLE}
+                value={categoria ?? "BASE"}
+                onChange={(e) => setCategoria(e.target.value)}
+              >
+                {CATEGORIAS_ACTIVAS.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORIA_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-sm text-[var(--on-surf)]">
               <input

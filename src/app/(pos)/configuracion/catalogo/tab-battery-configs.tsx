@@ -16,7 +16,7 @@ import {
   modalStyle,
   type ModeloRow,
   type VoltajeRow,
-  type VarianteRow,
+  type BatteryVariantRow,
   type BatteryConfigRow,
 } from "./shared";
 
@@ -24,13 +24,13 @@ export function TabBatteryConfigs({
   configs,
   modelos,
   voltajes,
-  variantes,
+  batteryVariants,
   onChange,
 }: {
   configs: BatteryConfigRow[];
   modelos: ModeloRow[];
   voltajes: VoltajeRow[];
-  variantes: VarianteRow[];
+  batteryVariants: BatteryVariantRow[];
   onChange: (next: BatteryConfigRow[]) => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -118,7 +118,19 @@ export function TabBatteryConfigs({
                   >
                     <td className="px-5 py-3 text-[var(--on-surf)]">{r.voltajeLabel}</td>
                     <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                      {r.batteryVariantModelo} — <span className="font-mono text-xs">{r.batteryVariantSku}</span>
+                      {r.batteryCapacidadNombre ? (
+                        <span>
+                          <span className="font-medium text-[var(--on-surf)]">
+                            {r.voltajeValor}V · {r.batteryCapacidadNombre}
+                          </span>
+                          <span className="ml-2 font-mono text-xs">{r.batteryVariantSku}</span>
+                        </span>
+                      ) : (
+                        <span>
+                          {r.batteryVariantModelo}
+                          <span className="ml-2 font-mono text-xs">{r.batteryVariantSku}</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right text-[var(--on-surf)]">{r.quantity}</td>
                     <td className="px-5 py-3 text-right">
@@ -143,7 +155,7 @@ export function TabBatteryConfigs({
         <BatteryConfigDialog
           modelos={modelos}
           voltajes={voltajes}
-          variantes={variantes}
+          batteryVariants={batteryVariants}
           onClose={() => setShowCreate(false)}
           onSaved={(r) => onChange([...configs, r])}
         />
@@ -153,7 +165,7 @@ export function TabBatteryConfigs({
           config={editing}
           modelos={modelos}
           voltajes={voltajes}
-          variantes={variantes}
+          batteryVariants={batteryVariants}
           onClose={() => setEditing(null)}
           onSaved={(r) => onChange(configs.map((x) => (x.id === r.id ? r : x)))}
         />
@@ -198,14 +210,14 @@ function BatteryConfigDialog({
   config,
   modelos,
   voltajes,
-  variantes,
+  batteryVariants,
   onClose,
   onSaved,
 }: {
   config?: BatteryConfigRow;
   modelos: ModeloRow[];
   voltajes: VoltajeRow[];
-  variantes: VarianteRow[];
+  batteryVariants: BatteryVariantRow[];
   onClose: () => void;
   onSaved: (r: BatteryConfigRow) => void;
 }) {
@@ -216,11 +228,12 @@ function BatteryConfigDialog({
   const [batteryVariantId, setBatteryVariantId] = useState(config?.batteryVariantId ?? "");
   const [quantity, setQuantity] = useState<string>(config ? String(config.quantity) : "1");
 
-  // Batteries = variants whose modelo.esBateria === true
-  const batteryOptions = useMemo(
-    () => variantes.filter((v) => v.modelo_esBateria && v.isActive),
-    [variantes],
-  );
+  // Batterías compatibles con el voltaje elegido. La API también valida la coincidencia.
+  const batteryOptions = useMemo(() => {
+    const list = batteryVariants.filter((v) => v.isActive);
+    if (!voltajeId) return list;
+    return list.filter((v) => v.voltajeId === voltajeId);
+  }, [batteryVariants, voltajeId]);
 
   async function onSubmit(): Promise<void> {
     if (!modeloId || !voltajeId || !batteryVariantId) {
@@ -258,10 +271,13 @@ function BatteryConfigDialog({
         modeloId: r.modeloId,
         modeloNombre: r.modelo.nombre,
         voltajeId: r.voltajeId,
+        voltajeValor: r.voltaje.valor,
         voltajeLabel: r.voltaje.label,
         batteryVariantId: r.batteryVariantId,
         batteryVariantSku: r.batteryVariant.sku,
         batteryVariantModelo: r.batteryVariant.modelo.nombre,
+        batteryCapacidadAh: r.batteryVariant.capacidad?.valorAh ?? null,
+        batteryCapacidadNombre: r.batteryVariant.capacidad?.nombre ?? null,
         quantity: r.quantity,
       });
       toast.success(isEdit ? "Actualizado" : "Creado");
@@ -316,18 +332,28 @@ function BatteryConfigDialog({
                 ))}
             </select>
           </Field>
-          <Field label="Batería a usar">
+          <Field
+            label={
+              voltajeId
+                ? "Batería a usar"
+                : "Batería a usar (selecciona voltaje primero)"
+            }
+          >
             <select
               style={SELECT_STYLE}
               value={batteryVariantId}
               onChange={(e) => setBatteryVariantId(e.target.value)}
+              disabled={!voltajeId}
             >
               <option value="">Selecciona…</option>
-              {batteryOptions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.modelo_nombre} — {v.sku} ({v.voltaje_label})
-                </option>
-              ))}
+              {batteryOptions
+                .slice()
+                .sort((a, b) => a.capacidadValorAh - b.capacidadValorAh)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.voltajeValor}V · {v.capacidadNombre} · {v.sku}
+                  </option>
+                ))}
             </select>
           </Field>
           <Field label="Cantidad">

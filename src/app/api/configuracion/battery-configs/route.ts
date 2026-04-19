@@ -40,6 +40,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           id: true,
           sku: true,
           modelo: { select: { id: true, nombre: true } },
+          capacidad: { select: { id: true, valorAh: true, nombre: true } },
         },
       },
     },
@@ -92,6 +93,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+  // Consistencia: la batería debe coincidir en voltaje con la config.
+  if (batteryVariant.voltaje_id !== d.voltajeId) {
+    return NextResponse.json(
+      { success: false, error: "El voltaje de la batería no coincide con el voltaje de la configuración" },
+      { status: 400 },
+    );
+  }
 
   const dup = await prisma.batteryConfiguration.findUnique({
     where: {
@@ -115,7 +123,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       modelo: { select: { id: true, nombre: true } },
       voltaje: { select: { id: true, valor: true, label: true } },
       batteryVariant: {
-        select: { id: true, sku: true, modelo: { select: { id: true, nombre: true } } },
+        select: {
+          id: true,
+          sku: true,
+          modelo: { select: { id: true, nombre: true } },
+          capacidad: { select: { id: true, valorAh: true, nombre: true } },
+        },
       },
     },
   });
