@@ -26,14 +26,18 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // 1. Cargar la orden y su variante de producto
+    // 1. Cargar la orden (incluye config pre-asignada si existe).
     const order = await prisma.assemblyOrder.findUnique({
       where: { id },
       select: {
         branchId: true,
         productVariantId: true,
+        batteryConfigurationId: true,
         productVariant: {
           select: { modelo_id: true, voltaje_id: true },
+        },
+        batteryConfiguration: {
+          select: { batteryVariantId: true, quantity: true },
         },
       },
     });
@@ -46,19 +50,20 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Sin acceso" }, { status: 403 });
     }
 
-    if (!order.productVariant) {
-      // Orden manual sin productVariant — no podemos determinar el tipo de batería
-      return NextResponse.json({ success: true, data: { requiredQuantity: 1, lots: [] } });
-    }
+    // 2. Resolver config: si la orden tiene una pre-asignada (recepción acoplada S3),
+    // usar esa. Si no, caer a la busqueda legacy por (modelo, voltaje) — arbitraria en multi-Ah.
+    let batteryConfig: { batteryVariantId: string; quantity: number } | null =
+      order.batteryConfiguration;
 
-    // 2. Obtener BatteryConfiguration para saber tipo y cantidad
-    const batteryConfig = await prisma.batteryConfiguration.findFirst({
-      where: {
-        modeloId: order.productVariant.modelo_id,
-        voltajeId: order.productVariant.voltaje_id,
-      },
-      select: { batteryVariantId: true, quantity: true },
-    });
+    if (!batteryConfig && order.productVariant) {
+      batteryConfig = await prisma.batteryConfiguration.findFirst({
+        where: {
+          modeloId: order.productVariant.modelo_id,
+          voltajeId: order.productVariant.voltaje_id,
+        },
+        select: { batteryVariantId: true, quantity: true },
+      });
+    }
 
     if (!batteryConfig) {
       return NextResponse.json({ success: true, data: { requiredQuantity: 1, lots: [] } });
@@ -67,14 +72,21 @@ export async function GET(
     const { batteryVariantId, quantity: requiredQuantity } = batteryConfig;
     const branchFilter = role === "ADMIN" ? {} : { branchId: order.branchId };
 
-    // 3. Buscar lotes del tipo correcto con baterías IN_STOCK
+    // 3. Lotes candidatos: del tipo correcto y con baterías disponibles (IN_STOCK y no
+    //    pre-reservadas para otra AssemblyOrder; las pre-reservadas para ESTA orden sí cuentan).
+    const batteryFilter = {
+      status: "IN_STOCK" as const,
+      OR: [
+        { assemblyOrderId: null },
+        { assemblyOrderId: id },
+      ],
+    };
+
     const lots = await prisma.batteryLot.findMany({
       where: {
         productVariantId: batteryVariantId,
         ...branchFilter,
-        batteries: {
-          some: { status: "IN_STOCK" },
-        },
+        batteries: { some: batteryFilter },
       },
       orderBy: { receivedAt: "desc" },
       take: 20,
@@ -84,13 +96,13 @@ export async function GET(
         supplier: true,
         receivedAt: true,
         batteries: {
-          where: { status: "IN_STOCK" },
+          where: batteryFilter,
           orderBy: { createdAt: "asc" },
           take: requiredQuantity,
           select: { serialNumber: true },
         },
         _count: {
-          select: { batteries: { where: { status: "IN_STOCK" } } },
+          select: { batteries: { where: batteryFilter } },
         },
       },
     });

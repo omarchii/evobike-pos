@@ -11,6 +11,14 @@ interface SessionUser {
   branchId: string;
 }
 
+export interface ConfigOption {
+  configurationId: string;
+  batteryVariantId: string;
+  batterySku: string;
+  label: string; // ej. "60V · 20Ah"
+  quantity: number; // baterías por unidad
+}
+
 export interface VariantCatalogItem {
   id: string;
   sku: string;
@@ -18,6 +26,7 @@ export interface VariantCatalogItem {
   esBateria: boolean;
   costo: number;
   currentStock: number;
+  configs: ConfigOption[]; // vacío si no es ensamblable
 }
 
 export interface SimpleCatalogItem {
@@ -58,7 +67,9 @@ export default async function NuevaRecepcionPage({
         id: true,
         sku: true,
         costo: true,
-        modelo: { select: { nombre: true, esBateria: true } },
+        modelo_id: true,
+        voltaje_id: true,
+        modelo: { select: { nombre: true, esBateria: true, requiere_vin: true } },
         color: { select: { nombre: true } },
         voltaje: { select: { label: true } },
         stocks: { where: { branchId }, select: { quantity: true } },
@@ -85,6 +96,49 @@ export default async function NuevaRecepcionPage({
     }),
   ]);
 
+  // Cargar BatteryConfigurations para vehículos (no baterías). Una variante es
+  // "ensamblable" si existe al menos una BatteryConfiguration para su modelo+voltaje.
+  const vehicleVariants = rawVariants.filter((v) => !v.modelo.esBateria);
+  const configRows = vehicleVariants.length
+    ? await prisma.batteryConfiguration.findMany({
+        where: {
+          OR: vehicleVariants.map((v) => ({
+            modeloId: v.modelo_id,
+            voltajeId: v.voltaje_id,
+          })),
+        },
+        select: {
+          id: true,
+          modeloId: true,
+          voltajeId: true,
+          batteryVariantId: true,
+          quantity: true,
+          batteryVariant: {
+            select: {
+              sku: true,
+              voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
+            },
+          },
+        },
+      })
+    : [];
+
+  const configsByKey = new Map<string, ConfigOption[]>();
+  for (const c of configRows) {
+    const k = `${c.modeloId}:${c.voltajeId}`;
+    const arr = configsByKey.get(k) ?? [];
+    const ahLabel = c.batteryVariant.capacidad?.nombre ?? "—";
+    arr.push({
+      configurationId: c.id,
+      batteryVariantId: c.batteryVariantId,
+      batterySku: c.batteryVariant.sku,
+      label: `${c.batteryVariant.voltaje.label} · ${ahLabel}`,
+      quantity: c.quantity,
+    });
+    configsByKey.set(k, arr);
+  }
+
   const variants: VariantCatalogItem[] = rawVariants.map((v) => ({
     id: v.id,
     sku: v.sku,
@@ -92,6 +146,7 @@ export default async function NuevaRecepcionPage({
     esBateria: v.modelo.esBateria,
     costo: Number(v.costo),
     currentStock: v.stocks[0]?.quantity ?? 0,
+    configs: configsByKey.get(`${v.modelo_id}:${v.voltaje_id}`) ?? [],
   }));
 
   const simples: SimpleCatalogItem[] = rawSimples.map((s) => ({

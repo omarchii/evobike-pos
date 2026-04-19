@@ -77,6 +77,39 @@ export default async function RecepcionDetailPage({
     },
   });
 
+  // AssemblyOrders generadas por esta recepción (ensamble programado S3).
+  const assemblyOrders = receipt
+    ? await prisma.assemblyOrder.findMany({
+        where: { receiptReference: receipt.id },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          productVariant: {
+            select: {
+              sku: true,
+              modelo: { select: { nombre: true } },
+              color: { select: { nombre: true } },
+              voltaje: { select: { label: true } },
+            },
+          },
+          batteryConfiguration: {
+            select: {
+              batteryVariant: {
+                select: {
+                  voltaje: { select: { label: true } },
+                  capacidad: { select: { nombre: true } },
+                },
+              },
+            },
+          },
+          reservedBatteries: {
+            select: { serialNumber: true },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      })
+    : [];
+
   if (!receipt) notFound();
   if (role !== "ADMIN" && receipt.branchId !== branchId) notFound();
 
@@ -109,6 +142,44 @@ export default async function RecepcionDetailPage({
       precioUnitarioPagado: m.precioUnitarioPagado?.toString() ?? null,
     }));
 
+  // Agrupar assemblyOrders por variante para mostrar "unidades por vehículo".
+  type AssemblyGroup = {
+    variantSku: string;
+    vehicleDesc: string;
+    units: Array<{
+      orderId: string;
+      configLabel: string | null;
+      serials: string[];
+    }>;
+  };
+  const groupMap = new Map<string, AssemblyGroup>();
+  for (const ao of assemblyOrders) {
+    if (!ao.productVariant) continue;
+    const key = ao.productVariant.sku;
+    const g = groupMap.get(key) ?? {
+      variantSku: ao.productVariant.sku,
+      vehicleDesc: [
+        ao.productVariant.modelo?.nombre,
+        ao.productVariant.color?.nombre,
+        ao.productVariant.voltaje?.label,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      units: [],
+    };
+    const cfg = ao.batteryConfiguration;
+    const configLabel = cfg
+      ? `${cfg.batteryVariant.voltaje.label} · ${cfg.batteryVariant.capacidad?.nombre ?? "—"}`
+      : null;
+    g.units.push({
+      orderId: ao.id,
+      configLabel,
+      serials: ao.reservedBatteries.map((b) => b.serialNumber),
+    });
+    groupMap.set(key, g);
+  }
+  const assemblyGroups = Array.from(groupMap.values());
+
   const batteryLots = receipt.batteryLots
     .filter((l) => l.productVariant !== null)
     .map((l) => ({
@@ -139,6 +210,7 @@ export default async function RecepcionDetailPage({
     variantLines,
     simpleLines,
     batteryLots,
+    assemblyGroups,
   };
 
   return (

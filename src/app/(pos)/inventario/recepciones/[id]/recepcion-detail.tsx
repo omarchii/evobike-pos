@@ -55,6 +55,18 @@ export interface BatteryLotLine {
   totalBaterias: number;
 }
 
+export interface AssemblyUnit {
+  orderId: string;
+  configLabel: string | null;
+  serials: string[];
+}
+
+export interface AssemblyGroupLine {
+  variantSku: string;
+  vehicleDesc: string;
+  units: AssemblyUnit[];
+}
+
 export interface SerializedReceiptDetail {
   id: string;
   branch: { id: string; name: string };
@@ -72,6 +84,7 @@ export interface SerializedReceiptDetail {
   variantLines: VariantLine[];
   simpleLines: SimpleLine[];
   batteryLots: BatteryLotLine[];
+  assemblyGroups: AssemblyGroupLine[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -795,6 +808,89 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
             >
               {formatMXN(data.totalPagado)}
             </span>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── 2b. Acoplamiento batería → vehículo (S3) ────────────────────────── */}
+      {data.assemblyGroups.length > 0 && (
+        <SectionCard title="Ensamblajes programados">
+          <div className="space-y-3">
+            {data.assemblyGroups.map((g) => (
+              <div
+                key={g.variantSku}
+                style={{
+                  background: "var(--surf-low)",
+                  borderRadius: "var(--r-lg)",
+                  padding: "0.75rem 0.9rem",
+                }}
+              >
+                <div className="flex items-baseline justify-between mb-2">
+                  <span
+                    style={{
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: "var(--on-surf)",
+                      fontFamily: "var(--font-body)",
+                    }}
+                  >
+                    {g.vehicleDesc}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "var(--on-surf-var)",
+                      fontFamily: "var(--font-body)",
+                    }}
+                  >
+                    {g.variantSku} · {g.units.length} unidad{g.units.length > 1 ? "es" : ""}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {g.units.map((u, idx) => (
+                    <div
+                      key={u.orderId}
+                      className="flex items-center gap-3"
+                      style={{
+                        fontSize: "0.72rem",
+                        fontFamily: "var(--font-body)",
+                        color: "var(--on-surf)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "var(--on-surf-var)",
+                          letterSpacing: "0.04em",
+                          minWidth: 60,
+                        }}
+                      >
+                        Unidad {idx + 1}
+                      </span>
+                      <span
+                        style={{
+                          color: u.configLabel ? "var(--on-surf)" : "var(--on-surf-var)",
+                          minWidth: 100,
+                        }}
+                      >
+                        {u.configLabel ?? "Config pendiente"}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          color: u.serials.length > 0 ? "var(--on-surf)" : "var(--on-surf-var)",
+                          fontFamily: u.serials.length > 0 ? "monospace" : "var(--font-body)",
+                          fontSize: u.serials.length > 0 ? "0.7rem" : "0.7rem",
+                        }}
+                      >
+                        {u.serials.length > 0
+                          ? u.serials.join(", ")
+                          : "Batería pendiente"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </SectionCard>
       )}

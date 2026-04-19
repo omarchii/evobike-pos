@@ -46,6 +46,12 @@ export async function PATCH(
         );
       }
 
+      // Liberar baterías pre-reservadas (S3) para que vuelvan al pool disponible.
+      await tx.battery.updateMany({
+        where: { assemblyOrderId: id },
+        data: { assemblyOrderId: null },
+      });
+
       await tx.assemblyOrder.update({
         where: { id },
         data: { status: "CANCELLED" },

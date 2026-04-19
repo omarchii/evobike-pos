@@ -83,6 +83,14 @@ const PRECIO_REGEX = /^\d+(\.\d{1,2})?$/;
 
 type LineKind = "variant" | "simple";
 
+import type { ConfigOption } from "./page";
+
+interface PlannedUnit {
+  configurationId: string;
+  coupled: boolean;
+  serials: string[]; // length = selected config.quantity
+}
+
 interface Line {
   lineId: string;
   kind: LineKind;
@@ -91,6 +99,27 @@ interface Line {
   subLabel: string;
   quantity: number;
   precioUnitarioPagado: string;
+  configs: ConfigOption[]; // [] para simples y variantes sin ensamble
+  plan: PlannedUnit[]; // length === quantity cuando configs.length > 0
+}
+
+function makeUnit(configs: ConfigOption[]): PlannedUnit {
+  const defaultCfg = configs[0]!;
+  return {
+    configurationId: defaultCfg.configurationId,
+    coupled: true,
+    serials: Array(defaultCfg.quantity).fill(""),
+  };
+}
+
+function resizePlan(plan: PlannedUnit[], qty: number, configs: ConfigOption[]): PlannedUnit[] {
+  if (configs.length === 0) return [];
+  if (plan.length === qty) return plan;
+  if (plan.length < qty) {
+    const extra = Array.from({ length: qty - plan.length }, () => makeUnit(configs));
+    return [...plan, ...extra];
+  }
+  return plan.slice(0, qty);
 }
 
 type LinesAction =
@@ -101,10 +130,30 @@ type LinesAction =
       label: string;
       subLabel: string;
       suggestedPrice: number;
+      configs: ConfigOption[];
     }
   | { type: "REMOVE"; lineId: string }
   | { type: "UPDATE_QTY"; lineId: string; value: number }
   | { type: "UPDATE_PRECIO"; lineId: string; value: string }
+  | {
+      type: "UPDATE_UNIT_CONFIG";
+      lineId: string;
+      unitIdx: number;
+      configurationId: string;
+    }
+  | {
+      type: "UPDATE_UNIT_COUPLED";
+      lineId: string;
+      unitIdx: number;
+      coupled: boolean;
+    }
+  | {
+      type: "UPDATE_UNIT_SERIAL";
+      lineId: string;
+      unitIdx: number;
+      slotIdx: number;
+      value: string;
+    }
   | { type: "RESET" };
 
 function linesReducer(state: Line[], action: LinesAction): Line[] {
@@ -112,11 +161,15 @@ function linesReducer(state: Line[], action: LinesAction): Line[] {
     case "ADD": {
       const existing = state.find((l) => l.entityId === action.entityId);
       if (existing) {
-        return state.map((l) =>
-          l.lineId === existing.lineId
-            ? { ...l, quantity: l.quantity + 1 }
-            : l,
-        );
+        return state.map((l) => {
+          if (l.lineId !== existing.lineId) return l;
+          const newQty = l.quantity + 1;
+          return {
+            ...l,
+            quantity: newQty,
+            plan: resizePlan(l.plan, newQty, l.configs),
+          };
+        });
       }
       return [
         ...state,
@@ -131,23 +184,78 @@ function linesReducer(state: Line[], action: LinesAction): Line[] {
             action.suggestedPrice > 0
               ? action.suggestedPrice.toFixed(2)
               : "",
+          configs: action.configs,
+          plan: action.configs.length > 0 ? [makeUnit(action.configs)] : [],
         },
       ];
     }
     case "REMOVE":
       return state.filter((l) => l.lineId !== action.lineId);
     case "UPDATE_QTY":
-      return state.map((l) =>
-        l.lineId === action.lineId
-          ? { ...l, quantity: Math.max(1, action.value) }
-          : l,
-      );
+      return state.map((l) => {
+        if (l.lineId !== action.lineId) return l;
+        const newQty = Math.max(1, action.value);
+        return { ...l, quantity: newQty, plan: resizePlan(l.plan, newQty, l.configs) };
+      });
     case "UPDATE_PRECIO":
       return state.map((l) =>
         l.lineId === action.lineId
           ? { ...l, precioUnitarioPagado: action.value }
           : l,
       );
+    case "UPDATE_UNIT_CONFIG":
+      return state.map((l) => {
+        if (l.lineId !== action.lineId) return l;
+        const cfg = l.configs.find((c) => c.configurationId === action.configurationId);
+        if (!cfg) return l;
+        return {
+          ...l,
+          plan: l.plan.map((unit, idx) =>
+            idx === action.unitIdx
+              ? {
+                  ...unit,
+                  configurationId: cfg.configurationId,
+                  serials: Array(cfg.quantity).fill(""),
+                }
+              : unit,
+          ),
+        };
+      });
+    case "UPDATE_UNIT_COUPLED":
+      return state.map((l) => {
+        if (l.lineId !== action.lineId) return l;
+        return {
+          ...l,
+          plan: l.plan.map((unit, idx) => {
+            if (idx !== action.unitIdx) return unit;
+            if (action.coupled === unit.coupled) return unit;
+            const cfg = l.configs.find((c) => c.configurationId === unit.configurationId);
+            const slots = cfg?.quantity ?? 1;
+            return {
+              ...unit,
+              coupled: action.coupled,
+              serials: action.coupled ? Array(slots).fill("") : unit.serials,
+            };
+          }),
+        };
+      });
+    case "UPDATE_UNIT_SERIAL":
+      return state.map((l) => {
+        if (l.lineId !== action.lineId) return l;
+        return {
+          ...l,
+          plan: l.plan.map((unit, idx) =>
+            idx === action.unitIdx
+              ? {
+                  ...unit,
+                  serials: unit.serials.map((s, si) =>
+                    si === action.slotIdx ? action.value : s,
+                  ),
+                }
+              : unit,
+          ),
+        };
+      });
     case "RESET":
       return [];
   }
@@ -277,6 +385,8 @@ export function RecepcionForm({
             subLabel: v.sku,
             quantity: 1,
             precioUnitarioPagado: v.costo > 0 ? v.costo.toFixed(2) : "",
+            configs: v.configs,
+            plan: v.configs.length > 0 ? [makeUnit(v.configs)] : [],
           },
         ];
       }
@@ -294,6 +404,8 @@ export function RecepcionForm({
             quantity: 1,
             precioUnitarioPagado:
               s.precioMayorista > 0 ? s.precioMayorista.toFixed(2) : "",
+            configs: [],
+            plan: [],
           },
         ];
       }
@@ -387,6 +499,37 @@ export function RecepcionForm({
       }
     }
 
+    // 2b. Assembly plan validation (seriales cuando acoplada)
+    const allSerials: string[] = [];
+    for (const line of lines) {
+      if (line.configs.length === 0) continue;
+      for (let i = 0; i < line.plan.length; i++) {
+        const unit = line.plan[i]!;
+        const cfg = line.configs.find((c) => c.configurationId === unit.configurationId);
+        if (!cfg) {
+          toast.error(`"${line.label}" unidad ${i + 1}: config inválida`);
+          return;
+        }
+        if (!unit.coupled) continue;
+        const trimmed = unit.serials.map((s) => s.trim());
+        if (trimmed.some((s) => s.length === 0)) {
+          toast.error(`"${line.label}" unidad ${i + 1}: captura los seriales`);
+          return;
+        }
+        allSerials.push(...trimmed);
+      }
+    }
+    const dupeSet = new Set<string>();
+    const seenSerials = new Set<string>();
+    for (const s of allSerials) {
+      if (seenSerials.has(s)) dupeSet.add(s);
+      seenSerials.add(s);
+    }
+    if (dupeSet.size > 0) {
+      toast.error(`Seriales duplicados: ${Array.from(dupeSet).slice(0, 3).join(", ")}`);
+      return;
+    }
+
     // 3. Cross-field validation
     if (isCredito && !header.fechaVencimiento) {
       setError("fechaVencimiento", {
@@ -425,14 +568,31 @@ export function RecepcionForm({
         ? { fechaVencimiento: header.fechaVencimiento }
         : {}),
       ...(header.notas?.trim() ? { notas: header.notas.trim() } : {}),
-      items: lines.map((l) => ({
-        kind: l.kind,
-        ...(l.kind === "variant"
-          ? { productVariantId: l.entityId }
-          : { simpleProductId: l.entityId }),
-        quantity: l.quantity,
-        precioUnitarioPagado: parseFloat(l.precioUnitarioPagado),
-      })),
+      items: lines.map((l) => {
+        if (l.kind === "simple") {
+          return {
+            kind: "simple" as const,
+            simpleProductId: l.entityId,
+            quantity: l.quantity,
+            precioUnitarioPagado: parseFloat(l.precioUnitarioPagado),
+          };
+        }
+        const base = {
+          kind: "variant" as const,
+          productVariantId: l.entityId,
+          quantity: l.quantity,
+          precioUnitarioPagado: parseFloat(l.precioUnitarioPagado),
+        };
+        if (l.configs.length === 0) return base;
+        return {
+          ...base,
+          assemblyPlan: l.plan.map((unit) => ({
+            batteryConfigurationId: unit.configurationId,
+            coupled: unit.coupled,
+            batterySerials: unit.coupled ? unit.serials.map((s) => s.trim()) : [],
+          })),
+        };
+      }),
     };
 
     setSubmitting(true);
@@ -550,6 +710,7 @@ export function RecepcionForm({
                         label: v.label,
                         subLabel: v.sku,
                         suggestedPrice: v.costo,
+                        configs: v.configs,
                       })
                     }
                   />
@@ -592,6 +753,7 @@ export function RecepcionForm({
                         label: s.nombre,
                         subLabel: s.codigo,
                         suggestedPrice: s.precioMayorista,
+                        configs: [],
                       })
                     }
                   />
@@ -634,6 +796,7 @@ export function RecepcionForm({
                         label: v.label,
                         subLabel: v.sku,
                         suggestedPrice: v.costo,
+                        configs: v.configs,
                       })
                     }
                   />
@@ -965,6 +1128,174 @@ export function RecepcionForm({
                   })}
                 </tbody>
               </table>
+            )}
+
+            {/* Acoplamiento batería+vehículo (S3) */}
+            {lines.some((l) => l.configs.length > 0) && (
+              <div className="px-4 py-3" style={{ borderTop: "1px solid var(--ghost-border)" }}>
+                <p
+                  style={{
+                    fontSize: "0.625rem",
+                    fontWeight: 500,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "var(--on-surf-var)",
+                    fontFamily: "var(--font-body)",
+                    marginBottom: "0.6rem",
+                  }}
+                >
+                  Acoplamiento batería por unidad
+                </p>
+                <div className="space-y-3">
+                  {lines
+                    .filter((l) => l.configs.length > 0)
+                    .map((line) => (
+                      <div
+                        key={line.lineId}
+                        style={{
+                          background: "var(--surf-low)",
+                          borderRadius: "var(--r-lg)",
+                          padding: "0.65rem 0.75rem",
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                            color: "var(--on-surf)",
+                            fontFamily: "var(--font-body)",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          {line.label}
+                        </p>
+                        <div className="space-y-2">
+                          {line.plan.map((unit, unitIdx) => {
+                            const cfg = line.configs.find(
+                              (c) => c.configurationId === unit.configurationId,
+                            );
+                            return (
+                              <div
+                                key={unitIdx}
+                                style={{
+                                  background: "var(--surf-lowest)",
+                                  borderRadius: "var(--r-md)",
+                                  padding: "0.55rem 0.65rem",
+                                }}
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span
+                                    style={{
+                                      fontSize: "0.65rem",
+                                      fontWeight: 600,
+                                      color: "var(--on-surf-var)",
+                                      fontFamily: "var(--font-body)",
+                                      letterSpacing: "0.04em",
+                                      minWidth: 52,
+                                    }}
+                                  >
+                                    Unidad {unitIdx + 1}
+                                  </span>
+                                  {line.configs.length > 1 ? (
+                                    <select
+                                      value={unit.configurationId}
+                                      onChange={(e) =>
+                                        dispatch({
+                                          type: "UPDATE_UNIT_CONFIG",
+                                          lineId: line.lineId,
+                                          unitIdx,
+                                          configurationId: e.target.value,
+                                        })
+                                      }
+                                      style={{ ...SELECT_STYLE, height: 32, flex: 1, fontSize: "0.75rem" }}
+                                    >
+                                      {line.configs.map((c) => (
+                                        <option key={c.configurationId} value={c.configurationId}>
+                                          {c.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span
+                                      style={{
+                                        fontSize: "0.7rem",
+                                        color: "var(--on-surf)",
+                                        fontFamily: "var(--font-body)",
+                                      }}
+                                    >
+                                      {cfg?.label ?? "—"}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 mb-2" style={{ fontSize: "0.7rem" }}>
+                                  <label className="flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      checked={unit.coupled}
+                                      onChange={() =>
+                                        dispatch({
+                                          type: "UPDATE_UNIT_COUPLED",
+                                          lineId: line.lineId,
+                                          unitIdx,
+                                          coupled: true,
+                                        })
+                                      }
+                                    />
+                                    <span style={{ fontFamily: "var(--font-body)" }}>Llega acoplada</span>
+                                  </label>
+                                  <label className="flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      checked={!unit.coupled}
+                                      onChange={() =>
+                                        dispatch({
+                                          type: "UPDATE_UNIT_COUPLED",
+                                          lineId: line.lineId,
+                                          unitIdx,
+                                          coupled: false,
+                                        })
+                                      }
+                                    />
+                                    <span style={{ fontFamily: "var(--font-body)" }}>Llega después</span>
+                                  </label>
+                                </div>
+
+                                {unit.coupled && cfg && (
+                                  <div className="space-y-1.5">
+                                    {unit.serials.map((serial, slotIdx) => (
+                                      <input
+                                        key={slotIdx}
+                                        type="text"
+                                        value={serial}
+                                        onChange={(e) =>
+                                          dispatch({
+                                            type: "UPDATE_UNIT_SERIAL",
+                                            lineId: line.lineId,
+                                            unitIdx,
+                                            slotIdx,
+                                            value: e.target.value,
+                                          })
+                                        }
+                                        placeholder={
+                                          cfg.quantity > 1
+                                            ? `Serial ${slotIdx + 1}/${cfg.quantity}`
+                                            : "Número de serie"
+                                        }
+                                        style={{ ...INPUT_STYLE, height: 32, fontSize: "0.75rem" }}
+                                        autoComplete="off"
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
             )}
           </ScrollArea>
 

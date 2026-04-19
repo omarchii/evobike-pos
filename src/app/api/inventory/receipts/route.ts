@@ -14,12 +14,19 @@ interface SessionUser {
 const FORMA_PAGO = ["CONTADO", "CREDITO", "TRANSFERENCIA"] as const;
 const ESTADO_PAGO = ["PAGADA", "PENDIENTE", "CREDITO"] as const;
 
+const assemblyUnitSchema = z.object({
+  batteryConfigurationId: z.string().min(1),
+  coupled: z.boolean(),
+  batterySerials: z.array(z.string().trim().min(1)).default([]),
+});
+
 const lineSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("variant"),
     productVariantId: z.string().min(1),
     quantity: z.number().int().positive(),
     precioUnitarioPagado: z.number().positive(),
+    assemblyPlan: z.array(assemblyUnitSchema).optional(),
   }),
   z.object({
     kind: z.literal("simple"),
@@ -204,7 +211,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Pre-cargar info de variantes para clasificar ensamblables (fuera de tx).
+  interface ConfigOption {
+    id: string;
+    batteryVariantId: string;
+    quantity: number;
+  }
   const assembleableMap = new Map<string, boolean>();
+  const variantConfigsMap = new Map<string, ConfigOption[]>();
   if (variantIds.length > 0) {
     const variantInfo = await prisma.productVariant.findMany({
       where: { id: { in: variantIds } },
@@ -212,7 +225,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         id: true,
         modelo_id: true,
         voltaje_id: true,
-        modelo: { select: { requiere_vin: true } },
+        modelo: { select: { esBateria: true } },
       },
     });
 
@@ -223,18 +236,144 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const vinRequired = variantInfo.filter((v) => v.modelo.requiere_vin);
-    if (vinRequired.length > 0) {
+    const vehicleVariants = variantInfo.filter((v) => !v.modelo.esBateria);
+    if (vehicleVariants.length > 0) {
       const configs = await prisma.batteryConfiguration.findMany({
         where: {
-          OR: vinRequired.map((v) => ({ modeloId: v.modelo_id, voltajeId: v.voltaje_id })),
+          OR: vehicleVariants.map((v) => ({
+            modeloId: v.modelo_id,
+            voltajeId: v.voltaje_id,
+          })),
         },
-        select: { modeloId: true, voltajeId: true },
+        select: {
+          id: true,
+          modeloId: true,
+          voltajeId: true,
+          batteryVariantId: true,
+          quantity: true,
+        },
       });
-      const keys = new Set(configs.map((c) => `${c.modeloId}:${c.voltajeId}`));
-      for (const v of vinRequired) {
-        assembleableMap.set(v.id, keys.has(`${v.modelo_id}:${v.voltaje_id}`));
+      const byKey = new Map<string, ConfigOption[]>();
+      for (const c of configs) {
+        const k = `${c.modeloId}:${c.voltajeId}`;
+        const arr = byKey.get(k) ?? [];
+        arr.push({
+          id: c.id,
+          batteryVariantId: c.batteryVariantId,
+          quantity: c.quantity,
+        });
+        byKey.set(k, arr);
       }
+      for (const v of vehicleVariants) {
+        const opts = byKey.get(`${v.modelo_id}:${v.voltaje_id}`) ?? [];
+        assembleableMap.set(v.id, opts.length > 0);
+        variantConfigsMap.set(v.id, opts);
+      }
+    }
+  }
+
+  // Validar assemblyPlan y recolectar seriales para chequeo de unicidad global.
+  const allSerials: string[] = [];
+  interface PlannedUnit {
+    configId: string;
+    batteryVariantId: string;
+    serials: string[] | null; // null => llega después
+  }
+  const plannedByVariant = new Map<string, PlannedUnit[]>();
+
+  for (const item of data.items) {
+    if (item.kind !== "variant") continue;
+    const configs = variantConfigsMap.get(item.productVariantId) ?? [];
+    const plan = item.assemblyPlan;
+    if (configs.length === 0) {
+      if (plan && plan.length > 0) {
+        return NextResponse.json(
+          { success: false, error: "Este producto no acepta configuración de batería" },
+          { status: 422 },
+        );
+      }
+      continue;
+    }
+    if (!plan) continue; // no se envió plan: ruta legacy (se crean AssemblyOrders sin config)
+
+    if (plan.length !== item.quantity) {
+      return NextResponse.json(
+        { success: false, error: "El plan de ensamble no coincide con la cantidad recibida" },
+        { status: 422 },
+      );
+    }
+
+    const units: PlannedUnit[] = [];
+    for (let i = 0; i < plan.length; i++) {
+      const unit = plan[i]!;
+      const cfg = configs.find((c) => c.id === unit.batteryConfigurationId);
+      if (!cfg) {
+        return NextResponse.json(
+          { success: false, error: `Configuración inválida en unidad ${i + 1}` },
+          { status: 422 },
+        );
+      }
+      if (unit.coupled) {
+        const normalized = unit.batterySerials
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        if (normalized.length !== cfg.quantity) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Unidad ${i + 1}: se requieren ${cfg.quantity} serial(es) para esta configuración`,
+            },
+            { status: 422 },
+          );
+        }
+        allSerials.push(...normalized);
+        units.push({
+          configId: cfg.id,
+          batteryVariantId: cfg.batteryVariantId,
+          serials: normalized,
+        });
+      } else {
+        units.push({
+          configId: cfg.id,
+          batteryVariantId: cfg.batteryVariantId,
+          serials: null,
+        });
+      }
+    }
+    plannedByVariant.set(item.productVariantId, units);
+  }
+
+  // Seriales únicos dentro del payload
+  if (allSerials.length > 0) {
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const s of allSerials) {
+      if (seen.has(s)) dupes.push(s);
+      seen.add(s);
+    }
+    if (dupes.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Seriales duplicados en el payload: ${dupes.slice(0, 5).join(", ")}`,
+        },
+        { status: 422 },
+      );
+    }
+
+    // Seriales únicos globalmente (DB)
+    const existing = await prisma.battery.findMany({
+      where: { serialNumber: { in: Array.from(seen) } },
+      select: { serialNumber: true },
+    });
+    if (existing.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Seriales ya registrados: ${existing.slice(0, 5).map((b) => b.serialNumber).join(", ")}`,
+        },
+        { status: 409 },
+      );
     }
   }
 
@@ -305,13 +444,71 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
 
           if (assembleableMap.get(item.productVariantId) === true) {
-            const ordersData = Array.from({ length: item.quantity }, () => ({
-              productVariantId: item.productVariantId,
-              branchId,
-              status: "PENDING" as const,
-              receiptReference: receipt.id,
-            }));
-            await tx.assemblyOrder.createMany({ data: ordersData });
+            const plannedUnits = plannedByVariant.get(item.productVariantId);
+            for (let u = 0; u < item.quantity; u++) {
+              const unit = plannedUnits?.[u];
+              const order = await tx.assemblyOrder.create({
+                data: {
+                  productVariantId: item.productVariantId,
+                  branchId,
+                  status: "PENDING",
+                  receiptReference: receipt.id,
+                  batteryConfigurationId: unit?.configId ?? null,
+                },
+                select: { id: true },
+              });
+
+              if (unit?.serials && unit.serials.length > 0) {
+                const lot = await tx.batteryLot.create({
+                  data: {
+                    productVariantId: unit.batteryVariantId,
+                    branchId,
+                    userId,
+                    supplier: data.proveedor,
+                    reference: data.folioFacturaProveedor ?? null,
+                    purchaseReceiptId: receipt.id,
+                  },
+                  select: { id: true },
+                });
+
+                await tx.battery.createMany({
+                  data: unit.serials.map((serialNumber) => ({
+                    serialNumber,
+                    lotId: lot.id,
+                    branchId,
+                    status: "IN_STOCK" as const,
+                    assemblyOrderId: order.id,
+                  })),
+                });
+
+                await tx.stock.upsert({
+                  where: {
+                    productVariantId_branchId: {
+                      productVariantId: unit.batteryVariantId,
+                      branchId,
+                    },
+                  },
+                  update: { quantity: { increment: unit.serials.length } },
+                  create: {
+                    productVariantId: unit.batteryVariantId,
+                    branchId,
+                    quantity: unit.serials.length,
+                  },
+                });
+
+                await tx.inventoryMovement.create({
+                  data: {
+                    productVariantId: unit.batteryVariantId,
+                    branchId,
+                    userId,
+                    quantity: unit.serials.length,
+                    type: "PURCHASE_RECEIPT",
+                    referenceId: receipt.id,
+                    purchaseReceiptId: receipt.id,
+                  },
+                });
+              }
+            }
           }
         } else {
           await tx.stock.upsert({

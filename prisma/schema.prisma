@@ -719,6 +719,7 @@ model BatteryConfiguration {
   modelo         Modelo         @relation(fields: [modeloId], references: [id])
   voltaje        Voltaje        @relation(fields: [voltajeId], references: [id])
   batteryVariant ProductVariant @relation("ConfiguredBattery", fields: [batteryVariantId], references: [id])
+  assemblyOrders AssemblyOrder[]
 
   @@unique([modeloId, voltajeId, batteryVariantId])
 }
@@ -745,40 +746,47 @@ model BatteryLot {
 }
 
 model Battery {
-  id           String        @id @default(cuid())
-  serialNumber String        @unique
-  lotId        String
-  branchId     String
-  status       BatteryStatus @default(IN_STOCK)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  serialNumber     String        @unique
+  lotId            String
+  branchId         String
+  status           BatteryStatus @default(IN_STOCK)
+  assemblyOrderId  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   lot                BatteryLot          @relation(fields: [lotId], references: [id])
   branch             Branch              @relation(fields: [branchId], references: [id])
+  assemblyOrder      AssemblyOrder?      @relation("ReservedBatteries", fields: [assemblyOrderId], references: [id])
   assignments        BatteryAssignment[]
   stockTransferItems StockTransferItem[]
+
+  @@index([assemblyOrderId])
 }
 
 model AssemblyOrder {
-  id                 String         @id @default(cuid())
-  customerBikeId     String?
-  productVariantId   String?
-  branchId           String
-  saleId             String?
-  status             AssemblyStatus @default(PENDING)
-  assembledByUserId  String?
-  completedAt        DateTime?
-  notes              String?
-  receiptReference   String?
-  voltageChangeLogId String?        @unique
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                     String         @id @default(cuid())
+  customerBikeId         String?
+  productVariantId       String?
+  batteryConfigurationId String?
+  branchId               String
+  saleId                 String?
+  status                 AssemblyStatus @default(PENDING)
+  assembledByUserId      String?
+  completedAt            DateTime?
+  notes                  String?
+  receiptReference       String?
+  voltageChangeLogId     String?        @unique
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
-  customerBike   CustomerBike?   @relation(fields: [customerBikeId], references: [id])
-  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
-  branch         Branch          @relation(fields: [branchId], references: [id])
-  sale           Sale?           @relation(fields: [saleId], references: [id])
-  assembledBy    User?           @relation("AssemblyOrders", fields: [assembledByUserId], references: [id])
+  customerBike         CustomerBike?         @relation(fields: [customerBikeId], references: [id])
+  productVariant       ProductVariant?       @relation(fields: [productVariantId], references: [id])
+  batteryConfiguration BatteryConfiguration? @relation(fields: [batteryConfigurationId], references: [id])
+  branch               Branch                @relation(fields: [branchId], references: [id])
+  sale                 Sale?                 @relation(fields: [saleId], references: [id])
+  assembledBy          User?                 @relation("AssemblyOrders", fields: [assembledByUserId], references: [id])
+  reservedBatteries    Battery[]             @relation("ReservedBatteries")
 }
 
 model BatteryAssignment {
