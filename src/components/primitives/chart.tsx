@@ -37,17 +37,17 @@ export function buildChartConfig(series: SeriesSpec[]): ChartConfig {
 
 // Recharts tick/line/grid props use SVG attributes, not CSS properties.
 // These types are compatible with Recharts' SVG element props.
-export const CHART_AXIS_TICK_STYLE = {
+export const CHART_AXIS_TICK_PROPS = {
   fontFamily: "var(--font-body)",
   fontSize: 12,
   fill: "var(--on-surf-var)",
 } as const satisfies Record<string, string | number>;
 
-export const CHART_AXIS_LINE_STYLE = {
+export const CHART_AXIS_LINE_PROPS = {
   stroke: "var(--ghost-border)",
 } as const satisfies Record<string, string | number>;
 
-export const CHART_GRID_STYLE = {
+export const CHART_GRID_PROPS = {
   stroke: "var(--ghost-border)",
   strokeDasharray: "3 3",
 } as const satisfies Record<string, string | number>;

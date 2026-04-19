@@ -575,8 +575,8 @@ import {
   ChartLegend,
   ChartLegendContent,
   buildChartConfig,
-  CHART_AXIS_TICK_STYLE,
-  CHART_GRID_STYLE,
+  CHART_AXIS_TICK_PROPS,
+  CHART_GRID_PROPS,
 } from "@/components/primitives/chart";
 
 const config = buildChartConfig([
@@ -587,9 +587,9 @@ const config = buildChartConfig([
 
 <ChartContainer config={config} className="h-72 w-full">
   <BarChart data={data}>
-    <CartesianGrid stroke={CHART_GRID_STYLE.stroke} strokeDasharray={CHART_GRID_STYLE.strokeDasharray} vertical={false} />
-    <XAxis dataKey="fecha" tick={CHART_AXIS_TICK_STYLE} />
-    <YAxis tick={CHART_AXIS_TICK_STYLE} />
+    <CartesianGrid stroke={CHART_GRID_PROPS.stroke} strokeDasharray={CHART_GRID_PROPS.strokeDasharray} vertical={false} />
+    <XAxis dataKey="fecha" tick={CHART_AXIS_TICK_PROPS} />
+    <YAxis tick={CHART_AXIS_TICK_PROPS} />
     <ChartTooltip content={<ChartTooltipContentGlass />} />
     <ChartLegend content={<ChartLegendContent />} />
     <Bar dataKey="contado"   fill="var(--color-contado)"   stackId="a" />

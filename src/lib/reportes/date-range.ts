@@ -70,6 +70,89 @@ export function parseDateRange(params: {
   };
 }
 
+// ── Helpers internos ────────────────────────────────────────────────────────
+
+function _startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+
+function _endOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+
+function _subDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() - n);
+  return r;
+}
+
+function _subMonths(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setMonth(r.getMonth() - n);
+  return r;
+}
+
+function _subYears(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setFullYear(r.getFullYear() - n);
+  return r;
+}
+
+function _diffCalendarDays(later: Date, earlier: Date): number {
+  const aDay = Date.UTC(later.getFullYear(), later.getMonth(), later.getDate());
+  const bDay = Date.UTC(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+  return Math.round((aDay - bDay) / 86400000);
+}
+
+// ── Rango comparable ────────────────────────────────────────────────────────
+
+export type CompareMode = "prev-period" | "prev-month" | "prev-year";
+
+/**
+ * Dado un rango, calcula el rango comparable anterior según el modo.
+ * - prev-period (default): mismo largo de días inmediatamente previos.
+ *   1-15 abril → 17-31 marzo.
+ * - prev-month: mismo rango calendario del mes previo.
+ *   1-15 abril → 1-15 marzo.
+ * - prev-year: mismo rango calendario del año previo (YoY).
+ *   1-15 abril 2026 → 1-15 abril 2025.
+ *
+ * Respeta timezone America/Merida. Normaliza a startOfDay/endOfDay.
+ */
+export function previousComparableRange(
+  range: { from: Date; to: Date },
+  mode: CompareMode = "prev-period",
+): { from: Date; to: Date } {
+  const from = _startOfDay(range.from);
+  const to = _endOfDay(range.to);
+
+  switch (mode) {
+    case "prev-period": {
+      const days = _diffCalendarDays(to, from) + 1;
+      const prevTo = _endOfDay(_subDays(from, 1));
+      const prevFrom = _startOfDay(_subDays(prevTo, days - 1));
+      return { from: prevFrom, to: prevTo };
+    }
+    case "prev-month":
+      return {
+        from: _startOfDay(_subMonths(from, 1)),
+        to: _endOfDay(_subMonths(to, 1)),
+      };
+    case "prev-year":
+      return {
+        from: _startOfDay(_subYears(from, 1)),
+        to: _endOfDay(_subYears(to, 1)),
+      };
+  }
+}
+
+export function parseCompareMode(raw: string | null | undefined): CompareMode {
+  if (raw === "prev-month" || raw === "prev-year") return raw;
+  return "prev-period";
+}
+
+// ── toDateString ─────────────────────────────────────────────────────────────
+
 /**
  * Convierte una `Date` a string "YYYY-MM-DD" en zona local.
  *
