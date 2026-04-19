@@ -117,21 +117,24 @@ model Branch {
 
 // === CATALOG & INVENTORY ===
 enum ModeloCategoria {
-  BICICLETA
+  BICICLETA // deprecated — backfilled a BASE/PLUS; se mantiene para no romper enum
   TRICICLO
   SCOOTER
   JUGUETE
   CARGA
+  CARGA_PESADA
+  BASE
+  PLUS
 }
 
 model Modelo {
   id           String          @id @default(uuid())
   nombre       String          @unique
   descripcion  String?
-  requiere_vin Boolean         @default(true)
+  requiere_vin Boolean          @default(true)
   imageUrl     String?
-  categoria    ModeloCategoria @default(BICICLETA)
-  esBateria    Boolean         @default(false)
+  categoria    ModeloCategoria? // null = Modelo de batería. Vehículos: una de las 7 categorías.
+  esBateria    Boolean          @default(false)
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -164,6 +167,17 @@ model Voltaje {
   batteryConfigurations BatteryConfiguration[]
 }
 
+// Eje de capacidad (Ah) — solo relevante para variantes de batería.
+// Variantes de vehículo tienen capacidadId = null.
+model Capacidad {
+  id       String  @id @default(uuid())
+  valorAh  Float   @unique
+  nombre   String // p. ej. "20Ah", "20.8Ah"
+  isActive Boolean @default(true)
+
+  configuraciones ProductVariant[]
+}
+
 model ModeloColor {
   modelo_id String
   color_id  String
@@ -178,6 +192,7 @@ model ProductVariant {
   modelo_id                    String
   color_id                     String
   voltaje_id                   String
+  capacidad_id                 String? // null en variantes de vehículo; set en variantes de batería
   sku                          String   @unique
   precioPublico                Decimal  @map("precio") @db.Decimal(10, 2)
   costo                        Decimal  @db.Decimal(10, 2)
@@ -188,9 +203,10 @@ model ProductVariant {
   imageUrl                     String?
   isActive                     Boolean  @default(true)
 
-  modelo  Modelo  @relation(fields: [modelo_id], references: [id])
-  color   Color   @relation(fields: [color_id], references: [id])
-  voltaje Voltaje @relation(fields: [voltaje_id], references: [id])
+  modelo    Modelo     @relation(fields: [modelo_id], references: [id])
+  color     Color      @relation(fields: [color_id], references: [id])
+  voltaje   Voltaje    @relation(fields: [voltaje_id], references: [id])
+  capacidad Capacidad? @relation(fields: [capacidad_id], references: [id])
 
   stocks             Stock[]
   saleItems          SaleItem[]
@@ -204,7 +220,8 @@ model ProductVariant {
   quotationItems     QuotationItem[]
   stockTransferItems StockTransferItem[]
 
-  @@unique([modelo_id, color_id, voltaje_id])
+  // Postgres trata NULL como distinto: variantes de vehículo (capacidad_id=null) coexisten con baterías (capacidad_id set).
+  @@unique([modelo_id, color_id, voltaje_id, capacidad_id])
   @@map("ModeloConfiguracion")
 }
 

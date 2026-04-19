@@ -159,7 +159,7 @@ export function TabModelos({
                   </td>
                   <td className="px-5 py-3 text-[var(--on-surf)]">{m.nombre}</td>
                   <td className="px-5 py-3 text-[var(--on-surf-var)]">
-                    {CATEGORIA_LABELS[m.categoria] ?? m.categoria}
+                    {m.categoria ? (CATEGORIA_LABELS[m.categoria] ?? m.categoria) : "—"}
                   </td>
                   <td className="px-5 py-3 text-[var(--on-surf-var)]">
                     {m.colorIds.length}

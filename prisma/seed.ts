@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, SimpleProductCategoria, MovementType } from '@prisma/client';
+import { PrismaClient, Prisma, SimpleProductCategoria, MovementType, ModeloCategoria } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
@@ -203,6 +203,13 @@ async function main() {
   const coloresMap = new Map<string, string>();
   const voltajesMap = new Map<string, string>();
 
+  // Rename legacy: ECLIPSE → ECLIPCE (grafía canónica del catálogo Evobike).
+  // Idempotente: no-op si ya se renombró.
+  await prisma.modelo.updateMany({
+    where: { nombre: 'ECLIPSE' },
+    data: { nombre: 'ECLIPCE' },
+  });
+
   // 4a. Modelos
   const modelosCSV = parseCSV(path.join(dataDir, 'modelos.csv'));
   for (const row of modelosCSV) {
@@ -332,7 +339,12 @@ async function main() {
 
   console.log(`✅ Variantes de producto cargadas: ${configsCreated}`);
   // ── 5. Baterías y Configuraciones ───────────────────────────────────────────
-  console.log('\n⚡ Configurando trazabilidad de baterías...');
+  // Catálogo canónico Evobike (abril 2026, PDFs de referencia):
+  //   - 12 capacidades distintas (Ah)
+  //   - 18 configuraciones V×Ah
+  //   - 1 modelo "BATERIA EVOBIKE" con 18 ProductVariants
+  //   - ~87 filas BatteryConfiguration (modelo vehículo × voltaje × variante opción)
+  console.log('\n⚡ Cargando catálogo canónico de baterías...');
 
   const genericColor = await prisma.color.upsert({
     where: { nombre: 'N/A' },
@@ -340,126 +352,312 @@ async function main() {
     create: { nombre: 'N/A', isGeneric: true },
   });
 
-  const bateriaModelo = await prisma.modelo.upsert({
+  // 5a. Capacidades
+  const CAPACIDADES_AH = [2.5, 7.8, 8, 10, 12, 13, 15, 20, 20.8, 23.4, 45, 52];
+  const capacidadIdByAh = new Map<number, string>();
+  for (const ah of CAPACIDADES_AH) {
+    const nombre = `${ah}Ah`;
+    const cap = await prisma.capacidad.upsert({
+      where: { valorAh: ah },
+      update: { nombre, isActive: true },
+      create: { valorAh: ah, nombre },
+    });
+    capacidadIdByAh.set(ah, cap.id);
+  }
+
+  // 5b. Voltajes necesarios para baterías (24, 36, 48, 60, 72). El CSV ya los tiene;
+  // este upsert garantiza que también estén si alguien corre sin regenerar CSV.
+  const voltageValuesNeeded = [24, 36, 48, 60, 72];
+  const voltajeIdByValue = new Map<number, string>();
+  for (const v of voltageValuesNeeded) {
+    const rec = await prisma.voltaje.upsert({
+      where: { valor: v },
+      update: { label: `${v} V` },
+      create: { valor: v, label: `${v} V` },
+    });
+    voltajeIdByValue.set(v, rec.id);
+  }
+
+  // 5c. Soft-delete del modelo+variante legacy "Batería" / "BAT-12V-GEN".
+  // Se preserva el registro (no se borra) para no romper BatteryLot/Battery históricos.
+  await prisma.productVariant.updateMany({
+    where: { sku: 'BAT-12V-GEN' },
+    data: { isActive: false },
+  });
+  await prisma.modelo.updateMany({
     where: { nombre: 'Batería' },
-    update: { requiere_vin: false },
-    create: { nombre: 'Batería', descripcion: 'Batería genérica', requiere_vin: false },
+    data: { isActive: false, categoria: null, esBateria: true },
   });
 
-  const voltaje12V = await prisma.voltaje.upsert({
-    where: { valor: 12 },
-    update: { label: '12V' },
-    create: { valor: 12, label: '12V' },
-  });
-
-  const batteryVariantSku = 'BAT-12V-GEN';
-  const batteryVariant = await prisma.productVariant.upsert({
-    where: { sku: batteryVariantSku },
-    update: {},
+  // 5d. Modelo único "BATERIA EVOBIKE"
+  const bateriaModelo = await prisma.modelo.upsert({
+    where: { nombre: 'BATERIA EVOBIKE' },
+    update: {
+      esBateria: true,
+      requiere_vin: false,
+      categoria: null,
+      isActive: true,
+    },
     create: {
-      sku: batteryVariantSku,
-      precioPublico: 1000,
-      costo: 800,
-      modelo_id: bateriaModelo.id,
-      color_id: genericColor.id,
-      voltaje_id: voltaje12V.id,
+      nombre: 'BATERIA EVOBIKE',
+      descripcion: 'Batería (catálogo canónico Evobike)',
+      requiere_vin: false,
+      esBateria: true,
+      categoria: null,
     },
   });
 
-  const fixedConfigs: Array<{ modeloName: string; voltajes: Record<number, number> }> = [
-    { modeloName: 'AGUILA', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'AGUILA PRO', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'AURORA', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'BEETLE', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'COLORITA', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'ECLIPSE', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'FAMILY', voltajes: { 48: 4, 60: 5, 72: 6 } },
-    { modeloName: 'FAMILY Q', voltajes: { 48: 4, 60: 5, 72: 6 } },
-    { modeloName: 'FAMILY Q PLUS', voltajes: { 48: 4, 60: 5, 72: 6 } },
-    { modeloName: 'GALAXY', voltajes: { 48: 4, 60: 5, 72: 6 } },
-    { modeloName: 'GALAXY PLUS', voltajes: { 48: 4, 60: 5, 72: 6 } },
-    { modeloName: 'GOLF', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'GOLF PLUS', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'JAGUAR', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'LEO', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'LUMO', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'MOPED', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'POLAR', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'PRIMAVERA', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'RAYO', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'RAYO PRO', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'REINA', voltajes: { 60: 5, 72: 6 } },
-    { modeloName: 'SOL', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'TAURO', voltajes: { 48: 4, 60: 5 } },
-    { modeloName: 'ZEUS', voltajes: { 60: 5, 72: 6 } },
+  // 5e. 18 ProductVariants V×Ah. SKU: BAT-{V}V-{Ah}AH (punto → 'P' en SKU).
+  const BATTERY_CONFIGS: Array<{ v: number; ah: number }> = [
+    { v: 24, ah: 2.5 },
+    { v: 24, ah: 20 },
+    { v: 36, ah: 7.8 },
+    { v: 36, ah: 8 },
+    { v: 36, ah: 10 },
+    { v: 36, ah: 12 },
+    { v: 48, ah: 12 },
+    { v: 48, ah: 13 },
+    { v: 48, ah: 15 },
+    { v: 48, ah: 20 },
+    { v: 48, ah: 20.8 },
+    { v: 48, ah: 23.4 },
+    { v: 60, ah: 20 },
+    { v: 60, ah: 45 },
+    { v: 60, ah: 52 },
+    { v: 72, ah: 20 },
+    { v: 72, ah: 45 },
+    { v: 72, ah: 52 },
   ];
 
-  const singleBatteryModels = [
-    'SCOOTER M1', 'SCOOTER M2', 'SCOOTER M3', 'SCOOTER M4', 'SCOOTER M5', 'SCOOTER S6',
-    'SCOOTER EVOKID', 'RICOCHET', 'PHYTON', 'FOXY', 'CROSS KID',
-  ];
-
-  for (const config of fixedConfigs) {
-    const modelo = await prisma.modelo.findUnique({ where: { nombre: config.modeloName } });
-    if (!modelo) {
-      console.warn(`  ⚠️ Modelo "${config.modeloName}" no encontrado en DB. Se omite.`);
-      continue;
-    }
-    for (const [v, qty] of Object.entries(config.voltajes)) {
-      const volInt = parseInt(v);
-      const voltaje = await prisma.voltaje.findUnique({ where: { valor: volInt } });
-      if (!voltaje) continue;
-      
-      await prisma.batteryConfiguration.upsert({
-        where: {
-          modeloId_voltajeId_batteryVariantId: {
-            modeloId: modelo.id,
-            voltajeId: voltaje.id,
-            batteryVariantId: batteryVariant.id,
-          },
-        },
-        update: { quantity: qty },
-        create: {
-          modeloId: modelo.id,
-          voltajeId: voltaje.id,
-          batteryVariantId: batteryVariant.id,
-          quantity: qty,
-        },
-      });
-    }
-  }
-
-  for (const modelName of singleBatteryModels) {
-    const modelo = await prisma.modelo.findUnique({ where: { nombre: modelName } });
-    if (!modelo) {
-      console.warn(`  ⚠️ Modelo "${modelName}" no encontrado en DB. Se omite.`);
-      continue;
-    }
-    const variants = await prisma.productVariant.findMany({
-      where: { modelo_id: modelo.id },
-      select: { voltaje_id: true },
+  const batteryVariantIdByVAh = new Map<string, string>();
+  for (const { v, ah } of BATTERY_CONFIGS) {
+    const sku = `BAT-${v}V-${String(ah).replace('.', 'P')}AH`;
+    const variant = await prisma.productVariant.upsert({
+      where: { sku },
+      update: { isActive: true, capacidad_id: capacidadIdByAh.get(ah)! },
+      create: {
+        sku,
+        precioPublico: 0,
+        costo: 0,
+        modelo_id: bateriaModelo.id,
+        color_id: genericColor.id,
+        voltaje_id: voltajeIdByValue.get(v)!,
+        capacidad_id: capacidadIdByAh.get(ah)!,
+      },
     });
-    const uniqueVoltages = Array.from(new Set(variants.map(v => v.voltaje_id)));
-    for (const vid of uniqueVoltages) {
-      await prisma.batteryConfiguration.upsert({
-        where: {
-          modeloId_voltajeId_batteryVariantId: {
-            modeloId: modelo.id,
-            voltajeId: vid,
-            batteryVariantId: batteryVariant.id,
-          },
-        },
-        update: { quantity: 1 },
-        create: {
-          modeloId: modelo.id,
-          voltajeId: vid,
-          batteryVariantId: batteryVariant.id,
-          quantity: 1,
-        },
-      });
+    batteryVariantIdByVAh.set(`${v}-${ah}`, variant.id);
+  }
+  console.log(`  ✅ ${CAPACIDADES_AH.length} capacidades, ${BATTERY_CONFIGS.length} variantes de batería.`);
+
+  // 5f. Categorías por modelo (PDF "Configuraciones de Batería por Modelo y Categoría").
+  const MODELO_CATEGORIAS: Record<string, ModeloCategoria> = {
+    // JUGUETE
+    'SCOOTER EVOKID': 'JUGUETE',
+    FOXY: 'JUGUETE',
+    'CROSS KID': 'JUGUETE',
+    RICOCHET: 'JUGUETE',
+    PHYTON: 'JUGUETE',
+    // SCOOTER
+    'SCOOTER M1': 'SCOOTER',
+    'SCOOTER M2': 'SCOOTER',
+    'SCOOTER M3': 'SCOOTER',
+    'SCOOTER M4': 'SCOOTER',
+    'SCOOTER M5': 'SCOOTER',
+    'SCOOTER S6': 'SCOOTER',
+    'SCOOTER S7': 'SCOOTER',
+    // BASE
+    NUBE: 'BASE',
+    CIELO: 'BASE',
+    VMPS5: 'BASE',
+    VMPS6: 'BASE',
+    'SOL PRO': 'BASE',
+    SOL: 'BASE',
+    PRIMAVERA: 'BASE',
+    GALAXY: 'BASE',
+    MOPED: 'BASE',
+    COLORITA: 'BASE',
+    LUMO: 'BASE',
+    // PLUS
+    TIGRE: 'PLUS',
+    RAYO: 'PLUS',
+    'RAYO PRO': 'PLUS',
+    'GALAXY PLUS': 'PLUS',
+    AGUILA: 'PLUS',
+    'AGUILA PRO': 'PLUS',
+    ECLIPCE: 'PLUS',
+    AURORA: 'PLUS',
+    'RYDER PRO': 'PLUS',
+    REINA: 'PLUS',
+    JAGUAR: 'PLUS',
+    // CARGA
+    URBEX: 'CARGA',
+    TAURO: 'CARGA',
+    LEO: 'CARGA',
+    POLAR: 'CARGA',
+    ZEUS: 'CARGA',
+    // CARGA_PESADA
+    CARGO: 'CARGA_PESADA',
+    'EVOTANK 160': 'CARGA_PESADA',
+    'EVOTANK 180': 'CARGA_PESADA',
+    'EVOTANK 160 HIBRIDO': 'CARGA_PESADA',
+    'EVOTANK 180 HIBRIDO': 'CARGA_PESADA',
+    // TRICICLO
+    'FAMILY Q': 'TRICICLO',
+    'FAMILY Q PLUS': 'TRICICLO',
+    FAMILY: 'TRICICLO',
+    BEETLE: 'TRICICLO',
+    GOLF: 'TRICICLO',
+    'GOLF PLUS': 'TRICICLO',
+    SOLARA: 'TRICICLO',
+  };
+
+  let categorizados = 0;
+  let categoriaNotFound = 0;
+  for (const [nombre, categoria] of Object.entries(MODELO_CATEGORIAS)) {
+    const result = await prisma.modelo.updateMany({
+      where: { nombre },
+      data: { categoria },
+    });
+    if (result.count === 0) {
+      console.warn(`  ⚠️  Modelo "${nombre}" no encontrado; categoría no aplicada.`);
+      categoriaNotFound++;
+    } else {
+      categorizados += result.count;
     }
   }
-  console.log('✅ Configuraciones de trazabilidad de baterías aplicadas.');
+  console.log(`  ✅ Categorías aplicadas: ${categorizados} modelos (${categoriaNotFound} faltantes).`);
+
+  // 5g. BatteryConfiguration: reset + recrear desde el PDF.
+  // Cada fila representa una opción válida. Modelos con múltiples opciones a mismo V
+  // (p. ej. S7 48V con 13Ah y 23.4Ah) generan múltiples filas. `quantity` = nº de
+  // baterías físicas que usa el vehículo por voltaje (casi siempre 1).
+  type BatteryRow = { modelo: string; v: number; ah: number; qty: number };
+
+  const QTY_FROM_VOLTAGE: Record<number, number> = { 24: 1, 36: 1, 48: 4, 60: 5, 72: 6 };
+  const qty = (v: number) => QTY_FROM_VOLTAGE[v] ?? 1;
+
+  const BATTERY_ROWS: BatteryRow[] = [
+    // JUGUETE
+    { modelo: 'SCOOTER EVOKID', v: 24, ah: 2.5, qty: qty(24) },
+    { modelo: 'FOXY', v: 24, ah: 20, qty: qty(24) },
+    { modelo: 'CROSS KID', v: 24, ah: 20, qty: qty(24) },
+    { modelo: 'RICOCHET', v: 36, ah: 12, qty: qty(36) },
+    { modelo: 'PHYTON', v: 36, ah: 12, qty: qty(36) },
+    // SCOOTER
+    { modelo: 'SCOOTER M3', v: 36, ah: 7.8, qty: qty(36) },
+    { modelo: 'SCOOTER M5', v: 36, ah: 8, qty: qty(36) },
+    { modelo: 'SCOOTER M4', v: 36, ah: 10, qty: qty(36) },
+    { modelo: 'SCOOTER M1', v: 48, ah: 13, qty: qty(48) },
+    { modelo: 'SCOOTER S7', v: 48, ah: 13, qty: qty(48) },
+    { modelo: 'SCOOTER S7', v: 48, ah: 23.4, qty: qty(48) },
+    { modelo: 'SCOOTER M2', v: 48, ah: 15, qty: qty(48) },
+    { modelo: 'SCOOTER S6', v: 48, ah: 20.8, qty: qty(48) },
+    // 48V 12Ah (Base)
+    { modelo: 'NUBE', v: 48, ah: 12, qty: qty(48) },
+    { modelo: 'CIELO', v: 48, ah: 12, qty: qty(48) },
+    { modelo: 'VMPS5', v: 48, ah: 12, qty: qty(48) },
+    { modelo: 'VMPS6', v: 48, ah: 12, qty: qty(48) },
+    // 48V 20Ah
+    { modelo: 'SOL PRO', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'VMPS6', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'SOL', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'PRIMAVERA', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'GALAXY', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'MOPED', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'COLORITA', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'LUMO', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'TAURO', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'FAMILY Q', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'BEETLE', v: 48, ah: 20, qty: qty(48) },
+    // 60V 20Ah
+    { modelo: 'TIGRE', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'URBEX', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'CARGO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'SOL', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'PRIMAVERA', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'GALAXY', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'MOPED', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'COLORITA', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'LUMO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'TAURO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'FAMILY Q', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'BEETLE', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'RAYO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'RAYO PRO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'GALAXY PLUS', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'AGUILA PRO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'ECLIPCE', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'AURORA', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'RYDER PRO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'REINA', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'JAGUAR', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'LEO', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'POLAR', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'ZEUS', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'FAMILY Q PLUS', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'GOLF', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'GOLF PLUS', v: 60, ah: 20, qty: qty(60) },
+    // 60V 45Ah / 52Ah (Evotank opción)
+    { modelo: 'EVOTANK 160', v: 60, ah: 45, qty: qty(60) },
+    { modelo: 'EVOTANK 180', v: 60, ah: 45, qty: qty(60) },
+    { modelo: 'EVOTANK 160 HIBRIDO', v: 60, ah: 45, qty: qty(60) },
+    { modelo: 'EVOTANK 180 HIBRIDO', v: 60, ah: 45, qty: qty(60) },
+    { modelo: 'EVOTANK 160', v: 60, ah: 52, qty: qty(60) },
+    { modelo: 'EVOTANK 180', v: 60, ah: 52, qty: qty(60) },
+    { modelo: 'EVOTANK 160 HIBRIDO', v: 60, ah: 52, qty: qty(60) },
+    { modelo: 'EVOTANK 180 HIBRIDO', v: 60, ah: 52, qty: qty(60) },
+    // 72V 20Ah
+    { modelo: 'SOLARA', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'RAYO', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'RAYO PRO', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'GALAXY PLUS', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'AGUILA PRO', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'ECLIPCE', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'AURORA', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'RYDER PRO', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'REINA', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'JAGUAR', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'LEO', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'POLAR', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'ZEUS', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'FAMILY Q PLUS', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'GOLF', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'GOLF PLUS', v: 72, ah: 20, qty: qty(72) },
+    // 72V 45Ah / 52Ah (Evotank opción)
+    { modelo: 'EVOTANK 160', v: 72, ah: 45, qty: qty(72) },
+    { modelo: 'EVOTANK 180', v: 72, ah: 45, qty: qty(72) },
+    { modelo: 'EVOTANK 160 HIBRIDO', v: 72, ah: 45, qty: qty(72) },
+    { modelo: 'EVOTANK 180 HIBRIDO', v: 72, ah: 45, qty: qty(72) },
+    { modelo: 'EVOTANK 160', v: 72, ah: 52, qty: qty(72) },
+    { modelo: 'EVOTANK 180', v: 72, ah: 52, qty: qty(72) },
+    { modelo: 'EVOTANK 160 HIBRIDO', v: 72, ah: 52, qty: qty(72) },
+    { modelo: 'EVOTANK 180 HIBRIDO', v: 72, ah: 52, qty: qty(72) },
+  ];
+
+  await prisma.batteryConfiguration.deleteMany({});
+
+  let bcCreated = 0;
+  let bcSkipped = 0;
+  for (const row of BATTERY_ROWS) {
+    const modelo = await prisma.modelo.findUnique({ where: { nombre: row.modelo } });
+    const variantId = batteryVariantIdByVAh.get(`${row.v}-${row.ah}`);
+    const voltajeId = voltajeIdByValue.get(row.v);
+    if (!modelo || !variantId || !voltajeId) {
+      console.warn(`  ⚠️  Saltando ${row.modelo} ${row.v}V/${row.ah}Ah — dependencia faltante.`);
+      bcSkipped++;
+      continue;
+    }
+    await prisma.batteryConfiguration.create({
+      data: {
+        modeloId: modelo.id,
+        voltajeId,
+        batteryVariantId: variantId,
+        quantity: row.qty,
+      },
+    });
+    bcCreated++;
+  }
+  console.log(`  ✅ BatteryConfiguration: ${bcCreated} filas creadas${bcSkipped ? ` (${bcSkipped} omitidas)` : ''}.`);
 
   // ── 6. SimpleProducts (accesorios, cargadores, baterías standalone, refacciones) ──
   console.log('\n📦 Cargando SimpleProducts desde CSV...');

@@ -51,7 +51,15 @@ interface VariantInfo {
   voltajeLabel: string;
 }
 
-type ModeloCategoria = "BICICLETA" | "TRICICLO" | "SCOOTER" | "JUGUETE" | "CARGA";
+type ModeloCategoria =
+  | "BICICLETA"
+  | "TRICICLO"
+  | "SCOOTER"
+  | "JUGUETE"
+  | "CARGA"
+  | "CARGA_PESADA"
+  | "BASE"
+  | "PLUS";
 
 type SimpleCategoria = "ACCESORIO" | "CARGADOR" | "REFACCION" | "BATERIA_STANDALONE";
 
@@ -80,7 +88,7 @@ interface ModeloData {
   descripcion: string | null;
   imageUrl: string | null;
   requiere_vin: boolean;
-  categoria: ModeloCategoria;
+  categoria: ModeloCategoria | null;
   variants: VariantInfo[];
   minPrice: number;
   totalStockInBranch: number;

@@ -101,13 +101,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           400,
         );
       }
-      const dupTriple = await tx.productVariant.findUnique({
+      // Variantes de vehículo siempre tienen capacidad_id = null. El unique incluye
+      // capacidad_id, y Postgres trata NULL como distinto en UNIQUE, así que no podemos
+      // usar findUnique con null; usamos findFirst con el triple + capacidad_id: null.
+      const dupTriple = await tx.productVariant.findFirst({
         where: {
-          modelo_id_color_id_voltaje_id: {
-            modelo_id: d.modelo_id,
-            color_id: d.color_id,
-            voltaje_id: d.voltaje_id,
-          },
+          modelo_id: d.modelo_id,
+          color_id: d.color_id,
+          voltaje_id: d.voltaje_id,
+          capacidad_id: null,
         },
       });
       if (dupTriple) {

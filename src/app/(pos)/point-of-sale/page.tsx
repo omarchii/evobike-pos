@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import type { ModeloCategoria } from "@prisma/client";
 import PosTerminal from "./pos-terminal";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function PointOfSalePage() {
       descripcion: string | null;
       imageUrl: string | null;
       requiere_vin: boolean;
-      categoria: "BICICLETA" | "TRICICLO" | "SCOOTER" | "JUGUETE" | "CARGA";
+      categoria: ModeloCategoria | null;
       variants: {
         id: string;
         sku: string;

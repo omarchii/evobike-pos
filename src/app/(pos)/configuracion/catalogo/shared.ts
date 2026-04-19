@@ -40,11 +40,14 @@ export function modalStyle(): React.CSSProperties {
 }
 
 export const CATEGORIA_LABELS: Record<string, string> = {
-  BICICLETA: "Bicicleta",
+  BICICLETA: "Bicicleta", // deprecated — se conserva para retrocompatibilidad
   TRICICLO: "Triciclo",
   SCOOTER: "Scooter",
   JUGUETE: "Juguete",
   CARGA: "Carga",
+  CARGA_PESADA: "Carga pesada",
+  BASE: "Base",
+  PLUS: "Plus",
 };
 
 export const SIMPLE_CATEGORIA_LABELS: Record<string, string> = {
@@ -59,7 +62,7 @@ export interface ModeloRow {
   nombre: string;
   descripcion: string | null;
   requiere_vin: boolean;
-  categoria: string;
+  categoria: string | null; // null = Modelo de batería
   esBateria: boolean;
   isActive: boolean;
   imageUrl: string | null;

@@ -130,13 +130,15 @@ export async function PATCH(
           }
         }
 
-        const triple = {
-          modelo_id: d.modelo_id ?? existing.modelo_id,
-          color_id: d.color_id ?? existing.color_id,
-          voltaje_id: d.voltaje_id ?? existing.voltaje_id,
-        };
-        const dup = await tx.productVariant.findUnique({
-          where: { modelo_id_color_id_voltaje_id: triple },
+        // Endpoint CRUD solo maneja variantes de vehículo (capacidad_id = null).
+        // findFirst porque Postgres trata NULL como distinto en UNIQUE.
+        const dup = await tx.productVariant.findFirst({
+          where: {
+            modelo_id: d.modelo_id ?? existing.modelo_id,
+            color_id: d.color_id ?? existing.color_id,
+            voltaje_id: d.voltaje_id ?? existing.voltaje_id,
+            capacidad_id: null,
+          },
         });
         if (dup && dup.id !== id) {
           throw new ApiError(
