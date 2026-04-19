@@ -516,6 +516,8 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 ## FASE P10 — Reportes expandidos ✅ (Completo — 2026-04-17)
 **Modelo: Sonnet | Dependencias: P4 para rentabilidad**
 
+> **Rediseño v1 (2026-04-18):** Decisiones cerradas → [`docs/reportes-redesign/REPORTES_V1_DECISIONS.md`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md)
+
 ### Infraestructura compartida P10 ✅ (Lote 1 — 2026-04-16)
 
 `src/lib/reportes/` — 6 módulos:
