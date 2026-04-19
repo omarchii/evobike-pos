@@ -300,6 +300,9 @@ async function main() {
         update: {
           precioPublico: parseFloat(row.precioPublico) || 0,
           costo: parseFloat(row.costo) || 0,
+          modelo_id: modeloId,
+          color_id: colorId,
+          voltaje_id: voltajeId,
         },
         create: {
           sku: row.sku,
@@ -568,6 +571,7 @@ async function main() {
     { modelo: 'LUMO', v: 48, ah: 20, qty: qty(48) },
     { modelo: 'TAURO', v: 48, ah: 20, qty: qty(48) },
     { modelo: 'FAMILY Q', v: 48, ah: 20, qty: qty(48) },
+    { modelo: 'FAMILY', v: 48, ah: 20, qty: qty(48) },
     { modelo: 'BEETLE', v: 48, ah: 20, qty: qty(48) },
     // 60V 20Ah
     { modelo: 'TIGRE', v: 60, ah: 20, qty: qty(60) },
@@ -581,10 +585,12 @@ async function main() {
     { modelo: 'LUMO', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'TAURO', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'FAMILY Q', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'FAMILY', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'BEETLE', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'RAYO', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'RAYO PRO', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'GALAXY PLUS', v: 60, ah: 20, qty: qty(60) },
+    { modelo: 'AGUILA', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'AGUILA PRO', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'ECLIPCE', v: 60, ah: 20, qty: qty(60) },
     { modelo: 'AURORA', v: 60, ah: 20, qty: qty(60) },
@@ -611,6 +617,7 @@ async function main() {
     { modelo: 'RAYO', v: 72, ah: 20, qty: qty(72) },
     { modelo: 'RAYO PRO', v: 72, ah: 20, qty: qty(72) },
     { modelo: 'GALAXY PLUS', v: 72, ah: 20, qty: qty(72) },
+    { modelo: 'AGUILA', v: 72, ah: 20, qty: qty(72) },
     { modelo: 'AGUILA PRO', v: 72, ah: 20, qty: qty(72) },
     { modelo: 'ECLIPCE', v: 72, ah: 20, qty: qty(72) },
     { modelo: 'AURORA', v: 72, ah: 20, qty: qty(72) },
