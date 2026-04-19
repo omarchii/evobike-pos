@@ -40,7 +40,7 @@ const COMPARATOR_LABELS: Record<(typeof COMPARATORS)[number], string> = {
 };
 
 const metricSchema = z.object({
-  thresholdValue: z.number({ invalid_type_error: "Ingresa un número" }).min(0, "Debe ser ≥ 0"),
+  thresholdValue: z.number({ error: "Ingresa un número" }).min(0, "Debe ser ≥ 0"),
   comparator: z.enum(COMPARATORS),
   isActive: z.boolean(),
 });

@@ -7,11 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Icon } from "@/components/primitives/icon";
-import {
-  ALERT_METRICS,
-  ALERT_METRIC_KEYS,
-  getMetricsForReport,
-} from "@/lib/reportes/alert-metrics";
+import { ALERT_METRICS, getMetricsForReport } from "@/lib/reportes/alert-metrics";
 import type { AlertMetricKey } from "@/lib/reportes/alert-metrics";
 import type { ThresholdRow } from "./thresholds-context";
 
@@ -38,7 +34,7 @@ const COMPARATOR_LABELS: Record<(typeof COMPARATORS)[number], string> = {
 };
 
 const metricSchema = z.object({
-  thresholdValue: z.number({ invalid_type_error: "Ingresa un número" }).min(0, "Debe ser ≥ 0"),
+  thresholdValue: z.number({ error: "Ingresa un número" }).min(0, "Debe ser ≥ 0"),
   comparator: z.enum(COMPARATORS),
   isActive: z.boolean(),
 });
