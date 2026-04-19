@@ -83,6 +83,9 @@ background: linear-gradient(135deg, #1b4332 0%, #2ecc71 100%);
 - Botón Primary CTA principal
 - Indicadores de progreso de alto nivel
 
+**Charts nunca usan Velocity Gradient** como serie. La identidad es `--data-1`
+(verde sólido). El gradient es exclusivo de KPI destacado y CTA primario.
+
 ---
 
 ## 4. Typography
@@ -542,7 +545,60 @@ portados del handoff del rediseño v1 de `/reportes`.
 - `<ProgressSplit segments height? showLabels? />` — barra segmentada para composición (ej. "Pagado 60% · Pendiente 40%").
 
 Todos aceptan `color?: string` con default `var(--data-1)` y respetan tokens.
-Para gráficos principales con tooltip/zoom/legend → Recharts (Sesión 1+).
+Para gráficos principales con tooltip/zoom/legend → Recharts (ver "Charts" abajo).
 
 Formatters en `src/lib/format/index.ts`: `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`.
 Locale: `es-MX`, timezone: `America/Merida`.
+
+---
+
+### Charts — Wrapper Recharts
+
+Ubicación: `src/components/primitives/chart.tsx`. Punto único de import para
+gráficos principales (Sparkline/SparkBars son distintos — ver "Primitivos").
+
+**Regla:** los reportes NUNCA importan de `"recharts"` directo ni de
+`"@/components/ui/chart"`. Siempre vía `@/components/primitives/chart`.
+
+**Paleta automática:** `buildChartConfig([...series])` asigna `--data-1..8` en
+orden, cicla si hay más de 8 series.
+
+**Ejemplo (stacked bars V1 Ventas e ingresos):**
+
+```tsx
+"use client";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContentGlass,
+  ChartLegend,
+  ChartLegendContent,
+  buildChartConfig,
+  CHART_AXIS_TICK_STYLE,
+  CHART_GRID_STYLE,
+} from "@/components/primitives/chart";
+
+const config = buildChartConfig([
+  { key: "contado", label: "Contado" },
+  { key: "credito", label: "Crédito" },
+  { key: "apartados", label: "Apartados" },
+]);
+
+<ChartContainer config={config} className="h-72 w-full">
+  <BarChart data={data}>
+    <CartesianGrid stroke={CHART_GRID_STYLE.stroke} strokeDasharray={CHART_GRID_STYLE.strokeDasharray} vertical={false} />
+    <XAxis dataKey="fecha" tick={CHART_AXIS_TICK_STYLE} />
+    <YAxis tick={CHART_AXIS_TICK_STYLE} />
+    <ChartTooltip content={<ChartTooltipContentGlass />} />
+    <ChartLegend content={<ChartLegendContent />} />
+    <Bar dataKey="contado"   fill="var(--color-contado)"   stackId="a" />
+    <Bar dataKey="credito"   fill="var(--color-credito)"   stackId="a" />
+    <Bar dataKey="apartados" fill="var(--color-apartados)" stackId="a" />
+  </BarChart>
+</ChartContainer>
+```
+
+Los `var(--color-<key>)` los inyecta `ChartContainer` automáticamente a partir
+del config. Los tokens de eje/grid se pasan como atributos SVG directos
+(no como `style={}`), ya que Recharts renderiza elementos SVG.
