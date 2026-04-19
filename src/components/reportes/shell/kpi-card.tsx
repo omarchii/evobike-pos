@@ -1,13 +1,20 @@
+"use client";
+
 import { Delta } from "@/components/primitives/delta";
 import { Sparkline } from "@/components/primitives/sparkline";
+import type { AlertMetricKey } from "@/lib/reportes/alert-metrics";
+import { ThresholdBadge } from "./threshold-badge";
 
 export type KpiSpec = {
   key: string;
   label: string;
   value: string;
+  rawValue?: number;
   delta?: { value: number; format: "percent" | "currency" | "number" };
   sparkline?: number[];
   featured?: boolean;
+  metricKey?: AlertMetricKey;
+  branchId?: string | null;
 };
 
 type KpiCardProps = {
@@ -15,6 +22,15 @@ type KpiCardProps = {
 };
 
 export function KpiCard({ kpi }: KpiCardProps) {
+  const badge =
+    kpi.metricKey !== undefined && kpi.rawValue !== undefined ? (
+      <ThresholdBadge
+        metricKey={kpi.metricKey}
+        branchId={kpi.branchId ?? null}
+        value={kpi.rawValue}
+      />
+    ) : null;
+
   if (kpi.featured) {
     return (
       <div
@@ -43,7 +59,7 @@ export function KpiCard({ kpi }: KpiCardProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {kpi.delta && (
             <span
               className="inline-flex items-center gap-1 text-xs font-semibold"
@@ -61,6 +77,7 @@ export function KpiCard({ kpi }: KpiCardProps) {
               vs período anterior
             </span>
           )}
+          {badge}
         </div>
 
         {kpi.sparkline && kpi.sparkline.length >= 2 && (
@@ -106,6 +123,7 @@ export function KpiCard({ kpi }: KpiCardProps) {
           </span>
         </div>
       )}
+      {badge}
     </div>
   );
 }
