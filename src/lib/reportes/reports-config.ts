@@ -33,7 +33,7 @@ export const REPORTS: readonly ReportMeta[] = [
     description: "Ingresos por período, método de pago y vendedor",
     group: "VENTAS",
     icon: "sales",
-    status: "ready-pending-impl",
+    status: "ready",
     allowedRoles: ["ADMIN", "MANAGER"],
   },
   {
