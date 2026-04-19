@@ -13,3 +13,5 @@ export type { KpiSpec } from "./kpi-card";
 export { CompareToggle } from "./compare-toggle";
 export { DateRangeChip } from "./date-range-chip";
 export { useReportFilters } from "./use-report-filters";
+export { ExportDrawer } from "./export-drawer";
+export type { ExportDrawerProps } from "./export-drawer";

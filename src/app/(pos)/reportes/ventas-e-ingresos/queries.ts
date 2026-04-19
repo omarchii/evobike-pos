@@ -389,6 +389,49 @@ export async function getSaleDetail(saleId: string): Promise<SaleDetail | null> 
   };
 }
 
+export async function getSalesTableForExport(
+  branchId: string | null,
+  filters: SalesFilters,
+): Promise<SalesTableRow[]> {
+  const where = buildSaleWhere(branchId, filters);
+
+  const sales = await prisma.sale.findMany({
+    where,
+    select: {
+      id: true,
+      folio: true,
+      total: true,
+      subtotal: true,
+      discount: true,
+      status: true,
+      createdAt: true,
+      customer: { select: { name: true } },
+      user: { select: { name: true } },
+      items: { select: { quantity: true } },
+      payments: {
+        where: { type: "PAYMENT_IN" },
+        select: { method: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10_001,
+  });
+
+  return sales.map((s) => ({
+    id: s.id,
+    folio: s.folio,
+    fecha: s.createdAt.toISOString(),
+    clienteNombre: s.customer?.name ?? "Sin cliente",
+    vendedorNombre: s.user.name,
+    metodoPago: getMethodLabel(s.payments.map((p) => p.method)),
+    items: s.items.reduce((a, i) => a + i.quantity, 0),
+    subtotal: serializeDecimal(s.subtotal),
+    descuento: serializeDecimal(s.discount),
+    total: serializeDecimal(s.total),
+    status: s.status,
+  }));
+}
+
 export async function getVendedoresOptions(branchId: string | null): Promise<VendedorOption[]> {
   const users = await prisma.user.findMany({
     where: {

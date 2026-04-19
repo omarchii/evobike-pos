@@ -8,6 +8,7 @@ import {
   KpiGrid,
   CompareToggle,
   DateRangeChip,
+  ExportDrawer,
 } from "@/components/reportes/shell";
 import type { KpiSpec } from "@/components/reportes/shell";
 import type { FilterSpec } from "@/components/reportes/shell";
@@ -96,6 +97,7 @@ export function SalesView({
   compareEnabled,
 }: SalesViewProps) {
   const [selectedSaleId, setSelectedSaleId] = React.useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   const kpiSpecs = buildKpis(kpis, compareEnabled ? compareKpis : null);
 
@@ -138,16 +140,19 @@ export function SalesView({
     }
   }
 
-  function handleExport() {
-    toast.info("Exportación disponible próximamente (Sesión 5)");
-  }
+  const currentFilters: Record<string, unknown> = {
+    from: initialFrom,
+    to: initialTo,
+    ...(initialVendedor ? { vendedorId: initialVendedor } : {}),
+    ...(initialMetodo ? { metodo: initialMetodo } : {}),
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-6 pb-12">
       <DetailHeader
         title="Ventas e ingresos"
         subtitle="Ingresos por período, método de pago y vendedor"
-        onExport={handleExport}
+        onExport={() => setDrawerOpen(true)}
         onSaveView={handleSaveView}
       />
 
@@ -183,6 +188,20 @@ export function SalesView({
           onClose={() => setSelectedSaleId(null)}
         />
       )}
+
+      {/* Export drawer */}
+      <ExportDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        slug="ventas-e-ingresos"
+        filters={currentFilters}
+        rowCount={tableRows.length}
+        columnLabels={[
+          "Folio", "Fecha", "Cliente", "Vendedor",
+          "Método de pago", "# Ítems", "Subtotal",
+          "Descuento", "Total", "Estado",
+        ]}
+      />
     </div>
   );
 }
