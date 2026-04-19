@@ -1,27 +1,88 @@
-/**
- * Claves de métricas para AlertThreshold.
- *
- * Para agregar una métrica nueva:
- * 1. Añadir la clave a este array (ordenado alfabético por prefijo de dominio).
- * 2. Documentar en el JSDoc qué representa y sus unidades esperadas.
- * 3. Usar la nueva clave en el reporte correspondiente.
- *
- * No requiere migración Prisma — el campo metricKey es String libre en DB,
- * la validación es runtime vía Zod.
- */
-export const ALERT_METRICS = [
+export type AlertMetricUnit = "MXN" | "PCT" | "UNITS" | "DAYS";
+
+export type AlertMetricMeta = {
+  label: string;
+  description: string;
+  unit: AlertMetricUnit;
+  reportSlugs: string[];
+  /** KPIs donde aplica el badge. `kpiKey` = valor del campo `key` en KpiSpec. */
+  kpiBindings: Array<{ reportSlug: string; kpiKey: string }>;
+};
+
+export const ALERT_METRICS: Record<string, AlertMetricMeta> = {
   // Ventas
-  "SALES_DAILY_MIN",          // Venta mínima diaria esperada (MXN)
-  "MARGIN_PCT_MIN",           // Margen bruto mínimo aceptable (%)
+  SALES_DAILY_MIN: {
+    label: "Venta diaria mínima",
+    description: "Monto mínimo de ventas esperado por día.",
+    unit: "MXN",
+    reportSlugs: ["ventas-e-ingresos"],
+    kpiBindings: [{ reportSlug: "ventas-e-ingresos", kpiKey: "ingresoTotal" }],
+  },
+  MARGIN_PCT_MIN: {
+    label: "Margen bruto mínimo",
+    description: "Porcentaje mínimo aceptable de margen bruto.",
+    unit: "PCT",
+    reportSlugs: ["ventas-e-ingresos", "margen-bruto"],
+    kpiBindings: [
+      { reportSlug: "ventas-e-ingresos", kpiKey: "margenBruto" },
+      { reportSlug: "margen-bruto", kpiKey: "margenPct" },
+    ],
+  },
 
   // Inventario
-  "STOCK_MIN_UNITS",          // Unidades mínimas en stock por producto
-  "DAYS_SINCE_LAST_SALE_MAX", // Días máximos sin venta antes de alertar
+  STOCK_MIN_UNITS: {
+    label: "Stock mínimo por producto",
+    description: "Unidades mínimas en stock antes de alertar.",
+    unit: "UNITS",
+    reportSlugs: ["stock-critico", "inventario"],
+    kpiBindings: [],
+  },
+  DAYS_SINCE_LAST_SALE_MAX: {
+    label: "Días máximos sin venta",
+    description: "Días máximos sin registrar ventas de un producto antes de alertar.",
+    unit: "DAYS",
+    reportSlugs: ["stock-critico", "inventario"],
+    kpiBindings: [],
+  },
 
   // Financiero
-  "AP_AGING_DAYS_WARN",       // Días de vencimiento CxP para warning
-  "CASH_FLOW_MIN",            // Saldo mínimo de tesorería (MXN)
-  "PROFIT_MARGIN_MIN",        // Margen neto mínimo (%)
-] as const;
+  AP_AGING_DAYS_WARN: {
+    label: "Aging máximo de CxP",
+    description: "Días de vencimiento máximos aceptables en cuentas por pagar.",
+    unit: "DAYS",
+    reportSlugs: ["cuentas-por-pagar"],
+    kpiBindings: [],
+  },
+  CASH_FLOW_MIN: {
+    label: "Saldo mínimo de tesorería",
+    description: "Saldo mínimo esperado en caja y bancos.",
+    unit: "MXN",
+    reportSlugs: ["tesoreria"],
+    kpiBindings: [{ reportSlug: "tesoreria", kpiKey: "saldoActual" }],
+  },
+  PROFIT_MARGIN_MIN: {
+    label: "Margen neto mínimo",
+    description: "Porcentaje mínimo aceptable de margen neto.",
+    unit: "PCT",
+    reportSlugs: ["estado-resultados"],
+    kpiBindings: [{ reportSlug: "estado-resultados", kpiKey: "margenNeto" }],
+  },
+} as const;
 
-export type AlertMetricKey = (typeof ALERT_METRICS)[number];
+export type AlertMetricKey = keyof typeof ALERT_METRICS;
+
+export const ALERT_METRIC_KEYS = Object.keys(ALERT_METRICS) as AlertMetricKey[];
+
+export function getMetricsForReport(slug: string): AlertMetricKey[] {
+  return ALERT_METRIC_KEYS.filter((k) => ALERT_METRICS[k].reportSlugs.includes(slug));
+}
+
+export function getKpiBinding(slug: string, kpiKey: string): AlertMetricKey | null {
+  for (const key of ALERT_METRIC_KEYS) {
+    const hit = ALERT_METRICS[key].kpiBindings.find(
+      (b) => b.reportSlug === slug && b.kpiKey === kpiKey,
+    );
+    if (hit) return key;
+  }
+  return null;
+}

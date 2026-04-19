@@ -3,12 +3,13 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ALERT_METRICS } from "@/lib/reportes/alert-metrics";
+import { ALERT_METRIC_KEYS } from "@/lib/reportes/alert-metrics";
+import type { AlertMetricKey } from "@/lib/reportes/alert-metrics";
 
 const THRESHOLD_COMPARATORS = ["LT", "LTE", "GT", "GTE", "EQ"] as const;
 
 const postSchema = z.object({
-    metricKey: z.enum(ALERT_METRICS),
+    metricKey: z.enum(ALERT_METRIC_KEYS as [AlertMetricKey, ...AlertMetricKey[]]),
     branchId: z.string().min(1),
     thresholdValue: z.coerce.number().min(0),
     comparator: z.enum(THRESHOLD_COMPARATORS),
