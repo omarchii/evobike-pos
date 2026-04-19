@@ -34,9 +34,9 @@ export function Delta({ value, format = "percent", showIcon = true }: DeltaProps
       className="inline-flex items-center gap-[0.2rem] text-[0.75rem] font-semibold"
       style={{ color, fontVariantNumeric: "tabular-nums" }}
     >
-      {showIcon && (isPositive || isNegative) && (
+      {showIcon && (
         <Icon
-          name={isPositive ? "arrowUp" : "arrowDown"}
+          name={isPositive ? "arrowUp" : isNegative ? "arrowDown" : "minus"}
           size={12}
           strokeWidth={2.25}
         />

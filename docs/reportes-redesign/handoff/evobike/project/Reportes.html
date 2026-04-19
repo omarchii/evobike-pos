@@ -1,0 +1,3086 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evobike · Reportes</title>
+  <style>
+/* EvoFlow Green Edition — Kinetic Precision Verdant */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+
+:root {
+  /* Primary */
+  --p: #1b4332;
+  --p-mid: #2d6a4f;
+  --p-bright: #2ecc71;
+  --p-container: #a8e6cf;
+  --on-p: #ffffff;
+  --on-p-container: #1b4332;
+
+  /* Secondary */
+  --sec: #52b788;
+  --sec-container: #d8f3dc;
+  --on-sec-container: #1b4332;
+
+  /* Tertiary / Alerts */
+  --ter: #e74c3c;
+  --ter-container: #fdecea;
+  --on-ter-container: #7b241c;
+  --warn: #f39c12;
+  --warn-container: #fef9e7;
+
+  /* Surfaces */
+  --surface: #f8fafa;
+  --surf-low: #f0f7f4;
+  --surf-lowest: #ffffff;
+  --surf-high: #dcf0e8;
+  --surf-highest: #c7e6d8;
+  --surf-dim: #d0e8dc;
+  --surf-bright: #fafffe;
+
+  /* On-surface */
+  --on-surf: #131b2e;
+  --on-surf-var: #3d5247;
+  --outline-var: #b2ccc0;
+
+  --ghost-border: rgba(178, 204, 192, 0.15);
+  --shadow: 0px 12px 32px -4px rgba(19, 27, 46, 0.06);
+
+  /* Radius */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 9999px;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+
+  /* Density — overridden by tweaks */
+  --density-row: 0.5625rem;
+  --density-card: 1.5rem;
+}
+
+.dark {
+  --p: #a5d0b9;
+  --p-mid: #7ab89a;
+  --p-bright: #2ecc71;
+  --p-container: #1b4332;
+  --on-p: #131313;
+  --on-p-container: #a5d0b9;
+
+  --sec: #52b788;
+  --sec-container: #0d3320;
+  --on-sec-container: #a5d0b9;
+
+  --ter: #ff8080;
+  --ter-container: #3d1515;
+  --on-ter-container: #ffb3b1;
+  --warn: #f5c842;
+  --warn-container: #3d2e00;
+
+  --surface: #131313;
+  --surf-low: #1b1b1b;
+  --surf-lowest: #222222;
+  --surf-high: #2b2b2b;
+  --surf-highest: #333333;
+  --surf-dim: #181818;
+  --surf-bright: #2b2b2b;
+
+  --on-surf: #e8f0eb;
+  --on-surf-var: #8fbfa0;
+  --outline-var: #2d4a3a;
+  --ghost-border: rgba(45, 74, 58, 0.30);
+
+  --shadow: 0px 12px 32px -4px rgba(0, 0, 0, 0.4);
+}
+
+.density-compact {
+  --density-row: 0.375rem;
+  --density-card: 1.125rem;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  background: var(--surface);
+  color: var(--on-surf);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root { min-height: 100vh; }
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+
+/* Velocity Gradient utility */
+.velocity-gradient {
+  background: linear-gradient(135deg, #1b4332 0%, #2ecc71 100%);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ghost-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--outline-var); }
+
+/* Label style */
+.label-md {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surf-var);
+  font-family: var(--font-body);
+}
+
+.label-sm {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Chip base */
+.chip {
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.chip--pos { background: var(--sec-container); color: var(--on-sec-container); }
+.chip--warn { background: var(--warn-container); color: var(--warn); }
+.chip--crit { background: var(--ter-container); color: var(--on-ter-container); }
+.chip--nostock { background: var(--ter); color: #fff; }
+.chip--neutral { background: var(--surf-high); color: var(--on-surf-var); }
+.chip--primary { background: var(--p-container); color: var(--on-p-container); }
+
+/* Card */
+.card {
+  background: var(--surf-lowest);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: var(--density-card);
+  outline: 1px solid var(--ghost-border);
+}
+
+.card--dim { background: var(--surf-low); box-shadow: none; outline: none; }
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--r-full);
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: var(--font-body);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn--primary {
+  background: linear-gradient(135deg, #1b4332, #2ecc71);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn--secondary {
+  background: var(--surf-high);
+  color: var(--p);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--p);
+  border: 1.5px solid var(--p-mid);
+}
+
+.btn--sm { padding: 0.35rem 0.7rem; font-size: 0.75rem; }
+.btn--icon { padding: 0.45rem; border-radius: var(--r-md); }
+.btn--icon:hover { background: var(--surf-high); }
+
+/* Input */
+.input {
+  background: var(--surf-lowest);
+  outline: 1px solid var(--ghost-border);
+  border-radius: var(--r-md);
+  color: var(--on-surf);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  transition: outline 120ms ease;
+  width: 100%;
+}
+.input:focus { outline: 2px solid var(--p-bright); }
+
+/* Segmented */
+.segmented {
+  display: inline-flex;
+  background: var(--surf-high);
+  border-radius: var(--r-full);
+  padding: 3px;
+  gap: 2px;
+}
+.segmented__btn {
+  border-radius: var(--r-full);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--on-surf-var);
+  transition: all 120ms ease;
+}
+.segmented__btn--active {
+  background: linear-gradient(135deg, #1b4332, #2ecc71);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Table */
+.tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.tbl th {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surf-var);
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--ghost-border);
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.tbl td {
+  font-size: 0.8125rem;
+  color: var(--on-surf);
+  padding: var(--density-row) 0.75rem;
+}
+.tbl tr:hover td { background: var(--surf-high); }
+.tbl tr:hover td:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+.tbl tr:hover td:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+
+/* Mini-spark safety */
+svg { display: block; }
+
+/* Fade */
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadein 240ms ease-out; }
+
+/* Tooltip */
+.tt {
+  position: absolute;
+  background: var(--surf-bright);
+  color: var(--on-surf);
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  pointer-events: none;
+  z-index: 40;
+  white-space: nowrap;
+  outline: 1px solid var(--ghost-border);
+  box-shadow: var(--shadow);
+  font-weight: 500;
+}
+
+/* KPI highlight card with gradient */
+.kpi-hero {
+  background: linear-gradient(135deg, #1b4332, #2ecc71);
+  color: #ffffff;
+  border-radius: var(--r-lg);
+  padding: var(--density-card);
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+.kpi-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top right, rgba(255,255,255,0.18), transparent 60%);
+  pointer-events: none;
+}
+
+/* Focus ring */
+:focus-visible { outline: 2px solid var(--p-bright); outline-offset: 2px; border-radius: var(--r-sm); }
+
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script>
+// Mock data for Evobike reportes
+// Retail pequeño-mediano: 2 sucursales (LEO, AV135), ~2,600 SKUs, 30-60 ventas/mes/sucursal
+
+const BRANCHES = [
+  { id: "leo", name: "LEO", color: "#2ECC71", full: "Sucursal LEO" },
+  { id: "av135", name: "AV135", color: "#52B788", full: "Sucursal AV135" },
+];
+
+// MTD: Abril 2026 (1-18)
+const DAYS_IN_PERIOD = 18;
+
+// Deterministic pseudo-random for reproducibility
+function seeded(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+const rng = seeded(42);
+
+// Daily sales per branch (MXN)
+const dailySales = Array.from({ length: DAYS_IN_PERIOD }, (_, i) => {
+  const day = i + 1;
+  const weekend = (day % 7 === 6 || day % 7 === 0);
+  const leoBase = weekend ? 38000 : 22000;
+  const av135Base = weekend ? 31000 : 18500;
+  const leo = Math.round(leoBase + (rng() - 0.4) * 14000);
+  const av135 = Math.round(av135Base + (rng() - 0.4) * 12000);
+  return {
+    day,
+    date: `2026-04-${String(day).padStart(2, "0")}`,
+    leo: Math.max(8000, leo),
+    av135: Math.max(6000, av135),
+    total: 0, // filled below
+  };
+}).map(d => ({ ...d, total: d.leo + d.av135 }));
+
+// Previous period (march MTD equivalent, days 1-18)
+const dailySalesPrev = Array.from({ length: DAYS_IN_PERIOD }, (_, i) => {
+  const day = i + 1;
+  const weekend = (day % 7 === 6 || day % 7 === 0);
+  const leoBase = weekend ? 33000 : 19500;
+  const av135Base = weekend ? 27000 : 16000;
+  const leo = Math.round(leoBase + (rng() - 0.4) * 11000);
+  const av135 = Math.round(av135Base + (rng() - 0.4) * 9500);
+  return {
+    day,
+    leo: Math.max(7000, leo),
+    av135: Math.max(5500, av135),
+    total: 0,
+  };
+}).map(d => ({ ...d, total: d.leo + d.av135 }));
+
+const sumNet = dailySales.reduce((s, d) => s + d.total, 0);
+const sumNetPrev = dailySalesPrev.reduce((s, d) => s + d.total, 0);
+
+// ~38% blended gross margin
+const grossMargin = Math.round(sumNet * 0.381);
+const grossMarginPrev = Math.round(sumNetPrev * 0.362);
+
+// KPI data
+const KPIS = {
+  ventasNetas: {
+    id: "ventasNetas",
+    label: "Ventas netas",
+    value: sumNet,
+    format: "currency",
+    prev: sumNetPrev,
+    delta: (sumNet - sumNetPrev) / sumNetPrev,
+    sub: "MTD · abril vs. marzo",
+    series: dailySales.map(d => ({ x: d.day, y: d.total })),
+    hero: true,
+  },
+  margenBruto: {
+    id: "margenBruto",
+    label: "Margen bruto",
+    value: grossMargin,
+    format: "currency",
+    prev: grossMarginPrev,
+    delta: (grossMargin - grossMarginPrev) / grossMarginPrev,
+    pct: grossMargin / sumNet,
+    sub: `${((grossMargin / sumNet) * 100).toFixed(1)}% margen blended`,
+    series: dailySales.map(d => ({ x: d.day, y: Math.round(d.total * 0.381) })),
+  },
+  cxc: {
+    id: "cxc",
+    label: "Cuentas por cobrar",
+    value: 147850,
+    format: "currency",
+    prev: 131200,
+    delta: 0.127,
+    sub: "23 apartados · 4 próximos a vencer",
+    series: [
+      { x: 1, y: 131200 }, { x: 5, y: 136400 }, { x: 10, y: 140500 },
+      { x: 14, y: 144200 }, { x: 18, y: 147850 },
+    ],
+    warning: true,
+  },
+  cxp: {
+    id: "cxp",
+    label: "Cuentas por pagar",
+    value: 223400,
+    format: "currency",
+    prev: 198700,
+    delta: 0.124,
+    sub: "9 facturas · 2 vencidas ($48,200)",
+    series: [
+      { x: 1, y: 198700 }, { x: 5, y: 205100 }, { x: 10, y: 212900 },
+      { x: 14, y: 218500 }, { x: 18, y: 223400 },
+    ],
+    critical: true,
+    splits: [
+      { label: "Vencidas", value: 48200, color: "ter" },
+      { label: "0–7 días", value: 62800, color: "warn" },
+      { label: "8–30 días", value: 112400, color: "sec" },
+    ],
+  },
+  stockCritico: {
+    id: "stockCritico",
+    label: "Stock crítico",
+    value: 47,
+    format: "count",
+    prev: 38,
+    delta: 0.237,
+    sub: "LEO: 28 · AV135: 19",
+    series: [
+      { x: 1, y: 38 }, { x: 5, y: 41 }, { x: 10, y: 44 },
+      { x: 14, y: 46 }, { x: 18, y: 47 },
+    ],
+    critical: true,
+  },
+};
+
+// Recent sales (last N for detail table)
+const VEHICLES = [
+  "VOTES ROJO / AZUL 48V", "VOTES GRIS / AMARILLO 48V", "VOTES NARANJA 48V",
+  "SOL AZUL CIELO 48V", "SOL NEGRO 48V", "SOL VERDE 48V",
+  "KINETIC PRO 72V", "KINETIC URBAN 48V", "KINETIC LITE 36V",
+  "SCOOT MX-1 48V", "SCOOT MX-2 60V", "EVO CARGO 60V",
+];
+const CUSTOMERS = [
+  "María Pérez", "Juan Canul", "Sofía Ramírez", "Carlos Dzul", "Laura Chan",
+  "Miguel Uc", "Andrea Pool", "Roberto May", "Fernanda Euán", "Diego Cetina",
+  "Valentina Tec", "Ricardo Balam", "Alejandra Koh", "Héctor Cámara",
+];
+const SELLERS = ["A. Gómez", "R. Tzuc", "M. Canché", "L. Huchim", "D. Interián"];
+const STATUSES = ["COMPLETED", "COMPLETED", "COMPLETED", "COMPLETED", "LAYAWAY", "COMPLETED", "REFUNDED"];
+
+function genSales(n) {
+  const out = [];
+  const TIPOS = ["Producto", "Producto", "Producto", "Producto", "Servicio", "Servicio", "Montaje"];
+  const METODOS = ["Efectivo", "Tarjeta", "Transferencia", "ATRATO"];
+  for (let i = 0; i < n; i++) {
+    const day = Math.floor(rng() * DAYS_IN_PERIOD) + 1;
+    const vehicle = VEHICLES[Math.floor(rng() * VEHICLES.length)];
+    const tipo = TIPOS[Math.floor(rng() * TIPOS.length)];
+    const basePrice = tipo === "Servicio" ? 400 + Math.floor(rng() * 2600) : tipo === "Montaje" ? 1200 + Math.floor(rng() * 3800) : 14000 + Math.floor(rng() * 42000);
+    const branch = rng() > 0.48 ? "LEO" : "AV135";
+    const status = STATUSES[Math.floor(rng() * STATUSES.length)];
+    const payment = METODOS[Math.floor(rng() * METODOS.length)];
+    const folio = tipo === "Servicio" || tipo === "Montaje" ? `OT-${String(4100 + i).padStart(5, "0")}` : `V-${String(3480 + i).padStart(5, "0")}`;
+    const marginPct = tipo === "Producto" ? 0.30 + rng() * 0.14 : tipo === "Servicio" ? 0.52 + rng() * 0.18 : 0.40 + rng() * 0.20;
+    out.push({
+      id: folio,
+      folio,
+      date: `2026-04-${String(day).padStart(2, "0")}`,
+      customer: CUSTOMERS[Math.floor(rng() * CUSTOMERS.length)],
+      product: tipo === "Servicio" ? "Afinación general + revisión sistema" : tipo === "Montaje" ? `Montaje accesorios · ${vehicle.split(" ")[0]}` : vehicle,
+      branch,
+      seller: SELLERS[Math.floor(rng() * SELLERS.length)],
+      tipo,
+      total: basePrice,
+      margin: Math.round(basePrice * marginPct),
+      status,
+      payment,
+    });
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+}
+
+const SALES = genSales(240);
+
+// Top products
+const TOP_PRODUCTS = [
+  { name: "VOTES ROJO / AZUL 48V", units: 14, revenue: 498000, margin: 0.38 },
+  { name: "SOL NEGRO 48V", units: 11, revenue: 362000, margin: 0.41 },
+  { name: "KINETIC URBAN 48V", units: 9, revenue: 328500, margin: 0.35 },
+  { name: "SOL AZUL CIELO 48V", units: 8, revenue: 284200, margin: 0.40 },
+  { name: "VOTES GRIS / AMARILLO 48V", units: 7, revenue: 241800, margin: 0.37 },
+  { name: "SCOOT MX-1 48V", units: 6, revenue: 192000, margin: 0.33 },
+];
+
+// Low stock items
+const LOW_STOCK = [
+  { sku: "BAT-48V-20AH-LI", name: "Batería Litio 48V 20Ah", branch: "LEO", stock: 1, min: 5, cat: "Batería" },
+  { sku: "VOTES-RA-48V", name: "VOTES ROJO / AZUL 48V", branch: "LEO", stock: 0, min: 3, cat: "Vehículo" },
+  { sku: "VOTES-GA-48V", name: "VOTES GRIS / AMARILLO 48V", branch: "AV135", stock: 1, min: 3, cat: "Vehículo" },
+  { sku: "REF-CNT-36V", name: "Controlador 36V 350W", branch: "LEO", stock: 2, min: 6, cat: "Refacción" },
+  { sku: "SOL-AC-48V", name: "SOL AZUL CIELO 48V", branch: "AV135", stock: 0, min: 2, cat: "Vehículo" },
+  { sku: "REF-LLA-26", name: "Llanta 26x2.125", branch: "LEO", stock: 3, min: 12, cat: "Refacción" },
+  { sku: "ACC-CAS-NEG", name: "Casco urbano negro", branch: "AV135", stock: 2, min: 8, cat: "Accesorio" },
+  { sku: "BAT-36V-12AH", name: "Batería Litio 36V 12Ah", branch: "LEO", stock: 1, min: 4, cat: "Batería" },
+];
+
+// Branch comparison
+const BRANCH_COMPARISON = [
+  {
+    id: "leo",
+    name: "Sucursal LEO",
+    sales: dailySales.reduce((s, d) => s + d.leo, 0),
+    prev: dailySalesPrev.reduce((s, d) => s + d.leo, 0),
+    units: 38,
+    ticket: 0,
+    margin: 0.389,
+  },
+  {
+    id: "av135",
+    name: "Sucursal AV135",
+    sales: dailySales.reduce((s, d) => s + d.av135, 0),
+    prev: dailySalesPrev.reduce((s, d) => s + d.av135, 0),
+    units: 31,
+    ticket: 0,
+    margin: 0.374,
+  },
+].map(b => ({ ...b, ticket: Math.round(b.sales / b.units), delta: (b.sales - b.prev) / b.prev }));
+
+// Reports available
+const REPORTS_CATALOG = [
+  { id: "ventas", group: "Ventas", title: "Ventas e ingresos", desc: "Tickets emitidos, ingreso neto, ticket ø y método de pago.", icon: "sales", updated: "Hace 2 min", items: 240, pinned: true },
+  { id: "margen", group: "Ventas", title: "Margen bruto por producto", desc: "Revenue neto / 1.16 − costo resuelto. Drill a SKU.", icon: "margin", updated: "Hace 2 min", items: 48, pinned: true },
+  { id: "comisiones", group: "Ventas", title: "Comisiones por vendedor", desc: "Acumulado del período, split por sucursal.", icon: "commission", updated: "Hoy 10:42", items: 5 },
+  { id: "apartados", group: "Clientes", title: "Apartados / LAYAWAY", desc: "Saldos pendientes, antigüedad y recordatorios.", icon: "layaway", updated: "Hace 8 min", items: 23, pinned: true },
+  { id: "retencion", group: "Clientes", title: "Retención y recompra", desc: "Clientes recurrentes, cohortes, NPS estimado.", icon: "retention", updated: "Ayer", items: 312 },
+  { id: "taller", group: "Taller", title: "Mantenimiento y fallas", desc: "OTs activas, tiempo promedio, fallas recurrentes.", icon: "wrench", updated: "Hace 12 min", items: 18, pinned: true },
+  { id: "sla", group: "Taller", title: "SLA y tiempos de respuesta", desc: "Cumplimiento de compromisos, umbrales configurables.", icon: "clock", updated: "Hace 30 min", items: 24 },
+  { id: "inventario", group: "Inventario", title: "Stock y rotación", desc: "Inventario polimórfico: vehículos, accesorios, refacciones, baterías.", icon: "box", updated: "Hace 4 min", items: 2641, pinned: true },
+  { id: "stock-critico", group: "Inventario", title: "Stock crítico", desc: "Items bajo mínimo, con proyección de quiebre.", icon: "alert", updated: "Hace 4 min", items: 47 },
+  { id: "pnl", group: "Financiero", title: "P&L del período", desc: "Resultado operativo, consolidado y por sucursal.", icon: "pnl", updated: "Hoy 08:00", items: null, pinned: true },
+  { id: "cashflow", group: "Financiero", title: "Cashflow y tesorería", desc: "Entradas, salidas, saldos y conciliación bancaria.", icon: "cash", updated: "Hoy 08:00", items: null },
+  { id: "cxp-rep", group: "Financiero", title: "Cuentas por pagar", desc: "Facturas pendientes, vencidas y próximas.", icon: "invoice", updated: "Hace 15 min", items: 9 },
+  { id: "export-contabilidad", group: "Exportaciones", title: "Exportación contable", desc: "XML CFDI, póliza mensual, formato para contador externo.", icon: "export", updated: "Última: 01-abr", items: null },
+];
+
+// Saved views
+const SAVED_VIEWS = [
+  { id: "ceo-weekly", name: "CEO · Semanal consolidado", shared: false, metrics: 5 },
+  { id: "leo-daily", name: "LEO · Diario operativo", shared: true, metrics: 7 },
+  { id: "av135-daily", name: "AV135 · Diario operativo", shared: true, metrics: 7 },
+  { id: "taller-sla", name: "Taller · SLA y fallas", shared: false, metrics: 4 },
+];
+
+// Alerts
+const ALERTS_ACTIVE = [
+  { id: "a1", severity: "critical", title: "Batería Litio 48V 20Ah sin stock en LEO", time: "Hace 14 min", module: "Inventario" },
+  { id: "a2", severity: "warning", title: "Margen de SOL NEGRO 48V bajó del 35%", time: "Hoy 09:15", module: "Margen" },
+  { id: "a3", severity: "warning", title: "Apartado #L-2023 vence mañana", time: "Hoy 08:40", module: "Apartados" },
+  { id: "a4", severity: "critical", title: "Factura CFDI-8821 vencida 3 días", time: "Ayer 18:02", module: "CxP" },
+];
+
+window.EVOBIKE_DATA = {
+  BRANCHES, KPIS, SALES, TOP_PRODUCTS, LOW_STOCK, BRANCH_COMPARISON,
+  REPORTS_CATALOG, SAVED_VIEWS, ALERTS_ACTIVE,
+  dailySales, dailySalesPrev,
+  DAYS_IN_PERIOD,
+};
+
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+// ==== src/primitives.jsx ====
+// Icons + small primitives + formatters
+
+const fmtMXN = (n, { compact = false } = {}) => {
+  if (n == null) return "—";
+  if (compact && Math.abs(n) >= 1000) {
+    if (Math.abs(n) >= 1_000_000) return `$${(n/1_000_000).toFixed(2)}M`;
+    return `$${(n/1000).toFixed(1)}k`;
+  }
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+};
+const fmtPct = (n, digits = 1) => `${(n * 100).toFixed(digits)}%`;
+const fmtDelta = (n) => `${n >= 0 ? "+" : ""}${(n * 100).toFixed(1)}%`;
+const fmtNum = (n) => n == null ? "—" : new Intl.NumberFormat("es-MX").format(n);
+const fmtDate = (d) => {
+  const [y, m, day] = d.split("-");
+  const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return `${parseInt(day)} ${months[parseInt(m)-1]}`;
+};
+
+// Minimal inline icon set — stroke-based, matches 1.5–1.75 weight of the system
+const Icon = ({ name, size = 16, stroke = 1.75, className = "", style = {} }) => {
+  const paths = {
+    dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></>,
+    report: <><path d="M8 3h8l4 4v14H4V3h4Z"/><path d="M8 13h8M8 17h5M8 9h5"/></>,
+    bell: <><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 7H4c0-1 2-2 2-7Z"/><path d="M10 20a2 2 0 0 0 4 0"/></>,
+    search: <><circle cx="11" cy="11" r="7"/><path d="m16 16 4.5 4.5"/></>,
+    filter: <><path d="M3 5h18M6 12h12M10 19h4"/></>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></>,
+    download: <><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></>,
+    share: <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.4 6.8-4M8.6 13.6l6.8 4"/></>,
+    plus: <><path d="M12 5v14M5 12h14"/></>,
+    chevronDown: <><path d="m6 9 6 6 6-6"/></>,
+    chevronRight: <><path d="m9 6 6 6-6 6"/></>,
+    chevronLeft: <><path d="m15 6-6 6 6 6"/></>,
+    arrowUp: <><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></>,
+    arrowDown: <><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></>,
+    arrowRight: <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>,
+    close: <><path d="m6 6 12 12M6 18 18 6"/></>,
+    more: <><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></>,
+    sun: <><circle cx="12" cy="12" r="4"/><path d="M12 3v1M12 20v1M3 12h1M20 12h1M5.6 5.6l.7.7M17.7 17.7l.7.7M5.6 18.4l.7-.7M17.7 6.3l.7-.7"/></>,
+    moon: <><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></>,
+    alert: <><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></>,
+    check: <><path d="m5 12 5 5L20 7"/></>,
+    bike: <><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h3l3 11.5M12 17.5 7 10h7l-3-4H8"/></>,
+    wrench: <><path d="M14.7 6.3a4 4 0 0 1 5 5l-11 11a2.8 2.8 0 1 1-4-4l11-11a4 4 0 0 1 0-1Z"/></>,
+    box: <><path d="M3 7 12 3l9 4v10l-9 4-9-4V7Z"/><path d="M3 7l9 4m0 0 9-4m-9 4v10"/></>,
+    pnl: <><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></>,
+    cash: <><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10v.01M18 14v.01"/></>,
+    invoice: <><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h4"/></>,
+    export: <><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M5 21h14"/></>,
+    commission: <><path d="M12 2v20M7 6h7a3 3 0 1 1 0 6H9a3 3 0 1 0 0 6h8"/></>,
+    layaway: <><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M8 10h8M8 14h5"/><circle cx="16" cy="15" r="2"/></>,
+    retention: <><path d="M12 21a9 9 0 1 1 9-9"/><path d="M21 3v6h-6"/><circle cx="12" cy="12" r="3"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    margin: <><path d="M5 20 19 4"/><path d="M5 4h14v14"/></>,
+    sales: <><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-6"/></>,
+    drag: <><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></>,
+    bookmark: <><path d="M6 3h12v18l-6-4-6 4V3Z"/></>,
+    sliders: <><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></>,
+    eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+    eyeOff: <><path d="m3 3 18 18"/><path d="M10.5 10.7a2 2 0 0 0 2.8 2.8M7 7.3C4 9 2 12 2 12s3.5 7 10 7c2 0 3.7-.6 5.2-1.5M19.5 16.3C21 14.8 22 13 22 13s-3.5-7-10-7c-1 0-2 .2-3 .5"/></>,
+    user: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
+    logo: <><path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"
+         className={className} style={style}>
+      {paths[name] || null}
+    </svg>
+  );
+};
+
+// Logo
+const Logo = ({ size = 20 }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+    <img src="data:image/webp;base64,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" alt="Evobike" style={{ height: size, display: "block" }} />
+  </div>
+);
+
+// Chip
+const Chip = ({ kind = "neutral", children, dot = false }) => (
+  <span className={`chip chip--${kind}`}>
+    {dot && <span style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", opacity: 0.8 }} />}
+    {children}
+  </span>
+);
+
+// Delta pill
+const Delta = ({ value, inverse = false, compact = false }) => {
+  const positive = inverse ? value < 0 : value > 0;
+  const color = value === 0 ? "var(--on-surf-var)" : positive ? "var(--sec)" : "var(--ter)";
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "0.2rem",
+      fontSize: compact ? "0.6875rem" : "0.75rem", fontWeight: 600, color, fontVariantNumeric: "tabular-nums",
+    }}>
+      <Icon name={value >= 0 ? "arrowUp" : "arrowDown"} size={compact ? 10 : 12} stroke={2.25} />
+      {fmtDelta(Math.abs(value))}
+    </span>
+  );
+};
+
+Object.assign(window, { fmtMXN, fmtPct, fmtDelta, fmtNum, fmtDate, Icon, Logo, Chip, Delta });
+
+
+// ==== src/charts.jsx ====
+// SVG chart primitives — line, area, bar, sparkline, donut
+// All respect --p, --p-bright, --sec, --ter via theme tokens
+
+const ChartAxis = ({ width, height, padding, xDomain, yDomain, xTicks = 6, yTicks = 4 }) => {
+  const [yMin, yMax] = yDomain;
+  const [xMin, xMax] = xDomain;
+  const yStep = (yMax - yMin) / yTicks;
+  return (
+    <g>
+      {Array.from({ length: yTicks + 1 }, (_, i) => {
+        const v = yMin + yStep * i;
+        const y = height - padding.bottom - (i / yTicks) * (height - padding.top - padding.bottom);
+        return (
+          <g key={i}>
+            <line x1={padding.left} x2={width - padding.right} y1={y} y2={y}
+                  stroke="var(--ghost-border)" strokeDasharray={i === 0 ? "0" : "3 4"} />
+            <text x={padding.left - 8} y={y + 4} textAnchor="end"
+                  fill="var(--on-surf-var)" fontSize="10" fontFamily="var(--font-body)">
+              {v >= 1000 ? `${Math.round(v/1000)}k` : Math.round(v)}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+};
+
+const LineArea = ({ data, width = 600, height = 240, color = "var(--p-bright)", fill = true,
+                   compareData = null, yFormat = "k", xLabels = null }) => {
+  const padding = { top: 16, right: 16, bottom: 28, left: 40 };
+  const xs = data.map(d => d.x);
+  const ys = [...data, ...(compareData || [])].map(d => d.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMax = Math.max(...ys) * 1.1;
+  const yMin = 0;
+
+  const toX = x => padding.left + ((x - xMin) / (xMax - xMin || 1)) * (width - padding.left - padding.right);
+  const toY = y => height - padding.bottom - ((y - yMin) / (yMax - yMin || 1)) * (height - padding.top - padding.bottom);
+
+  const linePath = data.map((d, i) => `${i ? "L" : "M"}${toX(d.x)},${toY(d.y)}`).join(" ");
+  const areaPath = `${linePath} L${toX(data[data.length-1].x)},${toY(0)} L${toX(data[0].x)},${toY(0)} Z`;
+
+  const comparePath = compareData
+    ? compareData.map((d, i) => `${i ? "L" : "M"}${toX(d.x)},${toY(d.y)}`).join(" ")
+    : null;
+
+  const [hover, setHover] = React.useState(null);
+  const svgRef = React.useRef(null);
+
+  const handleMove = (e) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * width;
+    if (mx < padding.left || mx > width - padding.right) { setHover(null); return; }
+    const dataX = xMin + ((mx - padding.left) / (width - padding.left - padding.right)) * (xMax - xMin);
+    let nearest = data[0], best = Infinity;
+    for (const d of data) {
+      const dist = Math.abs(d.x - dataX);
+      if (dist < best) { best = dist; nearest = d; }
+    }
+    const cmp = compareData ? compareData.find(d => d.x === nearest.x) : null;
+    setHover({ d: nearest, cmp });
+  };
+
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block" }}
+           onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
+        <defs>
+          <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#2ECC71" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#2ECC71" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <ChartAxis width={width} height={height} padding={padding} xDomain={[xMin, xMax]} yDomain={[yMin, yMax]} />
+        {/* x labels */}
+        {data.map((d, i) => (i % 3 === 0 || i === data.length - 1) && (
+          <text key={i} x={toX(d.x)} y={height - 8} textAnchor="middle"
+                fill="var(--on-surf-var)" fontSize="10" fontFamily="var(--font-body)">
+            {xLabels ? xLabels[i] : d.x}
+          </text>
+        ))}
+        {compareData && (
+          <path d={comparePath} fill="none" stroke="var(--on-surf-var)" strokeWidth="1.5"
+                strokeDasharray="4 4" opacity="0.55" />
+        )}
+        {fill && <path d={areaPath} fill="url(#areaFill)" />}
+        <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {hover && (
+          <>
+            <line x1={toX(hover.d.x)} x2={toX(hover.d.x)} y1={padding.top} y2={height - padding.bottom}
+                  stroke="var(--p-bright)" strokeDasharray="3 3" opacity="0.6" />
+            <circle cx={toX(hover.d.x)} cy={toY(hover.d.y)} r="5" fill={color} stroke="var(--surf-lowest)" strokeWidth="2" />
+            {hover.cmp && (
+              <circle cx={toX(hover.cmp.x)} cy={toY(hover.cmp.y)} r="4" fill="var(--on-surf-var)"
+                      stroke="var(--surf-lowest)" strokeWidth="2" opacity="0.7" />
+            )}
+          </>
+        )}
+      </svg>
+      {hover && (
+        <div className="tt" style={{
+          left: `${(toX(hover.d.x) / width) * 100}%`,
+          top: 8, transform: "translateX(-50%)",
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>Día {hover.d.x}</div>
+          <div style={{ color: color, fontVariantNumeric: "tabular-nums" }}>
+            {fmtMXN(hover.d.y, { compact: true })}
+          </div>
+          {hover.cmp && (
+            <div style={{ color: "var(--on-surf-var)", fontSize: "0.625rem", fontVariantNumeric: "tabular-nums" }}>
+              Prev: {fmtMXN(hover.cmp.y, { compact: true })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const BarStack = ({ data, width = 600, height = 240, keys = [{key: "leo", color: "#2ECC71", label: "LEO"}, {key: "av135", color: "#52B788", label: "AV135"}] }) => {
+  const padding = { top: 16, right: 16, bottom: 28, left: 40 };
+  const yMax = Math.max(...data.map(d => keys.reduce((s, k) => s + d[k.key], 0))) * 1.1;
+  const bw = (width - padding.left - padding.right) / data.length * 0.7;
+  const gap = (width - padding.left - padding.right) / data.length * 0.3;
+  const [hover, setHover] = React.useState(null);
+  const toY = y => height - padding.bottom - (y / yMax) * (height - padding.top - padding.bottom);
+
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block" }}>
+        <ChartAxis width={width} height={height} padding={padding} xDomain={[0, data.length]} yDomain={[0, yMax]} />
+        {data.map((d, i) => {
+          const x = padding.left + (bw + gap) * i + gap / 2;
+          let yStack = 0;
+          return (
+            <g key={i} onMouseEnter={() => setHover({ d, i })} onMouseLeave={() => setHover(null)}>
+              {keys.map(k => {
+                const h = (d[k.key] / yMax) * (height - padding.top - padding.bottom);
+                const y = toY(yStack + d[k.key]);
+                yStack += d[k.key];
+                return <rect key={k.key} x={x} y={y} width={bw} height={h} fill={k.color}
+                             rx="2" opacity={hover && hover.i !== i ? 0.4 : 1}
+                             style={{ transition: "opacity 120ms" }} />;
+              })}
+              {(i % 3 === 0 || i === data.length - 1) && (
+                <text x={x + bw / 2} y={height - 8} textAnchor="middle"
+                      fill="var(--on-surf-var)" fontSize="10" fontFamily="var(--font-body)">
+                  {d.day || d.x}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {hover && (
+        <div className="tt" style={{
+          left: `${((padding.left + (bw + gap) * hover.i + gap / 2 + bw / 2) / width) * 100}%`,
+          top: 8, transform: "translateX(-50%)",
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>Día {hover.d.day || hover.d.x}</div>
+          {keys.map(k => (
+            <div key={k.key} style={{ display: "flex", gap: 8, justifyContent: "space-between", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ color: k.color }}>● {k.label}</span>
+              <span>{fmtMXN(hover.d[k.key], { compact: true })}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Sparkline = ({ data, color = "var(--p-bright)", width = 120, height = 36, fill = true }) => {
+  const xs = data.map(d => d.x), ys = data.map(d => d.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const toX = x => ((x - xMin) / (xMax - xMin || 1)) * width;
+  const toY = y => height - 2 - ((y - yMin) / (yMax - yMin || 1)) * (height - 4);
+  const linePath = data.map((d, i) => `${i ? "L" : "M"}${toX(d.x)},${toY(d.y)}`).join(" ");
+  const areaPath = `${linePath} L${toX(xMax)},${height} L${toX(xMin)},${height} Z`;
+  const gradId = `sg-${Math.random().toString(36).slice(2, 8)}`;
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: height, display: "block" }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color.startsWith("var") ? "#2ECC71" : color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color.startsWith("var") ? "#2ECC71" : color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {fill && <path d={areaPath} fill={`url(#${gradId})`} />}
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+};
+
+const SparkBars = ({ data, color = "var(--p-bright)", width = 120, height = 36 }) => {
+  const yMax = Math.max(...data.map(d => d.y));
+  const bw = width / data.length * 0.7;
+  const gap = width / data.length * 0.3;
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height, display: "block" }} preserveAspectRatio="none">
+      {data.map((d, i) => {
+        const h = (d.y / yMax) * (height - 2);
+        return <rect key={i} x={i * (bw + gap)} y={height - h} width={bw} height={h} fill={color} rx="1" opacity={0.85} />;
+      })}
+    </svg>
+  );
+};
+
+const Donut = ({ value, total, size = 88, thickness = 10, color = "var(--p-bright)" }) => {
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = value / total;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surf-high)" strokeWidth={thickness} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={thickness}
+              strokeDasharray={`${c * pct} ${c}`} strokeLinecap="round"
+              transform={`rotate(-90 ${size/2} ${size/2})`} />
+    </svg>
+  );
+};
+
+const ProgressSplit = ({ splits, total }) => {
+  const colors = { ter: "var(--ter)", warn: "var(--warn)", sec: "var(--sec)", p: "var(--p-bright)" };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", width: "100%" }}>
+      <div style={{ display: "flex", height: 6, borderRadius: 999, overflow: "hidden", background: "var(--surf-high)" }}>
+        {splits.map((s, i) => (
+          <div key={i} style={{ width: `${(s.value / total) * 100}%`, background: colors[s.color] }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
+        {splits.map((s, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: colors[s.color] }} />
+              <span style={{ fontSize: "0.625rem", color: "var(--on-surf-var)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{s.label}</span>
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtMXN(s.value, { compact: true })}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { LineArea, BarStack, Sparkline, SparkBars, Donut, ProgressSplit });
+
+
+// ==== src/shell.jsx ====
+// Shell: Sidebar + Topbar + layout
+
+const NAV_ITEMS = [
+  { group: "OPERACIONES", items: [
+    { id: "inicio", label: "Inicio", icon: "dashboard" },
+    { id: "punto-venta", label: "Punto de Venta", icon: "sales" },
+    { id: "pedidos", label: "Pedidos", icon: "box" },
+    { id: "taller", label: "Taller Mecánico", icon: "wrench" },
+    { id: "montaje", label: "Montaje", icon: "bike" },
+  ]},
+  { group: "GESTIÓN", items: [
+    { id: "clientes", label: "Clientes", icon: "user" },
+    { id: "inventario", label: "Inventario", icon: "box" },
+    { id: "cotizaciones", label: "Cotizaciones", icon: "invoice" },
+    { id: "transferencias", label: "Transferencias", icon: "share" },
+    { id: "reportes", label: "Reportes", icon: "report", active: true, badge: 13 },
+  ]},
+  { group: "ADMIN", items: [
+    { id: "caja", label: "Caja", icon: "cash" },
+    { id: "tesoreria", label: "Tesorería", icon: "pnl" },
+    { id: "autorizaciones", label: "Autorizaciones", icon: "check" },
+    { id: "configuracion", label: "Configuración", icon: "sliders" },
+  ]},
+];
+
+const Sidebar = ({ collapsed, onToggle }) => {
+  return (
+    <aside style={{
+      width: collapsed ? 64 : 232,
+      background: "var(--surf-low)",
+      transition: "width 180ms ease",
+      display: "flex", flexDirection: "column",
+      flexShrink: 0,
+      padding: "1rem 0.75rem",
+      height: "100vh", position: "sticky", top: 0,
+      overflow: "hidden",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.25rem 0.5rem 1rem", gap: 8 }}>
+        {!collapsed ? <Logo size={22} /> : (
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#1b4332,#2ecc71)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 700, fontFamily: "var(--font-display)", fontSize: 14 }}>E</div>
+        )}
+      </div>
+
+      <nav style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        {NAV_ITEMS.map(group => (
+          <div key={group.group}>
+            {!collapsed && (
+              <div className="label-md" style={{ padding: "0 0.75rem", marginBottom: "0.35rem", fontSize: "0.5625rem", opacity: 0.75 }}>
+                {group.group}
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {group.items.map(item => (
+                <button key={item.id} style={{
+                  display: "flex", alignItems: "center", gap: "0.625rem",
+                  padding: collapsed ? "0.5rem" : "0.5rem 0.75rem",
+                  borderRadius: "0.75rem",
+                  fontSize: "0.8125rem",
+                  fontWeight: item.active ? 600 : 500,
+                  color: item.active ? "var(--p)" : "var(--on-surf-var)",
+                  background: item.active ? "var(--surf-high)" : "transparent",
+                  justifyContent: collapsed ? "center" : "flex-start",
+                  textAlign: "left", width: "100%",
+                  transition: "background 120ms, color 120ms",
+                }} title={collapsed ? item.label : undefined}>
+                  <Icon name={item.icon} size={16} stroke={item.active ? 2 : 1.75} />
+                  {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
+                  {!collapsed && item.badge != null && (
+                    <span style={{
+                      background: "linear-gradient(135deg,#1b4332,#2ecc71)",
+                      color: "#fff", fontSize: "0.625rem", fontWeight: 600,
+                      padding: "1px 6px", borderRadius: 999,
+                    }}>{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div style={{ padding: "0.5rem", display: "flex", alignItems: "center", gap: "0.625rem", borderRadius: 12, background: "transparent" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--p-container)", color: "var(--on-p-container)", display: "grid", placeItems: "center", fontWeight: 600, fontSize: "0.75rem", flexShrink: 0 }}>N</div>
+        {!collapsed && (
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "0.75rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Admin General</div>
+            <div style={{ fontSize: "0.625rem", color: "var(--on-surf-var)" }}>2 sucursales</div>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+};
+
+const Topbar = ({ branch, setBranch, dark, setDark, onOpenTweaks, route, setRoute, period, setPeriod }) => {
+  const crumbs = [
+    { label: "Gestión", href: null },
+    { label: "Reportes", href: "list" },
+    ...(route.name === "detail" ? [{ label: route.report?.title || "Detalle" }] : []),
+    ...(route.name === "builder" ? [{ label: "Constructor" }] : []),
+  ];
+
+  return (
+    <header style={{
+      display: "flex", alignItems: "center", gap: "0.75rem",
+      padding: "0.75rem 1.5rem",
+      background: "var(--surface)",
+      position: "sticky", top: 0, zIndex: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div className="segmented" style={{ padding: 2 }}>
+          {EVOBIKE_DATA.BRANCHES.map(b => (
+            <button key={b.id}
+              onClick={() => setBranch(b.id)}
+              className={`segmented__btn ${branch === b.id ? "segmented__btn--active" : ""}`}>
+              {b.name}
+            </button>
+          ))}
+          <button onClick={() => setBranch("all")}
+            className={`segmented__btn ${branch === "all" ? "segmented__btn--active" : ""}`}>
+            Consolidado
+          </button>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", maxWidth: 520, margin: "0 auto" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: "0.5rem",
+          background: "var(--surf-lowest)",
+          outline: "1px solid var(--ghost-border)",
+          borderRadius: 999, padding: "0.4rem 0.85rem", width: "100%",
+        }}>
+          <Icon name="search" size={14} style={{ color: "var(--on-surf-var)" }} />
+          <input placeholder="Buscar reportes, métricas, SKUs..."
+                 style={{ background: "transparent", border: "none", outline: "none", flex: 1, fontSize: "0.8125rem", color: "var(--on-surf)" }} />
+          <kbd style={{ fontSize: "0.625rem", color: "var(--on-surf-var)", background: "var(--surf-high)", padding: "1px 6px", borderRadius: 4 }}>⌘K</kbd>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+        <button className="btn btn--icon" title="Notificaciones" style={{ position: "relative" }}>
+          <Icon name="bell" size={17} />
+          <span style={{ position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 999, background: "var(--ter)", outline: "2px solid var(--surface)" }} />
+        </button>
+        <button className="btn btn--icon" onClick={() => setDark(!dark)} title={dark ? "Light mode" : "Dark mode"}>
+          <Icon name={dark ? "sun" : "moon"} size={17} />
+        </button>
+        <button className="btn btn--icon" onClick={onOpenTweaks} title="Tweaks">
+          <Icon name="sliders" size={17} />
+        </button>
+      </div>
+    </header>
+  );
+};
+
+// Breadcrumbs row (below topbar)
+const PageHeader = ({ route, setRoute, period, setPeriod, onExport, branch }) => {
+  const titles = {
+    list: { title: "Reportes", sub: "13 reportes disponibles · vista global de todas las sucursales" },
+    dashboard: { title: "Panel de reportes", sub: "Vista global — consolidada y por sucursal · MTD · abril 2026" },
+    detail: { title: route.report?.title || "Detalle", sub: route.report?.desc },
+    builder: { title: "Constructor de reportes", sub: "Arrastra métricas y dimensiones — preview en vivo" },
+  };
+  const t = titles[route.name] || titles.dashboard;
+  const branchLabel = branch === "all" ? "Todas las sucursales" : `Sucursal ${branch.toUpperCase()}`;
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", padding: "0.5rem 1.5rem 1rem", flexWrap: "wrap" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", fontSize: "0.75rem", color: "var(--on-surf-var)" }}>
+          <button onClick={() => setRoute({ name: "dashboard" })} style={{ color: "inherit", fontSize: "0.75rem" }}>Gestión</button>
+          <Icon name="chevronRight" size={12} />
+          <button onClick={() => setRoute({ name: "dashboard" })} style={{ color: "inherit", fontSize: "0.75rem" }}>Reportes</button>
+          {route.name === "detail" && route.report && (
+            <>
+              <Icon name="chevronRight" size={12} />
+              <span style={{ color: "var(--on-surf)", fontWeight: 500 }}>{route.report.title}</span>
+            </>
+          )}
+          {route.name === "list" && (
+            <>
+              <Icon name="chevronRight" size={12} />
+              <span style={{ color: "var(--on-surf)", fontWeight: 500 }}>Catálogo</span>
+            </>
+          )}
+          {route.name === "builder" && (
+            <>
+              <Icon name="chevronRight" size={12} />
+              <span style={{ color: "var(--on-surf)", fontWeight: 500 }}>Constructor</span>
+            </>
+          )}
+        </div>
+        <h1 className="headline" style={{ fontSize: "1.75rem", margin: 0, marginBottom: "0.2rem" }}>{t.title}</h1>
+        <div style={{ fontSize: "0.8125rem", color: "var(--on-surf-var)" }}>{t.sub}</div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div className="segmented">
+          {["Hoy", "7D", "MTD", "30D", "YTD"].map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              className={`segmented__btn ${period === p ? "segmented__btn--active" : ""}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+        <button className="btn btn--ghost btn--sm">
+          <Icon name="calendar" size={14} />
+          1 abr – 18 abr
+        </button>
+        <button className="btn btn--secondary btn--sm">
+          <Icon name="filter" size={14} />
+          Filtros
+        </button>
+        {route.name === "dashboard" || route.name === "list" ? (
+          <button className="btn btn--primary btn--sm" onClick={() => setRoute({ name: "builder" })}>
+            <Icon name="plus" size={14} />
+            Nuevo reporte
+          </button>
+        ) : (
+          <button className="btn btn--primary btn--sm" onClick={onExport}>
+            <Icon name="download" size={14} />
+            Exportar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { Sidebar, Topbar, PageHeader });
+
+
+// ==== src/dashboard.jsx ====
+// Dashboard — 3 variants: editorial (Linear), stripe (financial), mercury (modular)
+
+const KPICardEditorial = ({ kpi, hero = false, compareMode = false, chart = "line" }) => {
+  if (hero) {
+    return (
+      <div className="kpi-hero fade-in" style={{ gridColumn: "span 2" }}>
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <span className="label-md" style={{ color: "rgba(255,255,255,0.75)" }}>{kpi.label}</span>
+            <span style={{ fontSize: "0.625rem", background: "rgba(255,255,255,0.15)", padding: "2px 8px", borderRadius: 999, fontWeight: 600, letterSpacing: "0.05em" }}>DESTACADO</span>
+          </div>
+          <div className="display" style={{ fontSize: "2.75rem", color: "#fff", lineHeight: 1.05, fontVariantNumeric: "tabular-nums" }}>
+            {fmtMXN(kpi.value)}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", color: "rgba(255,255,255,0.85)", fontSize: "0.75rem" }}>
+            <Delta value={kpi.delta} compact />
+            <span>{kpi.sub}</span>
+          </div>
+          <div style={{ marginTop: "0.75rem", height: 56, marginLeft: -6, marginRight: -6 }}>
+            <Sparkline data={kpi.series} color="#fff" height={56} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const SparkEl = chart === "bars" ? SparkBars : Sparkline;
+  const color = kpi.critical ? "var(--ter)" : kpi.warning ? "var(--warn)" : "var(--p-bright)";
+  return (
+    <div className="card fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.35rem", minHeight: 172 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <span className="label-md">{kpi.label}</span>
+        {kpi.critical && <Chip kind="crit" dot>Crítico</Chip>}
+        {kpi.warning && <Chip kind="warn" dot>Atención</Chip>}
+      </div>
+      <div className="display" style={{ fontSize: "2.1rem", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>
+        {kpi.format === "count" ? fmtNum(kpi.value) : fmtMXN(kpi.value)}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <Delta value={kpi.delta} inverse={kpi.critical || kpi.warning} compact />
+        <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{kpi.sub}</span>
+      </div>
+      <div style={{ marginTop: "auto", paddingTop: "0.6rem", height: 36, marginLeft: -6, marginRight: -6 }}>
+        {kpi.splits
+          ? <ProgressSplit splits={kpi.splits} total={kpi.value} />
+          : <SparkEl data={kpi.series} color={color} height={36} />}
+      </div>
+    </div>
+  );
+};
+
+const HeroBand = ({ kpiOrder, kpiVisibility, chartDefault, variant }) => {
+  const kpis = kpiOrder.filter(id => kpiVisibility[id] !== false).map(id => EVOBIKE_DATA.KPIS[id]);
+  const [hero, ...rest] = kpis;
+
+  if (variant === "mercury") {
+    // Modular — hero full-width + 4 KPIs en banda horizontal debajo
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "0 1.5rem" }}>
+        {hero && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr" }}>
+            <KPICardEditorial kpi={hero} hero chart={chartDefault} />
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
+          {rest.slice(0, 4).map(k => <KPICardEditorial key={k.id} kpi={k} chart={chartDefault} />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "stripe") {
+    // Financial — no hero, 5-col equal, numbers-first
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem", padding: "0 1.5rem" }}>
+        {kpis.slice(0, 5).map((k, i) => (
+          <div key={k.id} className="card fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: "1.25rem", background: i === 0 ? "var(--surf-low)" : "var(--surf-lowest)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="label-md" style={{ fontSize: "0.5625rem" }}>{k.label}</span>
+              <Delta value={k.delta} inverse={k.critical || k.warning} compact />
+            </div>
+            <div className="display" style={{ fontSize: "1.6rem", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>
+              {k.format === "count" ? fmtNum(k.value) : fmtMXN(k.value, { compact: true })}
+            </div>
+            <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{k.sub}</div>
+            <div style={{ height: 28, marginTop: "0.4rem", marginLeft: -4, marginRight: -4 }}>
+              <Sparkline data={k.series} color={k.critical ? "var(--ter)" : k.warning ? "var(--warn)" : "var(--p-bright)"} height={28} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Editorial Dense (default) — hero + 4 compact
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr", gap: "0.85rem", padding: "0 1.5rem" }}>
+      {hero && <KPICardEditorial kpi={hero} hero chart={chartDefault} />}
+      {rest.slice(0, 4).map(k => <KPICardEditorial key={k.id} kpi={k} chart={chartDefault} />)}
+    </div>
+  );
+};
+
+const TrendSection = ({ branch, chartDefault }) => {
+  const data = EVOBIKE_DATA.dailySales;
+  const prev = EVOBIKE_DATA.dailySalesPrev;
+  const [view, setView] = React.useState(chartDefault === "bars" ? "bars" : "line");
+  const [compare, setCompare] = React.useState(true);
+
+  const branchData = branch === "all"
+    ? data.map(d => ({ x: d.day, y: d.total, day: d.day, leo: d.leo, av135: d.av135 }))
+    : data.map(d => ({ x: d.day, y: d[branch], day: d.day }));
+  const prevData = compare && branch === "all"
+    ? prev.map(d => ({ x: d.day, y: d.total }))
+    : compare ? prev.map(d => ({ x: d.day, y: d[branch] })) : null;
+
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem", flexWrap: "wrap" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Tendencia de ingresos</h3>
+          <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>
+            Diario · {branch === "all" ? "consolidado LEO + AV135" : `Sucursal ${branch.toUpperCase()}`} · {compare ? "vs. marzo" : "sin comparación"}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          <button onClick={() => setCompare(!compare)} className="btn btn--sm"
+            style={{ background: compare ? "var(--surf-high)" : "transparent", color: compare ? "var(--p)" : "var(--on-surf-var)" }}>
+            <Icon name={compare ? "check" : "plus"} size={12} />
+            Comparar
+          </button>
+          <div className="segmented">
+            {[{k:"line", l:"Línea"},{k:"area",l:"Área"},{k:"bars", l:"Barras"}].map(o => (
+              <button key={o.k} onClick={() => setView(o.k)}
+                className={`segmented__btn ${view === o.k ? "segmented__btn--active" : ""}`}>{o.l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{ minHeight: 240 }}>
+        {view === "bars" && branch === "all"
+          ? <BarStack data={branchData} height={260} />
+          : <LineArea data={branchData} compareData={prevData} fill={view !== "line"} height={260} />}
+      </div>
+      <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", paddingTop: "0.5rem", borderTop: "1px solid var(--ghost-border)" }}>
+        <div>
+          <div className="label-md">Ticket promedio</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.125rem", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>
+            {fmtMXN(Math.round(EVOBIKE_DATA.KPIS.ventasNetas.value / 69))}
+          </div>
+        </div>
+        <div>
+          <div className="label-md">Unidades vendidas</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.125rem", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>69</div>
+        </div>
+        <div>
+          <div className="label-md">Días activos</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.125rem", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>18 / 18</div>
+        </div>
+        <div>
+          <div className="label-md">Mejor día</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.125rem", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>Dom 12 · {fmtMXN(Math.max(...data.map(d => d.total)), { compact: true })}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BranchComparison = () => {
+  const branches = EVOBIKE_DATA.BRANCH_COMPARISON;
+  const maxSales = Math.max(...branches.map(b => b.sales));
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+      <div>
+        <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Comparativo de sucursales</h3>
+        <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>Ventas netas MTD</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+        {branches.map(b => (
+          <div key={b.id} style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: b.id === "leo" ? "#2ECC71" : "#52B788" }} />
+                <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{b.name}</span>
+                <Delta value={b.delta} compact />
+              </div>
+              <span className="display" style={{ fontSize: "0.9375rem", fontVariantNumeric: "tabular-nums" }}>{fmtMXN(b.sales)}</span>
+            </div>
+            <div style={{ height: 6, background: "var(--surf-high)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{
+                width: `${(b.sales / maxSales) * 100}%`, height: "100%",
+                background: b.id === "leo" ? "linear-gradient(90deg,#1b4332,#2ecc71)" : "var(--sec)",
+                borderRadius: 999,
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>
+              <span>{b.units} tickets</span>
+              <span>Ticket ø {fmtMXN(b.ticket, { compact: true })}</span>
+              <span>Margen {fmtPct(b.margin, 1)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const AlertsPanel = ({ onOpenThresholds }) => {
+  const alerts = EVOBIKE_DATA.ALERTS_ACTIVE;
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Alertas activas</h3>
+          <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>{alerts.length} eventos · umbrales configurables</div>
+        </div>
+        <button className="btn btn--sm" onClick={onOpenThresholds} style={{ background: "var(--surf-high)", color: "var(--p)" }}>
+          <Icon name="sliders" size={12} /> Umbrales
+        </button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+        {alerts.map(a => (
+          <div key={a.id} style={{
+            display: "flex", alignItems: "flex-start", gap: "0.6rem",
+            padding: "0.6rem 0.75rem", borderRadius: "var(--r-md)",
+            background: a.severity === "critical" ? "color-mix(in srgb, var(--ter) 10%, transparent)" : "color-mix(in srgb, var(--warn) 12%, transparent)",
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", flexShrink: 0,
+              background: a.severity === "critical" ? "var(--ter)" : "var(--warn)",
+              color: a.severity === "critical" ? "#fff" : "#2a1f00",
+            }}>
+              <Icon name="alert" size={14} stroke={2.25} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 500, lineHeight: 1.35 }}>{a.title}</div>
+              <div style={{ display: "flex", gap: "0.5rem", fontSize: "0.6875rem", color: "var(--on-surf-var)", marginTop: 2 }}>
+                <span>{a.module}</span>
+                <span>·</span>
+                <span>{a.time}</span>
+              </div>
+            </div>
+            <button className="btn btn--icon" style={{ padding: 4 }}>
+              <Icon name="chevronRight" size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TopProductsSection = () => {
+  const products = EVOBIKE_DATA.TOP_PRODUCTS;
+  const maxRev = Math.max(...products.map(p => p.revenue));
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Top productos por ingreso</h3>
+          <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>MTD · ambas sucursales</div>
+        </div>
+        <button className="btn btn--sm" style={{ color: "var(--p)" }}>
+          Ver todos <Icon name="arrowRight" size={12} />
+        </button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {products.map((p, i) => (
+          <div key={p.name} style={{
+            display: "grid", gridTemplateColumns: "24px 1fr auto 90px auto",
+            gap: "0.75rem", alignItems: "center",
+            padding: "0.55rem 0", borderTop: i === 0 ? "none" : "1px solid var(--ghost-border)",
+          }}>
+            <span className="label-md" style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", marginTop: 1 }}>{p.units} uds · margen {fmtPct(p.margin)}</div>
+            </div>
+            <div style={{ width: 80, height: 6, background: "var(--surf-high)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ width: `${(p.revenue / maxRev) * 100}%`, height: "100%", background: "var(--p-bright)" }} />
+            </div>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtMXN(p.revenue, { compact: true })}</span>
+            <button className="btn btn--icon" style={{ padding: 4 }}>
+              <Icon name="chevronRight" size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const LowStockSection = () => {
+  const items = EVOBIKE_DATA.LOW_STOCK;
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Stock crítico</h3>
+          <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>{items.length} items por debajo del mínimo</div>
+        </div>
+        <Chip kind="crit">47 críticos</Chip>
+      </div>
+      <div style={{ margin: "0 -0.5rem" }}>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>SKU / producto</th>
+              <th>Sucursal</th>
+              <th style={{ textAlign: "right" }}>Stock</th>
+              <th style={{ textAlign: "right" }}>Mínimo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.slice(0, 6).map(it => (
+              <tr key={it.sku}>
+                <td>
+                  <div style={{ fontWeight: 500 }}>{it.name}</div>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", fontFamily: "var(--font-body)" }}>{it.sku} · {it.cat}</div>
+                </td>
+                <td><Chip kind="neutral">{it.branch}</Chip></td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                  {it.stock === 0 ? <span style={{ color: "var(--ter)" }}>0</span> : it.stock}
+                </td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--on-surf-var)" }}>{it.min}</td>
+                <td>{it.stock === 0 ? <Chip kind="nostock">Sin stock</Chip> : <Chip kind="crit">Bajo</Chip>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const Dashboard = ({ branch, kpiOrder, kpiVisibility, sections, variant, chartDefault, onOpenThresholds, setRoute }) => {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
+      {sections.hero !== false && <HeroBand kpiOrder={kpiOrder} kpiVisibility={kpiVisibility} chartDefault={chartDefault} variant={variant} />}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: "1rem", padding: "0 1.5rem" }}>
+        {sections.trend !== false && <TrendSection branch={branch} chartDefault={chartDefault} />}
+        {sections.branches !== false && <BranchComparison />}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", padding: "0 1.5rem" }}>
+        {sections.products !== false && <TopProductsSection />}
+        {sections.alerts !== false && <AlertsPanel onOpenThresholds={onOpenThresholds} />}
+      </div>
+
+      {sections.lowstock !== false && (
+        <div style={{ padding: "0 1.5rem" }}>
+          <LowStockSection />
+        </div>
+      )}
+
+      {sections.reports !== false && (
+        <div style={{ padding: "0 1.5rem" }}>
+          <ReportsQuickList setRoute={setRoute} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ReportsQuickList = ({ setRoute }) => {
+  const pinned = EVOBIKE_DATA.REPORTS_CATALOG.filter(r => r.pinned);
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Reportes fijados</h3>
+          <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>Acceso rápido · {pinned.length} reportes</div>
+        </div>
+        <button className="btn btn--sm" onClick={() => setRoute({ name: "list" })} style={{ color: "var(--p)" }}>
+          Ver catálogo <Icon name="arrowRight" size={12} />
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "0.65rem" }}>
+        {pinned.map(r => (
+          <button key={r.id} onClick={() => setRoute({ name: "detail", report: r })}
+            style={{
+              display: "flex", flexDirection: "column", gap: "0.4rem",
+              padding: "0.85rem 1rem", borderRadius: "var(--r-md)",
+              background: "var(--surf-low)", textAlign: "left",
+              transition: "background 120ms",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--surf-high)"}
+            onMouseLeave={e => e.currentTarget.style.background = "var(--surf-low)"}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--surf-lowest)", display: "grid", placeItems: "center", color: "var(--p)" }}>
+                <Icon name={r.icon} size={14} />
+              </div>
+              <Icon name="bookmark" size={12} style={{ color: "var(--p-bright)" }} />
+            </div>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 600, marginTop: "0.15rem" }}>{r.title}</div>
+            <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", lineHeight: 1.4 }}>{r.desc}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.625rem", color: "var(--on-surf-var)", marginTop: "0.2rem", letterSpacing: "0.03em" }}>
+              <span>{r.updated}</span>
+              {r.items != null && <span>{fmtNum(r.items)} regs</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { Dashboard });
+
+
+// ==== src/views.jsx ====
+// Reports list catalog view + Report detail view + Builder
+
+const ReportsList = ({ setRoute, onExport }) => {
+  const catalog = EVOBIKE_DATA.REPORTS_CATALOG;
+  const [q, setQ] = React.useState("");
+  const [filter, setFilter] = React.useState("all");
+  const groups = [...new Set(catalog.map(r => r.group))];
+
+  const filtered = catalog.filter(r => {
+    if (filter !== "all" && r.group !== filter) return false;
+    if (q && !r.title.toLowerCase().includes(q.toLowerCase()) && !r.desc.toLowerCase().includes(q.toLowerCase())) return false;
+    return true;
+  });
+
+  const grouped = groups.map(g => ({ group: g, items: filtered.filter(r => r.group === g) })).filter(x => x.items.length);
+
+  return (
+    <div style={{ padding: "0 1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="card card--dim" style={{ padding: "1rem", display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, minWidth: 240, background: "var(--surf-lowest)", outline: "1px solid var(--ghost-border)", borderRadius: 999, padding: "0.4rem 0.85rem" }}>
+          <Icon name="search" size={14} style={{ color: "var(--on-surf-var)" }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar reportes por título o descripción..."
+                 style={{ background: "transparent", border: "none", outline: "none", flex: 1, fontSize: "0.8125rem", color: "var(--on-surf)" }} />
+        </div>
+        <div className="segmented">
+          <button onClick={() => setFilter("all")} className={`segmented__btn ${filter === "all" ? "segmented__btn--active" : ""}`}>Todos</button>
+          {groups.map(g => (
+            <button key={g} onClick={() => setFilter(g)} className={`segmented__btn ${filter === g ? "segmented__btn--active" : ""}`}>{g}</button>
+          ))}
+        </div>
+        <button className="btn btn--primary btn--sm" onClick={() => setRoute({ name: "builder" })}>
+          <Icon name="plus" size={14} />
+          Nuevo reporte
+        </button>
+      </div>
+
+      <div className="card card--dim" style={{ padding: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Vistas guardadas</h3>
+            <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>Configuraciones personales y compartidas</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }}>
+          {EVOBIKE_DATA.SAVED_VIEWS.map(v => (
+            <button key={v.id} style={{
+              display: "flex", flexDirection: "column", gap: "0.35rem",
+              padding: "0.75rem 0.9rem", borderRadius: "var(--r-md)",
+              background: "var(--surf-lowest)", textAlign: "left",
+              outline: "1px solid var(--ghost-border)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Icon name="bookmark" size={14} style={{ color: "var(--p)" }} />
+                {v.shared && <Chip kind="primary">Compartido</Chip>}
+              </div>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{v.name}</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{v.metrics} métricas configuradas</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {grouped.map(({ group, items }) => (
+        <div key={group}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 0.25rem 0.6rem" }}>
+            <h3 style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--on-surf-var)" }}>
+              {group}
+            </h3>
+            <span className="label-md">{items.length} reportes</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "0.65rem" }}>
+            {items.map(r => (
+              <button key={r.id} onClick={() => setRoute({ name: "detail", report: r })}
+                className="card" style={{
+                  display: "flex", flexDirection: "column", gap: "0.55rem",
+                  textAlign: "left", padding: "1.25rem",
+                  transition: "transform 140ms ease, box-shadow 140ms ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0px 18px 40px -6px rgba(19,27,46,0.10)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--surf-high)", color: "var(--p)", display: "grid", placeItems: "center" }}>
+                    <Icon name={r.icon} size={18} />
+                  </div>
+                  {r.pinned && <Icon name="bookmark" size={14} style={{ color: "var(--p-bright)" }} />}
+                </div>
+                <div style={{ fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.005em", marginTop: "0.2rem" }}>{r.title}</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", lineHeight: 1.45, flex: 1 }}>{r.desc}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.55rem", borderTop: "1px solid var(--ghost-border)" }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{r.updated}</span>
+                  {r.items != null && (
+                    <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(r.items)} regs</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const ReportDetail = ({ report, branch, onExport, onOpenThresholds }) => {
+  const [tab, setTab] = React.useState("summary");
+  const [branchFilter, setBranchFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [selected, setSelected] = React.useState(null);
+
+  const sales = EVOBIKE_DATA.SALES.filter(s => {
+    if (branchFilter !== "all" && s.branch !== branchFilter.toUpperCase()) return false;
+    if (statusFilter !== "all" && s.status !== statusFilter) return false;
+    return true;
+  });
+
+  const totalRevenue = sales.reduce((s, r) => s + r.total, 0);
+  const totalMargin = sales.reduce((s, r) => s + r.margin, 0);
+
+  return (
+    <div style={{ padding: "0 1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* Summary row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.85rem" }}>
+        {[
+          { label: "Tickets", value: fmtNum(sales.length), delta: 0.089, sub: "vs. periodo anterior" },
+          { label: "Revenue neto", value: fmtMXN(totalRevenue), delta: 0.124, sub: "IVA excluido" },
+          { label: "Margen bruto", value: fmtMXN(totalMargin), delta: 0.096, sub: `${fmtPct(totalMargin/totalRevenue, 1)} blended` },
+          { label: "Ticket promedio", value: fmtMXN(Math.round(totalRevenue / sales.length)), delta: 0.032, sub: "Sin outliers" },
+        ].map((kpi, i) => (
+          <div key={i} className="card" style={{ padding: "1.15rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <span className="label-md" style={{ fontSize: "0.5625rem" }}>{kpi.label}</span>
+            <div className="display" style={{ fontSize: "1.6rem", lineHeight: 1.15, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+              <Delta value={kpi.delta} compact />
+              <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{kpi.sub}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart + top sellers */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "1rem" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Evolución diaria</h3>
+              <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>Tickets y revenue · comparado vs. marzo</div>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 2, background: "var(--p-bright)" }} /> Actual
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 2, borderTop: "2px dashed var(--on-surf-var)" }} /> Marzo
+              </span>
+            </div>
+          </div>
+          <LineArea data={EVOBIKE_DATA.dailySales.map(d => ({ x: d.day, y: d.total }))}
+                    compareData={EVOBIKE_DATA.dailySalesPrev.map(d => ({ x: d.day, y: d.total }))}
+                    fill height={220} />
+        </div>
+
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Top vendedores</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            {[
+              { name: "A. Gómez", branch: "LEO", sales: 18, revenue: 612000, avatar: "AG" },
+              { name: "R. Tzuc", branch: "AV135", sales: 14, revenue: 498000, avatar: "RT" },
+              { name: "M. Canché", branch: "LEO", sales: 12, revenue: 421000, avatar: "MC" },
+              { name: "L. Huchim", branch: "AV135", sales: 11, revenue: 372000, avatar: "LH" },
+              { name: "D. Interián", branch: "LEO", sales: 9, revenue: 312000, avatar: "DI" },
+            ].map((s, i) => (
+              <div key={s.name} style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surf-high)", color: "var(--p)", display: "grid", placeItems: "center", fontSize: "0.6875rem", fontWeight: 600 }}>{s.avatar}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{s.name}</div>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{s.branch} · {s.sales} tickets</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", fontVariantNumeric: "tabular-nums" }}>{fmtMXN(s.revenue, { compact: true })}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Registros del período</h3>
+            <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>{sales.length} ventas · click para drill-down</div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <div className="segmented">
+              {["all", "leo", "av135"].map(b => (
+                <button key={b} onClick={() => setBranchFilter(b)}
+                  className={`segmented__btn ${branchFilter === b ? "segmented__btn--active" : ""}`}>
+                  {b === "all" ? "Todas" : b.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <select className="input" style={{ width: "auto", padding: "0.4rem 0.65rem", fontSize: "0.75rem" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="all">Todos los estados</option>
+              <option value="COMPLETED">Completadas</option>
+              <option value="LAYAWAY">Apartados</option>
+              <option value="REFUNDED">Devoluciones</option>
+            </select>
+            <button className="btn btn--sm btn--ghost" onClick={onOpenThresholds}>
+              <Icon name="alert" size={12} /> Alertas
+            </button>
+          </div>
+        </div>
+        <div style={{ maxHeight: 420, overflowY: "auto" }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Producto</th>
+                <th>Sucursal</th>
+                <th>Vendedor</th>
+                <th>Pago</th>
+                <th style={{ textAlign: "right" }}>Total</th>
+                <th style={{ textAlign: "right" }}>Margen</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sales.slice(0, 30).map(s => (
+                <tr key={s.id} onClick={() => setSelected(s)} style={{ cursor: "pointer" }}>
+                  <td style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.75rem", color: "var(--p)" }}>{s.id}</td>
+                  <td style={{ color: "var(--on-surf-var)" }}>{fmtDate(s.date)}</td>
+                  <td>{s.customer}</td>
+                  <td style={{ fontWeight: 500 }}>{s.product}</td>
+                  <td><Chip kind="neutral">{s.branch}</Chip></td>
+                  <td style={{ color: "var(--on-surf-var)" }}>{s.seller}</td>
+                  <td style={{ color: "var(--on-surf-var)", fontSize: "0.75rem" }}>{s.payment}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtMXN(s.total)}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--sec)" }}>{fmtMXN(s.margin, { compact: true })}</td>
+                  <td>
+                    {s.status === "COMPLETED" && <Chip kind="pos">Completada</Chip>}
+                    {s.status === "LAYAWAY" && <Chip kind="warn">Apartado</Chip>}
+                    {s.status === "REFUNDED" && <Chip kind="crit">Devolución</Chip>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 1.25rem", fontSize: "0.75rem", color: "var(--on-surf-var)" }}>
+          <span>Mostrando 1–{Math.min(30, sales.length)} de {sales.length}</span>
+          <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+            <button className="btn btn--icon"><Icon name="chevronLeft" size={14} /></button>
+            <span style={{ padding: "0 0.5rem" }}>1 / {Math.ceil(sales.length/30)}</span>
+            <button className="btn btn--icon"><Icon name="chevronRight" size={14} /></button>
+          </div>
+        </div>
+      </div>
+
+      {selected && (
+        <div onClick={() => setSelected(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 50, display: "flex", justifyContent: "flex-end" }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 440, height: "100%", background: "color-mix(in srgb, var(--surf-bright) 92%, transparent)",
+            backdropFilter: "blur(20px)", padding: "1.5rem", overflow: "auto",
+            animation: "slideIn 220ms ease-out",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+              <div>
+                <span className="label-md">Venta</span>
+                <h2 className="headline" style={{ margin: 0, fontSize: "1.25rem", fontVariantNumeric: "tabular-nums" }}>{selected.id}</h2>
+              </div>
+              <button className="btn btn--icon" onClick={() => setSelected(null)}><Icon name="close" size={16} /></button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+              <DetailField label="Fecha" value={fmtDate(selected.date) + " 2026"} />
+              <DetailField label="Sucursal" value={selected.branch} />
+              <DetailField label="Cliente" value={selected.customer} />
+              <DetailField label="Vendedor" value={selected.seller} />
+              <DetailField label="Pago" value={selected.payment} />
+              <DetailField label="Estado" value={selected.status} />
+            </div>
+            <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
+              <div className="label-md" style={{ marginBottom: "0.35rem" }}>Producto</div>
+              <div style={{ fontSize: "0.9375rem", fontWeight: 600 }}>{selected.product}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem" }}>
+                <div>
+                  <div className="label-md">Total</div>
+                  <div className="display" style={{ fontSize: "1.4rem" }}>{fmtMXN(selected.total)}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div className="label-md">Margen</div>
+                  <div className="display" style={{ fontSize: "1.4rem", color: "var(--sec)" }}>{fmtMXN(selected.margin)}</div>
+                </div>
+              </div>
+            </div>
+            <button className="btn btn--primary" style={{ width: "100%", justifyContent: "center" }}>
+              Ver ticket completo <Icon name="arrowRight" size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DetailField = ({ label, value }) => (
+  <div className="card card--dim" style={{ padding: "0.65rem 0.85rem", boxShadow: "none", outline: "none" }}>
+    <div className="label-md" style={{ fontSize: "0.5625rem" }}>{label}</div>
+    <div style={{ fontSize: "0.8125rem", fontWeight: 500, marginTop: 2 }}>{value}</div>
+  </div>
+);
+
+const Builder = ({ setRoute }) => {
+  return (
+    <div style={{ padding: "0 1.5rem 2rem" }}>
+      <div className="card" style={{ padding: "2.5rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1rem" }}>
+        <div style={{ width: 72, height: 72, borderRadius: 18, background: "linear-gradient(135deg,#1b4332,#2ecc71)", display: "grid", placeItems: "center", color: "#fff" }}>
+          <Icon name="drag" size={32} stroke={2} />
+        </div>
+        <h2 className="headline" style={{ margin: 0, fontSize: "1.5rem" }}>Constructor de reportes</h2>
+        <p style={{ maxWidth: 480, color: "var(--on-surf-var)", fontSize: "0.875rem", lineHeight: 1.55, margin: 0 }}>
+          Arrastra métricas y dimensiones desde la biblioteca para construir un reporte personalizado. Guardalo como vista compartida o exportalo directamente.
+        </p>
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+          <button className="btn btn--ghost" onClick={() => setRoute({ name: "dashboard" })}>Volver al panel</button>
+          <button className="btn btn--primary">
+            <Icon name="plus" size={14} />
+            Empezar desde cero
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1rem", marginTop: "1rem" }}>
+        <div className="card card--dim">
+          <h4 style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem", fontWeight: 600 }}>Biblioteca</h4>
+          <div className="label-md" style={{ marginBottom: "0.35rem" }}>Métricas</div>
+          {["Revenue neto", "Margen bruto", "Ticket promedio", "Unidades vendidas", "Comisiones"].map(m => (
+            <div key={m} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.5rem", borderRadius: 8, fontSize: "0.75rem", cursor: "grab" }}>
+              <Icon name="drag" size={12} style={{ color: "var(--on-surf-var)" }} />
+              {m}
+            </div>
+          ))}
+          <div className="label-md" style={{ marginTop: "0.75rem", marginBottom: "0.35rem" }}>Dimensiones</div>
+          {["Sucursal", "Vendedor", "Categoría", "Día", "Semana", "Forma de pago"].map(m => (
+            <div key={m} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.5rem", borderRadius: 8, fontSize: "0.75rem", cursor: "grab" }}>
+              <Icon name="drag" size={12} style={{ color: "var(--on-surf-var)" }} />
+              {m}
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{ minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "0.5rem", border: "2px dashed var(--ghost-border)", boxShadow: "none", outline: "none" }}>
+          <Icon name="plus" size={24} style={{ color: "var(--on-surf-var)" }} />
+          <div style={{ fontSize: "0.8125rem", color: "var(--on-surf-var)" }}>Arrastra aquí una métrica para empezar</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==== src/report-detail-shell.jsx ====
+// Shell común del nivel 3 de Reportes — usado por todos los reportes de Detalle
+// Layout: breadcrumb ya viene del Topbar · H1 + acciones · filter panel · KPIs · viz principal · tabla
+
+// ---- FilterPopover: UI real con popover multi-select ----
+const FilterPopover = ({ label, options, selected, onChange, align = "left" }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const all = selected.length === 0 || selected.length === options.length;
+  const displayValue = all ? "Todos" : selected.length === 1 ? options.find(o => o.id === selected[0])?.label : `${selected.length} seleccionados`;
+
+  const toggle = (id) => {
+    if (selected.includes(id)) onChange(selected.filter(x => x !== id));
+    else onChange([...selected, id]);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(!open)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: "0.4rem",
+          padding: "0.35rem 0.7rem 0.35rem 0.8rem", borderRadius: 999,
+          fontSize: "0.75rem", fontWeight: 500, color: "var(--on-surf)",
+          background: all ? "var(--surf-bright)" : "var(--p-container)",
+          outline: all ? "1px solid var(--ghost-border)" : "1px solid color-mix(in srgb, var(--p) 40%, transparent)",
+          transition: "all 120ms ease",
+        }}>
+        <span style={{ color: "var(--on-surf-var)", fontSize: "0.6875rem" }}>{label}</span>
+        <span style={{ fontWeight: 600 }}>{displayValue}</span>
+        <Icon name="chevronDown" size={12} style={{ opacity: 0.5 }} />
+      </button>
+      {open && (
+        <div className="fade-in" style={{
+          position: "absolute", top: "calc(100% + 6px)", [align]: 0,
+          minWidth: 220, zIndex: 40,
+          background: "color-mix(in srgb, var(--surf-bright) 94%, transparent)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
+          borderRadius: "var(--r-md)", outline: "1px solid var(--ghost-border)",
+          padding: "0.5rem", display: "flex", flexDirection: "column", gap: 2,
+        }}>
+          <button onClick={() => onChange(options.map(o => o.id))}
+            style={{ padding: "0.45rem 0.65rem", fontSize: "0.75rem", textAlign: "left", color: "var(--on-surf-var)", borderRadius: "var(--r-sm)" }}>
+            <Icon name="check" size={12} /> Seleccionar todos
+          </button>
+          <button onClick={() => onChange([])}
+            style={{ padding: "0.45rem 0.65rem", fontSize: "0.75rem", textAlign: "left", color: "var(--on-surf-var)", borderRadius: "var(--r-sm)" }}>
+            Limpiar
+          </button>
+          <div style={{ height: 1, background: "var(--ghost-border)", margin: "4px 0" }} />
+          {options.map(o => {
+            const on = selected.includes(o.id);
+            return (
+              <button key={o.id} onClick={() => toggle(o.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.55rem",
+                  padding: "0.45rem 0.55rem", borderRadius: "var(--r-sm)",
+                  fontSize: "0.8125rem", textAlign: "left",
+                  background: on ? "var(--surf-high)" : "transparent",
+                }}>
+                <span style={{
+                  width: 14, height: 14, borderRadius: 4,
+                  background: on ? "var(--p-bright)" : "transparent",
+                  outline: on ? "none" : "1.5px solid var(--on-surf-var)",
+                  display: "grid", placeItems: "center", flexShrink: 0,
+                }}>
+                  {on && <Icon name="check" size={10} style={{ color: "#fff" }} stroke={3} />}
+                </span>
+                <span style={{ flex: 1 }}>{o.label}</span>
+                {o.count != null && <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", fontVariantNumeric: "tabular-nums" }}>{o.count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- FilterPanel: rango + sucursal (heredado overridable) + slots específicos ----
+const FilterPanel = ({ children, onClear, onSave, dirty }) => (
+  <div className="card" style={{ padding: "0.85rem 1rem", display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap" }}>
+    <Icon name="filter" size={14} style={{ color: "var(--on-surf-var)" }} />
+    {children}
+    <div style={{ flex: 1 }} />
+    {dirty && (
+      <>
+        <button onClick={onClear} className="btn btn--sm btn--secondary">Limpiar</button>
+        <button onClick={onSave} className="btn btn--sm btn--primary">
+          <Icon name="bookmark" size={12} /> Guardar vista
+        </button>
+      </>
+    )}
+  </div>
+);
+
+// ---- DetailKPI: anatomía del spec §3.2 ----
+const DetailKPI = ({ label, value, delta, deltaLabel = "vs. per. anterior", invertDelta = false, sparkData, sparkColor, badge }) => {
+  const noCompare = delta == null;
+  return (
+    <div className="card" style={{ padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.4rem", minHeight: 130 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <span className="label-md">{label}</span>
+        {badge && <Chip kind={badge.kind} dot>{badge.label}</Chip>}
+      </div>
+      <div className="display" style={{ fontSize: "1.75rem", lineHeight: 1.1, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.015em" }}>{value}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minHeight: 18 }}>
+        {noCompare
+          ? <span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>— sin comparativo</span>
+          : <><Delta value={delta} inverse={invertDelta} compact /><span style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{deltaLabel}</span></>
+        }
+      </div>
+      {sparkData && (
+        <div style={{ height: 28, marginLeft: -4, marginRight: -4, marginTop: "auto" }}>
+          <Sparkline data={sparkData} color={sparkColor || "var(--p-bright)"} height={28} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- DetailHeader: H1 + subtítulo + acciones (breadcrumb ya en topbar) ----
+const DetailHeader = ({ title, subtitle, onExport, onSave, dirty }) => (
+  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "0 1.5rem", marginBottom: "0.25rem", gap: "1rem" }}>
+    <div style={{ minWidth: 0, flex: 1 }}>
+      <h1 className="headline" style={{ margin: 0, fontSize: "1.75rem", lineHeight: 1.1, letterSpacing: "-0.015em" }}>{title}</h1>
+      <p style={{ margin: "0.35rem 0 0", color: "var(--on-surf-var)", fontSize: "0.875rem", maxWidth: 720 }}>{subtitle}</p>
+    </div>
+    <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+      {dirty && (
+        <button onClick={onSave} className="btn btn--sm btn--secondary">
+          <Icon name="bookmark" size={12} /> Guardar vista
+        </button>
+      )}
+      <button onClick={onExport} className="btn btn--sm btn--secondary">
+        <Icon name="download" size={12} /> Exportar CSV
+      </button>
+    </div>
+  </div>
+);
+
+Object.assign(window, { FilterPopover, FilterPanel, DetailKPI, DetailHeader });
+
+
+// ==== src/report-v1-ventas.jsx ====
+// V1 — Ventas e ingresos (spec §4, V1)
+// Filtros: rango · sucursal · vendedor · método · tipo (multi-select popovers)
+// KPIs: tickets · ingreso neto · ticket ø · unidades · crecimiento
+// Viz: línea diaria/semanal/mensual + overlay stacked bars por método
+// Tabla: tickets con drill modal
+
+const ReporteV1Ventas = ({ onExport, onSave }) => {
+  const SELLERS_LIST = [...new Set(EVOBIKE_DATA.SALES.map(s => s.seller))];
+  const METHODS_LIST = [...new Set(EVOBIKE_DATA.SALES.map(s => s.payment))];
+  const TYPES_LIST = [...new Set(EVOBIKE_DATA.SALES.map(s => s.tipo))];
+
+  // Filters
+  const [branches, setBranches] = React.useState([]);
+  const [sellers, setSellers] = React.useState([]);
+  const [methods, setMethods] = React.useState([]);
+  const [types, setTypes] = React.useState([]);
+  const [period, setPeriod] = React.useState("MTD");
+  const [granularity, setGranularity] = React.useState("day"); // day · week · month
+  const [selectedTicket, setSelectedTicket] = React.useState(null);
+  const [focusedDay, setFocusedDay] = React.useState(null); // día pintado por click en gráfico
+  const [sortBy, setSortBy] = React.useState("date");
+  const [sortDir, setSortDir] = React.useState("desc");
+  const [tableQuery, setTableQuery] = React.useState("");
+
+  const dirty = branches.length + sellers.length + methods.length + types.length > 0 || period !== "MTD" || focusedDay !== null;
+
+  const filtered = React.useMemo(() => EVOBIKE_DATA.SALES.filter(s => {
+    if (s.status !== "COMPLETED") return false;
+    if (branches.length && !branches.includes(s.branch)) return false;
+    if (sellers.length && !sellers.includes(s.seller)) return false;
+    if (methods.length && !methods.includes(s.payment)) return false;
+    if (types.length && !types.includes(s.tipo)) return false;
+    if (focusedDay != null) {
+      const d = parseInt(s.date.split("-")[2], 10);
+      if (d !== focusedDay) return false;
+    }
+    return true;
+  }), [branches, sellers, methods, types, focusedDay]);
+
+  // KPI aggregates
+  const tickets = filtered.length;
+  const ingresoNeto = Math.round(filtered.reduce((a, s) => a + s.total / 1.16, 0));
+  const ticketPromedio = tickets ? Math.round(ingresoNeto / tickets) : 0;
+  const unidades = filtered.filter(s => s.tipo === "Producto").length;
+  const prevIngreso = Math.round(ingresoNeto * 0.884); // mock previous
+  const crecimiento = prevIngreso ? (ingresoNeto - prevIngreso) / prevIngreso : null;
+
+  // Daily series for chart
+  const daily = React.useMemo(() => {
+    const map = {};
+    filtered.forEach(s => {
+      const d = parseInt(s.date.split("-")[2], 10);
+      if (!map[d]) map[d] = { day: d, total: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0, ATRATO: 0 };
+      map[d].total += s.total / 1.16;
+      map[d][s.payment] = (map[d][s.payment] || 0) + s.total / 1.16;
+    });
+    const arr = Array.from({ length: EVOBIKE_DATA.DAYS_IN_PERIOD }, (_, i) => {
+      const day = i + 1;
+      return map[day] || { day, total: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0, ATRATO: 0 };
+    });
+    return arr;
+  }, [filtered]);
+
+  // Week aggregation
+  const weekly = React.useMemo(() => {
+    const out = [];
+    for (let i = 0; i < daily.length; i += 7) {
+      const slice = daily.slice(i, i + 7);
+      const total = slice.reduce((a, d) => a + d.total, 0);
+      const e = slice.reduce((a, d) => a + d.Efectivo, 0);
+      const t = slice.reduce((a, d) => a + d.Tarjeta, 0);
+      const tr = slice.reduce((a, d) => a + d.Transferencia, 0);
+      const at = slice.reduce((a, d) => a + d.ATRATO, 0);
+      out.push({ day: `Sem ${Math.floor(i/7) + 1}`, total, Efectivo: e, Tarjeta: t, Transferencia: tr, ATRATO: at });
+    }
+    return out;
+  }, [daily]);
+
+  const chartData = granularity === "week" ? weekly : daily;
+
+  // Table with search + sort
+  const sortedRows = React.useMemo(() => {
+    let rows = filtered;
+    if (tableQuery) {
+      const q = tableQuery.toLowerCase();
+      rows = rows.filter(r => r.folio.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q) || r.product.toLowerCase().includes(q));
+    }
+    return [...rows].sort((a, b) => {
+      const m = sortDir === "desc" ? -1 : 1;
+      if (sortBy === "total") return (a.total - b.total) * m;
+      if (sortBy === "margin") return (a.margin - b.margin) * m;
+      if (sortBy === "customer") return a.customer.localeCompare(b.customer) * m;
+      return a.date.localeCompare(b.date) * m || a.folio.localeCompare(b.folio) * m;
+    });
+  }, [filtered, sortBy, sortDir, tableQuery]);
+
+  const toggleSort = (col) => {
+    if (sortBy === col) setSortDir(sortDir === "desc" ? "asc" : "desc");
+    else { setSortBy(col); setSortDir("desc"); }
+  };
+
+  const clearAll = () => { setBranches([]); setSellers([]); setMethods([]); setTypes([]); setPeriod("MTD"); setFocusedDay(null); };
+
+  const branchOptions = [{ id: "LEO", label: "LEO", count: EVOBIKE_DATA.SALES.filter(s => s.branch === "LEO").length },
+                         { id: "AV135", label: "AV135", count: EVOBIKE_DATA.SALES.filter(s => s.branch === "AV135").length }];
+  const sellerOptions = SELLERS_LIST.map(s => ({ id: s, label: s, count: EVOBIKE_DATA.SALES.filter(x => x.seller === s).length }));
+  const methodOptions = METHODS_LIST.map(m => ({ id: m, label: m }));
+  const typeOptions = TYPES_LIST.map(t => ({ id: t, label: t === "Producto" ? "Producto" : t === "Servicio" ? "Servicio taller" : "Montaje" }));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
+      <DetailHeader
+        title="Ventas e ingresos"
+        subtitle="Tickets emitidos, ingreso neto y método de pago del período. Drill a día, vendedor o ticket individual."
+        onExport={onExport}
+        onSave={onSave}
+        dirty={dirty}
+      />
+
+      {/* Filter panel */}
+      <div style={{ padding: "0 1.5rem" }}>
+        <FilterPanel onClear={clearAll} onSave={onSave} dirty={dirty}>
+          <div className="segmented">
+            {["Hoy", "7D", "MTD", "30D", "YTD"].map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`segmented__btn ${period === p ? "segmented__btn--active" : ""}`}>{p}</button>
+            ))}
+          </div>
+          <FilterPopover label="Sucursal" options={branchOptions} selected={branches} onChange={setBranches} />
+          <FilterPopover label="Vendedor" options={sellerOptions} selected={sellers} onChange={setSellers} />
+          <FilterPopover label="Método" options={methodOptions} selected={methods} onChange={setMethods} />
+          <FilterPopover label="Tipo" options={typeOptions} selected={types} onChange={setTypes} />
+          {focusedDay != null && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.35rem 0.7rem", borderRadius: 999, fontSize: "0.75rem", background: "var(--p-container)", color: "var(--on-p-container)" }}>
+              <Icon name="calendar" size={12} /> Día {focusedDay} abr
+              <button onClick={() => setFocusedDay(null)} style={{ marginLeft: 4 }}><Icon name="close" size={12} /></button>
+            </span>
+          )}
+        </FilterPanel>
+      </div>
+
+      {/* 5 KPIs horizontales */}
+      <div style={{ padding: "0 1.5rem", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.85rem" }}>
+        <DetailKPI label="Tickets emitidos" value={fmtNum(tickets)} delta={0.089} sparkData={daily.map(d => ({ x: d.day, y: d.total > 0 ? 1 : 0 }))} />
+        <DetailKPI label="Ingreso neto" value={fmtMXN(ingresoNeto)} delta={crecimiento} sparkData={daily.map(d => ({ x: d.day, y: d.total }))} />
+        <DetailKPI label="Ticket promedio" value={fmtMXN(ticketPromedio)} delta={0.032} deltaLabel="Sin outliers" />
+        <DetailKPI label="Unidades vendidas" value={fmtNum(unidades)} delta={0.112} deltaLabel="Solo productos" />
+        <DetailKPI label="Crecimiento vs. mar" value={crecimiento != null ? fmtDelta(crecimiento) : "—"} delta={crecimiento} deltaLabel="Período comparable" />
+      </div>
+
+      {/* Viz principal */}
+      <div style={{ padding: "0 1.5rem" }}>
+        <div className="card" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "1.0625rem", fontWeight: 600, letterSpacing: "-0.01em" }}>Tendencia de ingresos</h2>
+              <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>
+                Ingreso neto por {granularity === "day" ? "día" : "semana"} · barras apiladas por método de pago
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+              <div className="segmented">
+                {[{k:"day", l:"Por día"},{k:"week", l:"Por semana"},{k:"month", l:"Por mes"}].map(o => (
+                  <button key={o.k} onClick={() => setGranularity(o.k)}
+                    disabled={o.k === "month"}
+                    className={`segmented__btn ${granularity === o.k ? "segmented__btn--active" : ""}`}
+                    style={{ opacity: o.k === "month" ? 0.4 : 1 }}>{o.l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Chart: stacked bars */}
+          <V1StackedChart data={chartData} granularity={granularity} onFocusDay={granularity === "day" ? setFocusedDay : null} focusedDay={focusedDay} />
+
+          {/* Legend */}
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", paddingTop: "0.5rem", borderTop: "1px solid var(--ghost-border)" }}>
+            {[
+              { label: "Efectivo", color: "#1b4332" },
+              { label: "Tarjeta", color: "#2ECC71" },
+              { label: "Transferencia", color: "#52B788" },
+              { label: "ATRATO", color: "#95D5B2" },
+            ].map(l => {
+              const total = chartData.reduce((a, d) => a + (d[l.label] || 0), 0);
+              const pct = ingresoNeto ? (total / ingresoNeto) * 100 : 0;
+              return (
+                <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.75rem" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color }} />
+                  <span style={{ fontWeight: 500 }}>{l.label}</span>
+                  <span style={{ color: "var(--on-surf-var)", fontVariantNumeric: "tabular-nums" }}>{fmtMXN(total, { compact: true })} · {pct.toFixed(1)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div style={{ padding: "0 1.5rem" }}>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.9rem 1.25rem", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "baseline" }}>
+              <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.005em" }}>Tickets del período</h3>
+              <span style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(sortedRows.length)} registros</span>
+            </div>
+            <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+              <div className="input" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.7rem", width: 220 }}>
+                <Icon name="search" size={12} style={{ color: "var(--on-surf-var)" }} />
+                <input value={tableQuery} onChange={e => setTableQuery(e.target.value)}
+                  placeholder="folio, cliente, producto…"
+                  style={{ background: "transparent", border: "none", outline: "none", flex: 1, fontSize: "0.75rem", color: "var(--on-surf)" }} />
+              </div>
+            </div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <SortableTH col="date" label="Fecha" {...{sortBy, sortDir, toggleSort}} pad="1.25rem" />
+                  <SortableTH col="folio" label="Folio" {...{sortBy, sortDir, toggleSort}} />
+                  <SortableTH col="customer" label="Cliente" {...{sortBy, sortDir, toggleSort}} />
+                  <th>Vendedor</th>
+                  <th>Tipo</th>
+                  <th>Método</th>
+                  <SortableTH col="total" label="Total" {...{sortBy, sortDir, toggleSort}} align="right" />
+                  <SortableTH col="margin" label="Margen" {...{sortBy, sortDir, toggleSort}} align="right" pad="1.25rem" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRows.slice(0, 50).map(t => (
+                  <tr key={t.folio} onClick={() => setSelectedTicket(t)} style={{ cursor: "pointer" }}>
+                    <td style={{ paddingLeft: "1.25rem", color: "var(--on-surf-var)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtDate(t.date)}</td>
+                    <td style={{ fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: "0.75rem", color: "var(--p)" }}>{t.folio}</td>
+                    <td>
+                      <div style={{ fontWeight: 500 }}>{t.customer}</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 260 }}>{t.product}</div>
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>{t.seller}</td>
+                    <td>
+                      <Chip kind={t.tipo === "Servicio" ? "primary" : t.tipo === "Montaje" ? "warn" : "neutral"}>
+                        {t.tipo === "Servicio" ? "Servicio" : t.tipo}
+                      </Chip>
+                    </td>
+                    <td><span style={{ fontSize: "0.75rem", color: "var(--on-surf-var)" }}>{t.payment}</span></td>
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtMXN(t.total)}</td>
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--sec)", paddingRight: "1.25rem" }}>{fmtPct(t.margin / t.total, 1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {sortedRows.length === 0 && (
+            <EmptyTable onClear={clearAll} />
+          )}
+          {sortedRows.length > 50 && (
+            <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid var(--ghost-border)", fontSize: "0.75rem", color: "var(--on-surf-var)", textAlign: "center" }}>
+              Mostrando 50 de {fmtNum(sortedRows.length)} · paginación en implementación
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Drill modal */}
+      {selectedTicket && (
+        <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+      )}
+    </div>
+  );
+};
+
+const SortableTH = ({ col, label, sortBy, sortDir, toggleSort, align, pad }) => (
+  <th onClick={() => toggleSort(col)}
+    style={{ cursor: "pointer", textAlign: align, paddingLeft: pad, paddingRight: pad, color: sortBy === col ? "var(--p)" : undefined, whiteSpace: "nowrap" }}>
+    {label} {sortBy === col ? (sortDir === "desc" ? "↓" : "↑") : ""}
+  </th>
+);
+
+const EmptyTable = ({ onClear }) => (
+  <div style={{ padding: "3rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.65rem" }}>
+    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--surf-high)", display: "grid", placeItems: "center" }}>
+      <Icon name="search" size={18} style={{ color: "var(--on-surf-var)" }} />
+    </div>
+    <div style={{ fontSize: "0.9375rem", fontWeight: 600 }}>Sin tickets en este rango</div>
+    <div style={{ fontSize: "0.8125rem", color: "var(--on-surf-var)", maxWidth: 360 }}>Prueba ampliar el rango, quitar filtros o cambiar de sucursal.</div>
+    <button onClick={onClear} className="btn btn--sm btn--secondary" style={{ marginTop: "0.4rem" }}>Limpiar filtros</button>
+  </div>
+);
+
+// ---- V1 stacked chart: barras apiladas por método + línea de total ----
+const V1StackedChart = ({ data, granularity, onFocusDay, focusedDay }) => {
+  const [hover, setHover] = React.useState(null);
+  const W = 920, H = 280, PAD_L = 48, PAD_R = 20, PAD_T = 16, PAD_B = 36;
+  const innerW = W - PAD_L - PAD_R, innerH = H - PAD_T - PAD_B;
+  const maxY = Math.max(1, ...data.map(d => d.total));
+  const barW = innerW / data.length * 0.68;
+  const gap = innerW / data.length - barW;
+
+  const COLORS = { Efectivo: "#1b4332", Tarjeta: "#2ECC71", Transferencia: "#52B788", ATRATO: "#95D5B2" };
+  const stackOrder = ["Efectivo", "Tarjeta", "Transferencia", "ATRATO"];
+
+  // Line total
+  const linePoints = data.map((d, i) => {
+    const x = PAD_L + i * (innerW / data.length) + (innerW / data.length) / 2;
+    const y = PAD_T + innerH - (d.total / maxY) * innerH;
+    return [x, y];
+  });
+  const linePath = linePoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]} ${p[1]}`).join(" ");
+
+  // Y ticks
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => ({ v: maxY * t, y: PAD_T + innerH - t * innerH }));
+
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
+        {/* Grid */}
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={t.y} y2={t.y} stroke="var(--ghost-border)" strokeDasharray={i === 0 ? "0" : "2 4"} />
+            <text x={PAD_L - 8} y={t.y + 3} textAnchor="end" fontSize="10" fill="var(--on-surf-var)" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {t.v === 0 ? "0" : fmtMXN(t.v, { compact: true })}
+            </text>
+          </g>
+        ))}
+
+        {/* Stacked bars */}
+        {data.map((d, i) => {
+          const xBase = PAD_L + i * (innerW / data.length) + gap / 2;
+          let yCursor = PAD_T + innerH;
+          const isHover = hover === i;
+          const isFocused = granularity === "day" && focusedDay === d.day;
+          return (
+            <g key={i}>
+              {stackOrder.map(k => {
+                const v = d[k] || 0;
+                const h = (v / maxY) * innerH;
+                yCursor -= h;
+                return (
+                  <rect key={k} x={xBase} y={yCursor} width={barW} height={h}
+                    fill={COLORS[k]}
+                    opacity={isFocused ? 1 : isHover ? 0.95 : 0.85} rx={1.5}
+                  />
+                );
+              })}
+              {/* Hover + click capture */}
+              <rect x={xBase - gap / 4} y={PAD_T} width={barW + gap / 2} height={innerH}
+                fill="transparent"
+                onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+                onClick={() => onFocusDay && onFocusDay(isFocused ? null : d.day)}
+                style={{ cursor: onFocusDay ? "pointer" : "default" }}
+              />
+              {isFocused && (
+                <rect x={xBase - 2} y={PAD_T - 4} width={barW + 4} height={innerH + 8}
+                  fill="none" stroke="var(--p-bright)" strokeWidth={1.5} strokeDasharray="3 3" rx={2} pointerEvents="none" />
+              )}
+            </g>
+          );
+        })}
+
+        {/* Total line overlay */}
+        <path d={linePath} stroke="var(--p-bright)" strokeWidth="1.5" fill="none" opacity={0.75} />
+        {linePoints.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={hover === i ? 4 : 2.5} fill="var(--p-bright)" stroke="var(--surf-bright)" strokeWidth="1.5" />
+        ))}
+
+        {/* X labels */}
+        {data.map((d, i) => {
+          if (granularity === "day" && data.length > 10 && i % 3 !== 0) return null;
+          const x = PAD_L + i * (innerW / data.length) + (innerW / data.length) / 2;
+          return (
+            <text key={i} x={x} y={H - 12} textAnchor="middle" fontSize="10" fill="var(--on-surf-var)">
+              {granularity === "day" ? d.day : d.day}
+            </text>
+          );
+        })}
+      </svg>
+
+      {hover != null && data[hover] && (
+        <div style={{
+          position: "absolute", left: `${((PAD_L + hover * (innerW / data.length) + (innerW / data.length) / 2) / W) * 100}%`,
+          top: 0, transform: "translate(-50%, -4px)", pointerEvents: "none",
+          background: "color-mix(in srgb, var(--surf-bright) 95%, transparent)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.15)", borderRadius: "var(--r-sm)",
+          padding: "0.55rem 0.75rem", fontSize: "0.6875rem", minWidth: 140,
+          outline: "1px solid var(--ghost-border)", zIndex: 5,
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {granularity === "day" ? `Día ${data[hover].day} abr` : data[hover].day}
+          </div>
+          {stackOrder.map(k => data[hover][k] > 0 && (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ color: COLORS[k] }}>● {k}</span>
+              <span>{fmtMXN(data[hover][k], { compact: true })}</span>
+            </div>
+          ))}
+          <div style={{ borderTop: "1px solid var(--ghost-border)", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+            <span>Total</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtMXN(data[hover].total, { compact: true })}</span>
+          </div>
+          {onFocusDay && (
+            <div style={{ marginTop: 4, color: "var(--p)", fontSize: "0.625rem" }}>Click para filtrar al día →</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- Modal de detalle de ticket ----
+const TicketDetailModal = ({ ticket, onClose }) => {
+  // Mock line items
+  const lineItems = React.useMemo(() => {
+    const items = [{ qty: 1, desc: ticket.product, unit: Math.round(ticket.total * 0.88), total: Math.round(ticket.total * 0.88) }];
+    if (ticket.tipo === "Producto") {
+      items.push({ qty: 1, desc: "Seguro 12 meses", unit: Math.round(ticket.total * 0.08), total: Math.round(ticket.total * 0.08) });
+      items.push({ qty: 2, desc: "Accesorios premontados", unit: Math.round(ticket.total * 0.02), total: Math.round(ticket.total * 0.04) });
+    }
+    return items;
+  }, [ticket]);
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div onClick={e => e.stopPropagation()} className="fade-in" style={{
+        width: "min(560px, 100%)", maxHeight: "85vh", overflow: "auto",
+        background: "color-mix(in srgb, var(--surf-bright) 96%, transparent)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.25)", borderRadius: "var(--r-lg)",
+        outline: "1px solid var(--ghost-border)",
+        display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ padding: "1.25rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid var(--ghost-border)" }}>
+          <div>
+            <span className="label-md">Ticket</span>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600, letterSpacing: "-0.01em", fontFamily: "var(--font-display)" }}>{ticket.folio}</h2>
+            <div style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", marginTop: 2 }}>
+              {fmtDate(ticket.date)} · {ticket.branch} · {ticket.seller}
+            </div>
+          </div>
+          <button className="btn btn--icon" onClick={onClose}><Icon name="close" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "1.25rem 1.5rem", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
+          <DetailField label="Cliente" value={ticket.customer} />
+          <DetailField label="Tipo" value={ticket.tipo} />
+          <DetailField label="Método" value={ticket.payment} />
+        </div>
+
+        <div style={{ padding: "0 1.5rem 1rem" }}>
+          <div className="label-md" style={{ marginBottom: "0.5rem" }}>Líneas del ticket</div>
+          <table className="tbl" style={{ fontSize: "0.8125rem" }}>
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: "0.5rem" }}>Qty</th>
+                <th>Descripción</th>
+                <th style={{ textAlign: "right" }}>Unit.</th>
+                <th style={{ textAlign: "right", paddingRight: "0.5rem" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((l, i) => (
+                <tr key={i}>
+                  <td style={{ paddingLeft: "0.5rem", fontVariantNumeric: "tabular-nums" }}>{l.qty}</td>
+                  <td>{l.desc}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtMXN(l.unit)}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", paddingRight: "0.5rem", fontWeight: 600 }}>{fmtMXN(l.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ padding: "1rem 1.5rem", background: "var(--surf-low)", borderTop: "1px solid var(--ghost-border)", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <Row label="Subtotal" value={fmtMXN(Math.round(ticket.total / 1.16))} />
+          <Row label="IVA 16%" value={fmtMXN(Math.round(ticket.total - ticket.total / 1.16))} muted />
+          <Row label="Total" value={fmtMXN(ticket.total)} bold />
+          <Row label="Margen" value={`${fmtMXN(ticket.margin)} (${fmtPct(ticket.margin / ticket.total, 1)})`} muted accent="sec" />
+        </div>
+
+        <div style={{ padding: "1rem 1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <button className="btn btn--sm btn--secondary"><Icon name="download" size={12} /> Comprobante PDF</button>
+          <button className="btn btn--sm btn--primary"><Icon name="user" size={12} /> Ver vendedor</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Row = ({ label, value, bold, muted, accent }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", fontSize: bold ? "0.9375rem" : "0.8125rem",
+                fontWeight: bold ? 700 : 500,
+                color: accent ? `var(--${accent})` : muted ? "var(--on-surf-var)" : "var(--on-surf)" }}>
+    <span>{label}</span>
+    <span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span>
+  </div>
+);
+
+Object.assign(window, { ReportsList, ReportDetail, ReporteV1Ventas, ReporteVentasVendedor: ReporteV1Ventas, Builder });
+
+
+// ==== src/overlays.jsx ====
+// Export drawer, thresholds modal, tweaks panel
+
+const ExportDrawer = ({ open, onClose }) => {
+  const [format, setFormat] = React.useState("xlsx");
+  const [scope, setScope] = React.useState("filtered");
+  const [includeCharts, setIncludeCharts] = React.useState(true);
+  const [email, setEmail] = React.useState(false);
+  if (!open) return null;
+
+  const formats = [
+    { id: "csv", label: "CSV", desc: "Texto plano separado por comas", icon: "export" },
+    { id: "xlsx", label: "Excel", desc: "Hoja de cálculo con formato y formulas", icon: "invoice" },
+    { id: "pdf", label: "PDF", desc: "Documento con branding para compartir", icon: "report" },
+    { id: "xml", label: "CFDI XML", desc: "Para envío al contador externo", icon: "export" },
+  ];
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 60, display: "flex", justifyContent: "flex-end" }}>
+      <div onClick={e => e.stopPropagation()} className="fade-in" style={{
+        width: 460, height: "100%",
+        background: "color-mix(in srgb, var(--surf-bright) 92%, transparent)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        padding: "1.5rem", overflow: "auto",
+        display: "flex", flexDirection: "column", gap: "1rem",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <span className="label-md">Exportar</span>
+            <h2 className="headline" style={{ margin: 0, fontSize: "1.5rem" }}>Descargar datos</h2>
+          </div>
+          <button className="btn btn--icon" onClick={onClose}><Icon name="close" size={16} /></button>
+        </div>
+
+        <div>
+          <div className="label-md" style={{ marginBottom: "0.5rem" }}>Formato</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+            {formats.map(f => (
+              <button key={f.id} onClick={() => setFormat(f.id)}
+                style={{
+                  display: "flex", flexDirection: "column", gap: "0.25rem",
+                  padding: "0.75rem 0.85rem", borderRadius: "var(--r-md)",
+                  textAlign: "left",
+                  background: format === f.id ? "var(--surf-high)" : "var(--surf-lowest)",
+                  outline: format === f.id ? "2px solid var(--p-bright)" : "1px solid var(--ghost-border)",
+                }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Icon name={f.icon} size={16} style={{ color: format === f.id ? "var(--p)" : "var(--on-surf-var)" }} />
+                  {format === f.id && <Icon name="check" size={14} style={{ color: "var(--p-bright)" }} />}
+                </div>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 600, marginTop: "0.35rem" }}>{f.label}</div>
+                <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)", lineHeight: 1.4 }}>{f.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="label-md" style={{ marginBottom: "0.5rem" }}>Alcance</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            {[
+              { id: "filtered", label: "Registros filtrados", sub: "Aplica filtros actuales" },
+              { id: "all", label: "Todo el período", sub: "1–18 abril 2026" },
+              { id: "summary", label: "Solo resumen", sub: "KPIs y gráficos agregados" },
+            ].map(s => (
+              <label key={s.id} style={{
+                display: "flex", alignItems: "center", gap: "0.65rem",
+                padding: "0.6rem 0.85rem", borderRadius: "var(--r-md)",
+                background: scope === s.id ? "var(--surf-high)" : "var(--surf-lowest)",
+                outline: "1px solid var(--ghost-border)", cursor: "pointer",
+              }}>
+                <input type="radio" checked={scope === s.id} onChange={() => setScope(s.id)} style={{ accentColor: "var(--p-bright)" }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 500 }}>{s.label}</div>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{s.sub}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <ToggleRow label="Incluir gráficos" sub="Solo para PDF" value={includeCharts} onChange={setIncludeCharts} disabled={format !== "pdf"} />
+          <ToggleRow label="Enviar por email" sub="Programar envío automático" value={email} onChange={setEmail} />
+        </div>
+
+        <div style={{ marginTop: "auto", display: "flex", gap: "0.5rem" }}>
+          <button className="btn btn--ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>Cancelar</button>
+          <button className="btn btn--primary" style={{ flex: 2, justifyContent: "center" }}>
+            <Icon name="download" size={14} />
+            Descargar {format.toUpperCase()}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ToggleRow = ({ label, sub, value, onChange, disabled }) => (
+  <div style={{
+    display: "flex", alignItems: "center", gap: "0.65rem",
+    padding: "0.6rem 0.85rem", borderRadius: "var(--r-md)",
+    background: "var(--surf-lowest)", outline: "1px solid var(--ghost-border)",
+    opacity: disabled ? 0.5 : 1,
+  }}>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: "0.8125rem", fontWeight: 500 }}>{label}</div>
+      {sub && <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{sub}</div>}
+    </div>
+    <button onClick={() => !disabled && onChange(!value)} style={{
+      width: 36, height: 20, borderRadius: 999,
+      background: value ? "var(--p-bright)" : "var(--surf-high)",
+      position: "relative", transition: "background 120ms",
+    }}>
+      <span style={{
+        position: "absolute", top: 2, left: value ? 18 : 2,
+        width: 16, height: 16, borderRadius: "50%", background: "#fff",
+        transition: "left 120ms", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+      }} />
+    </button>
+  </div>
+);
+
+const ThresholdsModal = ({ open, onClose }) => {
+  const [thresholds, setThresholds] = React.useState({
+    stockMin: 5,
+    marginMin: 30,
+    cxpDays: 3,
+    slaHours: 48,
+  });
+  if (!open) return null;
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 60, display: "grid", placeItems: "center" }}>
+      <div onClick={e => e.stopPropagation()} className="fade-in" style={{
+        width: 520, maxWidth: "90vw", maxHeight: "90vh", overflow: "auto",
+        background: "color-mix(in srgb, var(--surf-bright) 92%, transparent)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        padding: "1.75rem", borderRadius: "var(--r-lg)",
+        boxShadow: "0px 24px 64px -8px rgba(19,27,46,0.18)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+          <div>
+            <span className="label-md">Configuración</span>
+            <h2 className="headline" style={{ margin: 0, fontSize: "1.25rem" }}>Umbrales de alerta</h2>
+            <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color: "var(--on-surf-var)" }}>
+              Define cuándo el sistema debe notificarte en el panel de alertas.
+            </p>
+          </div>
+          <button className="btn btn--icon" onClick={onClose}><Icon name="close" size={16} /></button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <ThresholdRow label="Stock mínimo" sub="Items que disparan alerta crítica" value={thresholds.stockMin} suffix="uds" onChange={v => setThresholds({ ...thresholds, stockMin: v })} max={20} />
+          <ThresholdRow label="Margen mínimo" sub="% por debajo del cual se alerta" value={thresholds.marginMin} suffix="%" onChange={v => setThresholds({ ...thresholds, marginMin: v })} max={60} />
+          <ThresholdRow label="Vencimiento CxP" sub="Días de anticipación para notificar" value={thresholds.cxpDays} suffix="d" onChange={v => setThresholds({ ...thresholds, cxpDays: v })} max={30} />
+          <ThresholdRow label="SLA taller" sub="Horas máximas para OT abierta" value={thresholds.slaHours} suffix="h" onChange={v => setThresholds({ ...thresholds, slaHours: v })} max={120} />
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem" }}>
+          <button className="btn btn--ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>Cancelar</button>
+          <button className="btn btn--primary" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>
+            <Icon name="check" size={14} /> Guardar umbrales
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ThresholdRow = ({ label, sub, value, onChange, max, suffix }) => (
+  <div style={{ padding: "0.85rem 1rem", borderRadius: "var(--r-md)", background: "var(--surf-lowest)", outline: "1px solid var(--ghost-border)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.35rem" }}>
+      <div>
+        <div style={{ fontSize: "0.8125rem", fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: "0.6875rem", color: "var(--on-surf-var)" }}>{sub}</div>
+      </div>
+      <span className="display" style={{ fontSize: "1.1rem", fontVariantNumeric: "tabular-nums" }}>{value}{suffix}</span>
+    </div>
+    <input type="range" min="1" max={max} value={value} onChange={e => onChange(parseInt(e.target.value))}
+           style={{ width: "100%", accentColor: "var(--p-bright)" }} />
+  </div>
+);
+
+const TweaksPanel = ({ open, onClose, state, setState }) => {
+  if (!open) return null;
+  const kpiLabels = {
+    ventasNetas: "Ventas netas", margenBruto: "Margen bruto",
+    cxc: "Cuentas por cobrar", cxp: "Cuentas por pagar", stockCritico: "Stock crítico",
+  };
+  const sectionLabels = {
+    hero: "Hero KPIs", trend: "Tendencia de ingresos", branches: "Comparativo sucursales",
+    products: "Top productos", alerts: "Alertas activas", lowstock: "Stock crítico (tabla)", reports: "Reportes fijados",
+  };
+
+  const moveKpi = (idx, dir) => {
+    const order = [...state.kpiOrder];
+    const target = idx + dir;
+    if (target < 0 || target >= order.length) return;
+    [order[idx], order[target]] = [order[target], order[idx]];
+    setState({ ...state, kpiOrder: order });
+  };
+
+  return (
+    <div style={{ position: "fixed", bottom: 20, right: 20, width: 340, zIndex: 70 }} className="fade-in">
+      <div style={{
+        background: "color-mix(in srgb, var(--surf-bright) 94%, transparent)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        borderRadius: "var(--r-lg)", boxShadow: "0px 24px 64px -8px rgba(19,27,46,0.18)",
+        outline: "1px solid var(--ghost-border)",
+        maxHeight: "80vh", overflow: "auto",
+      }}>
+        <div style={{ padding: "1rem 1.15rem", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "inherit", backdropFilter: "blur(20px)", zIndex: 1 }}>
+          <div>
+            <span className="label-md" style={{ fontSize: "0.5625rem" }}>Tweaks</span>
+            <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600 }}>Ajustes de vista</h3>
+          </div>
+          <button className="btn btn--icon" onClick={onClose}><Icon name="close" size={14} /></button>
+        </div>
+        <div style={{ padding: "0 1.15rem 1.15rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <TweakGroup title="Variante del dashboard">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.35rem" }}>
+              {[
+                { id: "editorial", label: "Editorial", sub: "Linear" },
+                { id: "stripe", label: "Stripe", sub: "Financial" },
+                { id: "mercury", label: "Mercury", sub: "Modular" },
+              ].map(v => (
+                <button key={v.id} onClick={() => setState({ ...state, variant: v.id })} style={{
+                  padding: "0.55rem 0.4rem", borderRadius: "var(--r-md)",
+                  background: state.variant === v.id ? "var(--surf-high)" : "var(--surf-lowest)",
+                  outline: state.variant === v.id ? "2px solid var(--p-bright)" : "1px solid var(--ghost-border)",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 600 }}>{v.label}</div>
+                  <div style={{ fontSize: "0.625rem", color: "var(--on-surf-var)" }}>{v.sub}</div>
+                </button>
+              ))}
+            </div>
+          </TweakGroup>
+
+          <TweakGroup title="Modo">
+            <div className="segmented" style={{ width: "100%" }}>
+              <button onClick={() => setState({ ...state, dark: false })}
+                className={`segmented__btn ${!state.dark ? "segmented__btn--active" : ""}`}
+                style={{ flex: 1 }}>
+                <Icon name="sun" size={12} /> Light
+              </button>
+              <button onClick={() => setState({ ...state, dark: true })}
+                className={`segmented__btn ${state.dark ? "segmented__btn--active" : ""}`}
+                style={{ flex: 1 }}>
+                <Icon name="moon" size={12} /> Dark
+              </button>
+            </div>
+          </TweakGroup>
+
+          <TweakGroup title="Densidad">
+            <div className="segmented" style={{ width: "100%" }}>
+              {["compact", "comfortable"].map(d => (
+                <button key={d} onClick={() => setState({ ...state, density: d })}
+                  className={`segmented__btn ${state.density === d ? "segmented__btn--active" : ""}`}
+                  style={{ flex: 1, textTransform: "capitalize" }}>
+                  {d === "compact" ? "Compacto" : "Cómodo"}
+                </button>
+              ))}
+            </div>
+          </TweakGroup>
+
+          <TweakGroup title="Gráfico por defecto">
+            <div className="segmented" style={{ width: "100%" }}>
+              {[{id:"line",l:"Línea"},{id:"bars",l:"Barras"},{id:"area",l:"Área"}].map(o => (
+                <button key={o.id} onClick={() => setState({ ...state, chartDefault: o.id })}
+                  className={`segmented__btn ${state.chartDefault === o.id ? "segmented__btn--active" : ""}`}
+                  style={{ flex: 1 }}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+          </TweakGroup>
+
+          <TweakGroup title="Orden de KPIs">
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {state.kpiOrder.map((id, i) => (
+                <div key={id} style={{
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  padding: "0.45rem 0.6rem", borderRadius: "var(--r-sm)",
+                  background: "var(--surf-lowest)", outline: "1px solid var(--ghost-border)",
+                }}>
+                  <Icon name="drag" size={12} style={{ color: "var(--on-surf-var)" }} />
+                  <span style={{ flex: 1, fontSize: "0.75rem" }}>{kpiLabels[id]}</span>
+                  <button className="btn btn--icon" style={{ padding: 2 }} onClick={() => moveKpi(i, -1)} disabled={i === 0}>
+                    <Icon name="arrowUp" size={12} />
+                  </button>
+                  <button className="btn btn--icon" style={{ padding: 2 }} onClick={() => moveKpi(i, 1)} disabled={i === state.kpiOrder.length - 1}>
+                    <Icon name="arrowDown" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </TweakGroup>
+
+          <TweakGroup title="Secciones visibles">
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {Object.entries(sectionLabels).map(([id, label]) => {
+                const visible = state.sections[id] !== false;
+                return (
+                  <button key={id} onClick={() => setState({ ...state, sections: { ...state.sections, [id]: !visible } })}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.5rem",
+                      padding: "0.45rem 0.6rem", borderRadius: "var(--r-sm)",
+                      background: visible ? "var(--surf-lowest)" : "transparent",
+                      outline: "1px solid var(--ghost-border)",
+                      opacity: visible ? 1 : 0.6,
+                    }}>
+                    <Icon name={visible ? "eye" : "eyeOff"} size={12} style={{ color: visible ? "var(--p)" : "var(--on-surf-var)" }} />
+                    <span style={{ flex: 1, fontSize: "0.75rem", textAlign: "left" }}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </TweakGroup>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TweakGroup = ({ title, children }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+    <div className="label-md" style={{ fontSize: "0.5625rem" }}>{title}</div>
+    {children}
+  </div>
+);
+
+Object.assign(window, { ExportDrawer, ThresholdsModal, TweaksPanel });
+
+
+
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "variant": "editorial",
+      "dark": false,
+      "density": "comfortable",
+      "chartDefault": "line"
+    }/*EDITMODE-END*/;
+
+    const DEFAULT_KPI_ORDER = ["ventasNetas", "margenBruto", "cxc", "cxp", "stockCritico"];
+    const DEFAULT_SECTIONS = { hero: true, trend: true, branches: true, products: true, alerts: true, lowstock: true, reports: true };
+
+    function App() {
+      const [tweaksOpen, setTweaksOpen] = React.useState(false);
+      const [exportOpen, setExportOpen] = React.useState(false);
+      const [thresholdsOpen, setThresholdsOpen] = React.useState(false);
+      const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+      const [route, setRoute] = React.useState(() => {
+        try { return JSON.parse(localStorage.getItem("evo_route")) || { name: "dashboard" }; }
+        catch { return { name: "dashboard" }; }
+      });
+      const [branch, setBranch] = React.useState("all");
+      const [period, setPeriod] = React.useState("MTD");
+
+      const [tweaks, setTweaks] = React.useState(() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem("evo_tweaks"));
+          return { ...TWEAK_DEFAULTS, kpiOrder: DEFAULT_KPI_ORDER, sections: DEFAULT_SECTIONS, ...saved };
+        } catch {
+          return { ...TWEAK_DEFAULTS, kpiOrder: DEFAULT_KPI_ORDER, sections: DEFAULT_SECTIONS };
+        }
+      });
+
+      React.useEffect(() => {
+        localStorage.setItem("evo_route", JSON.stringify(route));
+      }, [route]);
+      React.useEffect(() => {
+        localStorage.setItem("evo_tweaks", JSON.stringify(tweaks));
+      }, [tweaks]);
+
+      React.useEffect(() => {
+        document.documentElement.classList.toggle("dark", tweaks.dark);
+        document.documentElement.classList.toggle("density-compact", tweaks.density === "compact");
+      }, [tweaks.dark, tweaks.density]);
+
+      // Edit mode protocol
+      React.useEffect(() => {
+        const handler = (e) => {
+          if (e.data?.type === "__activate_edit_mode") setTweaksOpen(true);
+          if (e.data?.type === "__deactivate_edit_mode") setTweaksOpen(false);
+        };
+        window.addEventListener("message", handler);
+        window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+        return () => window.removeEventListener("message", handler);
+      }, []);
+
+      return (
+        <div style={{ display: "flex", minHeight: "100vh", background: "var(--surface)" }}>
+          <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+          <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}
+                data-screen-label={route.name === "dashboard" ? "01 Dashboard" : route.name === "list" ? "02 Catálogo" : route.name === "detail" ? "03 Detalle" : "04 Builder"}>
+            <Topbar branch={branch} setBranch={setBranch}
+                    dark={tweaks.dark} setDark={(d) => setTweaks({ ...tweaks, dark: d })}
+                    onOpenTweaks={() => setTweaksOpen(true)}
+                    route={route} setRoute={setRoute}
+                    period={period} setPeriod={setPeriod} />
+            <PageHeader route={route} setRoute={setRoute} period={period} setPeriod={setPeriod}
+                        onExport={() => setExportOpen(true)} branch={branch} />
+
+            {route.name === "dashboard" && (
+              <Dashboard branch={branch}
+                         kpiOrder={tweaks.kpiOrder}
+                         kpiVisibility={{}}
+                         sections={tweaks.sections}
+                         variant={tweaks.variant}
+                         chartDefault={tweaks.chartDefault}
+                         onOpenThresholds={() => setThresholdsOpen(true)}
+                         setRoute={setRoute} />
+            )}
+            {route.name === "list" && <ReportsList setRoute={setRoute} onExport={() => setExportOpen(true)} />}
+            {route.name === "detail" && route.report?.id === "ventas" && (
+              <ReporteVentasVendedor onExport={() => setExportOpen(true)} />
+            )}
+            {route.name === "detail" && route.report?.id !== "ventas" && <ReportDetail report={route.report} branch={branch}
+                                                      onExport={() => setExportOpen(true)}
+                                                      onOpenThresholds={() => setThresholdsOpen(true)} />}
+            {route.name === "builder" && <Builder setRoute={setRoute} />}
+          </main>
+
+          <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} />
+          <ThresholdsModal open={thresholdsOpen} onClose={() => setThresholdsOpen(false)} />
+          <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)}
+                       state={tweaks} setState={setTweaks} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  
+  </script>
+</body>
+</html>

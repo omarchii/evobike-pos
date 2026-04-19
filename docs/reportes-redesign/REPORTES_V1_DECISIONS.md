@@ -263,16 +263,16 @@ Todos reciben `color?: string` (default `var(--data-1)`) y respetan tokens.
 
 **Total: 17 sesiones v1** (1 sesión 0 + 17 de trabajo).
 
-### Sesión 0 — Port primitivos del handoff (Sonnet, sin subagentes)
+### Sesión 0 ✅ (2026-04-18) — Port primitivos del handoff (Sonnet, sin subagentes)
 Port mecánico del handoff:
-- `src/lib/format/index.ts` (formatters)
-- `src/components/ui/icon.tsx` (30 glyphs tipados)
-- `src/components/ui/chip.tsx`, `delta.tsx`, `sparkline.tsx`, `spark-bars.tsx`, `progress-split.tsx`
-- Merge de tokens faltantes en `globals.css` (datavis §3 + tokens del handoff no presentes)
-- Actualizar `DESIGN.md §10` listando primitivos nuevos
+- `src/lib/format/index.ts` (formatters `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`)
+- `src/components/primitives/icon.tsx` (41 glyphs tipados, union `IconName`)
+- `src/components/primitives/chip.tsx`, `delta.tsx`, `sparkline.tsx`, `spark-bars.tsx`, `progress-split.tsx`
+- Paleta datavis `--data-1..8` (light + dark) y tokens faltantes mergeados en `globals.css`
+- `DESIGN.md §6` y `§8` actualizados con subsección "Primitivos del módulo reportes"
 
 ### Fase A — Fundación (sin subagentes)
-1. **Sesión 1** — Design system tokens + Recharts + paleta datavis §3. Instalar Recharts. Definir wrapper base `<Chart>` de Recharts que consume tokens.
+1. **Sesión 1 ✅ (2026-04-18)** — Recharts + wrapper con tokens EvoFlow. `recharts@3.8.0` instalado vía `npx shadcn add chart`. `--chart-1..5` mapeados a `var(--data-*)` en `globals.css`. Wrapper en `src/components/primitives/chart.tsx`: `buildChartConfig`, `ChartTooltipContentGlass`, constantes de eje/grid. `DESIGN.md §3` y `§6` actualizados.
 2. **Sesión 2** — Schema: migración aditiva `add_reports_v1_schema`. Añadir `User.pinnedReports String[]`, `User.uiPreferences Json?`, modelo `AlertThreshold`. API CRUD mínimas. **Verificar antes: NextAuth no rompe con el campo Json en JWT** (AGENTS.md advierte).
 3. **Sesión 3** — Shell del hub: `/reportes/page.tsx` + layout + sidebar update (ítem "Reportes" + 3-4 pinned computados desde `User.pinnedReports`). Toggle bookmark en cards del hub.
 
