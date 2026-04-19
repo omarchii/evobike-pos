@@ -105,9 +105,10 @@
   --r-full: 9999px;
   --font-display: var(--font-space-grotesk), sans-serif;
   --font-body: "Inter", -apple-system, sans-serif;
-  /* Density — overrideable via .density-compact */
-  --density-row: 0.5625rem;
+  /* Density — overrideable via .density-{level} */
+  --density-row: 40px;
   --density-card: 1.5rem;
+  --density-cell-y: 10px;
   /* Datavis palette — WCAG AA sobre --surf-lowest */
   --data-1: #2ECC71; /* Verde EvoFlow — serie principal */
   --data-2: #1B9AAA; /* Cyan */
@@ -125,8 +126,21 @@
 }
 
 .density-compact {
-  --density-row: 0.375rem;
-  --density-card: 1.125rem;
+  --density-row: 32px;
+  --density-card: 1rem;
+  --density-cell-y: 6px;
+}
+
+.density-normal {
+  --density-row: 40px;
+  --density-card: 1.5rem;
+  --density-cell-y: 10px;
+}
+
+.density-comfortable {
+  --density-row: 52px;
+  --density-card: 2rem;
+  --density-cell-y: 14px;
 }
 
 /* EvoFlow Green Edition — Dark mode tokens */

@@ -341,6 +341,25 @@ background: var(--surface-container-high);
 **Padding estándar de card:** `1.5rem`
 **Padding en pantalla densa:** `1.75rem`
 
+### Densidad (v1 — Sesión 7)
+
+Tokens CSS: `--density-row`, `--density-card`, `--density-cell-y`. Valores según
+nivel aplicado como clase en un ancestro del contenido:
+
+| Nivel       | Clase                  | `--density-row` | `--density-card` | `--density-cell-y` |
+|-------------|------------------------|-----------------|------------------|--------------------|
+| compact     | `.density-compact`     | 32px            | 1rem             | 6px                |
+| normal      | `.density-normal`      | 40px            | 1.5rem           | 10px               |
+| comfortable | `.density-comfortable` | 52px            | 2rem             | 14px               |
+
+**Aplicación**: layout `(pos)` lee `User.uiPreferences.density` en Server Component
+y pone la clase en el div raíz del shell. Los componentes consumidores usan los tokens
+via `var(--density-row)` / `var(--density-card)` / `var(--density-cell-y)`.
+
+**Alcance v1**: solo consumen los tokens las tablas de reportes (Power Grid) y los
+KPI cards (excepto el featured con Velocity Gradient, que usa padding fijo para
+preservar jerarquía visual). Sidebar, topbar, forms y modales no cambian con density.
+
 ---
 
 ## 8. CSS Custom Properties — Implementación
