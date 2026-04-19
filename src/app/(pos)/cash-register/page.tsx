@@ -6,6 +6,7 @@ import { CircleUser, Clock, ShieldCheck, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { summarizeSession } from "@/lib/cash-register";
 import type { SessionSummary } from "@/lib/cash-register";
+import { getAdminActiveBranch } from "@/lib/actions/branch";
 import { AuthorizationInbox } from "@/components/pos/authorization/authorization-inbox";
 import { CashActionsBar } from "./cash-actions-bar";
 import { CashMovementsTable } from "./cash-movements-table";
@@ -30,7 +31,11 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
     if (!session?.user) redirect("/login");
 
     const user = session.user as SessionUser;
-    const branchId = user.branchId;
+    let branchId = user.branchId;
+    if (user.role === "ADMIN") {
+        const saved = await getAdminActiveBranch();
+        if (saved) branchId = saved.id;
+    }
     const canRegisterWithdrawal = user.role === "MANAGER" || user.role === "ADMIN";
 
     const activeSession = await prisma.cashRegisterSession.findFirst({

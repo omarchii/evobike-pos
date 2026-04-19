@@ -6,10 +6,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import { getActiveSession } from "@/lib/cash-register";
+import { getAdminActiveBranch } from "@/lib/actions/branch";
 import {
     AuthorizationConsumeError,
     consumeAuthorization,
 } from "@/lib/authorizations";
+
+async function resolveBranchId(role: string, fallbackBranchId: string): Promise<string> {
+    if (role !== "ADMIN") return fallbackBranchId;
+    const saved = await getAdminActiveBranch();
+    return saved?.id ?? fallbackBranchId;
+}
 
 type SerializedCashSession = Omit<
     CashRegisterSession,
@@ -58,7 +65,8 @@ export async function GET(): Promise<NextResponse> {
         return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
     }
 
-    const branchId = (session.user as unknown as { branchId: string }).branchId;
+    const sessionUser = session.user as unknown as { branchId: string; role: string };
+    const branchId = await resolveBranchId(sessionUser.role, sessionUser.branchId);
 
     try {
         const activeSession = await getActiveSession(branchId);
@@ -90,8 +98,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     try {
         const user = await requireActiveUser(session);
+        const branchId = await resolveBranchId(user.role, user.branchId);
 
-        const existing = await getActiveSession(user.branchId);
+        const existing = await getActiveSession(branchId);
         if (existing) {
             return NextResponse.json(
                 { success: false, error: "Ya hay una caja abierta en esta sucursal." },
@@ -102,7 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const newSession = await prisma.cashRegisterSession.create({
             data: {
                 userId: user.id,
-                branchId: user.branchId,
+                branchId,
                 openingAmt: parsed.data.openingAmt,
                 status: "OPEN",
             },
@@ -164,9 +173,10 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 
     try {
         const user = await requireActiveUser(session);
+        const branchId = await resolveBranchId(user.role, user.branchId);
 
         const activeSession = await prisma.cashRegisterSession.findFirst({
-            where: { branchId: user.branchId, status: "OPEN" },
+            where: { branchId, status: "OPEN" },
             include: { transactions: true },
         });
 
