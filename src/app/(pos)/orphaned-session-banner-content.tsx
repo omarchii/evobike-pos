@@ -16,10 +16,7 @@ export function OrphanedSessionBannerContent({ openedLabel }: Props): React.Reac
         <div
             className="mx-6 mt-4 rounded-[var(--r-lg)] px-5 py-4 flex items-center gap-4"
             style={{
-                background: "color-mix(in srgb, var(--warn-container) 85%, transparent)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow: "var(--shadow)",
+                background: "var(--warn-container)",
             }}
         >
             <div
