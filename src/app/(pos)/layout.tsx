@@ -13,6 +13,9 @@ import { CommandPalette } from "./command-palette";
 import { SearchTrigger } from "./search-trigger";
 import { Breadcrumbs } from "./breadcrumbs";
 import type { SessionUser } from "@/lib/auth-types";
+import { prisma } from "@/lib/prisma";
+import { getEffectivePinned } from "@/lib/reportes/pinned-defaults";
+import type { ReportRole } from "@/lib/reportes/reports-config";
 
 interface TopbarProps {
     user: SessionUser;
@@ -81,6 +84,16 @@ export default async function PosLayout({
         }
     }
 
+    // Compute effective pinned reports for sidebar cluster
+    const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { pinnedReports: true },
+    });
+    const effectivePinnedReports = getEffectivePinned(
+        user.role as ReportRole,
+        dbUser?.pinnedReports ?? [],
+    );
+
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-[var(--surface)] transition-colors duration-200">
             <a
@@ -92,7 +105,7 @@ export default async function PosLayout({
             {/* Alert bar full-width arriba del shell (banner aparece solo si hay caja huérfana) */}
             <OrphanedSessionBanner branchId={activeBranchId} />
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar user={user} />
+                <Sidebar user={user} effectivePinnedReports={effectivePinnedReports} />
                 <div className="flex flex-col flex-1 overflow-hidden">
                     <Topbar
                         user={user}

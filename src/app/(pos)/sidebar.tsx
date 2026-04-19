@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Icon } from "@/components/primitives/icon";
+import { REPORTS_BY_SLUG } from "@/lib/reportes/reports-config";
 
 interface UserProp {
     name?: string | null;
@@ -32,7 +34,7 @@ interface NavItem {
     label: string;
     icon: React.ElementType;
     href: string;
-    roles?: string[]; // undefined = all roles
+    roles?: string[];
 }
 
 interface NavSection {
@@ -63,7 +65,6 @@ const SECTIONS: NavSection[] = [
                 href: "/transferencias",
                 roles: ["SELLER", "MANAGER", "ADMIN"],
             },
-            { label: "Reportes", icon: BarChart2, href: "/reportes" },
         ],
     },
     {
@@ -97,7 +98,78 @@ function getInitials(name?: string | null): string {
     return name.substring(0, 2).toUpperCase();
 }
 
-export default function Sidebar({ user }: { user: UserProp }) {
+interface ReportsClusterProps {
+    pathname: string;
+    pinnedSlugs: string[];
+}
+
+function ReportsCluster({ pathname, pinnedSlugs }: ReportsClusterProps) {
+    const isReportesActive = pathname === "/reportes" || pathname.startsWith("/reportes/");
+
+    return (
+        <div>
+            {/* Ítem padre: Reportes */}
+            <Link
+                href="/reportes"
+                aria-current={pathname === "/reportes" ? "page" : undefined}
+                className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                    isReportesActive
+                        ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                        : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
+                )}
+            >
+                <BarChart2
+                    className={cn(
+                        "h-5 w-5 shrink-0",
+                        isReportesActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]",
+                    )}
+                />
+                Reportes
+            </Link>
+
+            {/* Hijos pinned */}
+            {pinnedSlugs.length > 0 && (
+                <div className="mt-0.5 space-y-0.5">
+                    {pinnedSlugs.map((slug) => {
+                        const meta = REPORTS_BY_SLUG[slug];
+                        if (!meta || meta.status === "reserved") return null;
+
+                        const href = `/reportes/${slug}`;
+                        const isActive = pathname === href;
+
+                        return (
+                            <Link
+                                key={slug}
+                                href={href}
+                                aria-current={isActive ? "page" : undefined}
+                                className={cn(
+                                    "flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl text-[0.8125rem] transition-colors",
+                                    isActive
+                                        ? "bg-[var(--surf-high)] text-[var(--p)] font-semibold"
+                                        : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]",
+                                )}
+                            >
+                                <span className={cn("shrink-0", isActive ? "text-[var(--p)]" : "text-[var(--on-surf-var)]")}>
+                                    <Icon name={meta.icon} size={15} strokeWidth={1.5} />
+                                </span>
+                                <span className="truncate">{meta.title}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function Sidebar({
+    user,
+    effectivePinnedReports = [],
+}: {
+    user: UserProp;
+    effectivePinnedReports?: string[];
+}) {
     const pathname = usePathname();
     const role = user.role ?? "";
 
@@ -126,7 +198,13 @@ export default function Sidebar({ user }: { user: UserProp }) {
                     const visibleItems = section.items.filter(
                         (item) => !item.roles || item.roles.includes(role),
                     );
-                    if (visibleItems.length === 0) return null;
+
+                    // GESTIÓN puede quedarse sin ítems si hay algún rol sin acceso
+                    // pero siempre incluye el cluster de Reportes (para no-TECHNICIAN)
+                    const showReportsCluster =
+                        section.label === "GESTIÓN" && role !== "TECHNICIAN";
+
+                    if (visibleItems.length === 0 && !showReportsCluster) return null;
 
                     return (
                         <div key={section.label} className={sectionIdx === 0 ? "" : "mt-4"}>
@@ -164,6 +242,13 @@ export default function Sidebar({ user }: { user: UserProp }) {
                                     </Link>
                                 );
                             })}
+
+                            {showReportsCluster && (
+                                <ReportsCluster
+                                    pathname={pathname}
+                                    pinnedSlugs={effectivePinnedReports}
+                                />
+                            )}
                         </div>
                     );
                 })}
