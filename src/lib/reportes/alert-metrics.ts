@@ -67,6 +67,22 @@ export const ALERT_METRICS: Record<string, AlertMetricMeta> = {
     reportSlugs: ["estado-resultados"],
     kpiBindings: [{ reportSlug: "estado-resultados", kpiKey: "margenNeto" }],
   },
+
+  // V12 Estado de resultados
+  MARGEN_BRUTO_PCT: {
+    label: "Margen bruto %",
+    description: "Porcentaje mínimo aceptable de margen bruto del período.",
+    unit: "PCT",
+    reportSlugs: ["estado-resultados"],
+    kpiBindings: [{ reportSlug: "estado-resultados", kpiKey: "margenBrutoPct" }],
+  },
+  MARGEN_OPERATIVO_MXN: {
+    label: "Margen operativo (MXN)",
+    description: "Monto mínimo aceptable de margen operativo del período.",
+    unit: "MXN",
+    reportSlugs: ["estado-resultados"],
+    kpiBindings: [{ reportSlug: "estado-resultados", kpiKey: "margenOperativo" }],
+  },
 } as const;
 
 export type AlertMetricKey = keyof typeof ALERT_METRICS;
