@@ -102,7 +102,7 @@ export const REPORTS: readonly ReportMeta[] = [
     description: "P&L del período por categoría y sucursal",
     group: "FINANCIERO",
     icon: "pnl",
-    status: "ready-pending-impl",
+    status: "ready",
     allowedRoles: ["ADMIN"],
   },
   {
