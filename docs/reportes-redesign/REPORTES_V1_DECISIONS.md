@@ -15,7 +15,7 @@
 | **D2** | Alcance del HomeView `/reportes` | **Hub navegable**: índice de cards + search + pinned. No dashboard. |
 | **D3** | Librería de gráficos principales | **Recharts** |
 | **D4** | Saved views | **v1 = solo bookmarks** (`User.pinnedReports String[]`). Saved views completo a v1.5. |
-| **D5** | Overlays con schema | **Thresholds reales** (schema `AlertThreshold`) · **Tweaks persistente** (`User.uiPreferences Json?`) · **Builder placeholder** visual |
+| **D5** | Overlays con schema | **Thresholds reales** (schema `AlertThreshold`) · **Tweaks persistente** (`User.uiPreferences Json?`) |
 | **D6** | Paleta datavis de 8 series | **Adoptada** (ver §3) |
 | **D7** | Slugs de URL | **Aprobados** (ver §4 con redirects) |
 | **D8** | Estructura del sidebar | **"Reportes" + 3-4 pinned bajo él**, configurables por usuario via `User.pinnedReports` |
@@ -49,7 +49,6 @@
 - ExportDrawer (con backend CSV ya existente + Excel si se puede agregar exceljs)
 - ThresholdsModal (con schema `AlertThreshold` real)
 - TweaksPanel (con `User.uiPreferences` persistente)
-- Builder (placeholder visual)
 
 ### v1.5 — diferido (requiere infra/fórmulas)
 
@@ -261,7 +260,7 @@ Todos reciben `color?: string` (default `var(--data-1)`) y respetan tokens.
 
 ## 10. Orden de sesiones de Claude Code
 
-**Total: 17 sesiones v1** (1 sesión 0 + 17 de trabajo).
+**Total: 16 sesiones v1** (1 sesión 0 + 16 de trabajo).
 
 ### Sesión 0 ✅ (2026-04-18) — Port primitivos del handoff (Sonnet, sin subagentes)
 Port mecánico del handoff:
@@ -273,23 +272,33 @@ Port mecánico del handoff:
 
 ### Fase A — Fundación (sin subagentes)
 1. **Sesión 1 ✅ (2026-04-18)** — Recharts + wrapper con tokens EvoFlow. `recharts@3.8.0` instalado vía `npx shadcn add chart`. `--chart-1..5` mapeados a `var(--data-*)` en `globals.css`. Wrapper en `src/components/primitives/chart.tsx`: `buildChartConfig`, `ChartTooltipContentGlass`, constantes de eje/grid. `DESIGN.md §3` y `§6` actualizados.
-2. **Sesión 2** — Schema: migración aditiva `add_reports_v1_schema`. Añadir `User.pinnedReports String[]`, `User.uiPreferences Json?`, modelo `AlertThreshold`. API CRUD mínimas. **Verificar antes: NextAuth no rompe con el campo Json en JWT** (AGENTS.md advierte).
-3. **Sesión 3** — Shell del hub: `/reportes/page.tsx` + layout + sidebar update (ítem "Reportes" + 3-4 pinned computados desde `User.pinnedReports`). Toggle bookmark en cards del hub.
+2. **Sesión 2 ✅ (2026-04-18)** — Schema aplicado: migración aditiva añade `User.pinnedReports String[]`, `User.uiPreferences Json?`, modelo `AlertThreshold`. Constantes `ALERT_METRICS` con union type. API routes `/api/user/pinned-reports`, `/api/user/ui-preferences` (GET/PATCH con merge shallow) y `/api/thresholds` (CRUD). NextAuth OK con `Json?`.
+3. **Sesión 3 ✅ (2026-04-19)** — Hub navegable `/reportes` + catch-all de placeholders, config central `reports-config.ts` con defaults por rol, cluster "Reportes" con pinned dinámicos en sidebar, toggle bookmark en cards, fix de hidratación cuando `pinnedReports` está vacío.
 
 ### Fase B — Template validado (sin subagentes)
-4. **Sesión 4** — V1 Ventas e ingresos completo (custom piloto). `DetailHeader` + `FilterPanel` con popovers multi-select + 5 KPIs con Delta/Sparkline + Recharts stacked bars + tabla con modal de detalle.
+4. **Sesión 4 ✅ (2026-04-19)** — V1 Ventas e ingresos piloto. Shell reutilizable (`DetailHeader`, `FilterPanel`, `KpiGrid`), helpers `_PROPS` + `previousComparableRange`, 5 KPIs con Delta/Sparkline, Recharts stacked bars, tabla con modal de detalle. Límite de Velocity Gradient subido a 3 instancias por vista.
 
 ### Fase C — Overlays (sin subagentes)
-5. **Sesión 5** — ExportDrawer + helper `previousComparableRange` (sec. §7).
-6. **Sesión 6** — ThresholdsModal sobre el schema de Sesión 2. Cada reporte custom consulta thresholds al render.
-7. **Sesión 7** — TweaksPanel + persistencia en `User.uiPreferences`.
-8. **Sesión 8** — Builder placeholder (3-4 cards visuales, sin backend).
+5. **Sesión 5 ✅ (2026-04-19)** — ExportDrawer: tipos + registry de exportación, generators CSV/XLSX/PDF (`exceljs@4.4.0`), endpoint universal `POST /api/reportes/[slug]/export`, `TipoDocPDF` extendido con `'reporte'`, drawer UI + handler de V1, documentado en `AGENTS.md`.
+6. **Sesión 6 ✅ (2026-04-19)** — ThresholdsModal: `ALERT_METRICS` extendido con metadata (label, unit, reportSlugs), helpers de evaluación (eval + badge label), `ThresholdsContext` + `ThresholdBadge` inline en KPIs, modal contextual, vista global `/configuracion/umbrales` + tarjeta en hub, cableado en V1 Ventas e ingresos, fix Zod v4 `.issues`.
+7. **Sesión 7 ✅ (2026-04-19)** — TweaksPanel + persistencia en `User.uiPreferences.density`. Tokens `--density-row/card/cell-y` con clases `.density-{compact,normal,comfortable}` en `globals.css`, tipos + `resolveDensity` en `src/lib/user/ui-preferences.ts`, `DensityProvider` + `useDensity`, drawer glassmorphism 420px con 3 segmentados + preview, botón en topbar, query de `pinnedReports + uiPreferences` unificada en `(pos)/layout.tsx`, consumo de tokens en `kpi-card.tsx` (excepto featured) y `sales-table.tsx`, subsección en `DESIGN.md §7`.
 
 ### Fase D — Placeholders
-9. **Sesión 9** — V15 Exportación contable placeholder (wizard vacío, link a CSV existente).
+9. **Sesión 9 ✅ (2026-04-20)** — V15 Exportación contable placeholder. Página dedicada en `src/app/(pos)/reportes/exportacion-contable/` (server page con role-gate ADMIN + client view). Aviso superior sobre integración PAC pendiente, wizard visual de 4 pasos (Tipo · Período · Formato · Confirmar) con cards deshabilitadas (opacity 70, `aria-disabled`) mostrando opciones contempladas (CFDI XML, Excel, PDF, rangos, etc.), y CTA de alternativa disponible hoy que enlaza a `/reportes/ventas-e-ingresos`. Sin backend — `status: "placeholder"` permanece en `reports-config.ts` (card del hub sigue con chip "Próximamente").
 
 ### Fase E — Reportes custom (sin subagentes, uno por sesión)
-10. **Sesión 10** — **V12 P&L del período** (OPUS recomendado: complejidad financiera + reemplaza P10-I + comparativos × 3 modos × sucursales)
+10. **Sesión 10 ✅ (2026-04-20)** — **V12 Estado de resultados** — `/reportes/estado-resultados` ADMIN-only. Reemplaza funcionalmente a P10-I Reporte Anual (que convive hasta S17). 5 archivos creados: `queries.ts` (fetchEstadoResultados con COGS vía resolveCostsBatch, comisiones PAID por updatedAt proxy, PAGO_PROVEEDOR excluido D5, helper `getSparklineGranularity` exportado para V13/V14), `page.tsx`, `view.tsx` (banner IVA con `--sec-container`, ViewToggle consolidado/por sucursal, grid-cols-5 para 4 KPIs), `pnl-table.tsx` (2 sub-bloques colapsables, tokens densidad, animación prefers-reduced-motion), `export-handler.ts`. 3 archivos lib modificados: `export-registry.ts`, `alert-metrics.ts` (`MARGEN_BRUTO_PCT` + `MARGEN_OPERATIVO_MXN`), `reports-config.ts` (status → ready). SONNET suficiente — nivel de reuse desde P10-I y templates V1 fue alto.
+
+    **Decisiones in-sesión:**
+    - `CommissionRecord` no tiene `paidAt` → `updatedAt` como proxy con TODO en código. Confirmar en S17 si se añadió el campo.
+    - `ExpenseCategory` 9º valor confirmado: `MANTENIMIENTO_INMUEBLE` (entre TRANSPORTE e IMPUESTOS).
+    - Banner IVA: `var(--sec-container)` / `var(--on-sec-container)` — no se creó `--info-container` nuevo (sobre-tokenizar para un consumidor).
+    - KPI grid: `grid-cols-5` inline en view.tsx en lugar de `<KpiGrid>` (que usa grid-cols-6). Evita hueco visual con 4 KPIs donde el featured ocupa col-span-2.
+
+    **Deuda detectada:**
+    - `PROFIT_MARGIN_MIN` en `ALERT_METRICS` tiene `kpiKey: "margenNeto"` que nunca existió en V12. Thresholds creados bajo esa métrica no dispararán badge. Comportamiento silencioso, no rompe nada. **Acción en S17**: listar thresholds huérfanos y borrar manualmente desde `/configuracion/umbrales`.
+    - Warning de lint pre-existente en `/reportes/rentabilidad/page.tsx` (`serializeDecimal` sin uso) — no generado en S10.
+
 11. **Sesión 11** — V13 Cashflow y tesorería (waterfall + tabs, fusiona P9 + P10-F)
 12. **Sesión 12** — V14 CxP + Compras (aging buckets, amplía P10-G)
 13. **Sesión 13** — V10 Stock crítico (priority inbox + forecast básico)
@@ -304,6 +313,11 @@ Port mecánico del handoff:
 
 ### Fase G — Cierre
 17. **Sesión 17** — QA cross-reporte + redirects (§4) + rutas 404 reservadas + sidebar final + smoke test light/dark × 10 reportes + overlays + actualizar ROADMAP.md marcando Paso 2 shell completo.
+
+    **Checklist adicional para S17 (detectado en S10):**
+    - Listar `AlertThreshold` activos con `metricKey = 'PROFIT_MARGIN_MIN'` — ese kpiKey nunca existió en V12. Borrar manualmente desde `/configuracion/umbrales` si existen registros.
+    - Verificar si `CommissionRecord` ganó campo `paidAt` en alguna sesión intermedia. Si sí: actualizar el TODO en `estado-resultados/queries.ts` línea del `updatedAt` proxy.
+    - Redirect 308 `/reportes/anual` → `/reportes/estado-resultados` (pendiente desde S10 por spec).
 
 ---
 
@@ -326,12 +340,12 @@ Port mecánico del handoff:
 
 No son bloqueantes — se resuelven dentro de la sesión correspondiente:
 
-| Sesión | Decisión |
-|---|---|
-| 2 | Shape exacto de `AlertThreshold` (por metricKey string libre vs enum). |
-| 5 | ExcelJS o solo multi-CSV. Verificar compatibilidad con Turbopack de Next 16. |
-| 10 | OPUS o SONNET — depender del grado de reuse que se logre desde P10-I. |
-| 16 | Si V6 Estado de cuenta necesita cambios visuales o si P10-B ya cumple. |
+| Sesión | Decisión | Estado |
+|---|---|---|
+| 2 | Shape exacto de `AlertThreshold` (por metricKey string libre vs enum). | ✅ Resuelto S2: string libre |
+| 5 | ExcelJS o solo multi-CSV. Verificar compatibilidad con Turbopack de Next 16. | ✅ Resuelto S5: exceljs@4.4.0, compatible |
+| 10 | OPUS o SONNET — depender del grado de reuse que se logre desde P10-I. | ✅ Resuelto S10: SONNET suficiente, reuse alto |
+| 16 | Si V6 Estado de cuenta necesita cambios visuales o si P10-B ya cumple. | ⏳ Pendiente S16 |
 
 ---
 
