@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp, Banknote, Vault, ArchiveRestore, CheckCircle, ArrowRight, Users, Bike, DollarSign, Award } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Banknote, Vault, ArchiveRestore, CheckCircle, ArrowRight, Users, Bike, DollarSign, Award, Building2, Receipt, Wrench, Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
@@ -95,6 +95,8 @@ interface ManagerDashboardProps {
     salesBySeller: SalesBySellerRow[];
     cashFlow: { collected: number; pending: number };
     commissionsTeam: { pending: number; approved: number };
+    revenueByDay: { label: string; revenue: number }[];
+    viewBranchId: string | null;
 }
 
 const METHOD_BADGE: Record<string, string> = {
@@ -188,6 +190,8 @@ export function ManagerDashboard({
     salesBySeller,
     cashFlow,
     commissionsTeam,
+    revenueByDay,
+    viewBranchId,
 }: ManagerDashboardProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -196,6 +200,7 @@ export function ManagerDashboard({
     const txTrend = calcCountTrend(transactionsToday, transactionsYesterday, compLabel);
     const maxModelRevenue = Math.max(...salesByModel.map((m) => m.revenue), 1);
     const maxSellerRevenue = Math.max(...salesBySeller.map((s) => s.revenue), 1);
+    const maxDayRevenue = Math.max(...revenueByDay.map((d) => d.revenue), 1);
 
     function handlePeriodChange(newPeriod: PeriodType): void {
         const params = new URLSearchParams(searchParams.toString());
@@ -207,33 +212,83 @@ export function ManagerDashboard({
         router.push(`/?${params.toString()}`);
     }
 
+    function handleBranchChange(newBranchId: string | null): void {
+        const params = new URLSearchParams(searchParams.toString());
+        if (newBranchId === null) {
+            params.delete("branch");
+        } else {
+            params.set("branch", newBranchId);
+        }
+        router.push(`/?${params.toString()}`);
+    }
+
     return (
         <div className="space-y-6">
-            {/* Row 0: Page header + Period selector */}
+            {/* Row 0: Page header + Branch selector (ADMIN) + Period selector */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
                         Panel de Control
                     </h1>
                     <p className="text-sm text-[var(--on-surf-var)] mt-0.5">
-                        {role === "ADMIN" ? "Vista global · Todas las sucursales" : `Resumen de ${periodLabel} · ${branchName}`}
+                        {role === "ADMIN" && !viewBranchId
+                            ? "Vista global · Todas las sucursales"
+                            : `Resumen de ${periodLabel} · ${
+                                viewBranchId
+                                    ? (branchComparison.find((b) => b.branchId === viewBranchId)?.branchName ?? branchName)
+                                    : branchName
+                              }`
+                        }
                     </p>
                 </div>
-                <div className="flex gap-1">
-                    {PERIOD_OPTIONS.map((opt) => (
-                        <button
-                            key={opt.value}
-                            onClick={() => handlePeriodChange(opt.value)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                period === opt.value
-                                    ? "text-white"
-                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
-                            }`}
-                            style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-2">
+                    {/* Branch selector — ADMIN only */}
+                    {role === "ADMIN" && branchComparison.length > 0 && (
+                        <div className="flex gap-1 border-r border-[var(--ghost-border)] pr-2">
+                            <button
+                                onClick={() => handleBranchChange(null)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                    viewBranchId === null
+                                        ? "text-white"
+                                        : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                                }`}
+                                style={viewBranchId === null ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                            >
+                                Global
+                            </button>
+                            {branchComparison.map((b) => (
+                                <button
+                                    key={b.branchId}
+                                    onClick={() => handleBranchChange(b.branchId)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                        viewBranchId === b.branchId
+                                            ? "text-white"
+                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                                    }`}
+                                    style={viewBranchId === b.branchId ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                                >
+                                    {b.branchCode}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {/* Period selector */}
+                    <div className="flex gap-1">
+                        {PERIOD_OPTIONS.map((opt) => (
+                            <button
+                                key={opt.value}
+                                onClick={() => handlePeriodChange(opt.value)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                    period === opt.value
+                                        ? "text-white"
+                                        : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                                }`}
+                                style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -254,9 +309,14 @@ export function ManagerDashboard({
                     <p className="text-[2.75rem] font-bold text-white leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
-                    <p className={`text-[11px] mt-1 font-medium ${revenueTrend.dir === "up" ? "text-white/80" : revenueTrend.dir === "down" ? "text-white/60" : "text-white/50"}`}>
-                        {revenueTrend.dir === "up" ? "↑" : revenueTrend.dir === "down" ? "↓" : "—"} {revenueTrend.label}
-                    </p>
+                    <div className="mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            revenueTrend.dir === "up" ? "bg-white/20 text-white" : revenueTrend.dir === "down" ? "bg-black/20 text-white/70" : "bg-white/10 text-white/50"
+                        }`}>
+                            {revenueTrend.dir === "up" ? <TrendingUp className="h-3 w-3 shrink-0" /> : revenueTrend.dir === "down" ? <TrendingDown className="h-3 w-3 shrink-0" /> : <Minus className="h-3 w-3 shrink-0" />}
+                            {revenueTrend.label}
+                        </span>
+                    </div>
                 </div>
 
                 {/* KPI 2: Transacciones */}
@@ -270,9 +330,14 @@ export function ManagerDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {transactionsToday}
                     </p>
-                    <p className={`text-[11px] mt-1 font-medium ${txTrend.dir === "up" ? "text-[var(--sec)]" : txTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
-                        {txTrend.dir === "up" ? "↑" : txTrend.dir === "down" ? "↓" : "—"} {txTrend.label}
-                    </p>
+                    <div className="mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            txTrend.dir === "up" ? "bg-[var(--sec-container)] text-[var(--on-sec-container)]" : txTrend.dir === "down" ? "bg-[var(--ter-container)] text-[var(--on-ter-container)]" : "bg-[var(--surf-high)] text-[var(--on-surf-var)]"
+                        }`}>
+                            {txTrend.dir === "up" ? <TrendingUp className="h-3 w-3 shrink-0" /> : txTrend.dir === "down" ? <TrendingDown className="h-3 w-3 shrink-0" /> : <Minus className="h-3 w-3 shrink-0" />}
+                            {txTrend.label}
+                        </span>
+                    </div>
                 </div>
 
                 {/* KPI 3: Efectivo en caja */}
@@ -316,34 +381,65 @@ export function ManagerDashboard({
             <div className="grid grid-cols-12 gap-4">
                 {/* Tendencia panel */}
                 <div className="col-span-12 lg:col-span-8 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="h-4 w-4 text-[var(--on-surf-var)]" />
                         <div>
                             <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
                                 Tendencia de Ingresos
                             </h2>
                             <p className="text-[11px] text-[var(--on-surf-var)] mt-0.5">
-                                Análisis de rendimiento semanal
+                                {period === "today" ? "Por hora · 9h – 18h" : period === "week" ? "Por día · últimos 7 días" : "Por semana · últimas 4 semanas"}
                             </p>
                         </div>
-                        <div className="flex gap-1">
-                            <button className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
-                                Semana
-                            </button>
-                            <button className="px-3 py-1 rounded-full text-xs font-medium text-[var(--on-surf-var)] hover:text-[var(--on-surf)] transition-colors">
-                                Mes
-                            </button>
-                        </div>
                     </div>
-                    <div className="mt-4 h-56 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--surf-low)]">
-                        <p className="text-[var(--on-surf-var)] text-sm font-normal">El gráfico se activará en v2</p>
+                    <div className="mt-4 rounded-[var(--r-md)] bg-[var(--surf-low)] px-4 pt-4 pb-3">
+                        <div className="h-32 flex items-end gap-2">
+                            {revenueByDay.map((day, i) => {
+                                const isToday = i === revenueByDay.length - 1;
+                                const barH = Math.max((day.revenue / maxDayRevenue) * 128, 4);
+                                return (
+                                    <div key={i} className="flex-1">
+                                        <div
+                                            className="w-full rounded-t-[3px]"
+                                            style={{
+                                                height: `${barH}px`,
+                                                background: isToday
+                                                    ? "linear-gradient(to top, #1b4332, #2ecc71)"
+                                                    : "var(--surf-high)",
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                            {revenueByDay.map((day, i) => {
+                                const isToday = i === revenueByDay.length - 1;
+                                return (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                                        {day.revenue > 0 && (
+                                            <span className="text-[12px] font-semibold text-[var(--on-surf)] tabular-nums leading-none">
+                                                ${Math.round(day.revenue / 1000)}k
+                                            </span>
+                                        )}
+                                        <span className={`${period === "month" ? "text-[8px]" : "text-[10px]"} font-semibold leading-none ${isToday ? "text-[var(--p-bright)]" : "text-[var(--on-surf-var)]"}`}>
+                                            {day.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
                 {/* Comparativo de sucursales */}
                 <div className="col-span-12 lg:col-span-4 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
-                    <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em] mb-4">
-                        Comparativo de Sucursales
-                    </h2>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Building2 className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Comparativo de Sucursales
+                        </h2>
+                    </div>
                     <div className="space-y-4">
                         {branchComparison.map((branch) => {
                             const barWidth = (branch.revenue / maxRevenue) * 100;
@@ -379,9 +475,12 @@ export function ManagerDashboard({
             {/* Row 3: Últimas ventas (full width) */}
             <div className="bg-[var(--surf-lowest)] rounded-[var(--r-lg)] shadow-[var(--shadow)]">
                 <div className="px-5 pt-5 pb-3">
-                    <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
-                        Últimas Ventas
-                    </h2>
+                    <div className="flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Últimas Ventas
+                        </h2>
+                    </div>
                     <p className="text-[11px] text-[var(--on-surf-var)] mt-0.5">
                         {recentSales.length} {recentSales.length === 1 ? "venta registrada" : "ventas registradas"} {periodLabel}
                     </p>
@@ -449,9 +548,12 @@ export function ManagerDashboard({
             <div className="grid grid-cols-12 gap-4">
                 {/* Taller Activo */}
                 <div className="col-span-12 lg:col-span-6 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
-                    <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em] mb-4">
-                        Taller Activo
-                    </h2>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Wrench className="h-4 w-4 text-[var(--on-surf-var)]" />
+                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                            Taller Activo
+                        </h2>
+                    </div>
                     {activeOrders.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-[var(--on-surf-var)]">
                             <p className="text-sm">No hay órdenes activas.</p>
@@ -494,9 +596,12 @@ export function ManagerDashboard({
                 {/* Atrato Pendiente */}
                 <div className="col-span-12 lg:col-span-3 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
                     <div className="flex items-center justify-between mb-1">
-                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
-                            Atrato Pendiente
-                        </h2>
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-[var(--on-surf-var)]" />
+                            <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                                Atrato Pendiente
+                            </h2>
+                        </div>
                     </div>
                     {atratoTotal > 0 && (
                         <p className="text-[11px] text-[var(--on-surf-var)] mb-4">
@@ -536,9 +641,12 @@ export function ManagerDashboard({
                 {/* Comisiones Pendientes */}
                 <div className="col-span-12 lg:col-span-3 bg-[var(--surf-lowest)] rounded-[var(--r-lg)] p-5 shadow-[var(--shadow)]">
                     <div className="flex items-center justify-between mb-1">
-                        <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
-                            Comisiones
-                        </h2>
+                        <div className="flex items-center gap-2">
+                            <Award className="h-4 w-4 text-[var(--on-surf-var)]" />
+                            <h2 className="text-[12px] font-semibold text-[var(--on-surf)] tracking-[-0.01em]">
+                                Comisiones
+                            </h2>
+                        </div>
                     </div>
                     {commissionsTotal > 0 && (
                         <p className="text-[11px] text-[var(--on-surf-var)] mb-4">

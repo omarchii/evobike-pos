@@ -39,14 +39,12 @@ function parsePeriod(searchParams: Record<string, string | string[] | undefined>
     let compLabel: string;
 
     if (period === "week") {
-        const dayOfWeek = now.getDay(); // 0=Sun
-        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        // Rolling 7 days: today + 6 previous
         from = new Date(now);
-        from.setDate(now.getDate() - mondayOffset);
+        from.setDate(now.getDate() - 6);
         from.setHours(0, 0, 0, 0);
         to = new Date(now);
         to.setHours(23, 59, 59, 999);
-        // Comparison: previous week
         compFrom = new Date(from);
         compFrom.setDate(compFrom.getDate() - 7);
         compTo = new Date(from);
@@ -54,15 +52,20 @@ function parsePeriod(searchParams: Record<string, string | string[] | undefined>
         periodLabel = "esta semana";
         compLabel = "vs semana pasada";
     } else if (period === "month") {
-        from = new Date(now.getFullYear(), now.getMonth(), 1);
+        // 4 weeks: current running week (Mon–today) + 3 prior full weeks
+        const dayOfWeek = now.getDay();
+        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const mondayOfWeek = new Date(now);
+        mondayOfWeek.setDate(now.getDate() - mondayOffset);
+        mondayOfWeek.setHours(0, 0, 0, 0);
+        from = new Date(mondayOfWeek);
+        from.setDate(mondayOfWeek.getDate() - 21);
         to = new Date(now);
         to.setHours(23, 59, 59, 999);
-        // Comparison: previous month (same number of days)
-        compFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        compTo = new Date(compFrom);
-        const daysSoFar = now.getDate();
-        compTo.setDate(compFrom.getDate() + daysSoFar - 1);
-        compTo.setHours(23, 59, 59, 999);
+        compFrom = new Date(from);
+        compFrom.setDate(from.getDate() - 28);
+        compTo = new Date(from);
+        compTo.setMilliseconds(-1);
         periodLabel = "este mes";
         compLabel = "vs mes pasado";
     } else {
@@ -116,7 +119,21 @@ export default async function DashboardPage({
 
     // === MANAGER / ADMIN branch ===
     if (role === "MANAGER" || role === "ADMIN") {
-        const viewBranchId = branchId;
+        // Fetch all branches first — needed for branch selector validation
+        const allBranches = await prisma.branch.findMany({
+            select: { id: true, code: true, name: true },
+            orderBy: { code: "asc" },
+        });
+
+        // ADMIN defaults to global (null) unless ?branch= is explicitly set and valid.
+        // MANAGER/other roles are locked to their own branchId regardless of URL.
+        let viewBranchId = role === "ADMIN" ? null : branchId;
+        if (role === "ADMIN") {
+            const rawBranch = typeof resolvedParams.branch === "string" ? resolvedParams.branch : null;
+            if (rawBranch && allBranches.some((b) => b.id === rawBranch)) {
+                viewBranchId = rawBranch;
+            }
+        }
 
         // Step 1: Get open session IDs for this branch (or all if ADMIN)
         const openSessions = await prisma.cashRegisterSession.findMany({
@@ -185,11 +202,7 @@ export default async function DashboardPage({
             return acc + (Number(l.total) - paid);
         }, 0);
 
-        // Branch comparison (always both branches)
-        const allBranches = await prisma.branch.findMany({
-            select: { id: true, code: true, name: true },
-            orderBy: { code: "asc" },
-        });
+        // Branch comparison (always both branches, uses allBranches fetched above)
         const branchComparison = await Promise.all(
             allBranches.map(async (b) => {
                 const agg = await prisma.sale.aggregate({
@@ -453,6 +466,72 @@ export default async function DashboardPage({
             commissionsTeamPrisma.find((r) => r.status === "APPROVED")?._sum.amount ?? 0
         );
 
+        // Revenue chart — period-aware (hourly for today, daily for week/month)
+        const revenueChartRaw = await prisma.sale.findMany({
+            where: {
+                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                status: "COMPLETED",
+                createdAt: { gte: periodInfo.from, lte: periodInfo.to },
+            },
+            select: { createdAt: true, total: true },
+        });
+
+        let revenueByDay: { label: string; revenue: number }[] = [];
+
+        if (periodInfo.period === "today") {
+            // Fixed 9h–18h window
+            const startHour = 9;
+            const endHour = 18;
+            const hourMap = new Map<number, number>();
+            for (let h = startHour; h <= endHour; h++) hourMap.set(h, 0);
+            for (const s of revenueChartRaw) {
+                const h = s.createdAt.getHours();
+                if (hourMap.has(h)) hourMap.set(h, (hourMap.get(h) ?? 0) + Number(s.total));
+            }
+            revenueByDay = [...hourMap.entries()].map(([h, revenue]) => ({
+                label: `${h}h`,
+                revenue,
+            }));
+        } else if (periodInfo.period === "week") {
+            // Rolling 7 days, one bar per day
+            const DAY_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+            const dayMap = new Map<string, number>();
+            const cursor = new Date(periodInfo.from);
+            while (cursor <= now) {
+                dayMap.set(`${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`, 0);
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            for (const s of revenueChartRaw) {
+                const key = `${s.createdAt.getFullYear()}-${s.createdAt.getMonth()}-${s.createdAt.getDate()}`;
+                if (dayMap.has(key)) dayMap.set(key, (dayMap.get(key) ?? 0) + Number(s.total));
+            }
+            revenueByDay = [...dayMap.entries()].map(([key, revenue]) => {
+                const [y, m, d] = key.split("-").map(Number);
+                const date = new Date(y, m, d);
+                return { label: `${DAY_ES[date.getDay()]} ${String(d).padStart(2, "0")}`, revenue };
+            });
+        } else {
+            // 4 weekly buckets: S1 (oldest) → S4 (current running week)
+            const dayOfWeek2 = now.getDay();
+            const mondayOffset2 = dayOfWeek2 === 0 ? 6 : dayOfWeek2 - 1;
+            const mondayOfWeek2 = new Date(now);
+            mondayOfWeek2.setDate(now.getDate() - mondayOffset2);
+            mondayOfWeek2.setHours(0, 0, 0, 0);
+            revenueByDay = [3, 2, 1, 0].map((weeksBack) => {
+                const weekStart = new Date(mondayOfWeek2);
+                weekStart.setDate(mondayOfWeek2.getDate() - weeksBack * 7);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                weekEnd.setHours(23, 59, 59, 999);
+                const revenue = revenueChartRaw
+                    .filter((s) => s.createdAt >= weekStart && s.createdAt <= weekEnd)
+                    .reduce((sum, s) => sum + Number(s.total), 0);
+                const fmt = (d: Date) =>
+                    `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+                return { label: `${fmt(weekStart)}-${fmt(weekEnd)}`, revenue };
+            });
+        }
+
         // Attention alerts (parallel)
         const [
             polizasDetenidasPrisma,
@@ -461,6 +540,8 @@ export default async function DashboardPage({
             stockCriticoPrisma,
             reensamblesPendientesPrisma,
             managerComparisonAgg,
+            stockCriticoCount,
+            reensamblesPendientesCount,
         ] = await Promise.all([
             prisma.sale.findMany({
                 where: {
@@ -546,6 +627,18 @@ export default async function DashboardPage({
                 _sum: { total: true },
                 _count: { id: true },
             }),
+            prisma.stock.count({
+                where: {
+                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    quantity: { lte: 2 },
+                },
+            }),
+            prisma.assemblyOrder.count({
+                where: {
+                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    status: "PENDING",
+                },
+            }),
         ]);
 
         const managerAttentionAlerts = {
@@ -581,6 +674,8 @@ export default async function DashboardPage({
                     : null,
                 folio: a.sale?.folio ?? null,
             })),
+            stockCriticoCount,
+            reensamblesPendientesCount,
         };
 
         return (
@@ -609,6 +704,8 @@ export default async function DashboardPage({
                 salesBySeller={salesBySeller}
                 cashFlow={{ collected: cashFlowCollected, pending: cashFlowPending }}
                 commissionsTeam={{ pending: commissionsTeamPending, approved: commissionsTeamApproved }}
+                revenueByDay={revenueByDay}
+                viewBranchId={viewBranchId}
             />
         );
     }

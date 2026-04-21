@@ -1,6 +1,6 @@
 "use client";
 
-import { Wrench, CheckCircle, AlertTriangle, Package } from "lucide-react";
+import { Wrench, CheckCircle, AlertTriangle, Package, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -147,8 +147,9 @@ export function TechnicianDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {deliveredTodayCount}
                     </p>
-                    <p className={`text-[11px] mt-1 font-medium ${deliveredTrend.dir === "up" ? "text-[var(--sec)]" : deliveredTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
-                        {deliveredTrend.dir === "up" ? "↑" : deliveredTrend.dir === "down" ? "↓" : "—"} {deliveredTrend.label}
+                    <p className={`text-[11px] mt-1 font-medium inline-flex items-center gap-1 ${deliveredTrend.dir === "up" ? "text-[var(--sec)]" : deliveredTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
+                        {deliveredTrend.dir === "up" ? <TrendingUp className="h-3 w-3 shrink-0" /> : deliveredTrend.dir === "down" ? <TrendingDown className="h-3 w-3 shrink-0" /> : <Minus className="h-3 w-3 shrink-0" />}
+                        {deliveredTrend.label}
                     </p>
                 </div>
 

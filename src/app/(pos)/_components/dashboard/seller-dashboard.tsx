@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp, Banknote, ArchiveRestore, CheckCircle, Vault, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Banknote, ArchiveRestore, CheckCircle, Vault, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
@@ -157,9 +157,14 @@ export function SellerDashboard({
                         <TrendingUp className="h-4 w-4 text-white/70" />
                     </div>
                     <p className="text-[2.75rem] font-bold text-white leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>{salesTodayCount}</p>
-                    <p className={`text-[11px] mt-1 font-medium ${salesTrend.dir === "up" ? "text-white/80" : salesTrend.dir === "down" ? "text-white/60" : "text-white/50"}`}>
-                        {salesTrend.dir === "up" ? "↑" : salesTrend.dir === "down" ? "↓" : "—"} {salesTrend.label}
-                    </p>
+                    <div className="mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            salesTrend.dir === "up" ? "bg-white/20 text-white" : salesTrend.dir === "down" ? "bg-black/20 text-white/70" : "bg-white/10 text-white/50"
+                        }`}>
+                            {salesTrend.dir === "up" ? <TrendingUp className="h-3 w-3 shrink-0" /> : salesTrend.dir === "down" ? <TrendingDown className="h-3 w-3 shrink-0" /> : <Minus className="h-3 w-3 shrink-0" />}
+                            {salesTrend.label}
+                        </span>
+                    </div>
                 </div>
 
                 {/* KPI 2: Mis Ingresos Hoy */}
@@ -173,9 +178,14 @@ export function SellerDashboard({
                     <p className="text-[2.75rem] font-bold text-[var(--on-surf)] leading-none tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)" }}>
                         {formatMXN(revenueToday)}
                     </p>
-                    <p className={`text-[11px] mt-1 font-medium ${revenueTrend.dir === "up" ? "text-[var(--sec)]" : revenueTrend.dir === "down" ? "text-[var(--ter)]" : "text-[var(--on-surf-var)]"}`}>
-                        {revenueTrend.dir === "up" ? "↑" : revenueTrend.dir === "down" ? "↓" : "—"} {revenueTrend.label}
-                    </p>
+                    <div className="mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            revenueTrend.dir === "up" ? "bg-[var(--sec-container)] text-[var(--on-sec-container)]" : revenueTrend.dir === "down" ? "bg-[var(--ter-container)] text-[var(--on-ter-container)]" : "bg-[var(--surf-high)] text-[var(--on-surf-var)]"
+                        }`}>
+                            {revenueTrend.dir === "up" ? <TrendingUp className="h-3 w-3 shrink-0" /> : revenueTrend.dir === "down" ? <TrendingDown className="h-3 w-3 shrink-0" /> : <Minus className="h-3 w-3 shrink-0" />}
+                            {revenueTrend.label}
+                        </span>
+                    </div>
                 </div>
 
                 {/* KPI 3: Mis Apartados */}
