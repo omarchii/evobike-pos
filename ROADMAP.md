@@ -786,10 +786,13 @@ Schema aditivo + migración `workshop_redesign_schema` + helpers en
 `src/lib/workshop*.ts` + 7 endpoints nuevos + 5 modificados + backfill
 idempotente. Sin UI.
 
-### Sub-fase B — Kanban rediseñado 🔜
+### Sub-fase B — Kanban rediseñado ✅ Completo (2026-04-21, commit b687807)
 Tablero con 7 columnas derivadas de `status + subStatus`. DnD con
 transiciones validadas server-side. Chip de `type` y avatar de
-`assignedTech`. **Donde diseñar:** chat ligero (Sonnet) + Code.
+`assignedTech`. Filtros URL-sync (técnico, antigüedad, mine, tipo).
+Aging semántico por columna. S5 integrado: display `{modelo} · {V}V · {Ah}Ah`.
+Bandeja lateral "Pausada". Responsive con acordeón móvil.
+**Donde diseñar:** chat ligero (Sonnet) + Code.
 **Subagentes:** no. **Sesiones estimadas:** 2.
 **Riesgo:** alto (UI en uso diario).
 
