@@ -53,6 +53,17 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 - `OrphanedSessionBanner` arriba del topbar; `CashSessionManager` renderiza
   en portal fuera de `<main>`. `CommandPalette` (Cmd+K) abre vía evento
   global `command-palette:open`.
+- **Sidebar colapsable** — `ShellClient` (`src/app/(pos)/shell-context.tsx`,
+  `"use client"`) envuelve el sidebar + columna principal. Recibe
+  `initialOpen: boolean` del Server Component layout (leído de la cookie
+  `sidebar-open` vía `cookies()` de `next/headers`). El botón
+  `SidebarToggleButton` (`sidebar-toggle-button.tsx`) consume `useShell()`
+  del contexto `ShellContext` y actualiza la cookie con `document.cookie`
+  en cada toggle. El wrapper transiciona `w-64 ↔ w-0 overflow-hidden` con
+  `transition-[width] duration-200`. Cookie default ausente = abierto
+  (`value !== "0"`). **Patrón de persistencia:** preferencias de UI de solo
+  lectura rápida (sin round-trip a API) usan cookie; preferencias más ricas
+  (densidad, pinned reports) usan `User.uiPreferences` en DB.
 
 ---
 
