@@ -541,6 +541,11 @@ model ServiceOrder {
   items        ServiceOrderItem[]
   sale         Sale?
   prepaid      Boolean            @default(false)
+  // Hotfix (2026-04-22) — aditivo, NULL para órdenes existentes con
+  // prepaid=true. La lógica de poblado vive en Sub-fase D (drawer de cobro).
+  prepaidAt      DateTime?
+  prepaidAmount  Decimal?          @db.Decimal(10, 2)
+  prepaidMethod  PaymentMethod?
 
   // Workshop redesign (Sub-fase A) — aditivo, todos nullable o con default
   assignedTechId       String?
