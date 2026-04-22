@@ -4,12 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
-
-interface AuthUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const qaSchema = z.object({
   qaPassed: z.literal(true),
@@ -32,14 +28,16 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { id: userId, branchId, role } = session.user as unknown as AuthUser;
-  if (!branchId) {
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const branchId = await resolveOperationalBranchId({ user });
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },
       { status: 400 },
     );
   }
-  if (role === "SELLER") {
+  if (user.role === "SELLER") {
     return NextResponse.json(
       { success: false, error: "Sin permisos para registrar QA" },
       { status: 403 },

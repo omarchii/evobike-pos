@@ -5,11 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { calculateHourlyPrice } from "@/lib/workshop";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const addItemSchema = z
   .object({
@@ -63,9 +60,10 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { branchId } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as SessionUser;
+  const branchId = await resolveOperationalBranchId({ user });
 
-  if (!branchId) {
+  if (branchId === "__none__") {
     return NextResponse.json({ success: false, error: "Empleado sin sucursal asignada" }, { status: 400 });
   }
 
@@ -213,6 +211,13 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
+  const user = session.user as unknown as SessionUser;
+  const branchId = await resolveOperationalBranchId({ user });
+
+  if (branchId === "__none__") {
+    return NextResponse.json({ success: false, error: "Empleado sin sucursal asignada" }, { status: 400 });
+  }
+
   const { id: serviceOrderId } = await params;
 
   const body: unknown = await req.json();
@@ -225,7 +230,7 @@ export async function DELETE(
 
   try {
     const order = await prisma.serviceOrder.findUnique({ where: { id: serviceOrderId } });
-    if (!order) {
+    if (!order || order.branchId !== branchId) {
       return NextResponse.json({ success: false, error: "Orden no encontrada" }, { status: 404 });
     }
     if (order.status === "DELIVERED" || order.status === "CANCELLED") {

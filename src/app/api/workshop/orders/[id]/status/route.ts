@@ -4,11 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { ServiceOrderStatus, Prisma } from "@prisma/client";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const statusSchema = z.object({
   currentStatus: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "DELIVERED", "CANCELLED"]),
@@ -27,7 +24,9 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const branchId = await resolveOperationalBranchId({ user });
   const { id: orderId } = await params;
 
   const body: unknown = await req.json();

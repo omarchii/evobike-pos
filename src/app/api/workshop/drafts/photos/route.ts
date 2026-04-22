@@ -16,6 +16,11 @@ const ALLOWED_MIMES = new Set(["image/png", "image/jpeg", "image/jpg", "image/we
 const DRAFTS_DIR = path.join(process.cwd(), "public", "workshop", "drafts");
 
 // Files are written as {userId}-{uuid}.webp to allow per-user cleanup in Fase 6.
+//
+// Branch scope: este endpoint NO filtra por branch porque los drafts se
+// guardan por userId (per-user namespace) — no hay recursos cross-branch
+// que puedan fugarse. El move final a /workshop/orders/{orderId}/ ocurre
+// dentro del POST de orders, que sí aplica `operationalBranchWhere`.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {

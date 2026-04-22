@@ -9,12 +9,8 @@ import {
   buildWorkshopWhatsappLink,
   type WhatsappLinkReason,
 } from "@/lib/workshop";
-
-interface AuthUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const approvalItemSchema = z.object({
   nombre: z.string().min(1).max(200),
@@ -62,14 +58,16 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { id: userId, branchId, role } = session.user as unknown as AuthUser;
-  if (!branchId) {
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const branchId = await resolveOperationalBranchId({ user });
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },
       { status: 400 },
     );
   }
-  if (role === "SELLER") {
+  if (user.role === "SELLER") {
     return NextResponse.json(
       { success: false, error: "Sin permisos para crear aprobaciones" },
       { status: 403 },

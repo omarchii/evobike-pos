@@ -5,14 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { getBranchMaintenanceServices, getBikeMaintenanceStatus } from "@/lib/workshop-maintenance";
 import { RecepcionWizard } from "./recepcion-wizard";
 import type { MaintenanceServiceOption, TechnicianOption } from "@/lib/workshop-types";
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 interface ServiceOption {
   id: string;
@@ -33,10 +29,12 @@ export default async function RecepcionPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const { branchId, role } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as SessionUser;
+  const role = user.role;
 
   if (role === "SELLER") redirect("/workshop");
-  if (!branchId) redirect("/workshop");
+  const branchId = await resolveOperationalBranchId({ user });
+  if (branchId === "__none__") redirect("/workshop");
 
   const params = await searchParams;
   const prefillBikeId = params.customerBikeId;

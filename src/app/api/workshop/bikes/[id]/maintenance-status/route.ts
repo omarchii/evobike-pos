@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getBikeMaintenanceStatus } from "@/lib/workshop-maintenance";
-
-interface SessionUser {
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 export async function GET(
   _req: NextRequest,
@@ -15,12 +14,23 @@ export async function GET(
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { role } = session.user as unknown as SessionUser;
-  if (role === "SELLER") {
+  const user = session.user as unknown as SessionUser;
+  if (user.role === "SELLER") {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 });
   }
 
+  const branchId = await resolveOperationalBranchId({ user });
   const { id } = await params;
+
+  // Ownership gate: la bici debe pertenecer al branch efectivo.
+  const bike = await prisma.customerBike.findUnique({
+    where: { id },
+    select: { branchId: true },
+  });
+  if (!bike || bike.branchId !== branchId) {
+    return NextResponse.json({ success: false, error: "Bicicleta no encontrada" }, { status: 404 });
+  }
+
   const status = await getBikeMaintenanceStatus(id);
 
   return NextResponse.json({

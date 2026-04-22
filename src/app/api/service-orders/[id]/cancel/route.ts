@@ -3,12 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-
-interface AuthUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const cancelSchema = z.object({
   motivo: z.string().min(1, "El motivo de cancelación es obligatorio"),
@@ -27,16 +23,18 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { id: userId, role, branchId } = session.user as unknown as AuthUser;
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
 
-  if (role !== "MANAGER" && role !== "ADMIN") {
+  if (user.role !== "MANAGER" && user.role !== "ADMIN") {
     return NextResponse.json(
       { success: false, error: "Sin permisos para cancelar órdenes" },
       { status: 403 }
     );
   }
 
-  if (!branchId) {
+  const branchId = await resolveOperationalBranchId({ user });
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },
       { status: 400 }

@@ -26,6 +26,12 @@ interface SessionUser {
 // POST /api/workshop/deliver
 // Cobra el total de una orden de taller y la marca como DELIVERED.
 // Requiere caja abierta en la sucursal.
+//
+// Excepción a la regla de `operationalBranchWhere`: este endpoint usa
+// `session.branchId` del JWT, NO la cookie `admin_branch_id`. El cobro está
+// atado a la caja del usuario autenticado (ver Hotfix.1 plan 2026-04-22).
+// ADMIN operando fuera de su sucursal original no puede entregar/cobrar en
+// el branch espejo — deberá abrir caja del branch destino con otro usuario.
 export async function POST(request: Request): Promise<NextResponse> {
     try {
         const session = await getServerSession(authOptions);

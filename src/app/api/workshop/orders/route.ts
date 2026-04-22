@@ -14,11 +14,8 @@ import {
 import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
 import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
 import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 // Item del payload al crear la orden. Todos son opcionales: la UI actual
 // (NewOrderDialog) crea la orden sin ítems; ésos se agregan después vía
@@ -138,9 +135,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const branchId = await resolveOperationalBranchId({ user });
 
-  if (!branchId) {
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Empleado sin sucursal asignada." },
       { status: 400 },

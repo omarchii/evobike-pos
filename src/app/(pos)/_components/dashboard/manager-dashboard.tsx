@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AttentionPanel, type AttentionPanelProps } from "./attention-panel";
 import { AuthorizationInbox } from "@/components/pos/authorization/authorization-inbox";
+import { switchAdminBranch } from "@/lib/actions/branch";
 
 type BranchComparisonRow = {
     branchId: string;
@@ -218,6 +219,19 @@ export function ManagerDashboard({
             params.delete("branch");
         } else {
             params.set("branch", newBranchId);
+        }
+        // Sincroniza la cookie `admin_branch_id` leída por `operationalBranchWhere`
+        // en módulos operativos (/workshop, /point-of-sale, ...). "Global" en el
+        // dashboard no limpia la cookie — operativos no tienen vista global.
+        if (newBranchId !== null) {
+            const row = branchComparison.find((b) => b.branchId === newBranchId);
+            if (row) {
+                void switchAdminBranch(row.branchId, row.branchName).then(() => {
+                    router.push(`/?${params.toString()}`);
+                    router.refresh();
+                });
+                return;
+            }
         }
         router.push(`/?${params.toString()}`);
     }

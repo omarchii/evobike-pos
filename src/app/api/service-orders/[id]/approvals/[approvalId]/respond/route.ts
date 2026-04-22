@@ -11,12 +11,8 @@ import {
   ApprovalAlreadyRespondedError,
   ApprovalItemsCorruptError,
 } from "@/lib/workshop-approvals";
-
-interface AuthUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const respondSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
@@ -39,14 +35,15 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { branchId, role } = session.user as unknown as AuthUser;
-  if (!branchId) {
+  const user = session.user as unknown as SessionUser;
+  const branchId = await resolveOperationalBranchId({ user });
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },
       { status: 400 },
     );
   }
-  if (role === "SELLER") {
+  if (user.role === "SELLER") {
     return NextResponse.json(
       { success: false, error: "Sin permisos para registrar aprobaciones" },
       { status: 403 },

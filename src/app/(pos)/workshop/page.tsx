@@ -14,6 +14,8 @@ import {
 } from "./workshop-attention";
 import { NewOrderDialog } from "./new-order-dialog";
 import { parseLocalDate, toDateString } from "@/lib/reportes/date-range";
+import { operationalBranchWhere } from "@/lib/branch-scope";
+import type { SessionUser as ShellSessionUser } from "@/lib/auth-types";
 import type {
   SerializedBoardOrder,
   SerializedDeliveredOrder,
@@ -21,12 +23,6 @@ import type {
 } from "./workshop-types";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 // ── Board query includes (declared as const for GetPayload inference) ──────────
 
@@ -77,9 +73,14 @@ function computeBikeDisplay(order: ActiveOrder): string | null {
 export default async function WorkshopPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as ShellSessionUser;
+  const userId = user.id;
+  const role = user.role;
 
-  const branchFilter = role === "ADMIN" ? {} : { branchId };
+  // Módulo operativo: ADMIN honra cookie `admin_branch_id` del topbar;
+  // no-ADMIN usa JWT. Nunca vista global cross-branch aquí.
+  const branchFilter = await operationalBranchWhere({ user });
+  const branchId = branchFilter.branchId;
 
   const todayStart = parseLocalDate(toDateString(new Date()), false) ?? new Date();
   // eslint-disable-next-line react-hooks/purity -- corre por request, no en render
@@ -265,7 +266,7 @@ export default async function WorkshopPage() {
     const stocks = await prisma.stock.findMany({
       where: {
         productVariantId: { in: allVariantIds },
-        ...(role !== "ADMIN" ? { branchId } : {}),
+        branchId,
       },
       select: { productVariantId: true, quantity: true },
     });

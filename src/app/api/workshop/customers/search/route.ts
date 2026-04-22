@@ -2,21 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { branchId, role } = session.user as unknown as SessionUser;
+  const user = session.user as unknown as SessionUser;
+  const branchId = await resolveOperationalBranchId({ user });
 
-  if (role === "SELLER") {
+  if (user.role === "SELLER") {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 });
   }
 

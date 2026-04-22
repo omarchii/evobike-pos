@@ -4,20 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MantenimientosTable, type MantenimientoRow } from "./mantenimientos-table";
 import { computeMaintenanceStatus } from "@/lib/workshop-maintenance";
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export default async function MantenimientosPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    branchId?: string;
     estado?: string;
     from?: string;
     to?: string;
@@ -31,21 +26,20 @@ export default async function MantenimientosPage({
   const allowedRoles = ["TECHNICIAN", "MANAGER", "ADMIN"];
   if (!allowedRoles.includes(user.role)) redirect("/workshop");
 
-  const params = await searchParams;
+  await searchParams;
 
   const branches = await prisma.branch.findMany({
     select: { id: true, code: true, name: true },
     orderBy: { code: "asc" },
   });
 
-  const scopedBranchId =
-    user.role === "ADMIN"
-      ? (params.branchId ?? null)
-      : (user.branchId ?? null);
+  // Branch efectivo: cookie para ADMIN, JWT para el resto. No hay vista
+  // global aquí — mantenimientos es módulo operativo.
+  const scopedBranchId = await resolveOperationalBranchId({ user });
 
   const bikes = await prisma.customerBike.findMany({
     where: {
-      ...(scopedBranchId ? { branchId: scopedBranchId } : {}),
+      branchId: scopedBranchId,
       assemblyOrders: {
         some: {
           saleId: { not: null },

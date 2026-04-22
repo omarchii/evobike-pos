@@ -9,12 +9,8 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
-
-interface AuthUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 const chargeSchema = z.object({
   paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "ATRATO"]),
@@ -36,9 +32,11 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as AuthUser;
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const branchId = await resolveOperationalBranchId({ user });
 
-  if (!branchId) {
+  if (branchId === "__none__") {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },
       { status: 400 }

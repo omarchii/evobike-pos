@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ServiceOrderDetailsView } from "./service-order-details";
@@ -7,21 +7,23 @@ import type { FullSerializedOrder, SerializedProduct, SerializedOrderItem } from
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 export default async function WorkshopOrderPage(props: {
   params: Promise<{ id: string }>;
 }) {
   const params = await props.params;
   const session = await getServerSession(authOptions);
-  const { id: userId, role } = (session?.user as unknown as SessionUser) ?? {};
+  if (!session?.user) redirect("/login");
+  const user = session.user as unknown as SessionUser;
+  const userId = user.id;
+  const role = user.role;
+
+  // Branch efectivo: cookie para ADMIN, JWT para el resto.
+  const viewBranchId = await resolveOperationalBranchId({ user });
 
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },
@@ -59,7 +61,7 @@ export default async function WorkshopOrderPage(props: {
     },
   });
 
-  if (!order) {
+  if (!order || order.branchId !== viewBranchId) {
     notFound();
   }
 
