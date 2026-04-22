@@ -263,7 +263,7 @@ function OrderCard({ order, nowMs, canDrag, isDragging, onDragStart, onDragEnd }
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={`relative rounded-lg bg-[var(--surf-bright)] p-4 cursor-grab active:cursor-grabbing transition-opacity${isDragging ? " opacity-40" : ""}`}
-      style={{ boxShadow: "0px 12px 32px -4px rgba(19,27,46,0.06)" }}
+      style={{ boxShadow: "var(--shadow)" }}
     >
       <header className="flex items-baseline justify-between gap-2">
         <Link
