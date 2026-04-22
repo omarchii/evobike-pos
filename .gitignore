@@ -45,6 +45,10 @@ next-env.d.ts
 # Local upload artifacts (facturas test)
 /public/facturas/
 
+# Runtime assets del taller (fotos de órdenes, drafts del wizard).
+# Filenames con userId/orderId namespacing — no forman parte del repo.
+/public/workshop/
+
 # Mockups y referencias visuales (no parte del producto)
 /referencias/
 

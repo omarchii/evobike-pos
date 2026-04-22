@@ -775,11 +775,18 @@ Archivos creados:
 
 ## FASE P13 — Rediseño del módulo de Taller
 
-**Estado:** A ✅ | B ✅ | C ✅ | D ⏳ | E ⏳ | F ⏳
+**Estado:** A ✅ | B ✅ | C ✅ | Hotfix ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
 
 Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
 y el alcance completo. Las decisiones de Sub-fase A están documentadas
 en `AGENTS.md §Decisiones clave`.
+
+**Ajuste de scope (2026-04-22):** tras pruebas en vivo sobre A+B+C se detectaron
+bugs críticos (fuga cross-branch, Decimal sin serializar, DnD a sub-estados,
+wizard con validación laxa) y una lista de mejoras funcionales. Se inserta
+**Sub-fase Hotfix** antes de D (ver más abajo). También se amplían los scopes
+de D/E/F y se suma **Sub-fase G — Dashboard móvil del técnico** que estaba
+en los mocks pero fuera del plan original.
 
 ### Sub-fase A — Schema y APIs ✅
 Schema aditivo + migración `workshop_redesign_schema` + helpers en
@@ -815,15 +822,15 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   ✅ (7) Responsive fallback < md: acordeón vertical, DnD deshabilitado, filtros en sheet glassmorphism.
   ✅ (8) S5 parte pesada confirmada en P13-D (batteryAvailabilityMap al agregar ítems)
       y P13-E (assertPolicyActive al entregar). NO implementado en B.
-- **Deuda arquitectónica identificada en P13-B (2026-04-21, resolver en P13-E)**
+- **Deuda arquitectónica identificada en P13-B (2026-04-21) → resuelta 2026-04-22 con opción (a)**
   Ribbon "Pre-pagado" en tarjetas del Kanban requiere saber si hay pre-pago antes de
-  DELIVERED. Hoy `Sale` se crea solo al entregar, así que no hay dato. Tres opciones
-  (skipeadas de P13-B, decidir en diseño de P13-E con Opus):
-  (a) Agregar `ServiceOrder.prepaid Boolean + prepaidAt + prepaidAmount + prepaidMethod`.
-  (b) Crear `Sale(prepaid=true)` al momento del pre-pago, rompiendo invariante actual.
-  (c) No capturar pre-pago hasta DELIVERED, sin ribbon nunca.
-  Impacta: P13-B (backport ribbon), P13-E (pantalla de entrega), P13-F (portal público
-  puede querer mostrar "pagado").
+  DELIVERED. Hoy `Sale` se crea solo al entregar, así que no hay dato. **Decisión:**
+  opción (a) — agregar `ServiceOrder.prepaid Boolean @default(false) + prepaidAt DateTime? +
+  prepaidAmount Decimal? @db.Decimal(10,2) + prepaidMethod PaymentMethod?` como schema
+  aditivo en Sub-fase Hotfix (migración, sin UI) y consumir en D (ficha técnica) + E
+  (pantalla de entrega, card "Ya pagado el X vía Y") + F (portal público "Pagado").
+  Se descartan (b) por romper la invariante "Sale al entregar" (probada en Fase 4) y
+  (c) por no atender el caso de negocio real (apartado con anticipo).
 
 
 ### Sub-fase C — Wizard de recepción ✅ Completo (2026-04-22)
@@ -847,14 +854,133 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   - Commit: `b15b97d`.
 
 - **Deudas cerradas en C.3:** `diagnosis` optional ✅, etiqueta imprimible ✅.
+- **Deudas abiertas identificadas 2026-04-22 (tras pruebas en vivo) → atacar en Sub-fase Hotfix:**
+  - **Validación por paso en el wizard:** hoy "Siguiente" avanza aunque el paso no esté completo. Fix: schemas Zod parciales `step1Schema`/`step2Schema`/`step3Schema`/`step4Schema` + `form.trigger([...])` antes de avanzar.
+  - **Cliente nuevo desde el wizard:** el combobox solo permite seleccionar existente — no hay modal de creación. Reutilizar el modal "Nuevo cliente" del POS (extraer a `src/components/customers/customer-create-dialog.tsx` si hace falta), CTA "+ Nuevo cliente" en el combobox cuando no hay match, auto-selección post-create.
+  - **Selector de bici Evobike vs. otra marca:** hoy lista libre sin distinguir. Dos modos: (1) Bici Evobike existente del cliente, (2) Agregar nueva con toggle Evobike (selector catálogo S2 + V·Ah + color + **VIN obligatorio**) / Otra marca (marca+modelo texto libre, VIN opcional).
+  - **Firma no renderiza:** el canvas `signature_pad` no muestra trazo al firmar. Investigar causas típicas (dimensiones del canvas sin DPR, color trazo igual a fondo en dark, `toDataURL` no persistiéndose en `signatureData`) antes de parchear.
+  - **Modo express del wizard (diferido a D o Fase 6):** para `type=COURTESY` o importe estimado bajo, los pasos 2 (checklist 10 ítems + firma) y 3 (fotos) son fricción innecesaria. Permitir bypass con toggle "Saltar evidencia" que exija nota de motivo. No entra en Hotfix — requiere decisión de política (¿qué umbral de importe? ¿permitir a SELLER o solo MANAGER?).
 - **Deuda abierta → Fase 6:**
   - `Branch.ivaPct` no modelado — IVA hardcodeado a 16% en `step-4-tipo.tsx`. Ver tech-debt en FASE 6.
+
+### Sub-fase Hotfix — Bugs críticos + wizard + audit DESIGN.md (pre-D)
+
+**Justificación (2026-04-22):** pruebas en vivo sobre A+B+C revelaron bugs que
+bloquean producción y deuda cosmética acumulada contra `DESIGN.md`. Arrancar D
+sin cerrar esto garantiza que el patrón roto (p. ej. fuga cross-branch) se
+replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
+
+**Donde diseñar:** chat con Sonnet + Code (son fixes, no diseño nuevo).
+**Subagentes:** sí — 1 para audit DESIGN.md en paralelo. **Riesgo:** medio
+(cross-branch es incidente de seguridad — ver §Hotfix.1).
+
+#### Hotfix.1 — Críticos (prioridad máxima, ~1 sesión)
+
+1. **🔴 Fuga cross-branch (violación regla branchId del JWT)** — órdenes `LEO-*`
+   visibles desde sesión `AV135` en el Kanban + técnicos de otras sucursales en
+   el filtro. Auditar todos los endpoints `src/app/api/workshop/*` contra la
+   regla "filtrar por `branchId` del JWT excepto ADMIN". **Decisión de política
+   ADMIN:** respetar el branch activo del topbar (patrón `viewBranchId` ya
+   existente en `src/app/(pos)/_components/dashboard/manager-dashboard.tsx`);
+   visión global solo en reportes ejecutivos y `/configuracion/*`.
+2. **🔴 Decimal serialization en `/workshop/[id]`** — `customer.creditLimit` y
+   `customer.balance` (y posibles otros Decimal del cliente) cruzan a Client
+   Component sin convertir en `src/app/(pos)/workshop/[id]/page.tsx:157`.
+   Extraer `serializeCustomer` a `src/lib/serialize/` (si no existe helper
+   compartido) y reemplazar usos; grep preventivo de `customer={` en props
+   server→client.
+3. **🔴 DnD a WAITING_PARTS / WAITING_APPROVAL → "error de red"** — esos
+   estados son `subStatus` dentro de `IN_PROGRESS` (decisión #8 del BRIEF),
+   no valores de `ServiceOrderStatus`. Cliente Kanban debe mapear columna →
+   `{status, subStatus}` antes del `PATCH`. Endpoint `PATCH /api/workshop/
+   orders/[id]/status` acepta ambos campos con `superRefine` coherente
+   (subStatus sólo si status=IN_PROGRESS).
+
+#### Hotfix.2 — Wizard de recepción (~1 sesión)
+
+4. **Validación por paso:** schemas Zod partidos + `form.trigger` antes de
+   avanzar. El summary sticky de paso 4 ya rastrea estado — extender.
+5. **Cliente nuevo desde combobox:** reutilizar modal del POS (extraer a
+   componente compartido si hace falta), CTA "+ Nuevo cliente con nombre '...'"
+   cuando no hay match, auto-selección post-create. Cierra deuda abierta en
+   sesión 1-C del Command Palette.
+6. **Selector de bici Evobike/otra marca + VIN:** ver §C.3 §deudas abiertas.
+   Modal crea `CustomerBike` al submit del wizard.
+7. **Firma render:** investigar antes de parchear (DPR del canvas, color de
+   trazo en dark, persistencia de `toDataURL()` en `signatureData`).
+
+#### Hotfix.3 — Audit completo de `/workshop` contra DESIGN.md (~0.5 sesión + subagente)
+
+**Alcance:** **TODAS** las pantallas del módulo de taller ya implementadas
+(`/workshop`, `/workshop/[id]`, `/workshop/recepcion`, `/workshop/mantenimientos`
+y el detalle de orden). Foco explícito en **tipografía** — detectadas
+inconsistencias donde letras no aplican Inter/Space Grotesk según `DESIGN.md`.
+
+**Checklist obligatorio (por pantalla):**
+- **Tipografía:** toda clase `font-*` y `text-*` aplicada respeta la jerarquía
+  de `DESIGN.md §Tipografía` (display / heading / body / caption / number).
+  Cero `font-family` hardcoded; cero `font-sans` genérico donde el token
+  especifica Space Grotesk (números/KPIs/folios).
+- **Colores:** cero literales (`text-[#...]`, `bg-[#...]`, `rgba(...)`). Todo
+  vía tokens (`--surf-*`, `--on-surf-*`, `--primary-*`, `--ter-*`,
+  `--ghost-border`). Verificar light+dark mode para cada estado.
+- **Regla No-Line:** separación tonal por surface, nunca `border-b` sólido
+  (excepción: headers de tabla con `--ghost-border`).
+- **Glassmorphism oficial** en modales/drawers:
+  `color-mix(in srgb, var(--surf-bright) 88%, transparent)` + `blur(20px)`.
+- **Bugs cosméticos específicos identificados:**
+  - "Volver al Tablero" usa color hardcoded / inadecuado en dark mode.
+  - Dos botones "+ Nueva Orden" en el Kanban (header + filtros) lanzan flujos
+    distintos. Consolidar a uno → `/workshop/recepcion` y eliminar el legacy.
+- **Tokens de densidad** (`density-{compact,normal,comfortable}`) aplicados en
+  KPIs y cards (definidos en reportes, pendientes en taller).
+- **Responsive:** móvil funcional en ficha y Kanban (DnD deshabilitado en <md
+  ya implementado en B — validar no romper con los fixes).
+
+**Delegar a subagente Explore** para levantar la lista de violaciones por
+archivo; main thread aplica fixes según prioridad y token correcto.
+
+#### Schema aditivo dentro de Hotfix
+
+Agregar en la migración del Hotfix.1 (resuelve la deuda del ribbon pre-pago):
+
+```prisma
+model ServiceOrder {
+  // ... campos existentes
+  prepaid        Boolean        @default(false)
+  prepaidAt      DateTime?
+  prepaidAmount  Decimal?       @db.Decimal(10, 2)
+  prepaidMethod  PaymentMethod?
+}
+```
+
+Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
+
+---
 
 ### Sub-fase D — Ficha técnica + drawer de aprobación
 Rediseño de ficha existente + componente nuevo de aprobación con cálculo
 en vivo, disparador de WhatsApp y lógica de `subStatus`. Gate del botón
 "Marcar entregada" por `qaPassedAt != null` salvo `COURTESY`. Sección QA
 solo visible con `status = COMPLETED`.
+
+**Scope ampliado 2026-04-22:**
+- **QA second-checker opcional:** agregar `Branch.requireQaSecondChecker Boolean @default(false)`.
+  Cuando está en `true`, validar que `qaPassedByUserId != servicedByUserId` al
+  transicionar a DELIVERED (422 si falla). Permite talleres 1-2 técnicos con
+  self-check y fuerza segundo validador donde haya plantilla suficiente.
+- **Chip disponibilidad stock con SWR revalidate:** el 🟢/🟡/🔴 al agregar
+  ítem se revalida cada 30s mientras la ficha esté abierta (no reserva stock
+  — regla Fase 4 intacta). Evita mentir al técnico si otra orden compra la
+  última pieza mientras él trabaja.
+- **`expiresAt` en `ServiceOrderApproval`:** `DateTime @default(now() + 48h)`
+  (interval hardcoded por ahora; si hace falta configurable, `Branch.
+  approvalTtlHours Int? @default(48)` diferido). Cron o lazy-check al abrir la
+  ficha marca aprobaciones vencidas como `REJECTED` y libera subStatus.
+- **Consumir `ServiceOrder.prepaid` del Hotfix:** mostrar en header de la
+  ficha si la orden fue pre-pagada (lectura, sin permitir editar — eso vive
+  en E).
+
 **Donde diseñar:** chat con **Opus** (lógica de negocio entrelazada) + Code.
 **Subagentes:** sí — 1 para el drawer standalone, main para ficha.
 **Sesiones estimadas:** 2-3. **Riesgo:** alto.
@@ -862,6 +988,21 @@ solo visible con `status = COMPLETED`.
 ### Sub-fase E — Pantalla de entrega + PDFs
 UI que oculta panel de cobro cuando `type ∈ {WARRANTY, COURTESY,
 POLICY_MAINTENANCE}`. PDF de comprobante con leyenda según `type`.
+
+**Scope ampliado 2026-04-22:**
+- **`Sale.excludeFromRevenue Boolean @default(false)` aditivo:** al generar
+  `Sale(total=0, type=SERVICE)` para `POLICY_MAINTENANCE`, marcar
+  `excludeFromRevenue=true`. Los reportes de ventas filtran por esta flag en
+  vez de usar filtros ad-hoc por tipo. Migración con backfill:
+  `UPDATE "Sale" SET "excludeFromRevenue" = true WHERE "total" = 0`
+  (aproximación: tickets con total cero no cuentan para ingreso).
+- **UI de ribbon pre-pagado:** consumir `ServiceOrder.prepaid/prepaidAt/
+  prepaidAmount/prepaidMethod` del Hotfix. Panel derecho muestra card
+  `--secondary-container` "Ya pagado el {date} vía {method} por ${amount}"
+  sin selector de cobro. Al `DELIVERED`, la lógica server-side sabe que no
+  debe crear nueva `CashTransaction` (ya existe la del pre-pago) y genera
+  `Sale(prepaid=true)` como hoy.
+
 **Donde diseñar:** chat (estructura PDF) + Code. **Subagentes:** sí si
 son plantillas separadas por tipo; no si es una con leyenda dinámica
 (cerrar esto en el chat de diseño). **Sesiones estimadas:** 2.
@@ -869,8 +1010,38 @@ son plantillas separadas por tipo; no si es una con leyenda dinámica
 ### Sub-fase F — Portal público
 Página `/taller/public/[token]` fuera de `(pos)/`, mobile-first, light
 mode forzado. Consume endpoints públicos ya creados en Sub-fase A.
+
+**Scope ampliado 2026-04-22:** mostrar chip "Pagado el {date}" en el header
+cuando `ServiceOrder.prepaid = true` (lectura del campo aditivo del Hotfix).
+Consumir `ServiceOrderApproval.expiresAt` (de D) para mostrar contador
+regresivo "Esta solicitud expira en Xh" en la card de aprobación pendiente.
+
 **Donde diseñar:** chat (layout + UX) + Code. **Subagentes:** no.
 **Sesiones estimadas:** 1-2. **Riesgo:** bajo.
+
+### Sub-fase G — Dashboard móvil del técnico (aditivo, 2026-04-22)
+
+Identificado como hueco durante diseño: los mocks incluyen
+`dashboard_del_t_cnico_mobile_2/` pero no estaba en las sub-fases A-F. En piso,
+un técnico usa el celular — hoy solo tiene el Kanban desktop responsive en
+acordeón. Scope mínimo v1:
+
+- Ruta `/workshop/mobile` (o reuso del Kanban con breakpoint específico,
+  decidir al implementar).
+- Lectura: órdenes asignadas a `assignedTechId = session.user.id` en estado
+  activo (PENDING + IN_PROGRESS + subStatus activos), agrupadas por status.
+- Acciones mínimas: tomar orden sin asignar (si está en su sucursal),
+  soltar orden asignada a sí mismo, cambiar subStatus (WAITING_PARTS /
+  WAITING_APPROVAL / PAUSED) sin DnD — botones tap-friendly.
+- Sin ficha técnica completa en móvil (eso se abre como deeplink al desktop
+  si hace falta).
+
+**Vista de ocupación del gerente (mock `vista_de_ocupaci_n_del_gerente_2/`)**
+se difiere a Fase 6 — no es crítica para el piloto y depende de métricas de
+productividad que maduran con uso real.
+
+**Donde diseñar:** chat ligero (Sonnet) + Code. **Subagentes:** no.
+**Sesiones estimadas:** 1-2. **Riesgo:** bajo. **Depende de:** A, B, Hotfix.
 
 ### Testing de P13 completo
 Se integra al scope de Fase 6 (hardening de producción). Tests por flujo
@@ -1029,6 +1200,9 @@ Ver sección FASE 6 más abajo para el detalle completo.
 - **DISTINCT ON en cost-resolver (diferido desde P10 Lote 5)** — `resolveCostsBatch` trae todos los `PURCHASE_RECEIPT` relevantes y descarta duplicados en memoria (`Map + primera aparición`). Funciona bien en volumen actual, pero si el historial de recepciones crece, la query trae filas innecesarias. Optimización: `SELECT DISTINCT ON (productVariantId) … ORDER BY productVariantId, createdAt DESC` (y equivalente para `simpleProductId`) — dos queries en paralelo, cero trabajo en memoria. Bloqueante: `DISTINCT ON` con dos columnas polimórficas requiere dos queries separadas (no se puede hacer en una sola sin CTE compleja). Evaluar en Fase 6 cuando el volumen lo justifique; la semántica del resolver no cambia.
 - **Seed de ventas con descuentos para QA de P10-C (diferido desde P10 Lote 5)** — El diagnóstico `prisma/diagnostic-p10c-discount.ts` confirmó que la BD de QA tiene 1 venta COMPLETED y 0 descuentos. El prorrateo de `computeLineRevenues` nunca se ejercita con datos reales. Agregar en `prisma/seed-transactional.ts`: (a) al menos 1 venta con `Sale.discount > 0`, (b) al menos 1 venta con `SaleItem.discount > 0` en alguna línea, (c) 1 venta con ambos para probar el caso combinado. Verificar que el reporte P10-C muestre margen correcto en los 3 casos.
 - **Bug sistémico de zona horaria en filtros de fecha** — Detectado durante review de P10-A (2026-04-16). El patrón `new Date("YYYY-MM-DD")` interpreta el string como UTC medianoche, no local. En `America/Merida` (UTC−6) esto corre el día un pelo, incluyendo ventas del día anterior y perdiendo las del último día del rango. **Afecta:** `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`. **Fix:** reemplazar con `parseDateRange` o `parseLocalDate` de `src/lib/reportes/date-range.ts`. El workaround actual de concatenar `"T23:59:59.999Z"` también es UTC y tiene el bug espejo. **Impacto financiero:** comisiones, KPIs y cortes potencialmente desfasados en ±1 día.
+- **Escala del Kanban de Taller (diferido desde P13-B, sumado 2026-04-22)** — `/workshop` hoy hidrata 7 columnas con `force-dynamic` + DnD sin paginación ni virtualización. En P13-Hotfix se añade `take: 100` por columna ordenado por `updatedAt desc` más SWR revalidate de 30s para el chip de disponibilidad; DELIVERED/CANCELLED siguen filtradas a "solo hoy". Cuando una sucursal mantenga > 50 órdenes activas sostenidas, agregar: (a) virtualización con `@tanstack/react-virtual` en columnas largas, (b) índice compuesto `(branchId, status, subStatus, updatedAt desc)` en `ServiceOrder` si EXPLAIN muestra seq scan, (c) paginación cursor en endpoints `/api/workshop/orders` con `?cursor=&limit=`. No bloqueante mientras el volumen sea bajo; validar con un EXPLAIN al abrir piloto con volumen real.
+- **Política ADMIN branch-scope (formalizar, sumado 2026-04-22)** — Incidente detectado en P13 pre-Hotfix: órdenes de otras sucursales visibles desde sesión filtrada por branch en el topbar, incluso para ADMIN. La regla "filtrar por `branchId` del JWT excepto ADMIN" es too blunt — ADMIN necesita scope respetado cuando trabaja en un branch específico. **Patrón canónico:** `viewBranchId` = branch del topbar (siempre honrado) en módulos operativos (`/workshop`, `/point-of-sale`, `/inventario`, `/tesoreria`, `/autorizaciones`); **global-only** en `/reportes/*` (ejecutivo) y `/configuracion/*`. Documentar en `AGENTS.md §Reglas` como extensión de la regla branchId. Audit cross-módulo al cerrar Hotfix.1 — probablemente hay más endpoints con el mismo patrón roto.
+- **Vista de ocupación del gerente (diferida desde P13-G, 2026-04-22)** — El mock `vista_de_ocupaci_n_del_gerente_2/` existe pero no se prioriza en P13. Requiere métricas de productividad (horas facturables vs. efectivas, OT/subutilización por técnico) que sólo maduran con uso real post-piloto. Retomar tras ~60 días de operación con datos reales; evaluar si vale o se reduce a dashboard KPI simple en `/workshop/ocupacion`.
 
 ---
 
