@@ -775,7 +775,7 @@ Archivos creados:
 
 ## FASE P13 — Rediseño del módulo de Taller
 
-**Estado:** A ✅ | B ✅ | C ✅ | Hotfix ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
+**Estado:** A ✅ | B ✅ | C ✅ | Hotfix.1 ✅ | Hotfix.2 ⏳ | Hotfix.3 ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
 
 Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
 y el alcance completo. Las decisiones de Sub-fase A están documentadas
@@ -874,29 +874,75 @@ replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
 **Subagentes:** sí — 1 para audit DESIGN.md en paralelo. **Riesgo:** medio
 (cross-branch es incidente de seguridad — ver §Hotfix.1).
 
-#### Hotfix.1 — Críticos (prioridad máxima, ~1 sesión)
+#### Hotfix.1 — Críticos ✅ Completo (2026-04-22)
 
-1. **🔴 Fuga cross-branch (violación regla branchId del JWT)** — órdenes `LEO-*`
-   visibles desde sesión `AV135` en el Kanban + técnicos de otras sucursales en
-   el filtro. Auditar todos los endpoints `src/app/api/workshop/*` contra la
-   regla "filtrar por `branchId` del JWT excepto ADMIN". **Decisión de política
-   ADMIN:** respetar el branch activo del topbar (patrón `viewBranchId` ya
-   existente en `src/app/(pos)/_components/dashboard/manager-dashboard.tsx`);
-   visión global solo en reportes ejecutivos y `/configuracion/*`.
-2. **🔴 Decimal serialization en `/workshop/[id]`** — `customer.creditLimit` y
-   `customer.balance` (y posibles otros Decimal del cliente) cruzan a Client
-   Component sin convertir en `src/app/(pos)/workshop/[id]/page.tsx:157`.
-   Extraer `serializeCustomer` a `src/lib/serialize/` (si no existe helper
-   compartido) y reemplazar usos; grep preventivo de `customer={` en props
-   server→client.
-3. **🔴 DnD a WAITING_PARTS / WAITING_APPROVAL → "error de red"** — esos
-   estados son `subStatus` dentro de `IN_PROGRESS` (decisión #8 del BRIEF),
-   no valores de `ServiceOrderStatus`. Cliente Kanban debe mapear columna →
-   `{status, subStatus}` antes del `PATCH`. Endpoint `PATCH /api/workshop/
-   orders/[id]/status` acepta ambos campos con `superRefine` coherente
-   (subStatus sólo si status=IN_PROGRESS).
+**Alcance ejecutado** (commits `dfe9049` + `18e6eee` + `fdefb5f` + `26518ab`):
 
-#### Hotfix.2 — Wizard de recepción (~1 sesión)
+1. **🔴 Fuga cross-branch — RESUELTO.** Nuevo helper canónico
+   `src/lib/branch-scope.ts#operationalBranchWhere` + `resolveOperationalBranchId`.
+   ADMIN honra la cookie `admin_branch_id` del topbar (ya escrita por
+   `BranchSwitcher` via Server Action `switchAdminBranch`); fallback a
+   `session.branchId`. NUNCA devuelve `{}` — no hay vista global cross-branch
+   en operativos. `branchWhere` de `/reportes/*` se mantiene intacto y se
+   re-exporta desde el root. Dashboard `manager-dashboard.tsx` sincroniza la
+   cookie al cambiar de branch (llama `switchAdminBranch`). Pages migradas:
+   `/workshop`, `/workshop/[id]` (+ ownership gate contra fuga por URL),
+   `/workshop/recepcion`, `/workshop/mantenimientos`. Endpoints migrados:
+   `workshop/orders` POST, `orders/[id]/status`, `orders/[id]/items` POST+DELETE
+   (el DELETE no tenía ownership check — bug aparte), `deliver`, `customers/search`,
+   `technicians`, `bikes/[id]/maintenance-status` (nuevo ownership gate por
+   `bike.branchId` — otra fuga aparte), `service-orders/[id]/{sub-status,qa,
+   approvals,cancel,charge}`, `approvals/[approvalId]/respond`. Excepción:
+   `/api/workshop/drafts/photos` no aplica scope (files per-user).
+
+2. **Schema aditivo prepaid — RESUELTO.** Migración
+   `20260422071027_add_prepaid_tracking_fields` aplicada: `prepaidAt DateTime?`,
+   `prepaidAmount Decimal?`, `prepaidMethod PaymentMethod?`. Sin UI, sin endpoints.
+   Órdenes existentes con `prepaid=true` quedan con NULL en los 3 campos nuevos.
+
+3. **Cleanup post-Hotfix (commit `fdefb5f`):**
+   - `/api/workshop/deliver` alineado con `operationalBranchWhere` (antes era
+     excepción JWT-only; ambos endpoints de cobro ahora se comportan igual —
+     ver decisión 2026-04-22 más abajo).
+   - `mantenimientos-table.tsx` sin dropdown "Sucursal" para ADMIN: el servidor
+     ya filtra por branch efectivo, el selector cliente-side no filtraba nada.
+     Se quitaron también columna "Sucursal", props `role`/`branches`/
+     `scopedBranchId` y el pre-fetch de sucursales en la page.
+
+4. **Decisión de política (2026-04-22)** — **charge y deliver ambos aceptan
+   override cookie.** Se evaluó tratar `deliver` como excepción JWT-only
+   (caja atada al user autenticado), pero se descartó: la caja es por branch,
+   no por user. Mantener la excepción bloqueaba a ADMIN en cookie=LEO de
+   entregar órdenes LEO con caja LEO abierta por otro usuario. Ambos endpoints
+   creaban `CashTransaction` y exigían caja — era inconsistente.
+
+5. **Extras identificados durante la auditoría** (cerrados en el mismo ciclo):
+   - `DELETE /api/workshop/orders/[id]/items` no tenía ownership check
+     (cualquier sesión autenticada podía borrar ítems cross-branch). Agregado.
+   - `GET /api/workshop/bikes/[id]/maintenance-status` no verificaba
+     `bike.branchId` (fuga de estado de mantenimiento). Agregado gate.
+
+**Pendientes del scope original que migran a Hotfix.2:**
+- 🔴 **Decimal serialization en `/workshop/[id]`** — `customer.creditLimit` y
+  `customer.balance` siguen cruzando Server → Client sin convertir. Error en
+  consola confirmado 2026-04-22: `Only plain objects can be passed to Client
+  Components from Server Components. Decimal objects are not supported.` Fix
+  planeado: `src/lib/serialize/customer.ts` con `serializeCustomer(c)` +
+  reemplazar en `page.tsx:98` + grep preventivo de `customer={` en props
+  server→client. **No bloqueó Hotfix.1** porque la ficha carga visualmente,
+  sólo spamea la consola.
+- 🔴 **DnD a WAITING_PARTS / WAITING_APPROVAL → "error de red"** — raíz
+  identificada: `workshop-board.tsx:482` llama `/api/service-orders/[id]/sub-status`
+  con `PATCH`, pero el endpoint exporta `POST`. Fix: cambiar el verbo HTTP en
+  el cliente (una línea). No se aplicó en Hotfix.1 por ser fuera del prompt
+  del commit de seguridad.
+
+**Infra pendiente (una sola vez, local):** `npx prisma generate` falló con
+`EPERM` por DLL lockeado. Cerrar todos los `node.exe` (VS Code TS server,
+dev server) y correr manualmente antes de Hotfix.2 — D requiere los tipos
+nuevos de `prepaidAt/Amount/Method`.
+
+#### Hotfix.2 — Wizard de recepción + Decimal + DnD (~1 sesión)
 
 4. **Validación por paso:** schemas Zod partidos + `form.trigger` antes de
    avanzar. El summary sticky de paso 4 ya rastrea estado — extender.
@@ -908,6 +954,11 @@ replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
    Modal crea `CustomerBike` al submit del wizard.
 7. **Firma render:** investigar antes de parchear (DPR del canvas, color de
    trazo en dark, persistencia de `toDataURL()` en `signatureData`).
+8. **Decimal serialization** (migrado desde Hotfix.1): `serializeCustomer` en
+   `src/lib/serialize/customer.ts`, aplicar en `workshop/[id]/page.tsx:98`,
+   grep preventivo de otros `customer={` server→client.
+9. **DnD verb mismatch** (migrado desde Hotfix.1): cambiar `PATCH → POST` en
+   `workshop-board.tsx:476-486` para el fetch a `/api/service-orders/[id]/sub-status`.
 
 #### Hotfix.3 — Audit completo de `/workshop` contra DESIGN.md (~0.5 sesión + subagente)
 
