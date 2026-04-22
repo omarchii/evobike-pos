@@ -826,13 +826,23 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   puede querer mostrar "pagado").
 
 
-### Sub-fase C — Wizard de recepción
-Formulario multi-step que crea orden con `type`, `assignedTechId`, ítems
-con `laborMinutes`. Selector de `CustomerBike`. El tipo `POLICY_MAINTENANCE`
-solo se ofrece si hay `customerBikeId`; la verificación de vigencia es
-advertencia, no bloqueo (helper `assertPolicyActive` es no-op hoy).
-**Donde diseñar:** chat (Sonnet) + Code. **Subagentes:** no.
-**Sesiones estimadas:** 2.
+### Sub-fase C — Wizard de recepción ✅ Completo (2026-04-21)
+
+- **C.1 — Capa de datos** (commit `4906e28`): schema con `checklist Json?`, `signatureData String?`, `signatureRejected Boolean @default(false)`, `photoUrls Json?`, `expectedDeliveryDate String?`. Constantes + tipos en `workshop-checklist.ts`/`workshop-types.ts`. Helper `getBranchMaintenanceServices` en `workshop-maintenance.ts`. Endpoint `GET /api/workshop/technicians`. Validaciones Zod en `POST /api/workshop/orders` (checklist exacto 10 ítems, coherencia firma, POLICY_MAINTENANCE exige `customerBikeId`, `photoUrls` max 5).
+
+- **C.2 — UI del wizard** (commit `8e6edee`):
+  - Tab "Recepción" entre Kanban y Mantenimientos en `layout.tsx`.
+  - Server Component `recepcion/page.tsx` (`force-dynamic`): prefetch paralelo técnicos + servicios + mantenimientos; si `?customerBikeId=X`, prefetch de cliente + bici + estado P11.
+  - Client wizard 4 pasos (archivos separados per React Compiler): `step-1-cliente` (búsqueda cliente debounced + selector bici + banner P11 con 3 ramas), `step-2-checklist` (10 ítems tri-state + `signature_pad` dynamic import), `step-3-fotos` (upload drag-drop, POST a `/api/workshop/drafts/photos`, thumbnails), `step-4-tipo` (4 cards tipo + técnico select + useFieldArray items + date + summary sticky + dialog glassmorphism).
+  - Endpoint `POST /api/workshop/drafts/photos`: sharp → WebP q85 1920px, escribe a `public/workshop/drafts/{userId}-{uuid}.webp`.
+  - Helpers `moveDraftToOrder` + `cleanupOrderPhotos` en `workshop-photos.ts`; move pre-transacción en `POST /api/workshop/orders` con `id: orderId` generado antes del `$transaction` y cleanup en catch.
+  - Corrección validación `photoUrls` Zod: `/public/workshop/` → `/workshop/drafts/`.
+  - APIs auxiliares: `GET /api/workshop/customers/search?q=` y `GET /api/workshop/bikes/[id]/maintenance-status`.
+
+- **Pendiente → C.3:** etiqueta imprimible `/taller/etiqueta/[id]` (TODO en el CTA del wizard).
+- **Deudas detectadas en C.2:**
+  - `Branch.ivaPct` no modelado — IVA hardcodeado a 16% en `step-4-tipo.tsx`. Requiere migración si se quiere configurable.
+  - `diagnosis` requerido en el API (`min(1)`) pero el brief lo marca opcional en el wizard. Resolver en C.3 o P13-D si se decide relajar.
 
 ### Sub-fase D — Ficha técnica + drawer de aprobación
 Rediseño de ficha existente + componente nuevo de aprobación con cálculo
