@@ -169,7 +169,7 @@ async function main() {
   for (const u of users) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { password: defaultPassword },
       create: { ...u, password: defaultPassword },
     });
   }
