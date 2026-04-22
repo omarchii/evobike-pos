@@ -174,6 +174,7 @@ export function Step2Checklist({ control, setValue, step2Error }: Step2Props) {
                 ref={padRef}
                 onChange={(val) => setValue("signatureData", val)}
                 disabled={signatureRejected}
+                value={signatureData ?? null}
               />
             )}
 
