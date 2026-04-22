@@ -1122,7 +1122,109 @@ Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
 
 ---
 
-### Sub-fase D — Ficha técnica + drawer de aprobación
+### Sub-fase D — Ficha técnica + drawer de aprobación ✅ Completa (2026-04-22)
+
+4 commits secuenciales en `main`: `f89dd3d` D.1 → `b92e3dc` D.2 →
+`260c469` D.3a → `49c4f1f` D.3b. Build/tsc/eslint limpios en cada paso.
+
+#### D.1 — Schema requireQaSecondChecker + QaPanel + lectura prepaid (`f89dd3d`)
+- `Branch.requireQaSecondChecker Boolean @default(false)`. Migración
+  `20260422180000_add_qa_second_checker`.
+- `qa-panel.tsx`: badge `--sec-container` (verde) cuando `qaPassedAt`; CTA
+  con textarea cuando `status=COMPLETED && qaPassedAt==null`. Oculto a
+  SELLER y a `status=DELIVERED` sin QA (caso COURTESY entregada).
+- `prepaid-card.tsx`: lee `prepaidAt/Amount/Method` del Hotfix.1 con
+  fallback "Pre-pagado" para órdenes legacy.
+- `deliver/route.ts`: guard `type !== "COURTESY" && requireQaSecondChecker
+  && servicedByUserId && qaPassedByUserId && servicedByUserId ===
+  qaPassedByUserId` → 422 `QA_SECOND_CHECKER_REQUIRED`. Tolerante con
+  `servicedByUserId == null` (legacy, documentado inline).
+- `page.tsx` + `service-order-details.tsx`: `select` y `FullSerializedOrder`
+  extendidos; eliminado bloque inline duplicado de "Pre-pago registrado".
+
+**Decisión vs. plan:** badge QA usa `--sec-container` (verde) en vez de
+`--ter-container` (rojo) — coherente con StatusChip "Completado/Entregado".
+
+#### D.2 — `expiresAt` + ApprovalDrawer + lazy expiry (`b92e3dc`)
+- `ServiceOrderApproval.expiresAt DateTime` NOT NULL + índice
+  `(status, expiresAt)`. Migración `20260422190000_add_approval_expires_at`
+  con backfill `requestedAt + INTERVAL '48 hours'` (Opción A — filas legacy
+  >48h nacen EXPIRED). DB local diagnóstico previo: 0 approvals, sin impacto.
+- `src/lib/workshop-approval-expiry.ts`: `APPROVAL_TTL_MS` (48h),
+  `computeApprovalExpiresAt`, `expirePendingApprovalsTx` (idempotente).
+- `POST /approvals`: `expiresAt = now + 48h`; response incluye `expiresAt`.
+- `POST /respond` interno y `POST /public/[token]/respond`: race-safe via
+  `updateMany({ where: { id, status: PENDING, expiresAt: { lt: now } } })`.
+  Si `count === 1` → 410 `APPROVAL_EXPIRED` + limpia `subStatus`. Si `0` →
+  flujo normal (`applyApprovalDecisionTx` revalida `status === PENDING`).
+- `approval-drawer.tsx`: Sheet derecho (sm:max-w-lg) glassmorphism oficial
+  `color-mix(in srgb, var(--surf-bright) 88%, transparent) + blur(20px)`.
+  RHF + `useFieldArray` + `watch` recalcula subtotal/IVA 16%/total en
+  footer sticky. Toggle "Abrir WhatsApp" disabled sin teléfono; al submit
+  `WHATSAPP_PUBLIC` abre `wa.me` en pestaña nueva (operador envía manual).
+  Toasts diferenciados por `whatsappReason`.
+- `approvals-list.tsx`: lista colapsable; chip "Expira en Xh" con
+  `--warn-container` <6h, `--ter-container` cuando vencida. Acciones
+  internas "Registrar aprobación/rechazo" via `prompt()` para canal+nota.
+  Maneja 410 con toast específico.
+- `page.tsx`: `expirePendingApprovalsTx(prisma, orderId)` antes del
+  `findUnique` (lazy expiry); approvals serializadas validando `itemsJson`.
+
+#### D.3a — Stock chip SWR + descomposición (`260c469`)
+- `GET /api/workshop/stock-availability?ids=a,b,c` con
+  `operationalBranchWhere`. Polimorfismo Stock
+  (`productVariantId | simpleProductId`); defaultea 0 los ids sin fila.
+  Max 50 ids.
+- `src/hooks/use-stock-availability.ts`: hook custom 30s con
+  `setInterval` + `AbortController` + key sorted (deduplica por id list).
+  **Sin `swr` — un único consumo no justifica la dependencia**; reabrir si
+  emerge ≥2.º caso.
+- `stock-chip.tsx`: semáforo qty vs available. 🟢 `available >= qty+5`
+  (`--p-container`), 🟡 `qty <= available < qty+5` (`--warn-container`),
+  🔴 `available < qty` (`--ter-container`).
+- `add-item-form.tsx` + `items-table.tsx`: extraídos del monolito.
+  `service-order-details.tsx` **1004 → 690 LOC**. Padre invoca el hook UNA
+  vez con la unión de ids y pasa `stockMap` por props — single source of
+  truth, sin polls duplicados.
+- `DESIGN.md`: nueva sección "Datos live (polling) — patrón hook custom".
+
+**Desviación del plan:** `ActionsPanel` NO se extrajo. Su lógica son 4
+ramas de estado entrelazadas con cobro/entrega y no necesita stock chip;
+descomponerlo sin valor multiplica props sin reducir riesgo.
+
+#### D.3b — Prefill `?customerId` en wizard (`49c4f1f`)
+- `recepcion/page.tsx`: nuevo searchParam `customerId`. Si llega solo
+  (sin `customerBikeId`), fetch customer + bikes filtrado por `branchId`
+  vía `operationalBranchWhere`. **`customerBikeId` GANA** si vienen ambos
+  (preserva flujo C.2 sin regresión).
+- `step-1-cliente.tsx`: el effect de prefill antes exigía AMBOS
+  `prefillCustomer && prefillBike`. Ahora pre-selecciona cliente cuando
+  hay `prefillCustomer` y, si además hay `prefillBike`, pre-selecciona la
+  bici. UI existente ya soporta cliente con N bicis (combobox) o sin bicis
+  (flujo newBike) — sin cambios visuales.
+
+#### Deudas registradas (no resueltas en D)
+
+1. **`dialog.tsx` base sin glassmorphism**. ApprovalDrawer aplica
+   `color-mix + blur(20px)` manualmente. Resolver cuando haya ≥3 drawers
+   con el mismo patrón. (Ya estaba en deudas Hotfix.3 §2.)
+2. **IVA 16% hardcoded en cliente** (consistente con wizard C.2 y con la
+   validación server-side por `cantidad × precio`).
+3. **Expiración de approvals sin notificación**: solo se refleja al
+   siguiente render. Aceptable; revisar si llega canal email/push.
+4. **Cookie `admin_branch_id` puede divergir entre SSR y polling cliente**:
+   peor caso 30s de stock desfasado. Aceptable.
+5. **`FullSerializedOrder` crece con cada sub-fase**. Evaluar partir en
+   `OrderHeader | OrderItems | OrderApprovals | OrderQa` antes de E/F.
+6. **Reabrir `swr` si aparece ≥2.º consumo de polling** (contadores caja,
+   métricas dashboard live, notificaciones).
+7. **`deliver/route.ts:52` lee `branchId` del JWT**, no de la cookie via
+   `operationalBranchWhere`. La memoria de Hotfix.1 reportaba esto como
+   resuelto pero el código lo desmiente. Revisar antes de Sub-fase E (que
+   también va a tocar deliver).
+
+#### Spec original (referencia histórica)
+
 Rediseño de ficha existente + componente nuevo de aprobación con cálculo
 en vivo, disparador de WhatsApp y lógica de `subStatus`. Gate del botón
 "Marcar entregada" por `qaPassedAt != null` salvo `COURTESY`. Sección QA
