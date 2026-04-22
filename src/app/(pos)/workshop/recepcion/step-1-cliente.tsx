@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useWatch } from "react-hook-form";
 import type { Control, UseFormSetValue, UseFormGetValues, FieldErrors } from "react-hook-form";
 import { useDebouncedCallback } from "use-debounce";
-import { Search, Bike, AlertTriangle, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { Search, Bike, AlertTriangle, CheckCircle, Clock, ChevronRight, UserPlus } from "lucide-react";
 import type { WizardFormData } from "./recepcion-wizard";
 import type { MaintenanceServiceOption } from "@/lib/workshop-types";
+import { CustomerCreateDialog } from "@/components/customers/customer-create-dialog";
+import type { CustomerOption } from "@/components/customers/customer-create-form";
 
 interface CustomerBike {
   id: string;
@@ -211,6 +213,7 @@ export function Step1Cliente({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerResult | null>(null);
   const [bikeStatus, setBikeStatus] = useState<MaintenanceStatusResult | null>(prefillMaintenanceStatus);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const customerBikeId = useWatch({ control, name: "customerBikeId" });
 
@@ -308,6 +311,22 @@ export function Step1Cliente({
     setValue("maintenanceServiceId", undefined);
     setBikeStatus(null);
   };
+
+  const handleCustomerCreated = (customer: CustomerOption) => {
+    selectCustomer({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      rfc: null,
+      bikes: [],
+    });
+  };
+
+  const showCreateCta =
+    !selectedCustomer &&
+    query.trim().length >= 2 &&
+    !isSearching &&
+    searchResults.length === 0;
 
   const noBikeSelected = !customerBikeId;
 
@@ -418,11 +437,30 @@ export function Step1Cliente({
             </div>
           )}
 
+          {/* CTA to register a brand-new customer with the current query as name */}
+          {showCreateCta && (
+            <button
+              type="button"
+              onClick={() => setShowCreateDialog(true)}
+              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors"
+              style={{
+                background: "var(--p-container)",
+                color: "var(--on-p-container)",
+              }}
+              aria-label={`Registrar nuevo cliente con el nombre ${query.trim()}`}
+            >
+              <UserPlus size={14} />
+              <span className="font-medium truncate">
+                + Nuevo cliente con nombre &ldquo;{query.trim()}&rdquo;
+              </span>
+            </button>
+          )}
+
           {/* Manual name fallback if not found in search */}
           {!selectedCustomer && (
             <div className="space-y-2">
               <p className="text-xs" style={{ color: "var(--on-surf-var)" }}>
-                ¿No está en el sistema? Ingresa el nombre manualmente:
+                ¿No quieres registrarlo? Ingresa el nombre manualmente:
               </p>
               <input
                 type="text"
@@ -545,6 +583,13 @@ export function Step1Cliente({
           )}
         </div>
       </div>
+
+      <CustomerCreateDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        defaultName={query.trim()}
+        onCreated={handleCustomerCreated}
+      />
     </section>
   );
 }
