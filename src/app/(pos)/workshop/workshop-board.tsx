@@ -1,362 +1,1037 @@
 "use client";
 
-import React, { useState } from "react";
-import { ServiceOrder, Customer, ServiceOrderItem, User, ServiceOrderStatus } from "@prisma/client";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Wrench, Clock, CheckCircle2, Bike, ArrowRight, Filter } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Chip } from "@/components/primitives/chip";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { formatMXN } from "@/lib/quotations";
+import type {
+  SerializedBoardOrder,
+  SerializedDeliveredOrder,
+  SerializedCancelledOrder,
+  TechnicianOption,
+} from "./workshop-types";
 
-type FullServiceOrder = Omit<ServiceOrder, "subtotal" | "total"> & {
-    subtotal: number;
-    total: number;
-    customer: Omit<Customer, "creditLimit" | "balance"> & {
-        creditLimit: number;
-        balance: number;
-    };
-    items: (Omit<ServiceOrderItem, "price"> & { price: number })[];
-    user: User;
+// ── Local type aliases (no Prisma enums on client) ────────────────────────────
+
+type ServiceOrderTypeT = "PAID" | "WARRANTY" | "COURTESY" | "POLICY_MAINTENANCE";
+type NonPaidType = Exclude<ServiceOrderTypeT, "PAID">;
+
+// ── Display maps ─────────────────────────────────────────────────────────────
+
+const TYPE_LABEL_ES: Record<NonPaidType, string> = {
+  WARRANTY: "Garantía",
+  COURTESY: "Cortesía",
+  POLICY_MAINTENANCE: "Mantenimiento",
 };
 
-interface WorkshopBoardProps {
-    initialOrders: FullServiceOrder[];
-    currentUserId: string;
-    currentUserRole: string;
+type ChipVariant = "neutral" | "success" | "warn" | "error" | "info";
+
+const TYPE_VARIANT: Record<NonPaidType, ChipVariant> = {
+  WARRANTY: "warn",
+  COURTESY: "info",
+  POLICY_MAINTENANCE: "neutral",
+};
+
+// ── Aging ─────────────────────────────────────────────────────────────────────
+
+type AgingTier = "verde" | "ambar" | "rojo";
+
+function agingTierFor(
+  status: string,
+  subStatus: string | null,
+  createdAtMs: number,
+  updatedAtMs: number,
+  nowMs: number
+): AgingTier | null {
+  const HOUR = 3_600_000;
+  const DAY = 86_400_000;
+
+  switch (status) {
+    case "PENDING": {
+      const elapsed = nowMs - createdAtMs;
+      if (elapsed < 4 * HOUR) return "verde";
+      if (elapsed < DAY) return "ambar";
+      return "rojo";
+    }
+    case "IN_PROGRESS": {
+      if (subStatus === "PAUSED") {
+        const inPause = nowMs - updatedAtMs;
+        if (inPause < DAY) return "verde";
+        if (inPause < 3 * DAY) return "ambar";
+        return "rojo";
+      }
+      const target = updatedAtMs + 48 * HOUR;
+      const remaining = target - nowMs;
+      if (remaining < 0) return "rojo";
+      if (remaining < 48 * HOUR) return "ambar";
+      return "verde";
+    }
+    case "COMPLETED": {
+      const elapsed = nowMs - updatedAtMs;
+      if (elapsed < DAY) return "verde";
+      if (elapsed < 2 * DAY) return "ambar";
+      return "rojo";
+    }
+    default:
+      return null;
+  }
 }
 
-const COLUMNS: { id: ServiceOrderStatus; title: string; icon: React.ElementType; color: string; bg: string }[] = [
-    { id: "PENDING", title: "En Espera", icon: Clock, color: "text-amber-500", bg: "bg-[var(--warn-container)]" },
-    { id: "IN_PROGRESS", title: "En Reparación", icon: Wrench, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { id: "COMPLETED", title: "Listo p/ Entrega", icon: CheckCircle2, color: "text-[var(--sec)]", bg: "bg-[var(--sec-container)]" },
+const AGING_VARIANT: Record<AgingTier, ChipVariant> = {
+  verde: "success",
+  ambar: "warn",
+  rojo: "error",
+};
+
+function formatAging(
+  status: string,
+  subStatus: string | null,
+  createdAtMs: number,
+  updatedAtMs: number,
+  nowMs: number
+): string {
+  const HOUR = 3_600_000;
+
+  let diffMs: number;
+  if (status === "PENDING") {
+    diffMs = nowMs - createdAtMs;
+  } else if (status === "IN_PROGRESS" && subStatus === "PAUSED") {
+    diffMs = nowMs - updatedAtMs;
+  } else if (status === "IN_PROGRESS") {
+    diffMs = updatedAtMs + 48 * HOUR - nowMs;
+  } else {
+    diffMs = nowMs - updatedAtMs;
+  }
+
+  const absMin = Math.abs(diffMs) / 60_000;
+  if (absMin < 60) return `${Math.floor(absMin)}m`;
+  if (absMin < 1440) return `${Math.floor(absMin / 60)}h`;
+  const days = Math.floor(absMin / 1440);
+  return status === "IN_PROGRESS" && diffMs < 0 ? `${days}d vencida` : `${days}d`;
+}
+
+// ── Bucketization ─────────────────────────────────────────────────────────────
+
+type Buckets = {
+  pending: SerializedBoardOrder[];
+  inProgress: SerializedBoardOrder[];
+  waitingParts: SerializedBoardOrder[];
+  waitingApproval: SerializedBoardOrder[];
+  paused: SerializedBoardOrder[];
+  completed: SerializedBoardOrder[];
+};
+
+function bucketize(orders: SerializedBoardOrder[]): Buckets {
+  const b: Buckets = {
+    pending: [],
+    inProgress: [],
+    waitingParts: [],
+    waitingApproval: [],
+    paused: [],
+    completed: [],
+  };
+  for (const o of orders) {
+    if (o.status === "PENDING") b.pending.push(o);
+    else if (o.status === "COMPLETED") b.completed.push(o);
+    else if (o.status === "IN_PROGRESS") {
+      if (o.subStatus === "WAITING_PARTS") b.waitingParts.push(o);
+      else if (o.subStatus === "WAITING_APPROVAL") b.waitingApproval.push(o);
+      else if (o.subStatus === "PAUSED") b.paused.push(o);
+      else b.inProgress.push(o);
+    }
+  }
+  return b;
+}
+
+// ── Column types ──────────────────────────────────────────────────────────────
+
+type ColumnSlug =
+  | "pending"
+  | "inProgress"
+  | "waitingParts"
+  | "waitingApproval"
+  | "paused"
+  | "completed"
+  | "delivered"
+  | "cancelled";
+
+const MAIN_COLUMNS: Array<{ slug: ColumnSlug; title: string }> = [
+  { slug: "pending", title: "En Espera" },
+  { slug: "inProgress", title: "En Reparación" },
+  { slug: "waitingParts", title: "Esp. Refacciones" },
+  { slug: "waitingApproval", title: "Esp. Aprobación" },
+  { slug: "completed", title: "Completada" },
+  { slug: "delivered", title: "Entregada hoy" },
+  { slug: "cancelled", title: "Cancelada hoy" },
 ];
 
-const AGE_OPTIONS = [
-    { label: "Todas", minDays: 0 },
-    { label: "> 1 día", minDays: 1 },
-    { label: "> 3 días", minDays: 3 },
-    { label: "> 7 días", minDays: 7 },
-] as const;
+const DEFAULT_COLLAPSED: ColumnSlug[] = ["delivered", "cancelled"];
 
-function getDaysInColumn(order: FullServiceOrder): number {
-    const ref = order.status === "PENDING" ? order.createdAt : order.updatedAt;
-    const ms = Date.now() - new Date(ref).getTime();
-    return Math.floor(ms / (1000 * 60 * 60 * 24));
+// ── DnD transition resolution ─────────────────────────────────────────────────
+
+type Transition =
+  | { statusPatch: string; subStatusPatch?: undefined }
+  | { subStatusPatch: string | null; statusPatch?: undefined };
+
+function resolveTransition(
+  fromSlug: ColumnSlug,
+  toSlug: ColumnSlug
+): Transition | "invalid" {
+  if (fromSlug === toSlug) return "invalid";
+  if (fromSlug === "pending" && toSlug === "inProgress")
+    return { statusPatch: "IN_PROGRESS" };
+  if (fromSlug === "inProgress" && toSlug === "waitingParts")
+    return { subStatusPatch: "WAITING_PARTS" };
+  if (fromSlug === "waitingParts" && toSlug === "inProgress")
+    return { subStatusPatch: null };
+  if (fromSlug === "inProgress" && toSlug === "waitingApproval")
+    return { subStatusPatch: "WAITING_APPROVAL" };
+  if (fromSlug === "waitingApproval" && toSlug === "inProgress")
+    return { subStatusPatch: null };
+  if (fromSlug === "inProgress" && toSlug === "paused")
+    return { subStatusPatch: "PAUSED" };
+  if (fromSlug === "paused" && toSlug === "inProgress")
+    return { subStatusPatch: null };
+  if (fromSlug === "inProgress" && toSlug === "completed")
+    return { statusPatch: "COMPLETED" };
+  if (fromSlug === "completed" && toSlug === "delivered") {
+    toast.error("Usa el botón Entregar de la ficha");
+    return "invalid";
+  }
+  return "invalid";
 }
 
-function getInitials(name: string): string {
-    return name
-        .split(" ")
-        .slice(0, 2)
-        .map(w => w[0])
-        .join("")
-        .toUpperCase();
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const SELECT_STYLE: React.CSSProperties = {
-    background: "var(--surf-low)",
-    border: "none",
-    borderRadius: "var(--r-full)",
-    color: "var(--on-surf)",
-    fontFamily: "var(--font-body)",
-    fontSize: "0.75rem",
-    fontWeight: 500,
-    height: 32,
-    paddingLeft: "0.75rem",
-    paddingRight: "1.75rem",
-    appearance: "none",
-    WebkitAppearance: "none",
-    cursor: "pointer",
-};
+function shortName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
 
-export default function WorkshopBoard({ initialOrders, currentUserId, currentUserRole }: WorkshopBoardProps) {
-    const router = useRouter();
-    const [orders, setOrders] = useState<FullServiceOrder[]>(initialOrders);
-    const [movingId, setMovingId] = useState<string | null>(null);
+function currentSlugForOrder(order: SerializedBoardOrder): ColumnSlug {
+  if (order.status === "PENDING") return "pending";
+  if (order.status === "COMPLETED") return "completed";
+  if (order.subStatus === "WAITING_PARTS") return "waitingParts";
+  if (order.subStatus === "WAITING_APPROVAL") return "waitingApproval";
+  if (order.subStatus === "PAUSED") return "paused";
+  return "inProgress";
+}
 
-    // Filters
-    const [technicianFilter, setTechnicianFilter] = useState<string>("ALL");
-    const [ageFilter, setAgeFilter] = useState<number>(0);
-    const [onlyMine, setOnlyMine] = useState(false);
+// ── SVG helpers ───────────────────────────────────────────────────────────────
 
-    // Unique technicians from orders
-    const technicians = Array.from(
-        new Map(orders.map(o => [o.user.id, o.user.name])).entries()
-    );
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={className}>
+      <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-    // Apply filters
-    const filteredOrders = orders.filter((o) => {
-        if (technicianFilter !== "ALL" && o.userId !== technicianFilter) return false;
-        if (ageFilter > 0 && getDaysInColumn(o) < ageFilter) return false;
-        if (onlyMine && o.userId !== currentUserId) return false;
-        return true;
-    });
+function SelectChevron() {
+  return (
+    <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-    const hasActiveFilters = technicianFilter !== "ALL" || ageFilter > 0 || onlyMine;
+// ── OrderCard (top-level component — no closures over WorkshopBoard state) ────
 
-    const moveOrder = async (orderId: string, currentStatus: ServiceOrderStatus) => {
-        setMovingId(orderId);
-        toast.loading("Avanzando orden...", { id: `move-${orderId}` });
+interface OrderCardProps {
+  order: SerializedBoardOrder;
+  nowMs: number;
+  canDrag: boolean;
+  isDragging: boolean;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragEnd: (e: React.DragEvent) => void;
+}
 
-        const result = await fetch(`/api/workshop/orders/${orderId}/status`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ currentStatus }),
-        }).then((r) => r.json() as Promise<{ success: boolean; data?: { newStatus: ServiceOrderStatus }; error?: string }>);
+function OrderCard({ order, nowMs, canDrag, isDragging, onDragStart, onDragEnd }: OrderCardProps) {
+  const tier = agingTierFor(order.status, order.subStatus, order.createdAtMs, order.updatedAtMs, nowMs);
 
-        if (result.success) {
-            toast.success("Bicicleta avanzada", { id: `move-${orderId}` });
-            setOrders(orders.map(o => o.id === orderId ? { ...o, status: result.data!.newStatus } : o));
-            router.refresh();
-        } else {
-            toast.error(result.error || "No se pudo avanzar", { id: `move-${orderId}` });
-        }
-        setMovingId(null);
-    };
+  return (
+    <article
+      draggable={canDrag}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={`relative rounded-lg bg-[var(--surf-bright)] p-4 cursor-grab active:cursor-grabbing transition-opacity${isDragging ? " opacity-40" : ""}`}
+      style={{ boxShadow: "0px 12px 32px -4px rgba(19,27,46,0.06)" }}
+    >
+      <header className="flex items-baseline justify-between gap-2">
+        <Link
+          href={`/workshop/${order.id}`}
+          className="font-semibold text-base text-[var(--p)] hover:text-[var(--p-mid)] tracking-[-0.01em] transition-colors"
+          style={{ fontFamily: "var(--font-display)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          #{order.folio}
+        </Link>
+        {tier !== null && (
+          <Chip
+            variant={AGING_VARIANT[tier]}
+            icon="clock"
+            label={formatAging(order.status, order.subStatus, order.createdAtMs, order.updatedAtMs, nowMs)}
+          />
+        )}
+      </header>
 
-    return (
-        <div className="flex-1 flex flex-col gap-3 overflow-hidden">
-            {/* Filter bar */}
-            <div className="flex items-center gap-3 flex-wrap">
-                <Filter className="h-3.5 w-3.5 text-[var(--on-surf-var)]" />
+      <p className="mt-1 text-sm text-[var(--on-surf)]">{order.customer.name}</p>
 
-                {/* Technician filter */}
-                <div className="relative">
-                    <select
-                        value={technicianFilter}
-                        onChange={(e) => setTechnicianFilter(e.target.value)}
-                        style={SELECT_STYLE}
-                    >
-                        <option value="ALL">Todos los técnicos</option>
-                        {technicians.map(([id, name]) => (
-                            <option key={id} value={id}>{name}</option>
-                        ))}
-                    </select>
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--on-surf-var)]">
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </span>
-                </div>
+      {order.bikeDisplay && (
+        <p className="mt-1 text-xs text-[var(--on-surf-var)]">{order.bikeDisplay}</p>
+      )}
 
-                {/* Age filter */}
-                <div className="relative">
-                    <select
-                        value={ageFilter}
-                        onChange={(e) => setAgeFilter(Number(e.target.value))}
-                        style={SELECT_STYLE}
-                    >
-                        {AGE_OPTIONS.map((opt) => (
-                            <option key={opt.minDays} value={opt.minDays}>{opt.label}</option>
-                        ))}
-                    </select>
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--on-surf-var)]">
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </span>
-                </div>
-
-                {/* "Solo mis órdenes" toggle — only for TECHNICIAN */}
-                {currentUserRole === "TECHNICIAN" && (
-                    <button
-                        type="button"
-                        onClick={() => setOnlyMine(!onlyMine)}
-                        className={`text-xs font-medium px-3 h-8 rounded-full transition-colors ${
-                            onlyMine
-                                ? "bg-[var(--p)] text-[var(--on-p)]"
-                                : "bg-[var(--surf-low)] text-[var(--on-surf-var)] hover:bg-[var(--surf-high)]"
-                        }`}
-                    >
-                        Solo mis órdenes
-                    </button>
-                )}
-
-                {/* Clear filters */}
-                {hasActiveFilters && (
-                    <button
-                        type="button"
-                        onClick={() => { setTechnicianFilter("ALL"); setAgeFilter(0); setOnlyMine(false); }}
-                        className="text-[11px] font-medium text-[var(--p)] hover:text-[var(--p-mid)] transition-colors ml-auto"
-                    >
-                        Limpiar filtros
-                    </button>
-                )}
-            </div>
-
-            {/* Kanban columns — or editorial empty state */}
-            {filteredOrders.length === 0 ? (
-                <div
-                    className="flex-1 flex flex-col items-center justify-center text-center px-6 rounded-[var(--r-lg)]"
-                    style={{ background: "var(--surf-low)" }}
-                >
-                    {/* Icon — accent wrench, no overlay */}
-                    <div
-                        className="h-16 w-16 rounded-full flex items-center justify-center mb-5"
-                        style={{ background: "rgba(46, 204, 113, 0.12)" }}
-                    >
-                        {hasActiveFilters
-                            ? <Filter className="h-7 w-7" style={{ color: "#2ECC71" }} />
-                            : <Wrench className="h-7 w-7" style={{ color: "#2ECC71" }} />
-                        }
-                    </div>
-
-                    {/* Title — Space Grotesk */}
-                    <p
-                        className="text-xl font-bold text-[var(--on-surf)] tracking-[-0.02em]"
-                        style={{ fontFamily: "var(--font-display)" }}
-                    >
-                        {hasActiveFilters ? "Sin resultados" : "Taller al día"}
-                    </p>
-
-                    {/* Subtitle — Inter */}
-                    <p className="text-sm text-[var(--on-surf-var)] mt-2 max-w-sm leading-relaxed">
-                        {hasActiveFilters
-                            ? "Ninguna orden coincide con los filtros seleccionados. Prueba ajustar los criterios."
-                            : "No hay bicicletas en reparación. Las nuevas órdenes aparecerán aquí automáticamente."
-                        }
-                    </p>
-                </div>
-            ) : (
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
-                {COLUMNS.map((column) => {
-                    const columnOrders = filteredOrders.filter((o) => o.status === column.id);
-
-                    return (
-                        <div
-                            key={column.id}
-                            className="flex flex-col rounded-[var(--r-lg)] overflow-hidden bg-[var(--surf-lowest)]"
-                            style={{ boxShadow: "var(--shadow)" }}
-                        >
-                            {/* Column Header */}
-                            <div className={`px-4 py-3 ${column.bg} flex items-center justify-between`}>
-                                <div className="flex items-center gap-2 font-semibold text-sm text-[var(--on-surf)]">
-                                    <column.icon className={`h-4 w-4 ${column.color}`} />
-                                    {column.title}
-                                </div>
-                                <span
-                                    className="text-xs font-bold text-[var(--on-surf-var)] bg-white/50 dark:bg-white/10 rounded-full px-2 py-0.5"
-                                >
-                                    {columnOrders.length}
-                                </span>
-                            </div>
-
-                            {/* Column Body */}
-                            <ScrollArea className="flex-1 p-3">
-                                <div className="space-y-3">
-                                    {columnOrders.map((order) => {
-                                        const days = getDaysInColumn(order);
-                                        const isStale = days > 3;
-
-                                        return (
-                                            <div
-                                                key={order.id}
-                                                className="rounded-[var(--r-md)] bg-[var(--surf-low)] p-4 space-y-3"
-                                            >
-                                                {/* Row 1: Folio + days chip */}
-                                                <div className="flex items-center justify-between">
-                                                    <Link
-                                                        href={`/workshop/${order.id}`}
-                                                        className="text-xs font-semibold text-[var(--p)] hover:text-[var(--p-mid)] transition-colors tracking-wide"
-                                                    >
-                                                        {order.folio}
-                                                    </Link>
-                                                    {days >= 1 && (
-                                                        <span
-                                                            className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                                                                isStale
-                                                                    ? "bg-[var(--ter-container)] text-[var(--on-ter-container)]"
-                                                                    : "bg-[var(--surf-high)] text-[var(--on-surf-var)]"
-                                                            }`}
-                                                        >
-                                                            {days}d
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Row 2: Bike info */}
-                                                <div className="flex items-start gap-2">
-                                                    <Bike className="h-3.5 w-3.5 mt-0.5 text-[var(--on-surf-var)] shrink-0" />
-                                                    <span className="text-sm font-medium text-[var(--on-surf)] line-clamp-2 leading-tight">
-                                                        {order.bikeInfo || "Bicicleta sin detalles"}
-                                                    </span>
-                                                </div>
-
-                                                {/* Row 3: Customer + technician avatar */}
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-[var(--on-surf-var)] truncate max-w-[70%]">
-                                                        {order.customer.name}
-                                                    </span>
-                                                    <div
-                                                        className="h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-semibold bg-[var(--p-container)] text-[var(--on-p-container)]"
-                                                        title={order.user.name}
-                                                    >
-                                                        {getInitials(order.user.name)}
-                                                    </div>
-                                                </div>
-
-                                                {/* Row 4: Diagnosis (if present) */}
-                                                {order.diagnosis && (
-                                                    <p className="text-[11px] text-[var(--on-surf-var)] italic line-clamp-2 leading-relaxed">
-                                                        &ldquo;{order.diagnosis}&rdquo;
-                                                    </p>
-                                                )}
-
-                                                {/* Row 5: Chips + action */}
-                                                <div className="flex items-center justify-between pt-1">
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        {order.prepaid ? (
-                                                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 uppercase tracking-wider">
-                                                                Pre-pagado
-                                                            </span>
-                                                        ) : order.total > 0 ? (
-                                                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--warn-container)] text-[var(--warn)] uppercase tracking-wider">
-                                                                {formatMXN(order.total)}
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5">
-                                                        {column.id !== "COMPLETED" && (
-                                                            <Button
-                                                                size="sm"
-                                                                disabled={movingId === order.id}
-                                                                className="h-7 text-[11px] px-3 rounded-full bg-[var(--surf-high)] hover:bg-[var(--surf-highest)] text-[var(--on-surf)]"
-                                                                onClick={() => moveOrder(order.id, column.id)}
-                                                            >
-                                                                {movingId === order.id ? "..." : "Avanzar"}
-                                                                <ArrowRight className="h-3 w-3 ml-1" />
-                                                            </Button>
-                                                        )}
-                                                        {column.id === "COMPLETED" && (
-                                                            <Button
-                                                                size="sm"
-                                                                className="h-7 text-[11px] px-3 rounded-full text-white"
-                                                                style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
-                                                                asChild
-                                                            >
-                                                                <Link href={`/workshop/${order.id}`}>
-                                                                    Entregar
-                                                                </Link>
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {columnOrders.length === 0 && (
-                                        <div className="h-32 flex flex-col items-center justify-center text-[var(--on-surf-var)] opacity-50">
-                                            <column.icon className="h-6 w-6 mb-2" />
-                                            <p className="text-xs">Sin pendientes</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
-                        </div>
-                    );
-                })}
-            </div>
-            )}
+      {order.type !== "PAID" && (
+        <div className="mt-2">
+          <Chip
+            variant={TYPE_VARIANT[order.type as NonPaidType]}
+            label={TYPE_LABEL_ES[order.type as NonPaidType]}
+          />
         </div>
+      )}
+
+      <div
+        className="mt-3 h-px"
+        style={{ background: "color-mix(in srgb, var(--on-surf) 6%, transparent)" }}
+      />
+
+      <footer className="mt-3 flex items-center gap-2">
+        {order.assignedTech ? (
+          <>
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--p-container)] text-[0.625rem] font-medium text-[var(--on-p-container)]">
+              {initials(order.assignedTech.name)}
+            </span>
+            <span className="text-xs text-[var(--on-surf-var)]">
+              {shortName(order.assignedTech.name)}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surf-low)] text-[0.625rem] text-[var(--on-surf-var)]">
+              --
+            </span>
+            <span className="text-xs text-[var(--on-surf-var)]">Sin asignar</span>
+          </>
+        )}
+      </footer>
+    </article>
+  );
+}
+
+// ── MobileActionButtons (top-level component) ─────────────────────────────────
+
+interface MobileActionButtonsProps {
+  order: SerializedBoardOrder;
+  onTransition: (orderId: string, t: Transition | "invalid") => void;
+}
+
+function MobileActionButtons({ order, onTransition }: MobileActionButtonsProps) {
+  const fromSlug = currentSlugForOrder(order);
+  const actions: Array<{ label: string; toSlug: ColumnSlug }> = [];
+
+  if (fromSlug === "pending") actions.push({ label: "Iniciar", toSlug: "inProgress" });
+  if (fromSlug === "inProgress") {
+    actions.push({ label: "Completar", toSlug: "completed" });
+    actions.push({ label: "Refacciones", toSlug: "waitingParts" });
+    actions.push({ label: "Aprobación", toSlug: "waitingApproval" });
+    actions.push({ label: "Pausar", toSlug: "paused" });
+  }
+  if (fromSlug === "waitingParts" || fromSlug === "waitingApproval" || fromSlug === "paused") {
+    actions.push({ label: "Reanudar", toSlug: "inProgress" });
+  }
+
+  if (actions.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-3">
+      {actions.map(({ label, toSlug }) => (
+        <button
+          key={toSlug}
+          type="button"
+          onClick={() => onTransition(order.id, resolveTransition(fromSlug, toSlug))}
+          className="text-xs font-medium px-3 h-7 rounded-full bg-[var(--surf-low)] text-[var(--on-surf)] hover:bg-[var(--surf-high)] transition-colors"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── WorkshopBoard ─────────────────────────────────────────────────────────────
+
+interface WorkshopBoardProps {
+  active: SerializedBoardOrder[];
+  deliveredToday: SerializedDeliveredOrder[];
+  cancelledToday: SerializedCancelledOrder[];
+  technicians: TechnicianOption[];
+  currentUser: { id: string; role: string };
+  nowMs: number;
+}
+
+export default function WorkshopBoard({
+  active,
+  deliveredToday,
+  cancelledToday,
+  technicians,
+  currentUser,
+  nowMs,
+}: WorkshopBoardProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ── URL param helpers ─────────────────────────────────────────────────────
+
+  function updateParams(updates: Record<string, string | null>) {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null || v === "") next.delete(k);
+      else next.set(k, v);
+    }
+    router.replace(`?${next.toString()}`, { scroll: false });
+  }
+
+  // ── Filter state (URL-synced) ─────────────────────────────────────────────
+
+  const techFilter = searchParams.get("tech") ?? "";
+  const agingFilter = (searchParams.get("aging") ?? "") as AgingTier | "";
+  const mineFilter = searchParams.get("mine") === "1";
+  const typeFilter = new Set(
+    (searchParams.get("type") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  const collapsedParam = searchParams.get("collapsed");
+  const collapsed: Set<ColumnSlug> =
+    collapsedParam !== null
+      ? new Set(collapsedParam.split(",").filter(Boolean) as ColumnSlug[])
+      : new Set(DEFAULT_COLLAPSED);
+  const openMobile = (searchParams.get("openMobile") ?? "inProgress") as ColumnSlug;
+
+  // ── DnD state ─────────────────────────────────────────────────────────────
+
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverSlug, setDragOverSlug] = useState<ColumnSlug | null>(null);
+  const dragPayloadRef = useRef<{ orderId: string; fromSlug: ColumnSlug } | null>(null);
+
+  // ── Optimistic orders state ───────────────────────────────────────────────
+
+  const [localOrders, setLocalOrders] = useState<SerializedBoardOrder[]>(active);
+
+  // ── Mobile filter sheet ───────────────────────────────────────────────────
+
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  // ── Filter & bucket ───────────────────────────────────────────────────────
+
+  const filtered = localOrders.filter((o) => {
+    if (techFilter && o.assignedTech?.id !== techFilter) return false;
+    if (mineFilter && o.assignedTech?.id !== currentUser.id) return false;
+    if (typeFilter.size > 0 && !typeFilter.has(o.type)) return false;
+    if (agingFilter) {
+      const tier = agingTierFor(o.status, o.subStatus, o.createdAtMs, o.updatedAtMs, nowMs);
+      if (tier !== agingFilter) return false;
+    }
+    return true;
+  });
+
+  const buckets = bucketize(filtered);
+  const hasActiveFilters = !!techFilter || !!agingFilter || mineFilter || typeFilter.size > 0;
+  const totalActive =
+    buckets.pending.length +
+    buckets.inProgress.length +
+    buckets.waitingParts.length +
+    buckets.waitingApproval.length +
+    buckets.paused.length +
+    buckets.completed.length;
+
+  // ── Transition handler ────────────────────────────────────────────────────
+
+  async function handleTransition(orderId: string, t: Transition | "invalid") {
+    if (t === "invalid") return;
+    const prev = localOrders;
+    setLocalOrders((cur) =>
+      cur.map((o) => {
+        if (o.id !== orderId) return o;
+        if (t.statusPatch !== undefined) {
+          return { ...o, status: t.statusPatch as SerializedBoardOrder["status"], subStatus: null, updatedAtMs: Date.now() };
+        }
+        return { ...o, subStatus: (t.subStatusPatch ?? null) as SerializedBoardOrder["subStatus"], updatedAtMs: Date.now() };
+      })
     );
+
+    try {
+      let res: Response;
+      if (t.statusPatch !== undefined) {
+        res = await fetch(`/api/workshop/orders/${orderId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: t.statusPatch }),
+        });
+      } else {
+        res = await fetch(`/api/service-orders/${orderId}/sub-status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subStatus: t.subStatusPatch ?? null }),
+        });
+      }
+      const result = (await res.json()) as { success: boolean; error?: string };
+      if (!result.success) {
+        setLocalOrders(prev);
+        toast.error(result.error ?? "No se pudo actualizar la orden");
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setLocalOrders(prev);
+      toast.error("Error de red al actualizar la orden");
+    }
+  }
+
+  // ── DnD handlers ─────────────────────────────────────────────────────────
+
+  function handleDragStart(e: React.DragEvent, orderId: string, fromSlug: ColumnSlug) {
+    dragPayloadRef.current = { orderId, fromSlug };
+    setDraggingId(orderId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragEnd() {
+    setDraggingId(null);
+    setDragOverSlug(null);
+    dragPayloadRef.current = null;
+  }
+
+  function handleDragOver(e: React.DragEvent, toSlug: ColumnSlug) {
+    e.preventDefault();
+    setDragOverSlug(toSlug);
+  }
+
+  function handleDrop(e: React.DragEvent, toSlug: ColumnSlug) {
+    e.preventDefault();
+    setDragOverSlug(null);
+    const p = dragPayloadRef.current;
+    if (!p) return;
+    const t = resolveTransition(p.fromSlug, toSlug);
+    if (t === "invalid") {
+      if (toSlug !== "delivered") toast.error("Transición no permitida");
+      return;
+    }
+    handleTransition(p.orderId, t);
+  }
+
+  // ── Collapsed toggle ──────────────────────────────────────────────────────
+
+  function toggleCollapsed(slug: ColumnSlug) {
+    const next = new Set(collapsed);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    updateParams({ collapsed: next.size > 0 ? [...next].join(",") : null });
+  }
+
+  // ── Column data helpers ───────────────────────────────────────────────────
+
+  function getActiveColumnOrders(slug: ColumnSlug): SerializedBoardOrder[] {
+    switch (slug) {
+      case "pending": return buckets.pending;
+      case "inProgress": return buckets.inProgress;
+      case "waitingParts": return buckets.waitingParts;
+      case "waitingApproval": return buckets.waitingApproval;
+      case "paused": return buckets.paused;
+      case "completed": return buckets.completed;
+      default: return [];
+    }
+  }
+
+  function getColumnCount(slug: ColumnSlug): number {
+    if (slug === "delivered") return deliveredToday.length;
+    if (slug === "cancelled") return cancelledToday.length;
+    return getActiveColumnOrders(slug).length;
+  }
+
+  // ── Simple row (delivered / cancelled) ───────────────────────────────────
+
+  function renderSimpleRow(
+    folio: string,
+    customerName: string,
+    updatedAtMs: number,
+    variant: "delivered" | "cancelled"
+  ) {
+    const elapsedMin = Math.floor((nowMs - updatedAtMs) / 60_000);
+    const timeLabel = elapsedMin < 60 ? `hace ${elapsedMin}m` : `hace ${Math.floor(elapsedMin / 60)}h`;
+    const textColor = variant === "delivered" ? "text-[var(--sec)]" : "text-[var(--on-surf-var)]";
+    return (
+      <div key={folio} className="px-4 py-2.5 flex items-center justify-between gap-2">
+        <span className={`text-xs font-medium shrink-0 ${textColor}`}>#{folio}</span>
+        <span className="text-xs text-[var(--on-surf-var)] truncate flex-1 mx-2">{customerName}</span>
+        <span className="text-[10px] text-[var(--on-surf-var)] opacity-60 shrink-0">{timeLabel}</span>
+      </div>
+    );
+  }
+
+  // ── Column header shared JSX ──────────────────────────────────────────────
+
+  function renderColHeader(slug: ColumnSlug, title: string, isCollapsed: boolean) {
+    const isDragTarget = dragOverSlug === slug;
+    return (
+      <div
+        className={`flex items-center justify-between px-3 py-2.5 cursor-pointer select-none rounded-t-xl${isDragTarget ? " bg-[color-mix(in_srgb,var(--p)_12%,var(--surf-low))]" : ""}`}
+        style={{ boxShadow: "0 1px 0 color-mix(in srgb, var(--on-surf) 6%, transparent)" }}
+        onClick={() => toggleCollapsed(slug)}
+      >
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-1 w-full py-1">
+            <span className="text-[10px] font-semibold text-[var(--on-surf-var)] tracking-[0.04em] uppercase [writing-mode:vertical-rl] rotate-180">
+              {title}
+            </span>
+            <span className="text-[10px] font-bold text-[var(--on-surf-var)]">{getColumnCount(slug)}</span>
+          </div>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-[var(--on-surf)]">{title}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[var(--on-surf-var)] bg-[color-mix(in_srgb,var(--on-surf)_8%,transparent)] rounded-full px-2 py-0.5">
+                {getColumnCount(slug)}
+              </span>
+              <ChevronDown className="text-[var(--on-surf-var)]" />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Desktop column body JSX ───────────────────────────────────────────────
+
+  function renderDesktopColBody(slug: ColumnSlug) {
+    const activeOrds = getActiveColumnOrders(slug);
+
+    if (slug === "delivered") {
+      return deliveredToday.length === 0
+        ? <p className="text-center text-xs text-[var(--on-surf-var)] opacity-40 py-8">Sin entregas hoy</p>
+        : deliveredToday.map((o) => renderSimpleRow(o.folio, o.customerName, o.updatedAtMs, "delivered"));
+    }
+    if (slug === "cancelled") {
+      return cancelledToday.length === 0
+        ? <p className="text-center text-xs text-[var(--on-surf-var)] opacity-40 py-8">Sin cancelaciones hoy</p>
+        : cancelledToday.map((o) => renderSimpleRow(o.folio, o.customerName, o.updatedAtMs, "cancelled"));
+    }
+    if (activeOrds.length === 0) {
+      return (
+        <div className="flex items-center justify-center py-10 text-[var(--on-surf-var)] opacity-40">
+          <p className="text-xs">Sin pendientes</p>
+        </div>
+      );
+    }
+    return activeOrds.map((o) => (
+      <OrderCard
+        key={o.id}
+        order={o}
+        nowMs={nowMs}
+        canDrag
+        isDragging={draggingId === o.id}
+        onDragStart={(e) => handleDragStart(e, o.id, slug)}
+        onDragEnd={handleDragEnd}
+      />
+    ));
+  }
+
+  // ── Filter type chips list ────────────────────────────────────────────────
+
+  const FILTER_TYPES: NonPaidType[] = ["WARRANTY", "COURTESY", "POLICY_MAINTENANCE"];
+
+  const AGING_LABELS: Record<AgingTier, string> = {
+    verde: "Al día",
+    ambar: "Por vencer",
+    rojo: "Vencida",
+  };
+
+  const MOBILE_SLUG_LABELS: Record<ColumnSlug, string> = {
+    pending: "En Espera",
+    inProgress: "En Reparación",
+    waitingParts: "Esp. Refacciones",
+    waitingApproval: "Esp. Aprobación",
+    paused: "Pausada",
+    completed: "Completada",
+    delivered: "Entregada hoy",
+    cancelled: "Cancelada hoy",
+  };
+
+  const ALL_MOBILE_SLUGS: ColumnSlug[] = [
+    "pending", "inProgress", "waitingParts", "waitingApproval",
+    "paused", "completed", "delivered", "cancelled",
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex-1 flex flex-col gap-3 overflow-hidden">
+
+      {/* ── Desktop header bar ── */}
+      <div className="hidden md:flex items-center gap-3 flex-wrap">
+        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--surf-low)] text-[var(--on-surf-var)]">
+          {totalActive} activas
+        </span>
+
+        {/* Técnico */}
+        <div className="relative">
+          <select
+            value={techFilter}
+            onChange={(e) => updateParams({ tech: e.target.value || null })}
+            className="appearance-none h-8 pl-3 pr-8 rounded-full text-xs font-medium text-[var(--on-surf)] cursor-pointer"
+            style={{ background: "var(--surf-low)", border: "none" }}
+          >
+            <option value="">Técnico</option>
+            {technicians.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--on-surf-var)]">
+            <SelectChevron />
+          </span>
+        </div>
+
+        {/* Antigüedad */}
+        <div className="relative">
+          <select
+            value={agingFilter}
+            onChange={(e) => updateParams({ aging: (e.target.value as AgingTier) || null })}
+            className="appearance-none h-8 pl-3 pr-8 rounded-full text-xs font-medium text-[var(--on-surf)] cursor-pointer"
+            style={{ background: "var(--surf-low)", border: "none" }}
+          >
+            <option value="">Antigüedad</option>
+            {(Object.entries(AGING_LABELS) as [AgingTier, string][]).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--on-surf-var)]">
+            <SelectChevron />
+          </span>
+        </div>
+
+        {/* Type chips */}
+        {FILTER_TYPES.map((type) => {
+          const isActive = typeFilter.has(type);
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                const next = new Set(typeFilter);
+                if (next.has(type)) next.delete(type); else next.add(type);
+                updateParams({ type: next.size > 0 ? [...next].join(",") : null });
+              }}
+              className={`text-xs font-medium px-3 h-8 rounded-full transition-colors ${isActive ? "bg-[var(--p)] text-[var(--on-p)]" : "bg-[var(--surf-low)] text-[var(--on-surf-var)] hover:bg-[var(--surf-high)]"}`}
+            >
+              {TYPE_LABEL_ES[type]}
+            </button>
+          );
+        })}
+
+        {/* Solo mis órdenes — TECHNICIAN only */}
+        {currentUser.role === "TECHNICIAN" && (
+          <button
+            type="button"
+            onClick={() => updateParams({ mine: mineFilter ? null : "1" })}
+            className={`text-xs font-medium px-3 h-8 rounded-full transition-colors ${mineFilter ? "bg-[var(--p)] text-[var(--on-p)]" : "bg-[var(--surf-low)] text-[var(--on-surf-var)] hover:bg-[var(--surf-high)]"}`}
+          >
+            Solo mis órdenes
+          </button>
+        )}
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => updateParams({ tech: null, aging: null, mine: null, type: null })}
+            className="text-[11px] font-medium text-[var(--p)] hover:text-[var(--p-mid)] transition-colors"
+          >
+            Limpiar filtros
+          </button>
+        )}
+
+        {/* Nueva Orden — Velocity Gradient (única instancia en este board) */}
+        <Link
+          href="/workshop/recepcion"
+          className="ml-auto flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold text-[var(--on-p)] transition-opacity hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)" }}
+        >
+          + Nueva Orden
+        </Link>
+      </div>
+
+      {/* ── Mobile header bar ── */}
+      <div className="flex md:hidden items-center justify-between gap-3">
+        <span className="text-xs font-medium text-[var(--on-surf-var)]">
+          {totalActive} activas
+        </span>
+        <div className="flex gap-2">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() => updateParams({ tech: null, aging: null, mine: null, type: null })}
+              className="text-[11px] font-medium text-[var(--p)]"
+            >
+              Limpiar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="text-xs font-medium h-8 px-3 rounded-full bg-[var(--surf-low)] text-[var(--on-surf-var)]"
+          >
+            Filtros{hasActiveFilters ? ` (${[techFilter, agingFilter, mineFilter, typeFilter.size > 0].filter(Boolean).length})` : ""}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Desktop Kanban ── */}
+      <div className="hidden md:flex flex-1 gap-3 overflow-x-auto pb-3 snap-x snap-proximity scroll-px-4">
+        {MAIN_COLUMNS.map((col) => {
+          const isCollapsed = collapsed.has(col.slug);
+          return (
+            <div
+              key={col.slug}
+              className={`snap-start shrink-0 flex flex-col rounded-xl transition-all ${isCollapsed ? "w-12" : "min-w-[300px] max-w-[320px]"}`}
+              style={{ background: "var(--surf-low)" }}
+              onDragOver={col.slug !== "delivered" && col.slug !== "cancelled" ? (e) => handleDragOver(e, col.slug) : undefined}
+              onDragLeave={() => setDragOverSlug(null)}
+              onDrop={col.slug !== "delivered" && col.slug !== "cancelled" ? (e) => handleDrop(e, col.slug) : undefined}
+            >
+              {renderColHeader(col.slug, col.title, isCollapsed)}
+              {!isCollapsed && (
+                <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ maxHeight: "calc(100vh - 280px)" }}>
+                  {renderDesktopColBody(col.slug)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Paused tray — lateral, fuera del flujo principal */}
+        {(() => {
+          const slug: ColumnSlug = "paused";
+          const isCollapsed = collapsed.has(slug);
+          const pausedOrds = buckets.paused;
+          return (
+            <div
+              className={`snap-start shrink-0 ml-2 flex flex-col rounded-xl transition-all ${isCollapsed ? "w-12" : "min-w-[240px] max-w-[260px]"}`}
+              style={{
+                background: "color-mix(in srgb, var(--warn) 8%, var(--surf-low))",
+                boxShadow: "-1px 0 0 color-mix(in srgb, var(--on-surf) 8%, transparent)",
+              }}
+              onDragOver={(e) => handleDragOver(e, slug)}
+              onDragLeave={() => setDragOverSlug(null)}
+              onDrop={(e) => handleDrop(e, slug)}
+            >
+              <div
+                className={`flex items-center justify-between px-3 py-2.5 cursor-pointer select-none rounded-t-xl${dragOverSlug === slug ? " bg-[color-mix(in_srgb,var(--warn)_16%,transparent)]" : ""}`}
+                style={{ boxShadow: "0 1px 0 color-mix(in srgb, var(--on-surf) 6%, transparent)" }}
+                onClick={() => toggleCollapsed(slug)}
+              >
+                {isCollapsed ? (
+                  <div className="flex flex-col items-center gap-1 w-full py-1">
+                    <span className="text-[10px] font-semibold text-[var(--on-surf-var)] tracking-[0.04em] uppercase [writing-mode:vertical-rl] rotate-180">
+                      Pausada
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--on-surf-var)]">{pausedOrds.length}</span>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold text-[var(--on-surf)]">Pausada</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[var(--on-surf-var)] bg-[color-mix(in_srgb,var(--on-surf)_8%,transparent)] rounded-full px-2 py-0.5">
+                        {pausedOrds.length}
+                      </span>
+                      <ChevronDown className="text-[var(--on-surf-var)]" />
+                    </div>
+                  </>
+                )}
+              </div>
+              {!isCollapsed && (
+                <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ maxHeight: "calc(100vh - 280px)" }}>
+                  {pausedOrds.length === 0
+                    ? <div className="flex items-center justify-center py-10 text-[var(--on-surf-var)] opacity-40"><p className="text-xs">Sin órdenes pausadas</p></div>
+                    : pausedOrds.map((o) => (
+                        <OrderCard
+                          key={o.id}
+                          order={o}
+                          nowMs={nowMs}
+                          canDrag
+                          isDragging={draggingId === o.id}
+                          onDragStart={(e) => handleDragStart(e, o.id, slug)}
+                          onDragEnd={handleDragEnd}
+                        />
+                      ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── Mobile accordion ── */}
+      <div className="flex md:hidden flex-col gap-3 overflow-y-auto pb-4">
+        {ALL_MOBILE_SLUGS.map((slug) => {
+          const isOpen = openMobile === slug;
+          const title = MOBILE_SLUG_LABELS[slug];
+          const activeOrds = getActiveColumnOrders(slug);
+
+          return (
+            <div key={slug} className="rounded-xl overflow-hidden" style={{ background: "var(--surf-low)" }}>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-4 py-3 text-left"
+                style={{ boxShadow: isOpen ? "0 1px 0 color-mix(in srgb, var(--on-surf) 6%, transparent)" : undefined }}
+                onClick={() => updateParams({ openMobile: isOpen ? "" : slug })}
+              >
+                <span className="text-sm font-semibold text-[var(--on-surf)]">{title}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[var(--on-surf-var)] bg-[color-mix(in_srgb,var(--on-surf)_8%,transparent)] rounded-full px-2 py-0.5">
+                    {getColumnCount(slug)}
+                  </span>
+                  <ChevronDown className={`text-[var(--on-surf-var)] transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="p-3 space-y-3">
+                  {slug === "delivered"
+                    ? deliveredToday.length === 0
+                      ? <p className="text-center text-xs text-[var(--on-surf-var)] opacity-40 py-4">Sin entregas hoy</p>
+                      : deliveredToday.map((o) => renderSimpleRow(o.folio, o.customerName, o.updatedAtMs, "delivered"))
+                    : slug === "cancelled"
+                    ? cancelledToday.length === 0
+                      ? <p className="text-center text-xs text-[var(--on-surf-var)] opacity-40 py-4">Sin cancelaciones hoy</p>
+                      : cancelledToday.map((o) => renderSimpleRow(o.folio, o.customerName, o.updatedAtMs, "cancelled"))
+                    : activeOrds.length === 0
+                    ? <p className="text-center text-xs text-[var(--on-surf-var)] opacity-40 py-4">Sin pendientes</p>
+                    : activeOrds.map((o) => (
+                        <div key={o.id}>
+                          <OrderCard
+                            order={o}
+                            nowMs={nowMs}
+                            canDrag={false}
+                            isDragging={false}
+                            onDragStart={() => {}}
+                            onDragEnd={() => {}}
+                          />
+                          <MobileActionButtons order={o} onTransition={handleTransition} />
+                        </div>
+                      ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Mobile filter sheet ── */}
+      {filterSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setFilterSheetOpen(false)} />
+          <div
+            className="relative w-full rounded-t-2xl p-6 space-y-5"
+            style={{
+              background: "color-mix(in srgb, var(--surf-bright) 88%, transparent)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+            }}
+          >
+            <h3 className="text-base font-semibold text-[var(--on-surf)]">Filtros</h3>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--on-surf-var)] uppercase tracking-[0.04em]">Técnico</label>
+              <select
+                value={techFilter}
+                onChange={(e) => updateParams({ tech: e.target.value || null })}
+                className="w-full h-10 rounded-lg px-3 text-sm text-[var(--on-surf)]"
+                style={{ background: "var(--surf-low)", border: "none" }}
+              >
+                <option value="">Todos los técnicos</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--on-surf-var)] uppercase tracking-[0.04em]">Antigüedad</label>
+              <div className="flex gap-2 flex-wrap">
+                {(Object.entries(AGING_LABELS) as [AgingTier, string][]).map(([tier, label]) => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => updateParams({ aging: agingFilter === tier ? null : tier })}
+                    className={`text-xs font-medium px-3 h-8 rounded-full transition-colors ${agingFilter === tier ? "bg-[var(--p)] text-[var(--on-p)]" : "bg-[var(--surf-low)] text-[var(--on-surf-var)] hover:bg-[var(--surf-high)]"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--on-surf-var)] uppercase tracking-[0.04em]">Tipo de orden</label>
+              <div className="flex gap-2 flex-wrap">
+                {FILTER_TYPES.map((type) => {
+                  const isActive = typeFilter.has(type);
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(typeFilter);
+                        if (next.has(type)) next.delete(type); else next.add(type);
+                        updateParams({ type: next.size > 0 ? [...next].join(",") : null });
+                      }}
+                      className={`text-xs font-medium px-3 h-8 rounded-full transition-colors ${isActive ? "bg-[var(--p)] text-[var(--on-p)]" : "bg-[var(--surf-low)] text-[var(--on-surf-var)] hover:bg-[var(--surf-high)]"}`}
+                    >
+                      {TYPE_LABEL_ES[type]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {currentUser.role === "TECHNICIAN" && (
+              <button
+                type="button"
+                onClick={() => updateParams({ mine: mineFilter ? null : "1" })}
+                className={`w-full h-10 rounded-lg text-sm font-medium transition-colors ${mineFilter ? "bg-[var(--p)] text-[var(--on-p)]" : "bg-[var(--surf-low)] text-[var(--on-surf-var)]"}`}
+              >
+                Solo mis órdenes
+              </button>
+            )}
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => { updateParams({ tech: null, aging: null, mine: null, type: null }); setFilterSheetOpen(false); }}
+                className="w-full text-sm font-medium text-[var(--p)]"
+              >
+                Limpiar filtros
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(false)}
+              className="w-full h-10 rounded-lg text-sm font-medium bg-[var(--surf-high)] text-[var(--on-surf)]"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
