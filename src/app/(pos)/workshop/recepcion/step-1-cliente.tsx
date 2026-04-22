@@ -400,19 +400,24 @@ export function Step1Cliente({
 
   const customerBikeId = useWatch({ control, name: "customerBikeId" });
 
-  // Initialize from prefill on mount
+  // Initialize from prefill on mount.
+  // - Si hay prefillCustomer: pre-selecciona cliente; bici se elige luego del
+  //   combobox (D.3b — flujo ?customerId).
+  // - Si además hay prefillBike: pre-selecciona la bici también (C.2 —
+  //   flujo ?customerBikeId).
   useEffect(() => {
-    if (prefillCustomer && prefillBike) {
-      setSelectedCustomer({
-        id: prefillCustomer.id,
-        name: prefillCustomer.name,
-        phone: prefillCustomer.phone,
-        rfc: null,
-        bikes: prefillCustomer.bikes,
-      });
-      setValue("customerId", prefillCustomer.id);
-      setValue("customerName", prefillCustomer.name);
-      setValue("customerPhone", prefillCustomer.phone ?? undefined);
+    if (!prefillCustomer) return;
+    setSelectedCustomer({
+      id: prefillCustomer.id,
+      name: prefillCustomer.name,
+      phone: prefillCustomer.phone,
+      rfc: null,
+      bikes: prefillCustomer.bikes,
+    });
+    setValue("customerId", prefillCustomer.id);
+    setValue("customerName", prefillCustomer.name);
+    setValue("customerPhone", prefillCustomer.phone ?? undefined);
+    if (prefillBike) {
       setValue("customerBikeId", prefillBike.id);
       setValue(
         "bikeInfo",

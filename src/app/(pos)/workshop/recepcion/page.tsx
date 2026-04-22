@@ -19,6 +19,7 @@ interface ServiceOption {
 
 interface SearchParams {
   customerBikeId?: string;
+  customerId?: string;
 }
 
 export default async function RecepcionPage({
@@ -38,6 +39,9 @@ export default async function RecepcionPage({
 
   const params = await searchParams;
   const prefillBikeId = params.customerBikeId;
+  // customerBikeId GANA si ambos vienen (preserva flujo C.2 existente).
+  const prefillCustomerId =
+    !prefillBikeId && params.customerId ? params.customerId : null;
 
   const [maintenanceServices, allServices, technicians] = await Promise.all([
     getBranchMaintenanceServices(branchId),
@@ -125,6 +129,29 @@ export default async function RecepcionPage({
           diasRestantes: status.diasRestantes,
         };
       }
+    }
+  } else if (prefillCustomerId) {
+    // Prefill from ?customerId (D.3b). Solo cliente — bici se elige en Step1.
+    const customerData = await prisma.customer.findUnique({
+      where: { id: prefillCustomerId },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        bikes: {
+          where: { branchId },
+          select: {
+            id: true,
+            brand: true,
+            model: true,
+            serialNumber: true,
+            color: true,
+          },
+        },
+      },
+    });
+    if (customerData) {
+      prefillCustomer = customerData;
     }
   }
 
