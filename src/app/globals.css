@@ -104,7 +104,7 @@
   --r-xl: 24px;
   --r-full: 9999px;
   --font-display: var(--font-space-grotesk), sans-serif;
-  --font-body: "Inter", -apple-system, sans-serif;
+  --font-body: var(--font-inter), -apple-system, sans-serif;
   /* Density — overrideable via .density-{level} */
   --density-row: 40px;
   --density-card: 1.5rem;

@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { NextAuthProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 
-const inter = Inter({ subsets: ["latin"] });
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
+// Fuentes self-hosted en public/fonts/ (variable, subset latin). Evita
+// dependencia de fonts.googleapis.com en build.
+const inter = localFont({
+  src: "../../public/fonts/Inter-Variable-latin.woff2",
+  variable: "--font-inter",
+  display: "swap",
+  weight: "100 900",
+});
+const spaceGrotesk = localFont({
+  src: "../../public/fonts/SpaceGrotesk-Variable-latin.woff2",
   variable: "--font-space-grotesk",
+  display: "swap",
+  weight: "300 700",
 });
 
 export const metadata: Metadata = {
@@ -22,9 +31,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning className={spaceGrotesk.variable}>
+    <html
+      lang="es"
+      suppressHydrationWarning
+      className={`${inter.variable} ${spaceGrotesk.variable}`}
+    >
       <body
-        className={`${inter.className} antialiased bg-[var(--surface)] text-[var(--on-surf)] transition-colors duration-200`}
+        className="antialiased bg-[var(--surface)] text-[var(--on-surf)] transition-colors duration-200"
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange={false}>
           <NextAuthProvider>
