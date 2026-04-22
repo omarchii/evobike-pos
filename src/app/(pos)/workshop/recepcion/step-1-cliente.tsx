@@ -70,15 +70,15 @@ function MaintenanceBanner({
   const isAlCorriente = status.nivel === "AL_CORRIENTE";
 
   const chipColor = isVencido
-    ? "var(--err)"
+    ? "var(--ter)"
     : isPorVencer
-      ? "#f57c00"
+      ? "var(--warn)"
       : "var(--p-bright)";
   const chipBg = isVencido
-    ? "rgba(211,47,47,0.12)"
+    ? "color-mix(in srgb, var(--ter) 12%, transparent)"
     : isPorVencer
-      ? "rgba(245,124,0,0.12)"
-      : "rgba(46,204,113,0.12)";
+      ? "color-mix(in srgb, var(--warn) 12%, transparent)"
+      : "color-mix(in srgb, var(--p-bright) 12%, transparent)";
 
   const statusLabel = isVencido
     ? "Mantenimiento vencido"
@@ -294,7 +294,7 @@ function NewBikeSelector({
             autoComplete="off"
           />
           {vinError && (
-            <p className="text-xs" style={{ color: "var(--err)" }}>
+            <p className="text-xs" style={{ color: "var(--ter)" }}>
               {String(vinError)}
             </p>
           )}
@@ -334,7 +334,7 @@ function NewBikeSelector({
             aria-required
           />
           {brandError && (
-            <p className="text-xs" style={{ color: "var(--err)" }}>
+            <p className="text-xs" style={{ color: "var(--ter)" }}>
               {String(brandError)}
             </p>
           )}
@@ -655,7 +655,7 @@ export function Step1Cliente({
                 aria-label="Nombre del cliente"
               />
               {errors.customerName && (
-                <p className="text-xs" style={{ color: "var(--err)" }}>
+                <p className="text-xs" style={{ color: "var(--ter)" }}>
                   {String(errors.customerName.message)}
                 </p>
               )}

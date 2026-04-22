@@ -53,7 +53,7 @@ function ChecklistRow({
               value === "OK"
                 ? "var(--p-bright)"
                 : value === "FAIL"
-                  ? "var(--err, #d32f2f)"
+                  ? "var(--ter)"
                   : "var(--on-surf-var)";
             return (
               <button
@@ -200,7 +200,7 @@ export function Step2Checklist({ control, setValue, step2Error }: Step2Props) {
                   type="button"
                   onClick={handleReject}
                   className="px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{ background: "rgba(211,47,47,0.10)", color: "var(--err, #d32f2f)" }}
+                  style={{ background: "color-mix(in srgb, var(--ter) 10%, transparent)", color: "var(--ter)" }}
                 >
                   Cliente rechaza
                 </button>
@@ -228,7 +228,7 @@ export function Step2Checklist({ control, setValue, step2Error }: Step2Props) {
       {step2Error && (
         <div
           className="rounded-xl px-4 py-3"
-          style={{ background: "rgba(211,47,47,0.08)", color: "var(--err, #d32f2f)" }}
+          style={{ background: "color-mix(in srgb, var(--ter) 8%, transparent)", color: "var(--ter)" }}
           role="alert"
         >
           <p className="text-sm">{step2Error}</p>

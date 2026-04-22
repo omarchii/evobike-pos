@@ -322,7 +322,7 @@ export function Step4Tipo({
               aria-label="Diagnóstico inicial (opcional)"
             />
             {errors.diagnosis && (
-              <p className="text-xs" style={{ color: "var(--err)" }}>
+              <p className="text-xs" style={{ color: "var(--ter)" }}>
                 {String(errors.diagnosis.message)}
               </p>
             )}
