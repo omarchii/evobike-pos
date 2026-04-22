@@ -25,6 +25,11 @@ export interface ServiceOption {
 }
 
 // ── Zod schema ─────────────────────────────────────────────────────────────
+//
+// `wizardSchema` keeps the shape loose (empty strings, no refinements) so that
+// `useForm`'s resolver does not complain while the user is still drafting. The
+// per-step `stepSchemas` below are what gate `handleNext` — they are strict and
+// declarative. The server re-validates everything with its own schema.
 
 const wizardSchema = z.object({
   customerId: z.string().optional(),
@@ -65,6 +70,62 @@ const wizardSchema = z.object({
 
 export type WizardFormData = z.infer<typeof wizardSchema>;
 
+// ── Per-step schemas ───────────────────────────────────────────────────────
+
+const step1Schema = z
+  .object({
+    customerName: z.string().trim().min(1, "El nombre del cliente es obligatorio"),
+    customerBikeId: z.string().optional(),
+    bikeInfo: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.customerBikeId && (!val.bikeInfo || !val.bikeInfo.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["bikeInfo"],
+        message: "Describe la bicicleta o selecciona una registrada",
+      });
+    }
+  });
+
+const step2Schema = z
+  .object({
+    checklist: z.array(
+      z.object({
+        key: z.string(),
+        state: z.enum(["OK", "FAIL", "NA"]),
+        note: z.string().max(500),
+      }),
+    ),
+    signatureData: z.string().nullable().optional(),
+    signatureRejected: z.boolean(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.signatureRejected && (!val.signatureData || !val.signatureData.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["signatureData"],
+        message: "Se requiere la firma del cliente (o marca 'Cliente rechaza').",
+      });
+    }
+  });
+
+const step3Schema = z.object({
+  photoUrls: z.array(z.string()).max(5),
+});
+
+const step4Schema = z.object({
+  type: z.enum(SERVICE_ORDER_TYPES),
+  items: z.array(
+    z.object({
+      serviceCatalogId: z.string().optional(),
+      description: z.string(),
+      quantity: z.number().int().positive(),
+      price: z.number().nonnegative(),
+    }),
+  ),
+});
+
 // ── Step state ─────────────────────────────────────────────────────────────
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -73,6 +134,13 @@ function stepReducer(step: WizardStep, action: { type: "NEXT" | "PREV" }): Wizar
   if (action.type === "NEXT") return Math.min(4, step + 1) as WizardStep;
   return Math.max(1, step - 1) as WizardStep;
 }
+
+const stepSchemas: Record<WizardStep, z.ZodTypeAny> = {
+  1: step1Schema,
+  2: step2Schema,
+  3: step3Schema,
+  4: step4Schema,
+};
 
 const STEP_LABELS = [
   "Cliente y bici",
@@ -198,36 +266,28 @@ export function RecepcionWizard({
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   const handleNext = () => {
+    form.clearErrors();
     setStep2Error(null);
 
-    if (currentStep === 1) {
-      const name = form.getValues("customerName");
-      if (!name?.trim()) {
-        form.setError("customerName", { message: "El nombre del cliente es obligatorio" });
-        return;
+    const result = stepSchemas[currentStep].safeParse(form.getValues());
+    if (!result.success) {
+      const banner = new Set<string>();
+      for (const issue of result.error.issues) {
+        const path = issue.path.join(".");
+        if (path === "customerName" || path === "bikeInfo" || path === "signatureData") {
+          form.setError(path as "customerName" | "bikeInfo" | "signatureData", {
+            message: issue.message,
+          });
+        }
+        if (path.startsWith("checklist.")) {
+          banner.add("Todos los ítems del checklist deben tener un estado asignado.");
+        }
+        if (path === "signatureData") banner.add(issue.message);
       }
-      const bikeId = form.getValues("customerBikeId");
-      const bikeInfo = form.getValues("bikeInfo");
-      if (!bikeId && (!bikeInfo || bikeInfo.trim() === "")) {
-        form.setError("bikeInfo", {
-          message: "Describe la bicicleta o selecciona una registrada",
-        });
-        return;
+      if (currentStep === 2 && banner.size > 0) {
+        setStep2Error(Array.from(banner).join(" "));
       }
-    }
-
-    if (currentStep === 2) {
-      const checklist = form.getValues("checklist");
-      if (checklist.some((item) => !item.state)) {
-        setStep2Error("Todos los ítems del checklist deben tener un estado asignado.");
-        return;
-      }
-      const rejected = form.getValues("signatureRejected");
-      const sig = form.getValues("signatureData");
-      if (!rejected && (!sig || sig.trim() === "")) {
-        setStep2Error("Se requiere la firma del cliente (o marca 'Cliente rechaza').");
-        return;
-      }
+      return;
     }
 
     dispatch({ type: "NEXT" });
