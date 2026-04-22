@@ -775,7 +775,7 @@ Archivos creados:
 
 ## FASE P13 — Rediseño del módulo de Taller
 
-**Estado:** A ✅ | B ✅ | C ✅ | Hotfix.1 ✅ | Hotfix.2 ⏳ | Hotfix.3 ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
+**Estado:** A ✅ | B ✅ | C ✅ | Hotfix.1 ✅ | Hotfix.2 ✅ | Hotfix.3 ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
 
 Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
 y el alcance completo. Las decisiones de Sub-fase A están documentadas
@@ -939,26 +939,78 @@ replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
 
 **Infra pendiente (una sola vez, local):** `npx prisma generate` falló con
 `EPERM` por DLL lockeado. Cerrar todos los `node.exe` (VS Code TS server,
-dev server) y correr manualmente antes de Hotfix.2 — D requiere los tipos
-nuevos de `prepaidAt/Amount/Method`.
+dev server) y correr manualmente. ✅ resuelto antes de Hotfix.2.
 
-#### Hotfix.2 — Wizard de recepción + Decimal + DnD (~1 sesión)
+#### Hotfix.2 ✅ — Wizard de recepción + Decimal + DnD (2026-04-22)
 
-4. **Validación por paso:** schemas Zod partidos + `form.trigger` antes de
-   avanzar. El summary sticky de paso 4 ya rastrea estado — extender.
-5. **Cliente nuevo desde combobox:** reutilizar modal del POS (extraer a
-   componente compartido si hace falta), CTA "+ Nuevo cliente con nombre '...'"
-   cuando no hay match, auto-selección post-create. Cierra deuda abierta en
-   sesión 1-C del Command Palette.
-6. **Selector de bici Evobike/otra marca + VIN:** ver §C.3 §deudas abiertas.
-   Modal crea `CustomerBike` al submit del wizard.
-7. **Firma render:** investigar antes de parchear (DPR del canvas, color de
-   trazo en dark, persistencia de `toDataURL()` en `signatureData`).
-8. **Decimal serialization** (migrado desde Hotfix.1): `serializeCustomer` en
-   `src/lib/serialize/customer.ts`, aplicar en `workshop/[id]/page.tsx:98`,
-   grep preventivo de otros `customer={` server→client.
-9. **DnD verb mismatch** (migrado desde Hotfix.1): cambiar `PATCH → POST` en
-   `workshop-board.tsx:476-486` para el fetch a `/api/service-orders/[id]/sub-status`.
+7 commits en `main`: `7a6f144` DnD verb · `82298c4` Decimal select ·
+`ad9245f` firma · `638ba43` Zod partido · `fc709c4` extracción
+customer-create-form/dialog · `2c12da3` CTA crear cliente desde wizard ·
+`4bb4a52` selector Evobike/VIN + creación atómica de bici.
+
+**Entregado:**
+
+1. **Validación por paso (✅ commit `638ba43`):** `step1Schema` /
+   `step2Schema` / `step3Schema` / `step4Schema` más `stepSchemas` y un
+   `safeParse` en `handleNext`. Errores por campo vía `form.setError`;
+   banner `step2Error` para los cross-field de checklist/firma.
+   `wizardSchema` queda laxo (resolver no se queja mid-edit); el servidor
+   sigue siendo la validación autoritativa. `form.trigger` quedó
+   innecesario porque `safeParse` sobre schemas dedicados cubre ambos
+   casos.
+
+2. **Cliente nuevo desde combobox (✅ commits `fc709c4` + `2c12da3`):**
+   - `src/components/customers/customer-create-form.tsx` (form body
+     reusable con `formId` para submit externo y `onSavingChange`).
+   - `src/components/customers/customer-create-dialog.tsx` (Dialog
+     wrapper standalone con header/footer propios).
+   - El selector del POS (`customer-selector-modal.tsx`) ahora consume
+     `CustomerCreateForm` y re-exporta `CustomerOption` para no romper
+     `pos-terminal`, `cotizaciones/*`, etc.
+   - Step1 del wizard muestra CTA "+ Nuevo cliente con nombre '{query}'"
+     cuando query≥2 sin resultados; abre el dialog con `defaultName=query`
+     y auto-selecciona el cliente creado.
+
+3. **Selector bici Evobike / otra marca + creación atómica (✅ commit
+   `4bb4a52`):**
+   - Segmented control en Step1 cuando no hay bici registrada. Evobike
+     exige VIN; Otra marca exige marca y VIN opcional.
+   - Payload `newBike { brand, model, color, serialNumber }`.
+     `bikeInfo` queda opcional y no se envía cuando viaja `newBike` o
+     hay `customerBikeId` — la ficha arma el texto desde la relación.
+   - Servidor: `newBikeSchema` con superRefine (VIN requerido si
+     brand=Evobike case-insensitive) + top-level superRefine que exige
+     uno de `{customerBikeId, newBike, bikeInfo}`. `CustomerBike` se
+     crea dentro del mismo `prisma.$transaction` que la orden, por lo
+     que una falla posterior rollbackea la bici.
+   - `service-order-details.tsx` gana fallback de brand/model/color/VIN
+     para cubrir el caso Otra marca sin VIN.
+
+4. **Firma render (✅ commit `ad9245f`):**
+   - `penColor` ya no usa `var()` literal (el canvas no lo interpretaba,
+     caía a `#131b2e` invisible en dark). Ahora lee el valor computado
+     de `--on-surf` al mount y un `MutationObserver` sobre `<html>`
+     repinta al toggle `.dark` (next-themes con `attribute="class"`).
+   - Nuevo prop `value` → `fromDataURL` en mount/resize. Ir al paso 3 y
+     volver al 2 ya no borra la firma; rotar el tablet tampoco.
+
+5. **Decimal serialization (✅ commit `82298c4`):** decisión final
+   **opción C** (en vez de helper `serializeCustomer`): restringir el
+   `include` de Prisma a `{ customer: { select: { name, phone } } }`.
+   Elimina el Decimal en origen y no deja superficie para que el bug
+   regrese vía futuros `customer={order.customer}`.
+
+6. **DnD verb mismatch (✅ commit `7a6f144`):** `workshop-board.tsx:482`
+   `PATCH → POST` para `/api/service-orders/[id]/sub-status`. One-liner.
+
+**Deuda nombrada en el commit `4bb4a52` — resolver en Hotfix.3 o D:**
+`src/app/(pos)/workshop/new-order-dialog.tsx` sigue armando el
+`bikeInfo` con el formato viejo y sigue siendo el flujo "+ Nueva Orden"
+alterno al wizard. Candidato natural para consolidar con el wizard, y
+además se alinea con el bug cosmético del doble botón "+ Nueva Orden"
+del §Hotfix.3. Verificar al migrarlo que el payload envíe
+`newBike` (o bien `bikeInfo` con `min(1)` client-side, porque el
+servidor ahora lo acepta opcional).
 
 #### Hotfix.3 — Audit completo de `/workshop` contra DESIGN.md (~0.5 sesión + subagente)
 
@@ -983,6 +1035,12 @@ inconsistencias donde letras no aplican Inter/Space Grotesk según `DESIGN.md`.
   - "Volver al Tablero" usa color hardcoded / inadecuado en dark mode.
   - Dos botones "+ Nueva Orden" en el Kanban (header + filtros) lanzan flujos
     distintos. Consolidar a uno → `/workshop/recepcion` y eliminar el legacy.
+  - **[Deuda Hotfix.2]** `src/app/(pos)/workshop/new-order-dialog.tsx` sigue
+    armando `bikeInfo` con el formato viejo (ver líneas ~88 y ~164) y sigue
+    siendo el flujo legacy de "+ Nueva Orden". Tras Hotfix.2 el servidor
+    acepta `bikeInfo` opcional; conviene o migrar el dialog al payload
+    `newBike` (alineándolo con el wizard) o eliminarlo al consolidar los
+    dos botones "+ Nueva Orden" en el Kanban, lo que cierre primero.
 - **Tokens de densidad** (`density-{compact,normal,comfortable}`) aplicados en
   KPIs y cards (definidos en reportes, pendientes en taller).
 - **Responsive:** móvil funcional en ficha y Kanban (DnD deshabilitado en <md
