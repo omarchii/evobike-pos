@@ -112,6 +112,10 @@ model Branch {
   hourlyRate             Decimal? @db.Decimal(10, 2)
   whatsappTemplateTaller String?
 
+  // Workshop redesign (Sub-fase D.1) — second-checker opcional para QA.
+  // Cuando true, /deliver rechaza si servicedByUserId == qaPassedByUserId.
+  requireQaSecondChecker Boolean @default(false)
+
   alertThresholds AlertThreshold[]
 }
 

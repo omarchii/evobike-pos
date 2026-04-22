@@ -84,6 +84,7 @@ export async function POST(
           },
         },
         sale: true,
+        branch: { select: { requireQaSecondChecker: true } },
       },
     });
 
@@ -108,6 +109,27 @@ export async function POST(
 
     // ── QA gate (exento COURTESY) ──
     assertQaPassed(order);
+
+    // ── Second-checker (D.1) ──
+    // Solo dispara cuando AMBOS IDs existen y coinciden. Órdenes legacy sin
+    // servicedByUserId quedan exentas — no es guard incompleto, es la única
+    // política aplicable sin reescribir histórico.
+    if (
+      order.type !== "COURTESY" &&
+      order.branch.requireQaSecondChecker &&
+      order.servicedByUserId &&
+      order.qaPassedByUserId &&
+      order.servicedByUserId === order.qaPassedByUserId
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "QA_SECOND_CHECKER_REQUIRED",
+          error: "Se requiere un segundo revisor para QA",
+        },
+        { status: 422 },
+      );
+    }
 
     // ── Coherencia prepaid × type ──
     if (order.prepaid && order.type !== "PAID") {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ServiceOrderStatus } from "@prisma/client";
+import type { ServiceOrderStatus, ServiceOrderType, PaymentMethod } from "@prisma/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -33,6 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ChargeModal } from "./charge-modal";
 import { DeliverModal } from "./deliver-modal";
+import { QaPanel } from "./qa-panel";
+import { PrepaidCard } from "./prepaid-card";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type SerializedProduct = {
@@ -64,12 +66,19 @@ export type FullSerializedOrder = {
   id: string;
   folio: string;
   status: ServiceOrderStatus;
+  type: ServiceOrderType;
   customerId: string;
   bikeInfo: string | null;
   diagnosis: string | null;
   subtotal: number;
   total: number;
   prepaid: boolean;
+  prepaidAt: string | null;
+  prepaidAmount: number | null;
+  prepaidMethod: PaymentMethod | null;
+  qaPassedAt: string | null;
+  qaPassedByName: string | null;
+  qaNotes: string | null;
   createdAt: Date;
   customer: { name: string; phone: string | null };
   user: { name: string };
@@ -762,38 +771,7 @@ export function ServiceOrderDetailsView({
             {/* COMPLETED: charge / deliver buttons */}
             {order.status === "COMPLETED" && (
               <>
-                {/* Prepaid info */}
-                {order.prepaid && order.sale && (
-                  <div
-                    className="rounded-xl px-4 py-3 space-y-1"
-                    style={{ background: "var(--sec-container)" }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2
-                        className="h-4 w-4"
-                        style={{ color: "var(--sec)" }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "0.8125rem",
-                          fontWeight: 600,
-                          color: "var(--on-sec-container)",
-                        }}
-                      >
-                        Pre-pago registrado
-                      </span>
-                    </div>
-                    <p
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--on-sec-container)",
-                        opacity: 0.8,
-                      }}
-                    >
-                      {order.sale.folio} · {formatMXN(order.sale.total)}
-                    </p>
-                  </div>
-                )}
+                {/* Pre-pago info: ahora vive en <PrepaidCard /> abajo. */}
 
                 {!hasCashSession && !order.prepaid && (
                   <p
@@ -909,6 +887,24 @@ export function ServiceOrderDetailsView({
               </div>
             )}
           </div>
+
+          {/* ── QA panel (D.1) ── */}
+          <QaPanel
+            orderId={order.id}
+            status={order.status}
+            qaPassedAt={order.qaPassedAt}
+            qaPassedByName={order.qaPassedByName}
+            qaNotes={order.qaNotes}
+            userRole={userRole}
+          />
+
+          {/* ── Pre-pago card (D.1) ── */}
+          <PrepaidCard
+            prepaid={order.prepaid}
+            prepaidAt={order.prepaidAt}
+            prepaidAmount={order.prepaidAmount}
+            prepaidMethod={order.prepaidMethod}
+          />
 
           {/* ── Order info panel ── */}
           <div
