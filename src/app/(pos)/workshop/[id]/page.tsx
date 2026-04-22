@@ -28,7 +28,7 @@ export default async function WorkshopOrderPage(props: {
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },
     include: {
-      customer: true,
+      customer: { select: { name: true, phone: true } },
       customerBike: {
         select: {
           serialNumber: true,
