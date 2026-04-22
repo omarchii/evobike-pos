@@ -38,7 +38,11 @@ const lineSchema = z.discriminatedUnion("kind", [
 
 const receiptSchema = z
   .object({
-    proveedor: z.string().min(1, "Proveedor requerido"),
+    proveedor: z
+      .string()
+      .trim()
+      .min(1, "Proveedor requerido")
+      .transform((v) => v.replace(/\s+/g, " ")),
     folioFacturaProveedor: z.string().trim().min(1).optional(),
     formaPagoProveedor: z.enum(FORMA_PAGO),
     estadoPago: z.enum(ESTADO_PAGO),
