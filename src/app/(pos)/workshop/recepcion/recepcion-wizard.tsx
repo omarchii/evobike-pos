@@ -37,6 +37,17 @@ const wizardSchema = z.object({
   customerPhone: z.string().optional(),
   customerBikeId: z.string().optional(),
   bikeInfo: z.string().optional(),
+  // Bici nueva estructurada: se usa cuando el cliente no tiene bici registrada.
+  // isEvobike dispara VIN obligatorio (mirrored server-side por brand=Evobike).
+  newBike: z
+    .object({
+      isEvobike: z.boolean(),
+      brand: z.string(),
+      model: z.string().optional(),
+      color: z.string().optional(),
+      serialNumber: z.string().optional(),
+    })
+    .optional(),
   addMaintenance: z.boolean().default(false),
   maintenanceServiceId: z.string().optional(),
 
@@ -77,13 +88,42 @@ const step1Schema = z
     customerName: z.string().trim().min(1, "El nombre del cliente es obligatorio"),
     customerBikeId: z.string().optional(),
     bikeInfo: z.string().optional(),
+    newBike: z
+      .object({
+        isEvobike: z.boolean(),
+        brand: z.string(),
+        model: z.string().optional(),
+        color: z.string().optional(),
+        serialNumber: z.string().optional(),
+      })
+      .optional(),
   })
   .superRefine((val, ctx) => {
-    if (!val.customerBikeId && (!val.bikeInfo || !val.bikeInfo.trim())) {
+    const hasNewBike =
+      val.newBike !== undefined && val.newBike.brand.trim().length > 0;
+    const hasBikeInfo = typeof val.bikeInfo === "string" && val.bikeInfo.trim().length > 0;
+    if (!val.customerBikeId && !hasNewBike && !hasBikeInfo) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["bikeInfo"],
-        message: "Describe la bicicleta o selecciona una registrada",
+        path: ["newBike.brand"],
+        message: "Captura los datos de la bicicleta o selecciona una registrada",
+      });
+    }
+    if (val.newBike?.isEvobike) {
+      const vin = val.newBike.serialNumber?.trim() ?? "";
+      if (!vin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["newBike.serialNumber"],
+          message: "VIN obligatorio para bicicletas Evobike",
+        });
+      }
+    }
+    if (val.newBike && !val.newBike.isEvobike && !val.newBike.brand.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["newBike.brand"],
+        message: "Indica la marca de la bicicleta",
       });
     }
   });
@@ -274,10 +314,22 @@ export function RecepcionWizard({
       const banner = new Set<string>();
       for (const issue of result.error.issues) {
         const path = issue.path.join(".");
-        if (path === "customerName" || path === "bikeInfo" || path === "signatureData") {
-          form.setError(path as "customerName" | "bikeInfo" | "signatureData", {
-            message: issue.message,
-          });
+        if (
+          path === "customerName" ||
+          path === "bikeInfo" ||
+          path === "signatureData" ||
+          path === "newBike.brand" ||
+          path === "newBike.serialNumber"
+        ) {
+          form.setError(
+            path as
+              | "customerName"
+              | "bikeInfo"
+              | "signatureData"
+              | "newBike.brand"
+              | "newBike.serialNumber",
+            { message: issue.message },
+          );
         }
         if (path.startsWith("checklist.")) {
           banner.add("Todos los ítems del checklist deben tener un estado asignado.");
@@ -304,21 +356,40 @@ export function RecepcionWizard({
   const handleSubmit = async () => {
     const data = form.getValues();
 
+    const hasNewBike =
+      data.newBike !== undefined && data.newBike.brand.trim().length > 0;
     const bikeInfo = data.bikeInfo?.trim() || "";
-    if (!bikeInfo) {
-      toast.error("Ingresa la descripción de la bicicleta en el paso 1.");
+
+    if (!data.customerBikeId && !hasNewBike && !bikeInfo) {
+      toast.error("Indica la bicicleta (selecciona, registra nueva o describe) en el paso 1.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      // Si el cliente ya tiene bici registrada seleccionada, ignorar newBike
+      // aunque haya quedado en el form (el server lo ignoraría igual, pero
+      // así el payload no queda ambiguo).
+      const newBikePayload =
+        hasNewBike && !data.customerBikeId
+          ? {
+              brand: data.newBike!.brand.trim(),
+              model: data.newBike!.model?.trim() || undefined,
+              color: data.newBike!.color?.trim() || undefined,
+              serialNumber: data.newBike!.serialNumber?.trim() || undefined,
+            }
+          : undefined;
+
       const payload = {
         customerId: data.customerId,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerBikeId: data.customerBikeId,
-        bikeInfo,
+        // Cuando llega newBike dejamos que la ficha arme el texto desde la
+        // relación customerBike para no duplicar información en dos campos.
+        bikeInfo: hasNewBike || data.customerBikeId ? undefined : bikeInfo,
+        newBike: newBikePayload,
         diagnosis: data.diagnosis?.trim() || null,
         type: data.type,
         assignedTechId: data.assignedTechId ?? null,

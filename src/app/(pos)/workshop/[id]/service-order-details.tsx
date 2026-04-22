@@ -315,7 +315,21 @@ export function ServiceOrderDetailsView({
             {order.customerBike && (
               <span className="flex items-center gap-1.5">
                 <Bike className="h-3.5 w-3.5" />
-                {order.bikeInfo ?? `VIN: ${order.customerBike.serialNumber}`}
+                {order.bikeInfo ??
+                  (() => {
+                    const parts = [
+                      order.customerBike.brand,
+                      order.customerBike.model,
+                      order.customerBike.color,
+                    ]
+                      .map((p) => p?.trim())
+                      .filter((p): p is string => !!p);
+                    const vin = order.customerBike.serialNumber?.trim();
+                    const base = parts.join(" ");
+                    if (base && vin) return `${base} — VIN: ${vin}`;
+                    if (vin) return `VIN: ${vin}`;
+                    return base || "Bicicleta sin datos";
+                  })()}
               </span>
             )}
           </div>

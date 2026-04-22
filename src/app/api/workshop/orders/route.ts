@@ -59,13 +59,37 @@ const checklistEntrySchema = z.object({
   note: z.string().max(500).nullable().default(null),
 });
 
+// Datos para crear una CustomerBike nueva junto con la orden. Si brand es
+// "Evobike" (case-insensitive) el VIN es obligatorio; para otras marcas
+// es opcional y se persiste "" cuando no se captura.
+const newBikeSchema = z
+  .object({
+    brand: z.string().min(1, "La marca es obligatoria"),
+    model: z.string().optional(),
+    color: z.string().optional(),
+    serialNumber: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (
+      val.brand.trim().toLowerCase() === "evobike" &&
+      (!val.serialNumber || !val.serialNumber.trim())
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["serialNumber"],
+        message: "VIN obligatorio para bicicletas Evobike",
+      });
+    }
+  });
+
 const newOrderSchema = z
   .object({
     customerId: z.string().optional(),
     customerBikeId: z.string().optional(),
     customerName: z.string().min(1, "El nombre del cliente es obligatorio"),
     customerPhone: z.string().optional(),
-    bikeInfo: z.string().min(1, "Los detalles de la bicicleta son obligatorios"),
+    bikeInfo: z.string().optional(),
+    newBike: newBikeSchema.optional(),
     diagnosis: z.string().max(2000).optional().nullable(),
     type: z.enum(SERVICE_ORDER_TYPES).default("PAID"),
     assignedTechId: z.string().uuid().nullable().optional(),
@@ -92,6 +116,17 @@ const newOrderSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
+    // Identificador de bici: exactamente uno de los tres es requerido.
+    const hasBikeInfo =
+      typeof data.bikeInfo === "string" && data.bikeInfo.trim().length > 0;
+    if (!data.customerBikeId && !data.newBike && !hasBikeInfo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Debe indicar la bicicleta: selecciona una registrada, captura una nueva o describe el equipo.",
+        path: ["bikeInfo"],
+      });
+    }
     // Checklist: si presente, exactamente 10 ítems con las 10 claves requeridas
     if (data.checklist !== undefined) {
       if (data.checklist.length !== 10) {
@@ -387,6 +422,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       }
 
+      // Crear CustomerBike si el wizard envió datos estructurados de una
+      // bicicleta nueva (flujo Evobike / Otra marca). Se hace dentro de la
+      // transacción para que una falla posterior deshaga también la bici.
+      let resolvedBikeId: string | null = input.customerBikeId || null;
+      if (!resolvedBikeId && input.newBike) {
+        const createdBike = await tx.customerBike.create({
+          data: {
+            customerId: customer.id,
+            branchId,
+            brand: input.newBike.brand,
+            model: input.newBike.model || null,
+            color: input.newBike.color || null,
+            serialNumber: input.newBike.serialNumber?.trim() || "",
+          },
+          select: { id: true },
+        });
+        resolvedBikeId = createdBike.id;
+      }
+
       const order = await tx.serviceOrder.create({
         data: {
           id: orderId,
@@ -394,8 +448,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           branchId,
           userId,
           customerId: customer.id,
-          customerBikeId: input.customerBikeId || null,
-          bikeInfo: input.bikeInfo,
+          customerBikeId: resolvedBikeId,
+          bikeInfo: input.bikeInfo || null,
           diagnosis: input.diagnosis,
           status: "PENDING",
           type: input.type,

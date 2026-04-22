@@ -197,6 +197,189 @@ function MaintenanceBanner({
   );
 }
 
+// ── NewBikeSelector ──────────────────────────────────────────────────────
+// Segmented control Evobike | Otra marca + campos bound a form.newBike.
+// VIN obligatorio para Evobike; marca obligatoria para Otra marca.
+
+function NewBikeSelector({
+  control,
+  setValue,
+  errors,
+}: {
+  control: Control<WizardFormData>;
+  setValue: UseFormSetValue<WizardFormData>;
+  errors: FieldErrors<WizardFormData>;
+}) {
+  const newBike = useWatch({ control, name: "newBike" });
+  const isEvobike = newBike?.isEvobike ?? null;
+
+  const pickMode = (evobike: boolean) => {
+    setValue("newBike", {
+      isEvobike: evobike,
+      brand: evobike ? "Evobike" : "",
+      model: newBike?.model,
+      color: newBike?.color,
+      serialNumber: newBike?.serialNumber,
+    });
+  };
+
+  const updateField = (
+    field: "brand" | "model" | "color" | "serialNumber",
+    value: string,
+  ) => {
+    setValue("newBike", {
+      isEvobike: newBike?.isEvobike ?? false,
+      brand: field === "brand" ? value : newBike?.brand ?? "",
+      model: field === "model" ? value : newBike?.model,
+      color: field === "color" ? value : newBike?.color,
+      serialNumber: field === "serialNumber" ? value : newBike?.serialNumber,
+    });
+  };
+
+  const newBikeErrors = errors.newBike as
+    | { brand?: { message?: string }; serialNumber?: { message?: string } }
+    | undefined;
+  const brandError = newBikeErrors?.brand?.message;
+  const vinError = newBikeErrors?.serialNumber?.message;
+
+  return (
+    <div className="space-y-3 mt-2">
+      <p className="text-xs font-medium" style={{ color: "var(--on-surf-var)" }}>
+        Bicicleta a recibir
+      </p>
+
+      <div
+        className="flex p-1 gap-1"
+        style={{ background: "var(--surf-low)", borderRadius: "var(--r-full)" }}
+        role="radiogroup"
+        aria-label="Tipo de bicicleta"
+      >
+        {([
+          { key: true, label: "Evobike" },
+          { key: false, label: "Otra marca" },
+        ] as const).map(({ key, label }) => {
+          const selected = isEvobike === key;
+          return (
+            <button
+              key={String(key)}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => pickMode(key)}
+              className="flex-1 py-2 text-xs font-medium transition-all"
+              style={{
+                borderRadius: "var(--r-full)",
+                background: selected ? "var(--p-container)" : "transparent",
+                color: selected ? "var(--on-p-container)" : "var(--on-surf-var)",
+                fontWeight: selected ? 600 : 400,
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {isEvobike === true && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="VIN (número de serie) *"
+            value={newBike?.serialNumber ?? ""}
+            onChange={(e) => updateField("serialNumber", e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+            style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+            aria-label="VIN obligatorio para Evobike"
+            aria-required
+            autoComplete="off"
+          />
+          {vinError && (
+            <p className="text-xs" style={{ color: "var(--err)" }}>
+              {String(vinError)}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              placeholder="Modelo (opcional)"
+              value={newBike?.model ?? ""}
+              onChange={(e) => updateField("model", e.target.value)}
+              className="rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+              aria-label="Modelo Evobike"
+            />
+            <input
+              type="text"
+              placeholder="Color (opcional)"
+              value={newBike?.color ?? ""}
+              onChange={(e) => updateField("color", e.target.value)}
+              className="rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+              aria-label="Color"
+            />
+          </div>
+        </div>
+      )}
+
+      {isEvobike === false && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Marca (ej. Trek, Specialized) *"
+            value={newBike?.brand ?? ""}
+            onChange={(e) => updateField("brand", e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+            style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+            aria-label="Marca"
+            aria-required
+          />
+          {brandError && (
+            <p className="text-xs" style={{ color: "var(--err)" }}>
+              {String(brandError)}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              placeholder="Modelo"
+              value={newBike?.model ?? ""}
+              onChange={(e) => updateField("model", e.target.value)}
+              className="rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+              aria-label="Modelo"
+            />
+            <input
+              type="text"
+              placeholder="Color"
+              value={newBike?.color ?? ""}
+              onChange={(e) => updateField("color", e.target.value)}
+              className="rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+              aria-label="Color"
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="VIN (opcional)"
+            value={newBike?.serialNumber ?? ""}
+            onChange={(e) => updateField("serialNumber", e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+            style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
+            aria-label="VIN opcional"
+            autoComplete="off"
+          />
+        </div>
+      )}
+
+      {isEvobike === null && (
+        <p className="text-xs" style={{ color: "var(--on-surf-var)" }}>
+          Selecciona el tipo de bicicleta para capturar sus datos.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function Step1Cliente({
   control,
   setValue,
@@ -287,6 +470,7 @@ export function Step1Cliente({
     setValue("customerPhone", customer.phone ?? undefined);
     setValue("customerBikeId", undefined);
     setValue("bikeInfo", undefined);
+    setValue("newBike", undefined);
     setValue("addMaintenance", false);
     setValue("maintenanceServiceId", undefined);
     setBikeStatus(null);
@@ -294,10 +478,8 @@ export function Step1Cliente({
 
   const selectBike = (bike: CustomerBike) => {
     setValue("customerBikeId", bike.id);
-    setValue(
-      "bikeInfo",
-      formatBikeLabel(bike),
-    );
+    setValue("bikeInfo", formatBikeLabel(bike));
+    setValue("newBike", undefined);
   };
 
   const clearCustomer = () => {
@@ -307,6 +489,7 @@ export function Step1Cliente({
     setValue("customerPhone", undefined);
     setValue("customerBikeId", undefined);
     setValue("bikeInfo", undefined);
+    setValue("newBike", undefined);
     setValue("addMaintenance", false);
     setValue("maintenanceServiceId", undefined);
     setBikeStatus(null);
@@ -557,29 +740,13 @@ export function Step1Cliente({
             />
           )}
 
-          {/* Free text bikeInfo when no registered bike */}
+          {/* Structured new-bike capture when no registered bike is picked */}
           {noBikeSelected && (
-            <div className="space-y-1 mt-2">
-              <label className="text-xs font-medium" style={{ color: "var(--on-surf-var)" }}>
-                {selectedCustomer
-                  ? "Describe la bicicleta a recibir"
-                  : "Descripción de la bicicleta"}
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Trek Marlin 7 Roja 2023 — VIN: ABC123"
-                value={getValues("bikeInfo") ?? ""}
-                onChange={(e) => setValue("bikeInfo", e.target.value || undefined)}
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
-                aria-label="Descripción de la bicicleta"
-              />
-              {errors.bikeInfo && (
-                <p className="text-xs" style={{ color: "var(--err)" }}>
-                  {String(errors.bikeInfo.message)}
-                </p>
-              )}
-            </div>
+            <NewBikeSelector
+              control={control}
+              setValue={setValue}
+              errors={errors}
+            />
           )}
         </div>
       </div>
