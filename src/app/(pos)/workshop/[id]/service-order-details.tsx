@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ServiceOrderStatus, ServiceOrderType, PaymentMethod } from "@prisma/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -9,35 +9,20 @@ import {
   Wrench,
   User as UserIcon,
   Calendar,
-  Trash2,
-  Plus,
   ArrowRight,
   CheckCircle2,
-  Check,
-  ChevronsUpDown,
   ArrowUpRight,
+  MessageSquare,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import { ChargeModal } from "./charge-modal";
 import { DeliverModal } from "./deliver-modal";
 import { QaPanel } from "./qa-panel";
 import { PrepaidCard } from "./prepaid-card";
 import { ApprovalsList, type SerializedApproval } from "./approvals-list";
 import { ApprovalDrawer } from "./approval-drawer";
-import { MessageSquare } from "lucide-react";
+import { AddItemForm } from "./add-item-form";
+import { ItemsTable } from "./items-table";
+import { useStockAvailability } from "@/hooks/use-stock-availability";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type SerializedProduct = {
@@ -178,92 +163,28 @@ export function ServiceOrderDetailsView({
   userRole: string;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
-  const [openCombobox, setOpenCombobox] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
 
-  // Add item states
-  const [manualDescription, setManualDescription] = useState("");
-  const [manualPrice, setManualPrice] = useState("");
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [productQty, setProductQty] = useState("1");
-
   const isClosed = order.status === "DELIVERED" || order.status === "CANCELLED";
   const isManager = userRole === "MANAGER" || userRole === "ADMIN";
 
+  // ── Stock polling (D.3a) ──
+  // Una sola invocación del hook compartida entre AddItemForm e ItemsTable
+  // (el hook deduplica internamente por key=ids ordenados, así que invocarlo
+  // dos veces con la misma lista no duplicaría requests, pero pasarlo por
+  // props es más explícito y deja un único punto de control).
+  const stockIds = useMemo(() => {
+    const fromItems = order.items
+      .map((i) => i.productVariantId)
+      .filter((x): x is string => !!x);
+    return Array.from(new Set(fromItems));
+  }, [order.items]);
+  const stockMap = useStockAvailability(stockIds);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleAddManualService = async () => {
-    if (!manualDescription || !manualPrice) return;
-    setLoading(true);
-    toast.loading("Agregando servicio...", { id: "add-item" });
-    const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        description: manualDescription,
-        quantity: 1,
-        price: parseFloat(manualPrice),
-      }),
-    }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
-    if (result.success) {
-      toast.success("Servicio agregado", { id: "add-item" });
-      setManualDescription("");
-      setManualPrice("");
-      router.refresh();
-    } else {
-      toast.error(result.error ?? "No se pudo agregar", { id: "add-item" });
-    }
-    setLoading(false);
-  };
-
-  const handleAddProduct = async () => {
-    if (!selectedProductId) return;
-    const prod = catalogProducts.find((p) => p.id === selectedProductId);
-    if (!prod) return;
-    setLoading(true);
-    toast.loading("Agregando refacción...", { id: "add-item" });
-    const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productVariantId: prod.id,
-        description: prod.name,
-        quantity: parseInt(productQty) || 1,
-        price: prod.price,
-      }),
-    }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
-    if (result.success) {
-      toast.success("Refacción agregada", { id: "add-item" });
-      setSelectedProductId("");
-      setProductQty("1");
-      router.refresh();
-    } else {
-      toast.error(result.error ?? "No se pudo agregar", { id: "add-item" });
-    }
-    setLoading(false);
-  };
-
-  const handleRemoveItem = async (itemId: string) => {
-    if (!confirm("¿Eliminar este concepto?")) return;
-    setLoading(true);
-    toast.loading("Eliminando...", { id: "remove-item" });
-    const result = await fetch(`/api/workshop/orders/${order.id}/items`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId }),
-    }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
-    if (result.success) {
-      toast.success("Concepto eliminado", { id: "remove-item" });
-      router.refresh();
-    } else {
-      toast.error(result.error ?? "No se pudo eliminar", { id: "remove-item" });
-    }
-    setLoading(false);
-  };
-
   const handleAdvanceStatus = async () => {
     setIsAdvancing(true);
     const result = await fetch(`/api/workshop/orders/${order.id}/status`, {
@@ -398,320 +319,25 @@ export function ServiceOrderDetailsView({
               </h2>
             </div>
 
-            {/* Add item form (only if not closed) */}
+            {/* Add item form (D.3a — extraído) */}
             {!isClosed && (
-              <div
-                className="mx-6 mb-5 p-4 rounded-xl space-y-4"
-                style={{ background: "var(--surf-low)" }}
-              >
-                {/* Manual service */}
-                <div>
-                  <p
-                    style={{
-                      fontSize: "0.6875rem",
-                      fontWeight: 500,
-                      color: "var(--on-surf-var)",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    Mano de obra / Servicio
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      placeholder="Descripción del trabajo"
-                      value={manualDescription}
-                      onChange={(e) => setManualDescription(e.target.value)}
-                      style={{
-                        flex: 1,
-                        background: "var(--surf-lowest)",
-                        border: "none",
-                        borderRadius: "var(--r-md)",
-                        color: "var(--on-surf)",
-                        fontFamily: "var(--font-body)",
-                        fontSize: "0.8125rem",
-                        height: 38,
-                        paddingLeft: "0.75rem",
-                        paddingRight: "0.75rem",
-                        outline: "none",
-                      }}
-                    />
-                    <input
-                      type="number"
-                      placeholder="$ Precio"
-                      value={manualPrice}
-                      onChange={(e) => setManualPrice(e.target.value)}
-                      style={{
-                        width: 110,
-                        background: "var(--surf-lowest)",
-                        border: "none",
-                        borderRadius: "var(--r-md)",
-                        color: "var(--on-surf)",
-                        fontFamily: "var(--font-body)",
-                        fontSize: "0.8125rem",
-                        height: 38,
-                        paddingLeft: "0.75rem",
-                        paddingRight: "0.75rem",
-                        outline: "none",
-                      }}
-                    />
-                    <button
-                      onClick={handleAddManualService}
-                      disabled={loading}
-                      className="flex items-center justify-center transition-opacity disabled:opacity-50"
-                      style={{
-                        background: "var(--surf-highest)",
-                        color: "var(--p)",
-                        border: "none",
-                        borderRadius: "var(--r-md)",
-                        width: 38,
-                        height: 38,
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Product from inventory */}
-                <div>
-                  <p
-                    style={{
-                      fontSize: "0.6875rem",
-                      fontWeight: 500,
-                      color: "var(--on-surf-var)",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    Refacción de inventario
-                  </p>
-                  <div className="flex gap-2">
-                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                      <PopoverTrigger asChild>
-                        <button
-                          className="flex items-center justify-between flex-1 text-sm transition-colors"
-                          style={{
-                            background: "var(--surf-lowest)",
-                            border: "none",
-                            borderRadius: "var(--r-md)",
-                            color: selectedProductId ? "var(--on-surf)" : "var(--on-surf-var)",
-                            fontFamily: "var(--font-body)",
-                            height: 38,
-                            paddingLeft: "0.75rem",
-                            paddingRight: "0.75rem",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <span className="text-left truncate text-sm">
-                            {selectedProductId
-                              ? catalogProducts.find((p) => p.id === selectedProductId)?.name
-                              : "Elegir pieza..."}
-                          </span>
-                          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[320px] p-0"
-                        align="start"
-                        style={{ borderRadius: "var(--r-lg)" }}
-                      >
-                        <Command>
-                          <CommandInput placeholder="Buscar por nombre o SKU..." />
-                          <CommandList>
-                            <CommandEmpty>No se encontraron piezas.</CommandEmpty>
-                            <CommandGroup>
-                              {catalogProducts.map((p) => (
-                                <CommandItem
-                                  key={p.id}
-                                  value={`${p.name} ${p.sku}`}
-                                  onSelect={() => {
-                                    setSelectedProductId(
-                                      p.id === selectedProductId ? "" : p.id
-                                    );
-                                    setOpenCombobox(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedProductId === p.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span className="text-sm">{p.name}</span>
-                                    <span className="text-xs opacity-50 font-mono">
-                                      {p.sku} · {formatMXN(p.price)}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Cant."
-                      value={productQty}
-                      onChange={(e) => setProductQty(e.target.value)}
-                      style={{
-                        width: 70,
-                        background: "var(--surf-lowest)",
-                        border: "none",
-                        borderRadius: "var(--r-md)",
-                        color: "var(--on-surf)",
-                        fontFamily: "var(--font-body)",
-                        fontSize: "0.8125rem",
-                        height: 38,
-                        paddingLeft: "0.75rem",
-                        paddingRight: "0.75rem",
-                        outline: "none",
-                        textAlign: "center",
-                      }}
-                    />
-                    <button
-                      onClick={handleAddProduct}
-                      disabled={loading || !selectedProductId}
-                      className="flex items-center justify-center transition-opacity disabled:opacity-50"
-                      style={{
-                        background: "var(--surf-highest)",
-                        color: "var(--p)",
-                        border: "none",
-                        borderRadius: "var(--r-md)",
-                        width: 38,
-                        height: 38,
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AddItemForm
+                orderId={order.id}
+                catalogProducts={catalogProducts}
+                stockMap={stockMap}
+              />
             )}
 
-            {/* Items table (The Power Grid) */}
-            <div className="px-6 pb-6">
-              {/* Table header */}
-              <div
-                className="grid grid-cols-12 pb-2 mb-1"
-                style={{
-                  fontSize: "0.6875rem",
-                  fontWeight: 500,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  color: "var(--on-surf-var)",
-                  borderBottom: "1px solid var(--ghost-border)",
-                }}
-              >
-                <span className="col-span-6">Descripción</span>
-                <span className="col-span-2 text-center">Cant.</span>
-                <span className="col-span-2 text-right">P. Unit.</span>
-                <span className="col-span-2 text-right">Importe</span>
-              </div>
+            {/* Items table (D.3a — extraído) */}
+            <ItemsTable
+              orderId={order.id}
+              items={order.items}
+              subtotal={order.subtotal}
+              total={order.total}
+              stockMap={stockMap}
+              isClosed={isClosed}
+            />
 
-              {/* Rows */}
-              {order.items.length === 0 ? (
-                <p
-                  className="py-8 text-center"
-                  style={{ fontSize: "0.8125rem", color: "var(--on-surf-var)" }}
-                >
-                  No hay cargos registrados aún.
-                </p>
-              ) : (
-                order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-12 items-center py-2.5 group rounded-lg transition-colors"
-                    style={{ fontSize: "0.8125rem", color: "var(--on-surf)" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "var(--surf-high)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
-                  >
-                    <div className="col-span-6 flex items-center gap-2 pl-1 pr-2">
-                      <span className="truncate">{item.description}</span>
-                      {item.productVariant && (
-                        <span
-                          className="shrink-0"
-                          style={{
-                            fontSize: "0.5625rem",
-                            fontWeight: 500,
-                            letterSpacing: "0.04em",
-                            textTransform: "uppercase",
-                            color: "var(--on-surf-var)",
-                            background: "var(--surf-high)",
-                            borderRadius: "var(--r-sm)",
-                            padding: "1px 6px",
-                          }}
-                        >
-                          {item.productVariant.sku}
-                        </span>
-                      )}
-                    </div>
-                    <span className="col-span-2 text-center">{item.quantity}</span>
-                    <span className="col-span-2 text-right">{formatMXN(item.price)}</span>
-                    <div className="col-span-2 flex items-center justify-end gap-1">
-                      <span className="font-medium">
-                        {formatMXN(item.quantity * item.price)}
-                      </span>
-                      {!isClosed && (
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          disabled={loading}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "var(--ter)",
-                            cursor: "pointer",
-                            padding: "2px",
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-
-              {/* Total */}
-              {order.items.length > 0 && (
-                <div
-                  className="flex justify-end mt-4 pt-4"
-                  style={{ borderTop: "1px solid var(--ghost-border)" }}
-                >
-                  <div className="space-y-1 text-right">
-                    <div
-                      style={{ fontSize: "0.75rem", color: "var(--on-surf-var)" }}
-                    >
-                      Subtotal:{" "}
-                      <span style={{ color: "var(--on-surf)" }}>
-                        {formatMXN(order.subtotal)}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: "1.5rem",
-                        fontWeight: 700,
-                        color: "var(--on-surf)",
-                        letterSpacing: "-0.01em",
-                      }}
-                    >
-                      Total: {formatMXN(order.total)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 

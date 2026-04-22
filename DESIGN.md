@@ -621,3 +621,34 @@ const config = buildChartConfig([
 Los `var(--color-<key>)` los inyecta `ChartContainer` automáticamente a partir
 del config. Los tokens de eje/grid se pasan como atributos SVG directos
 (no como `style={}`), ya que Recharts renderiza elementos SVG.
+
+---
+
+### Datos live (polling) — patrón hook custom
+
+Para datos con **TTL humano** (stock, contadores de caja, métricas dashboard
+que se ven varios segundos) el patrón es un hook custom con `useEffect` +
+`setInterval` + `AbortController`. Sin dependencias externas (`swr` /
+`@tanstack/react-query`) hasta que aparezca el segundo consumo concreto —
+el primero solo no justifica la dependencia.
+
+**Implementación de referencia:** `src/hooks/use-stock-availability.ts`
+(P13-D.3a). Polling 30s, deduplicación por key (`ids.sort().join(",")`),
+cleanup vía AbortController, fallo silencioso (siguiente tick reintenta).
+
+**Cuándo usar:**
+- El dato cambia por acciones de OTROS usuarios mientras la pantalla
+  está abierta (stock vendido en otra caja, métricas que avanzan).
+- Una recarga full (`router.refresh()`) sería disruptiva (rompe form,
+  scroll, drawer abierto).
+
+**Cuándo NO usar:**
+- El dato es one-shot al montar (usar Server Component + `force-dynamic`).
+- El dato cambia solo cuando el usuario actual lo cambia (basta con
+  `router.refresh()` post-mutación).
+- El dato es crítico de consistencia (usar lectura server-side al
+  momento de la acción, no polling).
+
+**Si emerge ≥2.º consumo de polling** (ej. contadores caja, notificaciones
+live), reabrir la decisión de dependencia (`swr`) — el costo de
+re-implementar cache, dedup y focus revalidation supera el peso de la lib.
