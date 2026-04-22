@@ -844,6 +844,7 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   - Ruta `/taller/etiqueta/[id]` (`src/app/taller/etiqueta/[id]/page.tsx`) — Server Component fuera de `(pos)/`: auth con `getServerSession`, filtro por `branchId` salvo ADMIN, QR generado server-side con `qrcode` (192×192, apunta a `/taller/public/{publicToken}`), light mode forzado via `.evobike-public-doc`, layout letter landscape, auto-print `setTimeout(300ms)`, botones "Imprimir"/"Cerrar" en `LabelActions` (Client Component, `.no-print`).
   - Submit del wizard: abre `/taller/etiqueta/{id}` en nueva ventana antes del `router.push`; fallback toast con botón si popup blocker cancela.
   - Botón "Imprimir etiqueta" en ficha técnica (`/workshop/[id]/page.tsx`) — link `<a target="_blank">` junto al folio.
+  - Commit: `b15b97d`.
 
 - **Deudas cerradas en C.3:** `diagnosis` optional ✅, etiqueta imprimible ✅.
 - **Deuda abierta → Fase 6:**
