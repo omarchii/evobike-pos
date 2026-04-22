@@ -795,6 +795,36 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
 **Donde diseñar:** chat ligero (Sonnet) + Code.
 **Subagentes:** no. **Sesiones estimadas:** 2.
 **Riesgo:** alto (UI en uso diario).
+- **Rediseño del Taller Sub-fase B (P13-B) — Decisiones de diseño (2026-04-21)**
+  (Pendiente de marcar ✅ cuando la sesión Sonnet ejecute.)
+  Diseño cerrado en chat con Opus. Decisiones que la implementación debe respetar:
+  (1) 7 columnas: PENDING · IN_PROGRESS sin sub · WAITING_PARTS · WAITING_APPROVAL
+      · COMPLETED · DELIVERED (hoy, colapsada default) · CANCELLED (hoy, colapsada default).
+  (2) Bandeja lateral "Pausada" separada de las 7, IN_PROGRESS + PAUSED.
+  (3) Aging semántico por columna, no universal:
+      PENDING 0-4h/4-24h/>24h · IN_PROGRESS vs fechaPromesa (fallback updatedAt+48h) ·
+      COMPLETED 0-1d/1-2d/>2d · PAUSED 0-1d/1-3d/>3d.
+  (4) Tarjeta: folio + aging / cliente / bikeInfo·V·Ah inline / chip tipo solo si ≠ PAID /
+      separador tonal / avatar + técnico o `-- Sin asignar`. S5 liviano vive inline, no chip.
+  (5) Filtros URL-sync: tech, aging, mine (TECHNICIAN-only), type multi-select.
+      "Prioridad" del mock renombrada a "Antigüedad".
+  (6) 8 phantoms del mock NO implementados: En Diagnóstico (status fake), URGENTE
+      (redundante), FLOTILLA (sin flag B2B), barra progreso (sin dato), batería %
+      (pendiente P13-C), Stock OK (S5 pesado en P13-D), ribbon PRE-PAG (requiere
+      decisión arquitectónica en P13-E), Prioridad (renombrada).
+  (7) Responsive fallback < md: acordeón vertical, DnD deshabilitado, filtros en sheet.
+  (8) S5 parte pesada confirmada en P13-D (batteryAvailabilityMap al agregar ítems)
+      y P13-E (assertPolicyActive al entregar). NO en B.
+- **Deuda arquitectónica identificada en P13-B (2026-04-21, resolver en P13-E)**
+  Ribbon "Pre-pagado" en tarjetas del Kanban requiere saber si hay pre-pago antes de
+  DELIVERED. Hoy `Sale` se crea solo al entregar, así que no hay dato. Tres opciones
+  (skipeadas de P13-B, decidir en diseño de P13-E con Opus):
+  (a) Agregar `ServiceOrder.prepaid Boolean + prepaidAt + prepaidAmount + prepaidMethod`.
+  (b) Crear `Sale(prepaid=true)` al momento del pre-pago, rompiendo invariante actual.
+  (c) No capturar pre-pago hasta DELIVERED, sin ribbon nunca.
+  Impacta: P13-B (backport ribbon), P13-E (pantalla de entrega), P13-F (portal público
+  puede querer mostrar "pagado").
+
 
 ### Sub-fase C — Wizard de recepción
 Formulario multi-step que crea orden con `type`, `assignedTechId`, ítems
