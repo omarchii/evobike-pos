@@ -28,11 +28,6 @@ export default async function MantenimientosPage({
 
   await searchParams;
 
-  const branches = await prisma.branch.findMany({
-    select: { id: true, code: true, name: true },
-    orderBy: { code: "asc" },
-  });
-
   // Branch efectivo: cookie para ADMIN, JWT para el resto. No hay vista
   // global aquí — mantenimientos es módulo operativo.
   const scopedBranchId = await resolveOperationalBranchId({ user });
@@ -128,12 +123,5 @@ export default async function MantenimientosPage({
 
   rows.sort((a, b) => a.diasRestantes - b.diasRestantes);
 
-  return (
-    <MantenimientosTable
-      rows={rows}
-      role={user.role}
-      branches={branches}
-      scopedBranchId={scopedBranchId}
-    />
-  );
+  return <MantenimientosTable rows={rows} />;
 }

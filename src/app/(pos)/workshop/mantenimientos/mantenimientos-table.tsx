@@ -23,12 +23,6 @@ export interface MantenimientoRow {
   branchName: string;
 }
 
-interface Branch {
-  id: string;
-  code: string;
-  name: string;
-}
-
 const DATE_FMT = new Intl.DateTimeFormat("es-MX", {
   day: "2-digit",
   month: "short",
@@ -118,22 +112,12 @@ function KpiCard({
 
 export function MantenimientosTable({
   rows,
-  role,
-  branches,
-  scopedBranchId,
 }: {
   rows: MantenimientoRow[];
-  role: string;
-  branches: Branch[];
-  scopedBranchId: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isAdmin = role === "ADMIN";
 
-  const [branchFilter, setBranchFilter] = useState(
-    searchParams.get("branchId") ?? "",
-  );
   const [estadoFilter, setEstadoFilter] = useState(
     searchParams.get("estado") ?? "todos",
   );
@@ -143,16 +127,14 @@ export function MantenimientosTable({
 
   const applyFilters = useCallback(() => {
     const p = new URLSearchParams();
-    if (branchFilter) p.set("branchId", branchFilter);
     if (estadoFilter !== "todos") p.set("estado", estadoFilter);
     if (fromFilter) p.set("from", fromFilter);
     if (toFilter) p.set("to", toFilter);
     if (q) p.set("q", q);
     router.push(`/workshop/mantenimientos?${p.toString()}`);
-  }, [branchFilter, estadoFilter, fromFilter, toFilter, q, router]);
+  }, [estadoFilter, fromFilter, toFilter, q, router]);
 
   const clearFilters = useCallback(() => {
-    setBranchFilter("");
     setEstadoFilter("todos");
     setFromFilter("");
     setToFilter("");
@@ -162,11 +144,6 @@ export function MantenimientosTable({
 
   const filtered = useMemo(() => {
     let result = rows;
-
-    if (isAdmin && branchFilter) {
-      const branch = branches.find((b) => b.id === branchFilter);
-      if (branch) result = result.filter((r) => r.branchCode === branch.code);
-    }
 
     if (estadoFilter !== "todos") {
       result = result.filter((r) => r.estado === estadoFilter);
@@ -193,7 +170,7 @@ export function MantenimientosTable({
     }
 
     return result;
-  }, [rows, isAdmin, branchFilter, branches, estadoFilter, fromFilter, toFilter, q]);
+  }, [rows, estadoFilter, fromFilter, toFilter, q]);
 
   const counts = useMemo(
     () => ({
@@ -206,18 +183,13 @@ export function MantenimientosTable({
   );
 
   function handleExport() {
-    const selectedBranch = isAdmin
-      ? (branches.find((b) => b.id === branchFilter)?.code ?? "all")
-      : (scopedBranchId
-          ? (branches.find((b) => b.id === scopedBranchId)?.code ?? "all")
-          : "all");
+    const branchCode = filtered[0]?.branchCode ?? rows[0]?.branchCode ?? "all";
     const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `mantenimientos-${selectedBranch}-${dateStr}.csv`;
+    const filename = `mantenimientos-${branchCode}-${dateStr}.csv`;
 
     const csvRows = filtered.map((r) => ({
       Cliente: r.customerName,
       Teléfono: r.phone ?? "—",
-      ...(isAdmin ? { Sucursal: `${r.branchCode} – ${r.branchName}` } : {}),
       Modelo: r.modelo,
       VIN: r.serialNumber,
       "Fecha compra": fmtDate(r.fechaCompra),
@@ -258,29 +230,6 @@ export function MantenimientosTable({
         className="rounded-2xl p-4 flex flex-wrap gap-3 items-end"
         style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
       >
-        {isAdmin && (
-          <div className="flex flex-col gap-1">
-            <span
-              className="text-[0.625rem] font-medium uppercase tracking-[0.05em]"
-              style={{ color: "var(--on-surf-var)" }}
-            >
-              Sucursal
-            </span>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              style={{ ...INPUT_STYLE, minWidth: 180 }}
-            >
-              <option value="">Todas</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.code} — {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="flex flex-col gap-1">
           <span
             className="text-[0.625rem] font-medium uppercase tracking-[0.05em]"
@@ -392,7 +341,6 @@ export function MantenimientosTable({
                   {[
                     "Cliente",
                     "Teléfono",
-                    ...(isAdmin ? ["Sucursal"] : []),
                     "Modelo",
                     "VIN",
                     "Fecha compra",
@@ -437,14 +385,6 @@ export function MantenimientosTable({
                     >
                       {r.phone ?? "—"}
                     </td>
-                    {isAdmin && (
-                      <td
-                        className="px-4 py-3 text-xs"
-                        style={{ color: "var(--on-surf-var)" }}
-                      >
-                        {r.branchCode}
-                      </td>
-                    )}
                     <td className="px-4 py-3" style={{ color: "var(--on-surf)" }}>
                       {r.modelo}
                     </td>

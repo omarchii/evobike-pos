@@ -9,6 +9,8 @@ import {
     assertSessionFreshOrThrow,
     OrphanedCashSessionError,
 } from "@/lib/cash-register";
+import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import type { SessionUser } from "@/lib/auth-types";
 
 // Atrato no aplica para cobros de taller (cobro directo, sin financiera)
 type DeliveryPaymentMethod = "CASH" | "CARD" | "TRANSFER";
@@ -18,20 +20,10 @@ interface DeliverRequestBody {
     paymentMethod: DeliveryPaymentMethod;
 }
 
-interface SessionUser {
-    id: string;
-    branchId: string;
-}
-
 // POST /api/workshop/deliver
 // Cobra el total de una orden de taller y la marca como DELIVERED.
-// Requiere caja abierta en la sucursal.
-//
-// Excepción a la regla de `operationalBranchWhere`: este endpoint usa
-// `session.branchId` del JWT, NO la cookie `admin_branch_id`. El cobro está
-// atado a la caja del usuario autenticado (ver Hotfix.1 plan 2026-04-22).
-// ADMIN operando fuera de su sucursal original no puede entregar/cobrar en
-// el branch espejo — deberá abrir caja del branch destino con otro usuario.
+// Requiere caja abierta en la sucursal efectiva (JWT para MANAGER/TECHNICIAN,
+// cookie `admin_branch_id` para ADMIN — ver `operationalBranchWhere`).
 export async function POST(request: Request): Promise<NextResponse> {
     try {
         const session = await getServerSession(authOptions);
@@ -39,9 +31,11 @@ export async function POST(request: Request): Promise<NextResponse> {
             return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
         }
 
-        const { id: userId, branchId } = session.user as unknown as SessionUser;
+        const user = session.user as unknown as SessionUser;
+        const userId = user.id;
+        const branchId = await resolveOperationalBranchId({ user });
 
-        if (!branchId) {
+        if (branchId === "__none__") {
             return NextResponse.json(
                 { success: false, error: "Empleado sin sucursal asignada" },
                 { status: 400 }
