@@ -12,7 +12,6 @@ import {
   type PrepaidStockAlert,
   type StaleOrderAlert,
 } from "./workshop-attention";
-import { NewOrderDialog } from "./new-order-dialog";
 import { parseLocalDate, toDateString } from "@/lib/reportes/date-range";
 import { operationalBranchWhere } from "@/lib/branch-scope";
 import type { SessionUser as ShellSessionUser } from "@/lib/auth-types";
@@ -349,19 +348,16 @@ export default async function WorkshopPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1
-            className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Taller Mecánico
-          </h1>
-          <p className="text-sm text-[var(--on-surf-var)]">
-            Gestiona las bicicletas y reparaciones activas.
-          </p>
-        </div>
-        <NewOrderDialog />
+      <div>
+        <h1
+          className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Taller Mecánico
+        </h1>
+        <p className="text-sm text-[var(--on-surf-var)]">
+          Gestiona las bicicletas y reparaciones activas.
+        </p>
       </div>
 
       <WorkshopKpis data={kpiData} />

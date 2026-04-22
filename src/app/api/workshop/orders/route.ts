@@ -17,10 +17,9 @@ import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
 import type { SessionUser } from "@/lib/auth-types";
 
-// Item del payload al crear la orden. Todos son opcionales: la UI actual
-// (NewOrderDialog) crea la orden sin ítems; ésos se agregan después vía
-// POST /api/workshop/orders/[id]/items. El bloque está aquí para soportar
-// el wizard de recepción de Sub-fase C, que capturará ítems al crear.
+// Item del payload al crear la orden. Todos son opcionales: el wizard de
+// recepción crea la orden sin ítems; ésos se agregan después vía
+// POST /api/workshop/orders/[id]/items.
 const newOrderItemSchema = z
   .object({
     serviceCatalogId: z.string().uuid().optional(),

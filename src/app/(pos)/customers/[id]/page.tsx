@@ -19,7 +19,6 @@ import Link from "next/link";
 import { AddBalanceDialog } from "./add-balance-dialog";
 import QuotationStatusBadge from "@/components/quotation-status-badge";
 import { getEffectiveStatus, formatMXN, formatDate } from "@/lib/quotations";
-import { NewOrderDialog } from "@/app/(pos)/workshop/new-order-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -80,21 +79,17 @@ export default async function CustomerProfilePage(props: {
                         <h1 className="text-3xl font-bold tracking-tight">{customer.name}</h1>
                         <p className="text-slate-500">Perfil unificado del cliente CRM</p>
                     </div>
-                    <NewOrderDialog
-                        initialCustomer={{
-                            id: customer.id,
-                            name: customer.name,
-                            phone: customer.phone,
-                            bikes: customer.bikes.map((b) => ({
-                                id: b.id,
-                                brand: b.brand,
-                                model: b.model,
-                                serialNumber: b.serialNumber,
-                            })),
-                        }}
-                        initialCustomerBikeId={customerBikeId}
-                        openOnMount={!!customerBikeId}
-                    />
+                    <Link
+                        href={
+                            customerBikeId
+                                ? `/workshop/recepcion?customerBikeId=${customerBikeId}`
+                                : "/workshop/recepcion"
+                        }
+                        className="flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold text-[var(--on-p)] transition-opacity hover:opacity-90"
+                        style={{ background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)" }}
+                    >
+                        + Nueva Orden
+                    </Link>
                 </div>
             </div>
 
