@@ -734,7 +734,11 @@ async function seedSales(ctx: SeedContext): Promise<void> {
 
     for (let i = 0; i < TARGET; i++) {
       try {
-        const isCancelled = Math.random() < 0.05;
+        // QA P10-C: garantizar 3 casos deterministas de descuento en las primeras
+        // ventas COMPLETED de esta sucursal. 0 = Sale.discount, 1 = SaleItem.discount,
+        // 2 = combinado. El resto del loop sigue aleatorio.
+        const qaDiscountCase = completed < 3 ? completed : null;
+        const isCancelled = qaDiscountCase !== null ? false : Math.random() < 0.05;
         const sellerId = pickRandom(sellers).id;
         const customerId = pickRandom(customers).id;
 
@@ -792,8 +796,27 @@ async function seedSales(ctx: SeedContext): Promise<void> {
 
         if (saleItems.length === 0) continue;
 
-        const subtotal = saleItems.reduce((acc, it) => acc + it.price * it.quantity, 0);
-        const discount = Math.random() < 0.1 ? Math.round(subtotal * 0.05) : 0;
+        // Descuentos por línea (QA cases 1 y 2): 10% del bruto de la primera línea.
+        const lineDiscounts = saleItems.map(() => 0);
+        if (
+          (qaDiscountCase === 1 || qaDiscountCase === 2) &&
+          saleItems.length > 0
+        ) {
+          const firstBruto = saleItems[0].price * saleItems[0].quantity;
+          lineDiscounts[0] = Math.max(1, Math.round(firstBruto * 0.1));
+        }
+
+        // Invariante POS: Sale.subtotal = Σ(price × qty − SaleItem.discount) (neto de línea)
+        const subtotal = saleItems.reduce(
+          (acc, it, idx) => acc + it.price * it.quantity - lineDiscounts[idx],
+          0,
+        );
+        const discount =
+          qaDiscountCase === 0 || qaDiscountCase === 2
+            ? Math.max(1, Math.round(subtotal * 0.05))
+            : Math.random() < 0.1
+              ? Math.round(subtotal * 0.05)
+              : 0;
         const total = subtotal - discount;
 
         // Determinar sesión a usar: histórica para la mayoría, abierta para ~20%
@@ -848,7 +871,8 @@ async function seedSales(ctx: SeedContext): Promise<void> {
           });
 
           // Crear SaleItems
-          for (const it of saleItems) {
+          for (let idx = 0; idx < saleItems.length; idx++) {
+            const it = saleItems[idx];
             await tx.saleItem.create({
               data: {
                 saleId: sale.id,
@@ -857,7 +881,7 @@ async function seedSales(ctx: SeedContext): Promise<void> {
                 description: it.description,
                 quantity: it.quantity,
                 price: dec(it.price),
-                discount: dec(0),
+                discount: dec(lineDiscounts[idx]),
               },
             });
           }
@@ -936,12 +960,15 @@ async function seedSales(ctx: SeedContext): Promise<void> {
 
           // Comisiones (solo items con productVariant)
           const commissionItems: CommissionTarget[] = saleItems
-            .filter((it) => !it.simpleProductId && it.productVariantId)
-            .map((it) => ({
+            .map((it, idx) => ({ it, discount: lineDiscounts[idx] }))
+            .filter(
+              ({ it }) => !it.simpleProductId && it.productVariantId,
+            )
+            .map(({ it, discount }) => ({
               productVariantId: it.productVariantId,
               quantity: it.quantity,
               price: it.price,
-              discount: 0,
+              discount,
             }));
           await generateCommissionsForSale(
             tx,
