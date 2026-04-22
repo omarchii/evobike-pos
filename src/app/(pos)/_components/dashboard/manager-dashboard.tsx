@@ -224,71 +224,58 @@ export function ManagerDashboard({
 
     return (
         <div className="space-y-6">
-            {/* Row 0: Page header + Branch selector (ADMIN) + Period selector */}
+            {/* Row 0: Branch selector (ADMIN) + Period selector */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
-                        Panel de Control
-                    </h1>
-                    <p className="text-sm text-[var(--on-surf-var)] mt-0.5">
-                        {role === "ADMIN" && !viewBranchId
-                            ? "Vista global · Todas las sucursales"
-                            : `Resumen de ${periodLabel} · ${
-                                viewBranchId
-                                    ? (branchComparison.find((b) => b.branchId === viewBranchId)?.branchName ?? branchName)
-                                    : branchName
-                              }`
-                        }
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {/* Branch selector — ADMIN only */}
-                    {role === "ADMIN" && branchComparison.length > 0 && (
-                        <div className="flex gap-1 border-r border-[var(--ghost-border)] pr-2">
-                            <button
-                                onClick={() => handleBranchChange(null)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                    viewBranchId === null
-                                        ? "text-white"
-                                        : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
-                                }`}
-                                style={viewBranchId === null ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
-                            >
-                                Global
-                            </button>
-                            {branchComparison.map((b) => (
-                                <button
-                                    key={b.branchId}
-                                    onClick={() => handleBranchChange(b.branchId)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                        viewBranchId === b.branchId
-                                            ? "text-white"
-                                            : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
-                                    }`}
-                                    style={viewBranchId === b.branchId ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
-                                >
-                                    {b.branchCode}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    {/* Period selector */}
+                {/* Left: Branch pills (ADMIN) or context label */}
+                {role === "ADMIN" && branchComparison.length > 0 ? (
                     <div className="flex gap-1">
-                        {PERIOD_OPTIONS.map((opt) => (
+                        <button
+                            onClick={() => handleBranchChange(null)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                viewBranchId === null
+                                    ? "text-white"
+                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                            }`}
+                            style={viewBranchId === null ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                        >
+                            Global
+                        </button>
+                        {branchComparison.map((b) => (
                             <button
-                                key={opt.value}
-                                onClick={() => handlePeriodChange(opt.value)}
+                                key={b.branchId}
+                                onClick={() => handleBranchChange(b.branchId)}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                    period === opt.value
+                                    viewBranchId === b.branchId
                                         ? "text-white"
                                         : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
                                 }`}
-                                style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                                style={viewBranchId === b.branchId ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
                             >
-                                {opt.label}
+                                {b.branchCode}
                             </button>
                         ))}
                     </div>
+                ) : (
+                    <p className="text-sm text-[var(--on-surf-var)]">
+                        {`Resumen de ${periodLabel} · ${branchName}`}
+                    </p>
+                )}
+                {/* Right: Period selector */}
+                <div className="flex gap-1">
+                    {PERIOD_OPTIONS.map((opt) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => handlePeriodChange(opt.value)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                period === opt.value
+                                    ? "text-white"
+                                    : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
+                            }`}
+                            style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 

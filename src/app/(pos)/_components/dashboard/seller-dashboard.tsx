@@ -137,12 +137,7 @@ export function SellerDashboard({
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-[1.5rem] font-bold text-[var(--on-surf)] tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)" }}>
-                    Panel de Control
-                </h1>
-                <p className="text-sm text-[var(--on-surf-var)] mt-0.5">Resumen personal · {branchName}</p>
-            </div>
+            <p className="text-sm text-[var(--on-surf-var)]">Resumen personal · {branchName}</p>
 
             <AttentionPanel {...attentionAlerts} />
 
