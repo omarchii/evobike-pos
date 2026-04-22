@@ -775,7 +775,7 @@ Archivos creados:
 
 ## FASE P13 — Rediseño del módulo de Taller
 
-**Estado:** A ✅ | B ✅ | C ✅ | Hotfix.1 ✅ | Hotfix.2 ✅ | Hotfix.3 ⏳ | D ⏳ | E ⏳ | F ⏳ | G ⏳
+**Estado:** A ✅ | B ✅ | C ✅ | Hotfix.1 ✅ | Hotfix.2 ✅ | Hotfix.3 ✅ | D ⏳ | E ⏳ | F ⏳ | G ⏳
 
 Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
 y el alcance completo. Las decisiones de Sub-fase A están documentadas
@@ -1012,7 +1012,62 @@ del §Hotfix.3. Verificar al migrarlo que el payload envíe
 `newBike` (o bien `bikeInfo` con `min(1)` client-side, porque el
 servidor ahora lo acepta opcional).
 
-#### Hotfix.3 — Audit completo de `/workshop` contra DESIGN.md (~0.5 sesión + subagente)
+#### Hotfix.3 ✅ — Audit DESIGN.md `/workshop` (2026-04-22)
+
+4 commits secuenciales: `724e1e5` consolidar "+ Nueva Orden" →
+`fe0fb25` "Volver al Tablero" → `527a1da` `--err`→`--ter` en wizard
+→ `dbe08e1` `var(--shadow)` en OrderCard.
+
+**Entregado:**
+- Eliminado `src/app/(pos)/workshop/new-order-dialog.tsx` y migrado el
+  caller en `customers/[id]/page.tsx` a `Link` con deeplink
+  `/workshop/recepcion?customerBikeId=X` (el wizard ya soporta prefill
+  server-side en `recepcion/page.tsx:39-129`). CTA único en el Kanban
+  (`workshop-board.tsx:761`) con Velocity Gradient.
+- `[id]/page.tsx:138` "Volver al Tablero": `text-slate-500/900` →
+  `text-[var(--on-surf-var)] hover:text-[var(--on-surf)]`.
+- Wizard: reemplazado `var(--err)` (token inexistente) por `var(--ter)`
+  en `step-1-cliente.tsx` (chip del MaintenanceBanner + 3 errores
+  inline), `step-2-checklist.tsx` (STATE_OPTIONS FAIL + botón rechazar +
+  banner step2Error) y `step-4-tipo.tsx:325` (error de diagnosis).
+  Fallbacks `#d32f2f`, `rgba(211,47,47,...)`, `rgba(245,124,0,...)`,
+  `rgba(46,204,113,...)` → `color-mix(in srgb, var(--ter|--warn|--p-bright) X%, transparent)`.
+- `workshop-board.tsx:266` OrderCard: `rgba(19,27,46,0.06)` → `var(--shadow)`
+  (dark mode cambia automáticamente a `rgba(0,0,0,0.4)`).
+
+**Checklist DESIGN.md — estado final:**
+- Regla No-Line: ✅ limpia (divisores con tinta al 6% vía color-mix).
+- Glassmorphism mobile filter sheet: ✅ patrón oficial.
+- Tipografía display/body KPIs/board/detalles: ✅ respetada.
+
+**Deudas diferidas (fuera de scope Hotfix):**
+1. **Densidad de KPIs** — `--density-{card,row,cell-y}` existen
+   (`globals.css:108-144`) pero `workshop-kpis.tsx` usa `p-5` igual que
+   ventas/cotizaciones/reportes. Tokenizar solo taller crearía
+   inconsistencia; tokenizar todos es scope de **D** o Fase 6.
+2. **Glassmorphism en `DialogContent` base** — `src/components/ui/dialog.tsx:64`
+   usa `bg-background border shadow-lg`, sin `color-mix + blur(20px)`.
+   Fix centralizado de alto blast radius (POS, cotizaciones,
+   autorizaciones, formularios). Abrir como item independiente.
+3. **`var(--err)` fuera de taller** — 6 hits restantes en
+   `reportes/compras-proveedor-client.tsx` (3, incluye `--err-container`)
+   y `configuracion/catalogo/tab-baterias.tsx` (3). Reemplazar cuando
+   esos módulos se aborden visualmente.
+
+**Cambio intencional de UX:** clic en "+ Nueva Orden" desde ficha de
+cliente ya no abre modal — navega al wizard con prefill de bici. El
+modal era compromiso del scope inicial; el wizard es estrictamente
+superior (crea cliente/bici al vuelo, checklist, fotos, firma, semáforo
+de mantenimiento, Zod por paso).
+
+**Deuda menor anotada:** el wizard solo soporta prefill por
+`customerBikeId`, no por `customerId`. Si entras a `customers/[id]` sin
+query param, navegas a recepción sin cliente pre-seleccionado. Extender
+wizard con `?customerId=X` → diferir a D.
+
+---
+
+#### Hotfix.3 — spec original (referencia histórica)
 
 **Alcance:** **TODAS** las pantallas del módulo de taller ya implementadas
 (`/workshop`, `/workshop/[id]`, `/workshop/recepcion`, `/workshop/mantenimientos`
