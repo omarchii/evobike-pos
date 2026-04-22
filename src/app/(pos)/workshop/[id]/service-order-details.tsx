@@ -35,6 +35,9 @@ import { ChargeModal } from "./charge-modal";
 import { DeliverModal } from "./deliver-modal";
 import { QaPanel } from "./qa-panel";
 import { PrepaidCard } from "./prepaid-card";
+import { ApprovalsList, type SerializedApproval } from "./approvals-list";
+import { ApprovalDrawer } from "./approval-drawer";
+import { MessageSquare } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type SerializedProduct = {
@@ -164,11 +167,13 @@ function formatDate(d: Date) {
 export function ServiceOrderDetailsView({
   order,
   catalogProducts,
+  approvals,
   hasCashSession,
   userRole,
 }: {
   order: FullSerializedOrder;
   catalogProducts: SerializedProduct[];
+  approvals: SerializedApproval[];
   hasCashSession: boolean;
   userRole: string;
 }) {
@@ -178,6 +183,7 @@ export function ServiceOrderDetailsView({
   const [openCombobox, setOpenCombobox] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
 
   // Add item states
   const [manualDescription, setManualDescription] = useState("");
@@ -906,6 +912,34 @@ export function ServiceOrderDetailsView({
             prepaidMethod={order.prepaidMethod}
           />
 
+          {/* ── Solicitar aprobación (D.2) ──
+              Solo en órdenes activas (PENDING/IN_PROGRESS) y para roles con
+              permiso (no SELLER, igual que el endpoint POST /approvals). */}
+          {!isClosed && order.status !== "COMPLETED" && userRole !== "SELLER" && (
+            <button
+              onClick={() => setApprovalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 transition-opacity hover:opacity-90"
+              style={{
+                background: "var(--surf-lowest)",
+                color: "var(--p)",
+                boxShadow: "var(--shadow)",
+                border: "1px solid var(--ghost-border)",
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <MessageSquare className="h-4 w-4" /> Solicitar aprobación
+            </button>
+          )}
+
+          {/* ── Lista de aprobaciones (D.2) ── */}
+          <ApprovalsList
+            orderId={order.id}
+            approvals={approvals}
+            isClosed={isClosed}
+          />
+
           {/* ── Order info panel ── */}
           <div
             className="rounded-2xl p-5 space-y-4"
@@ -984,6 +1018,13 @@ export function ServiceOrderDetailsView({
         orderId={order.id}
         total={order.total}
         prepaid={order.prepaid}
+      />
+      <ApprovalDrawer
+        open={approvalOpen}
+        onOpenChange={setApprovalOpen}
+        orderId={order.id}
+        customerName={order.customer.name}
+        customerHasPhone={!!order.customer.phone}
       />
     </>
   );

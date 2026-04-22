@@ -676,6 +676,10 @@ model ServiceOrderApproval {
   status          ServiceOrderApprovalStatus   @default(PENDING)
   channel         ServiceOrderApprovalChannel? // null mientras status = PENDING
   requestedAt     DateTime                     @default(now())
+  // expiresAt = requestedAt + 48h (aplicado en código al crear). Backfill
+  // de la migración usa el mismo cálculo. Lazy expiry corre en handlers
+  // de respond y al renderizar la ficha técnica (P13-D.2).
+  expiresAt       DateTime
   respondedAt     DateTime?
   respondedNote   String?
   createdByUserId String
@@ -685,6 +689,7 @@ model ServiceOrderApproval {
 
   @@index([serviceOrderId, status])
   @@index([status, requestedAt])
+  @@index([status, expiresAt])
 }
 
 // === VOLTAGE CHANGE LOG ===

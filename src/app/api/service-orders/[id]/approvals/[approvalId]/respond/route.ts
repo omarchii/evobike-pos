@@ -88,6 +88,41 @@ export async function POST(
       );
     }
 
+    // ── Lazy expiry race-safe (D.2) ──
+    // updateMany con WHERE condicional es atómico: si dos requests
+    // intentan responder el mismo approval después del TTL, solo uno
+    // marca EXPIRED y el otro ve count=0 (porque ya cambió a REJECTED).
+    const expired = await prisma.serviceOrderApproval.updateMany({
+      where: {
+        id: approvalId,
+        serviceOrderId,
+        status: "PENDING",
+        expiresAt: { lt: new Date() },
+      },
+      data: {
+        status: "REJECTED",
+        respondedAt: new Date(),
+        respondedNote: "EXPIRED",
+      },
+    });
+    if (expired.count === 1) {
+      // Limpiar subStatus si la orden quedó esperando esta approval
+      // (no hay otras aprobaciones PENDING activas — el helper también
+      // verificaría, pero acá ya sabemos que esta era la que trababa).
+      await prisma.serviceOrder.updateMany({
+        where: { id: serviceOrderId, subStatus: "WAITING_APPROVAL" },
+        data: { subStatus: null },
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "APPROVAL_EXPIRED",
+          error: "Esta solicitud expiró",
+        },
+        { status: 410 },
+      );
+    }
+
     const result = await prisma.$transaction((tx) =>
       applyApprovalDecisionTx(tx, {
         approvalId,

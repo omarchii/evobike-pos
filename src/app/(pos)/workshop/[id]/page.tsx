@@ -4,11 +4,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ServiceOrderDetailsView } from "./service-order-details";
 import type { FullSerializedOrder, SerializedProduct, SerializedOrderItem } from "./service-order-details";
+import type { SerializedApproval, SerializedApprovalItem } from "./approvals-list";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
 import type { SessionUser } from "@/lib/auth-types";
+import { expirePendingApprovalsTx } from "@/lib/workshop-approval-expiry";
+import { approvalItemsJsonSchema } from "@/lib/workshop-approvals";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +27,11 @@ export default async function WorkshopOrderPage(props: {
 
   // Branch efectivo: cookie para ADMIN, JWT para el resto.
   const viewBranchId = await resolveOperationalBranchId({ user });
+
+  // Lazy expiry de approvals vencidas (D.2). Idempotente, segura ante
+  // races por el WHERE condicional. Corre antes del findUnique para
+  // que la lectura siguiente vea el estado actualizado.
+  await expirePendingApprovalsTx(prisma, params.id);
 
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },
@@ -58,6 +66,10 @@ export default async function WorkshopOrderPage(props: {
           total: true,
           status: true,
         },
+      },
+      approvals: {
+        include: { createdBy: { select: { name: true } } },
+        orderBy: { requestedAt: "desc" },
       },
     },
   });
@@ -140,6 +152,30 @@ export default async function WorkshopOrderPage(props: {
     price: Number(p.precioPublico),
   }));
 
+  const serializedApprovals: SerializedApproval[] = order.approvals.map((a) => {
+    const parsed = approvalItemsJsonSchema.safeParse(a.itemsJson);
+    const items: SerializedApprovalItem[] = parsed.success
+      ? parsed.data.map((it) => ({
+          nombre: it.nombre,
+          cantidad: it.cantidad,
+          precio: it.precio,
+          subtotal: it.subtotal,
+        }))
+      : [];
+    return {
+      id: a.id,
+      status: a.status,
+      channel: a.channel,
+      totalEstimado: Number(a.totalEstimado),
+      requestedAt: a.requestedAt.toISOString(),
+      expiresAt: a.expiresAt.toISOString(),
+      respondedAt: a.respondedAt ? a.respondedAt.toISOString() : null,
+      respondedNote: a.respondedNote,
+      createdByName: a.createdBy.name,
+      items,
+    };
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -167,6 +203,7 @@ export default async function WorkshopOrderPage(props: {
       <ServiceOrderDetailsView
         order={serializedOrder}
         catalogProducts={serializedProducts}
+        approvals={serializedApprovals}
         hasCashSession={!!cashSession}
         userRole={role ?? "EMPLOYEE"}
       />

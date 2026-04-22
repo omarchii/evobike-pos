@@ -63,6 +63,37 @@ export async function POST(
       );
     }
 
+    // ── Lazy expiry race-safe (D.2) ──
+    // Misma protección que el endpoint interno: updateMany con WHERE
+    // condicional es atómico, idempotente bajo concurrencia.
+    const expired = await prisma.serviceOrderApproval.updateMany({
+      where: {
+        id: approvalId,
+        serviceOrderId: order.id,
+        status: "PENDING",
+        expiresAt: { lt: new Date() },
+      },
+      data: {
+        status: "REJECTED",
+        respondedAt: new Date(),
+        respondedNote: "EXPIRED",
+      },
+    });
+    if (expired.count === 1) {
+      await prisma.serviceOrder.updateMany({
+        where: { id: order.id, subStatus: "WAITING_APPROVAL" },
+        data: { subStatus: null },
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "APPROVAL_EXPIRED",
+          error: "Esta solicitud expiró",
+        },
+        { status: 410 },
+      );
+    }
+
     const result = await prisma.$transaction((tx) =>
       applyApprovalDecisionTx(tx, {
         approvalId,

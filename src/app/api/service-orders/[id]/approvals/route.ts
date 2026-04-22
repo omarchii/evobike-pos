@@ -9,6 +9,7 @@ import {
   buildWorkshopWhatsappLink,
   type WhatsappLinkReason,
 } from "@/lib/workshop";
+import { computeApprovalExpiresAt } from "@/lib/workshop-approval-expiry";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
 import type { SessionUser } from "@/lib/auth-types";
 
@@ -140,6 +141,8 @@ export async function POST(
       );
     }
 
+    const expiresAt = computeApprovalExpiresAt();
+
     const approvalId = await prisma.$transaction(async (tx) => {
       const created = await tx.serviceOrderApproval.create({
         data: {
@@ -148,6 +151,7 @@ export async function POST(
           totalEstimado,
           createdByUserId: userId,
           status: "PENDING",
+          expiresAt,
         },
         select: { id: true },
       });
@@ -198,6 +202,7 @@ export async function POST(
       success: true,
       data: {
         approvalId,
+        expiresAt: expiresAt.toISOString(),
         whatsappUrl,
         whatsappReason,
       },
