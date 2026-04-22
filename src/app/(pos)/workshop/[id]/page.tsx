@@ -135,7 +135,7 @@ export default async function WorkshopOrderPage(props: {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Button variant="ghost" asChild className="mb-4 text-slate-500 hover:text-slate-900">
+        <Button variant="ghost" asChild className="mb-4 text-[var(--on-surf-var)] hover:text-[var(--on-surf)]">
           <Link href="/workshop">
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Tablero
           </Link>
