@@ -775,7 +775,7 @@ Archivos creados:
 
 ## FASE P13 — Rediseño del módulo de Taller
 
-**Estado:** A ✅ | B 🔜 | C ⏳ | D ⏳ | E ⏳ | F ⏳
+**Estado:** A ✅ | B ✅ | C ✅ | D ⏳ | E ⏳ | F ⏳
 
 Ver `docs/workshop-redesing/BRIEF.md` para las 8 decisiones cerradas
 y el alcance completo. Las decisiones de Sub-fase A están documentadas
@@ -826,7 +826,7 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   puede querer mostrar "pagado").
 
 
-### Sub-fase C — Wizard de recepción ✅ Completo (2026-04-21)
+### Sub-fase C — Wizard de recepción ✅ Completo (2026-04-22)
 
 - **C.1 — Capa de datos** (commit `4906e28`): schema con `checklist Json?`, `signatureData String?`, `signatureRejected Boolean @default(false)`, `photoUrls Json?`, `expectedDeliveryDate String?`. Constantes + tipos en `workshop-checklist.ts`/`workshop-types.ts`. Helper `getBranchMaintenanceServices` en `workshop-maintenance.ts`. Endpoint `GET /api/workshop/technicians`. Validaciones Zod en `POST /api/workshop/orders` (checklist exacto 10 ítems, coherencia firma, POLICY_MAINTENANCE exige `customerBikeId`, `photoUrls` max 5).
 
@@ -839,10 +839,15 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
   - Corrección validación `photoUrls` Zod: `/public/workshop/` → `/workshop/drafts/`.
   - APIs auxiliares: `GET /api/workshop/customers/search?q=` y `GET /api/workshop/bikes/[id]/maintenance-status`.
 
-- **Pendiente → C.3:** etiqueta imprimible `/taller/etiqueta/[id]` (TODO en el CTA del wizard).
-- **Deudas detectadas en C.2:**
-  - `Branch.ivaPct` no modelado — IVA hardcodeado a 16% en `step-4-tipo.tsx`. Requiere migración si se quiere configurable.
-  - `diagnosis` requerido en el API (`min(1)`) pero el brief lo marca opcional en el wizard. Resolver en C.3 o P13-D si se decide relajar.
+- **C.3 — Etiqueta imprimible + cierre** (commit `<hash>`):
+  - `diagnosis` ahora opcional en `POST /api/workshop/orders` (`z.string().max(2000).optional().nullable()`) y en la UI del wizard — label y placeholder actualizados, validación client-side eliminada.
+  - Ruta `/taller/etiqueta/[id]` (`src/app/taller/etiqueta/[id]/page.tsx`) — Server Component fuera de `(pos)/`: auth con `getServerSession`, filtro por `branchId` salvo ADMIN, QR generado server-side con `qrcode` (192×192, apunta a `/taller/public/{publicToken}`), light mode forzado via `.evobike-public-doc`, layout letter landscape, auto-print `setTimeout(300ms)`, botones "Imprimir"/"Cerrar" en `LabelActions` (Client Component, `.no-print`).
+  - Submit del wizard: abre `/taller/etiqueta/{id}` en nueva ventana antes del `router.push`; fallback toast con botón si popup blocker cancela.
+  - Botón "Imprimir etiqueta" en ficha técnica (`/workshop/[id]/page.tsx`) — link `<a target="_blank">` junto al folio.
+
+- **Deudas cerradas en C.3:** `diagnosis` optional ✅, etiqueta imprimible ✅.
+- **Deuda abierta → Fase 6:**
+  - `Branch.ivaPct` no modelado — IVA hardcodeado a 16% en `step-4-tipo.tsx`. Ver tech-debt en FASE 6.
 
 ### Sub-fase D — Ficha técnica + drawer de aprobación
 Rediseño de ficha existente + componente nuevo de aprobación con cálculo
@@ -1010,6 +1015,7 @@ Ver sección FASE 6 más abajo para el detalle completo.
 - **Skip link vs `OrphanedSessionBanner` (a11y, pendiente desde 1-B Paso 2)** — el skip link "Saltar al contenido" en `(pos)/layout.tsx` usa `focus:top-2`; cuando el banner de caja huérfana está visible arriba del topbar, el skip link se traslapa con el banner al enfocarse (Tab desde la URL). Opciones: (a) ajustar `focus:top-[calc(var(--banner-height)+0.5rem)]` con variable CSS condicional desde el banner, (b) subir z-index del skip link sobre el banner, (c) esconder/colapsar banner cuando el skip link tiene foco. Decidir en la pasada de a11y de Fase 6.
 - **Consolidar tipo `SessionUser` cross-módulo (pendiente desde 1-B/1-D chore)** — `SessionUser` está declarado como `interface`/`type` inline en 110+ archivos (API routes + pages + helpers), con al menos 3 variantes de shape: (a) mínima `{ id, role, branchId }` usada por handlers de mutación, (b) extendida `{ + name, email, branchName }` usada por layout y componentes de UI, (c) variante estrecha en `src/lib/transferencias.ts:46`. El canonical vive en `src/lib/auth-types.ts` (creado en commit `99437dc`) pero hoy solo lo consume el shell del POS (`(pos)/layout.tsx`). **Estrategia sugerida**: no sustitución 1:1 sino tipo canónico extendido + `Pick<SessionUser, 'id' | 'role' | 'branchId'>` en handlers que solo necesitan el subset — evita crear N tipos derivados. Migración por módulo (`api/auth-requests`, `api/sales`, `api/cash-register`, etc.) en sesiones dedicadas una vez que el proyecto se estabilice. Mientras tanto `SessionUser` canónico sigue siendo fuente de verdad para shell + autenticación. No bloquea releases.
 - **Self-hostear fuentes `next/font/google` (Inter + Space Grotesk)** — detectado en 1-B Paso 1 (2026-04-17). `next/font/google` descarga las fuentes en build time desde `fonts.googleapis.com`; si el entorno de CI/deploy no tiene red saliente (sandboxes de agentes, redes corporativas), el build falla con `Failed to fetch Inter/Space Grotesk from Google Fonts`. Fix: bajar las fuentes una vez, commitear a `public/fonts/`, migrar `src/app/layout.tsx` de `next/font/google` a `next/font/local`. Conserva las ventajas de `next/font` (self-hosting automático + CSS vars + layout shift fix) sin dependencia de red en build. Baja prioridad en desarrollo local con red, pero bloqueante para pipelines sin internet.
+- **IVA configurable por sucursal** — hoy `16%` hardcoded en el wizard de recepción (`step-4-tipo.tsx`, P13-C.2 2026-04-22) y probablemente en otros módulos. Cuando se abra sucursal fronteriza (zona 8%) o cambien tasas fiscales, migrar a `Branch.ivaPct Decimal @default(16.00)` y propagar. Sin urgencia mientras LEO+AV135 sean las únicas sucursales.
 - **Tech-debt UI: migrar `rgba(178,204,192,0.X)` hardcoded → `var(--ghost-border)`** — cada uso hardcoded rompe dark mode porque no adapta a `rgba(45,74,58,0.30)`.
   - **Parte 1 ✅ (2026-04-15)** — 59 instancias con alpha `0.15` (el valor exacto del token) migradas en 27 archivos, incluyendo `pos-terminal.tsx`, `layout.tsx`, tabs de `configuracion/catalogo`, recepciones de inventario, cotizaciones públicas, reportes y sidebar. Identity-replace en light; en dark las borders dejan de ser invisibles (pasan a `rgba(45,74,58,0.30)`).
   - **Parte 2 — pendiente** — quedan 47 instancias con alphas no-estándar: **26** con `0.2`, **12** con `0.08`, **3** con `0.18`, **1** con `0.22/0.35/0.4/0.45` cada una, más dos con espacios: `0.08` y `0.1`. No se migraron porque `var(--ghost-border)` es fijo en `0.15 / 0.30` y la sustitución cambia la opacidad visible. Dos caminos posibles: (a) aceptar el shift visual y replace_all (rápido pero requiere verificación visual en light+dark por archivo) o (b) introducir tokens `--ghost-border-weak` / `--ghost-border-strong` con pares light/dark y routear cada alpha a su token. Decisión diferida.

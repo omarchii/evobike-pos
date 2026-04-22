@@ -69,7 +69,7 @@ const newOrderSchema = z
     customerName: z.string().min(1, "El nombre del cliente es obligatorio"),
     customerPhone: z.string().optional(),
     bikeInfo: z.string().min(1, "Los detalles de la bicicleta son obligatorios"),
-    diagnosis: z.string().min(1, "El diagnóstico es obligatorio"),
+    diagnosis: z.string().max(2000).optional().nullable(),
     type: z.enum(SERVICE_ORDER_TYPES).default("PAID"),
     assignedTechId: z.string().uuid().nullable().optional(),
     items: z.array(newOrderItemSchema).optional(),

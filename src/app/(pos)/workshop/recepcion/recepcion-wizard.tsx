@@ -249,11 +249,6 @@ export function RecepcionWizard({
       toast.error("Ingresa la descripción de la bicicleta en el paso 1.");
       return;
     }
-    if (!data.diagnosis?.trim()) {
-      form.setError("diagnosis", { message: "El diagnóstico inicial es obligatorio" });
-      toast.error("Completa el diagnóstico inicial.");
-      return;
-    }
 
     setIsSubmitting(true);
 
@@ -264,7 +259,7 @@ export function RecepcionWizard({
         customerPhone: data.customerPhone,
         customerBikeId: data.customerBikeId,
         bikeInfo,
-        diagnosis: data.diagnosis,
+        diagnosis: data.diagnosis?.trim() || null,
         type: data.type,
         assignedTechId: data.assignedTechId ?? null,
         items: data.items.map((item) => ({
@@ -297,7 +292,19 @@ export function RecepcionWizard({
 
       if (result.success && result.data) {
         toast.success(`Orden ${result.data.folio} creada exitosamente`);
-        // TODO: C.3 agregará abrir `/taller/etiqueta/[id]` en nueva ventana antes del redirect
+        const labelWindow = window.open(
+          `/taller/etiqueta/${result.data.orderId}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+        if (!labelWindow) {
+          toast.info("Etiqueta lista", {
+            action: {
+              label: "Imprimir etiqueta",
+              onClick: () => window.open(`/taller/etiqueta/${result.data!.orderId}`, "_blank", "noopener,noreferrer"),
+            },
+          });
+        }
         router.push(`/workshop/${result.data.orderId}`);
       } else {
         toast.error(result.error ?? "No se pudo crear la orden");

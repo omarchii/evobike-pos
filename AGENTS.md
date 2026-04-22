@@ -97,6 +97,7 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 - Siempre tipar los retornos de funciones explícitamente.
 - Los esquemas Zod son la fuente de verdad para tipos de formularios y API.
 - **Enums de Prisma en Client Components** — los enums exportados por `@prisma/client` son **server-only en runtime**; al importarlos desde un archivo `"use client"` el valor llega como `undefined` y `z.nativeEnum(EnumDePrisma)` truena en tiempo de evaluación con "Cannot convert undefined or null to object". Workaround obligatorio: definir una tupla local `as const` en el archivo cliente y usar `z.enum(LOCAL_TUPLE)`. El tipo se puede seguir importando con `import type` (se elide en compilación) o reconstruir como `(typeof LOCAL_TUPLE)[number]`. El server (API Route) sigue importando el enum real de Prisma como fuente de verdad.
+- **zodResolver con Zod v4 + `@hookform/resolvers` v5** — en formularios con schemas compuestos o multi-step el genérico `TTransformedValues` puede no inferir. Castear con `as Resolver<TFormData>` (evitando `any`) es aceptable; ver implementación en `src/app/(pos)/workshop/recepcion/recepcion-wizard.tsx`.
 
 ### Server Actions
 

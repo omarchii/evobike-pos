@@ -310,16 +310,16 @@ export function Step4Tipo({
           {/* Diagnosis */}
           <div className="space-y-2">
             <label className="text-sm font-medium" style={{ color: "var(--on-surf)" }}>
-              Diagnóstico inicial <span style={{ color: "var(--err)" }}>*</span>
+              Diagnóstico inicial (opcional)
             </label>
             <textarea
               rows={3}
-              placeholder="Describe los síntomas, ruidos o problemas reportados por el cliente..."
+              placeholder="Diagnóstico inicial (opcional) — síntomas o problemas reportados por el cliente"
               value={getValues("diagnosis") ?? ""}
               onChange={(e) => setValue("diagnosis", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
               style={{ background: "var(--surf-low)", color: "var(--on-surf)" }}
-              aria-label="Diagnóstico inicial"
+              aria-label="Diagnóstico inicial (opcional)"
             />
             {errors.diagnosis && (
               <p className="text-xs" style={{ color: "var(--err)" }}>

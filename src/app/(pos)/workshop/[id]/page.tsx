@@ -138,9 +138,20 @@ export default async function WorkshopOrderPage(props: {
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Tablero
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Orden de Servicio {order.folio}
-        </h1>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Orden de Servicio {order.folio}
+          </h1>
+          <Button variant="outline" asChild size="sm">
+            <a
+              href={`/taller/etiqueta/${order.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Imprimir etiqueta
+            </a>
+          </Button>
+        </div>
       </div>
 
       <ServiceOrderDetailsView
