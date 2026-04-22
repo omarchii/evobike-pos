@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import crypto from "crypto";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import {
   generatePublicToken,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/workshop";
 import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
 import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
+import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
 
 interface SessionUser {
   id: string;
@@ -77,8 +79,8 @@ const newOrderSchema = z
     signatureRejected: z.boolean().optional(),
     photoUrls: z
       .array(
-        z.string().refine((u) => u.startsWith("/public/workshop/"), {
-          message: "URL de foto debe comenzar con /public/workshop/",
+        z.string().refine((u) => u.startsWith("/workshop/drafts/"), {
+          message: "URL de foto debe ser un draft de taller",
         }),
       )
       .max(5, "Máximo 5 fotos por orden")
@@ -166,6 +168,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 422 },
     );
   }
+
+  // Generate orderId before the transaction so photos can be moved pre-tx
+  const orderId = crypto.randomUUID();
+  const finalPhotoUrls: string[] = [];
 
   try {
     await requireActiveUser(session);
@@ -337,6 +343,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       0,
     );
 
+    // ── Move de fotos de draft a carpeta de la orden (pre-transaction) ──
+    if (input.photoUrls && input.photoUrls.length > 0) {
+      for (const draftUrl of input.photoUrls) {
+        if (!draftUrl.startsWith(`/workshop/drafts/${userId}-`)) {
+          return NextResponse.json(
+            { success: false, error: "URL de foto inválida" },
+            { status: 400 },
+          );
+        }
+        const finalUrl = await moveDraftToOrder(draftUrl, orderId);
+        finalPhotoUrls.push(finalUrl);
+      }
+    }
+
     // ── Transacción: orden + ítems ──
     const publicToken = generatePublicToken();
     const folio = `TS-${Date.now().toString().slice(-5)}`;
@@ -370,6 +390,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const order = await tx.serviceOrder.create({
         data: {
+          id: orderId,
           folio,
           branchId,
           userId,
@@ -392,8 +413,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             : Prisma.JsonNull,
           signatureData: (input.signatureRejected ?? false) ? null : (input.signatureData ?? null),
           signatureRejected: input.signatureRejected ?? false,
-          photoUrls: input.photoUrls
-            ? (input.photoUrls as Prisma.InputJsonValue)
+          photoUrls: finalPhotoUrls.length > 0
+            ? (finalPhotoUrls as Prisma.InputJsonValue)
             : Prisma.JsonNull,
           expectedDeliveryDate: input.expectedDeliveryDate ?? null,
         },
@@ -418,6 +439,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error: unknown) {
+    if (finalPhotoUrls.length > 0) {
+      await cleanupOrderPhotos(orderId).catch(() => {});
+    }
     if (error instanceof UserInactiveError) {
       return NextResponse.json(
         { success: false, error: error.message },
