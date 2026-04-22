@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MantenimientosTable, type MantenimientoRow } from "./mantenimientos-table";
+import { computeMaintenanceStatus } from "@/lib/workshop-maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -10,16 +11,6 @@ interface SessionUser {
   id: string;
   role: string;
   branchId: string | null;
-}
-
-function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
-}
-
-function diffDays(a: Date, b: Date): number {
-  return Math.floor((a.getTime() - b.getTime()) / 86_400_000);
 }
 
 export default async function MantenimientosPage({
@@ -93,8 +84,6 @@ export default async function MantenimientosPage({
     },
   });
 
-  const today = new Date();
-
   const rows: MantenimientoRow[] = [];
 
   for (const bike of bikes) {
@@ -108,16 +97,13 @@ export default async function MantenimientosPage({
       null;
     const ultimoMant = ultimoMantRaw ? new Date(ultimoMantRaw) : null;
 
-    const base = ultimoMant ?? fechaCompra;
-    const proximoEstimado = addMonths(base, 6);
-    const diasRestantes = diffDays(proximoEstimado, today);
+    const { nivel, diasRestantes, proximaFecha } = computeMaintenanceStatus({
+      purchaseDate: fechaCompra,
+      lastMaintenanceAt: ultimoMant,
+    });
 
     const estado: MantenimientoRow["estado"] =
-      diasRestantes < 0
-        ? "vencido"
-        : diasRestantes <= 30
-          ? "porVencer"
-          : "alCorriente";
+      nivel === "VENCIDO" ? "vencido" : nivel === "POR_VENCER" ? "porVencer" : "alCorriente";
 
     const modeloStr = bike.productVariant
       ? [
@@ -138,7 +124,7 @@ export default async function MantenimientosPage({
       serialNumber: bike.serialNumber,
       fechaCompra: fechaCompra.toISOString(),
       ultimoMantenimiento: ultimoMant?.toISOString() ?? null,
-      proximoEstimado: proximoEstimado.toISOString(),
+      proximoEstimado: proximaFecha.toISOString(),
       diasRestantes,
       estado,
       branchCode: bike.branch.code,

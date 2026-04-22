@@ -557,6 +557,13 @@ model ServiceOrder {
   publicTokenEnabled   Boolean                @default(true)
   approvals            ServiceOrderApproval[]
 
+  // Workshop redesign (Sub-fase C — Recepción)
+  checklist            Json?      // [{key, state: "OK"|"FAIL"|"NA", note?}]
+  signatureData        String?    // base64 PNG (data URL); null si rechazada
+  signatureRejected    Boolean    @default(false)
+  photoUrls            Json?      // string[] — rutas a /public/workshop/...
+  expectedDeliveryDate String?    // "YYYY-MM-DD" — NO DateTime (patrón fechaVencimiento)
+
   @@index([branchId, status])
   @@index([assignedTechId])
   @@index([servicedByUserId])

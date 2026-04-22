@@ -11,6 +11,7 @@ import {
   assertPolicyActive,
 } from "@/lib/workshop";
 import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
+import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
 
 interface SessionUser {
   id: string;
@@ -53,17 +54,80 @@ const newOrderItemSchema = z
     }
   });
 
-const newOrderSchema = z.object({
-  customerId: z.string().optional(),
-  customerBikeId: z.string().optional(),
-  customerName: z.string().min(1, "El nombre del cliente es obligatorio"),
-  customerPhone: z.string().optional(),
-  bikeInfo: z.string().min(1, "Los detalles de la bicicleta son obligatorios"),
-  diagnosis: z.string().min(1, "El diagnóstico es obligatorio"),
-  type: z.enum(SERVICE_ORDER_TYPES).default("PAID"),
-  assignedTechId: z.string().uuid().nullable().optional(),
-  items: z.array(newOrderItemSchema).optional(),
+const checklistEntrySchema = z.object({
+  key: z.string(),
+  state: z.enum(["OK", "FAIL", "NA"]),
+  note: z.string().max(500).nullable().default(null),
 });
+
+const newOrderSchema = z
+  .object({
+    customerId: z.string().optional(),
+    customerBikeId: z.string().optional(),
+    customerName: z.string().min(1, "El nombre del cliente es obligatorio"),
+    customerPhone: z.string().optional(),
+    bikeInfo: z.string().min(1, "Los detalles de la bicicleta son obligatorios"),
+    diagnosis: z.string().min(1, "El diagnóstico es obligatorio"),
+    type: z.enum(SERVICE_ORDER_TYPES).default("PAID"),
+    assignedTechId: z.string().uuid().nullable().optional(),
+    items: z.array(newOrderItemSchema).optional(),
+    // Campos de recepción (Sub-fase C — Decisión 7)
+    checklist: z.array(checklistEntrySchema).optional(),
+    signatureData: z.string().nullable().optional(),
+    signatureRejected: z.boolean().optional(),
+    photoUrls: z
+      .array(
+        z.string().refine((u) => u.startsWith("/public/workshop/"), {
+          message: "URL de foto debe comenzar con /public/workshop/",
+        }),
+      )
+      .max(5, "Máximo 5 fotos por orden")
+      .optional(),
+    expectedDeliveryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (esperado YYYY-MM-DD)")
+      .refine(
+        (val) => val >= new Date().toISOString().slice(0, 10),
+        { message: "La fecha estimada de entrega no puede ser en el pasado" },
+      )
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Checklist: si presente, exactamente 10 ítems con las 10 claves requeridas
+    if (data.checklist !== undefined) {
+      if (data.checklist.length !== 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "El checklist debe tener exactamente 10 ítems",
+          path: ["checklist"],
+        });
+      } else {
+        const providedKeys = new Set(data.checklist.map((i) => i.key));
+        for (const k of CHECKLIST_KEYS) {
+          if (!providedKeys.has(k)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `El checklist debe incluir la clave: ${k}`,
+              path: ["checklist"],
+            });
+          }
+        }
+      }
+    }
+    // Firma: si se envía contexto de firma, validar coherencia
+    const hasSignatureContext =
+      data.signatureData !== undefined || data.signatureRejected !== undefined;
+    if (hasSignatureContext) {
+      const rejected = data.signatureRejected ?? false;
+      if (!rejected && (!data.signatureData || data.signatureData.trim() === "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La firma es obligatoria si el cliente no la rechazó",
+          path: ["signatureData"],
+        });
+      }
+    }
+  });
 
 // POST /api/workshop/orders — crear nueva orden de servicio
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -142,9 +206,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 422 },
         );
       }
-      if (tech.role !== "TECHNICIAN") {
+      if (tech.role !== "TECHNICIAN" && tech.role !== "MANAGER") {
         return NextResponse.json(
-          { success: false, error: "El usuario asignado no es técnico" },
+          { success: false, error: "Solo técnicos y encargados pueden asignarse a una orden" },
           { status: 422 },
         );
       }
@@ -281,6 +345,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (input.type === "POLICY_MAINTENANCE") {
         // Guard formal no-op hoy — ver docstring en src/lib/workshop.ts.
         await assertPolicyActive(input.customerBikeId!, tx);
+
+        // Decisión 7: si hay ítems, al menos uno debe ser de mantenimiento.
+        const items = input.items ?? [];
+        if (items.length > 0) {
+          const catIds = items
+            .map((it) => it.serviceCatalogId)
+            .filter((id): id is string => id != null);
+          if (catIds.length === 0) {
+            throw new Error(
+              "Mantenimiento en póliza requiere al menos un servicio de mantenimiento",
+            );
+          }
+          const mantCount = await tx.serviceCatalog.count({
+            where: { id: { in: catIds }, esMantenimiento: true },
+          });
+          if (mantCount === 0) {
+            throw new Error(
+              "Mantenimiento en póliza requiere al menos un servicio marcado como mantenimiento",
+            );
+          }
+        }
       }
 
       const order = await tx.serviceOrder.create({
@@ -301,6 +386,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           items: {
             create: computedItems.map((c) => c.serviceOrderItemInput),
           },
+          // Campos de recepción (Sub-fase C)
+          checklist: input.checklist
+            ? (input.checklist as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          signatureData: (input.signatureRejected ?? false) ? null : (input.signatureData ?? null),
+          signatureRejected: input.signatureRejected ?? false,
+          photoUrls: input.photoUrls
+            ? (input.photoUrls as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          expectedDeliveryDate: input.expectedDeliveryDate ?? null,
         },
         select: { id: true, folio: true, publicToken: true },
       });
