@@ -479,7 +479,7 @@ export default function WorkshopBoard({
         });
       } else {
         res = await fetch(`/api/service-orders/${orderId}/sub-status`, {
-          method: "PATCH",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ subStatus: t.subStatusPatch ?? null }),
         });
