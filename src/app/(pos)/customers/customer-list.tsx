@@ -464,6 +464,14 @@ function DirectoryRow({
                 <Chip variant="neutral" label="Eliminado" />
               </span>
             )}
+            {row.profileIncomplete && !row.deletedAt && (
+              <span
+                className="ml-2"
+                title="Cliente creado en POS sin email, RFC ni dirección — completa el perfil cuando puedas."
+              >
+                <Chip variant="warn" label="Perfil incompleto" />
+              </span>
+            )}
           </Link>
           <div className="flex items-center gap-2 text-[0.6875rem]" style={{ color: "var(--on-surf-var)" }}>
             {row.rfc && <span className="font-mono">{row.rfc}</span>}

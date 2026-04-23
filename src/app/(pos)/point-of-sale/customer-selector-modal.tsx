@@ -299,6 +299,7 @@ export default function CustomerSelectorModal({
           {mode === "new" && (
             <CustomerCreateForm
               formId={NEW_CUSTOMER_FORM_ID}
+              quickMode
               onCreated={handleCreated}
               onSavingChange={setSaving}
             />

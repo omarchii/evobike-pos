@@ -131,7 +131,6 @@ function BikeCard({
   customerId: string;
   canEditOdo: boolean;
 }): React.JSX.Element {
-  void customerId;
   const [expanded, setExpanded] = useState<"BAT" | "VOLT" | "MANT" | null>(null);
 
   const isOverdueMant = bike.maintenance?.nivel === "VENCIDO";
@@ -355,18 +354,21 @@ function BikeCard({
               Ver ensamble
             </Link>
           )}
-          <span
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium opacity-50 cursor-not-allowed"
+          <a
+            href={`/api/customers/${customerId}/bicis/${bike.id}/historial/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium"
             style={{
               borderRadius: "var(--r-full)",
               background: "var(--surf-high)",
-              color: "var(--on-surf-var)",
+              color: "var(--on-surf)",
             }}
-            title="La ficha PDF por bici llega en Sub-fase K"
+            title="Descargar historial completo en PDF"
           >
             <Icon name="download" size={13} />
             Historial PDF
-          </span>
+          </a>
         </div>
       </div>
 

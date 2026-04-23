@@ -68,6 +68,7 @@ const schema = z.object({
   phone: z.string().min(10, "Mínimo 10 dígitos"),
   phone2: z.string().optional(),
   email: z.string().email("Correo inválido").optional().or(z.literal("")),
+  communicationConsent: z.boolean().optional(),
 
   shippingStreet: z.string().optional(),
   shippingExtNum: z.string().optional(),
@@ -219,6 +220,12 @@ interface CustomerCreateFormProps {
   onCreated: (customer: CustomerOption) => void;
   /** Mirrors the internal `saving` flag so parents can render a disabled footer. */
   onSavingChange?: (saving: boolean) => void;
+  /**
+   * Quick mode (BRIEF Sub-fase L): hide secondary phone, address and fiscal
+   * sections; collect name + phone + consent only. The customer is flagged as
+   * `profileIncomplete` server-side until the rest of the data is captured.
+   */
+  quickMode?: boolean;
 }
 
 export function CustomerCreateForm({
@@ -226,6 +233,7 @@ export function CustomerCreateForm({
   defaultName,
   onCreated,
   onSavingChange,
+  quickMode = false,
 }: CustomerCreateFormProps) {
   const [saving, setSaving] = useState(false);
 
@@ -296,6 +304,7 @@ export function CustomerCreateForm({
           label="Teléfono principal"
           required
           error={errors.phone?.message}
+          className={quickMode ? "col-span-2" : undefined}
         >
           <Input
             {...register("phone")}
@@ -305,31 +314,69 @@ export function CustomerCreateForm({
           />
         </Field>
 
-        <Field label="Teléfono secundario" error={errors.phone2?.message}>
-          <Input
-            {...register("phone2")}
-            placeholder="Opcional"
-            type="tel"
-            style={INPUT_STYLE}
-          />
-        </Field>
+        {!quickMode && (
+          <Field label="Teléfono secundario" error={errors.phone2?.message}>
+            <Input
+              {...register("phone2")}
+              placeholder="Opcional"
+              type="tel"
+              style={INPUT_STYLE}
+            />
+          </Field>
+        )}
 
-        <Field
-          label="Correo electrónico"
-          error={errors.email?.message}
-          className="col-span-2"
+        {!quickMode && (
+          <Field
+            label="Correo electrónico"
+            error={errors.email?.message}
+            className="col-span-2"
+          >
+            <Input
+              {...register("email")}
+              placeholder="correo@ejemplo.com (opcional)"
+              type="email"
+              style={INPUT_STYLE}
+            />
+          </Field>
+        )}
+
+        <label
+          className="col-span-2 flex items-start gap-2 text-xs cursor-pointer"
+          style={{ color: "var(--on-surf-var)" }}
         >
-          <Input
-            {...register("email")}
-            placeholder="correo@ejemplo.com (opcional)"
-            type="email"
-            style={INPUT_STYLE}
+          <input
+            type="checkbox"
+            {...register("communicationConsent")}
+            className="mt-0.5"
           />
-        </Field>
+          <span>
+            Acepta recibir comunicación (WhatsApp / email).
+            {quickMode && (
+              <span className="block opacity-70 mt-0.5">
+                Sin esta marca, el cliente no aparecerá en listas de marketing.
+              </span>
+            )}
+          </span>
+        </label>
       </div>
 
-      <div className="mb-5">
-        <CollapsibleSection title="Dirección para flete">
+      {quickMode && (
+        <div
+          className="mb-2 px-3 py-2.5 text-[0.6875rem]"
+          style={{
+            background: "var(--surf-low)",
+            borderRadius: "var(--r-md)",
+            color: "var(--on-surf-var)",
+          }}
+        >
+          Solo se capturan datos básicos para no detener la venta. Completa
+          dirección y datos fiscales después desde el perfil del cliente.
+        </div>
+      )}
+
+      {!quickMode && (
+        <div className="mb-5">
+          <CollapsibleSection title="Dirección para flete">
           <Field label="Calle" className="col-span-2">
             <Input
               {...register("shippingStreet")}
@@ -388,7 +435,9 @@ export function CustomerCreateForm({
           </Field>
         </CollapsibleSection>
       </div>
+      )}
 
+      {!quickMode && (
       <div className="mb-2">
         <CollapsibleSection title="Datos de facturación">
           <Field label="RFC" className="col-span-2">
@@ -462,6 +511,7 @@ export function CustomerCreateForm({
           </Field>
         </CollapsibleSection>
       </div>
+      )}
     </form>
   );
 }

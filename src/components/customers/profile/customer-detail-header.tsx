@@ -14,6 +14,7 @@ import {
   SEGMENT_TOOLTIPS,
   type SegmentChip,
 } from "@/lib/customers/segmentation";
+import { HeaderActionsMenu } from "./header-actions-menu";
 
 interface Props {
   customerId: string;
@@ -26,6 +27,7 @@ interface Props {
   segments: SegmentChip[];
   tags: string[];
   isDeleted: boolean;
+  isManagerPlus: boolean;
 }
 
 const CHIP_VARIANT: Partial<
@@ -55,6 +57,7 @@ export function CustomerDetailHeader({
   segments,
   tags,
   isDeleted,
+  isManagerPlus,
 }: Props): React.JSX.Element {
   const waNumber = formatPhoneForWhatsApp(phone);
 
@@ -162,14 +165,11 @@ export function CustomerDetailHeader({
             <Icon name="wrench" size={13} />
             Nueva orden
           </Link>
-          <Link
-            href={`/customers/${customerId}/editar`}
-            className="inline-flex items-center justify-center h-8 w-8 rounded-full"
-            style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
-            title="Editar"
-          >
-            <Icon name="more" size={14} />
-          </Link>
+          <HeaderActionsMenu
+            customerId={customerId}
+            customerName={name}
+            isManagerPlus={isManagerPlus}
+          />
         </div>
       </div>
 

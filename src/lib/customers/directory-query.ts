@@ -28,6 +28,12 @@ export interface DirectoryCustomerRow {
   lastSaleAt: Date | null;
   lastActivityAt: Date | null;
   communicationConsent: boolean;
+  /**
+   * BRIEF Sub-fase L: cliente creado vía quick-create del POS al que aún le
+   * falta capturar email, RFC o dirección de envío. Sirve para que SELLER+
+   * sepa cuándo completar el perfil.
+   */
+  profileIncomplete: boolean;
   chips: SegmentChip[];
 }
 
@@ -109,6 +115,7 @@ export async function listDirectoryCustomers(
         tags: true,
         shippingCity: true,
         shippingState: true,
+        shippingStreet: true,
         balance: true,
         creditLimit: true,
         deletedAt: true,
@@ -215,6 +222,9 @@ export async function listDirectoryCustomers(
       now,
     );
 
+    const profileIncomplete =
+      !c.email && !c.rfc && !c.shippingStreet;
+
     return {
       id: c.id,
       name: c.name,
@@ -236,6 +246,7 @@ export async function listDirectoryCustomers(
       lastSaleAt,
       lastActivityAt,
       communicationConsent: c.communicationConsent,
+      profileIncomplete,
       chips,
     };
   });

@@ -126,6 +126,7 @@ export function CustomerProfileShell({
         segments={data.segments}
         tags={data.base.tags}
         isDeleted={data.base.deletedAt !== null}
+        isManagerPlus={isManagerPlus}
       />
 
       <CustomerKpiStrip kpis={data.kpis} />
