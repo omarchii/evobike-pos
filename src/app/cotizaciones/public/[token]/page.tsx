@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import {
@@ -9,6 +10,12 @@ import {
 import PrintButton from "./_components/print-button";
 
 export const dynamic = "force-dynamic";
+
+// Portales públicos con token nunca deben indexarse — filtran info
+// del cliente (nombre, teléfono, precios, folios).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 interface RouteParams {
   params: Promise<{ token: string }>;
