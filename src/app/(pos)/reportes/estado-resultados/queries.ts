@@ -147,6 +147,7 @@ export async function fetchEstadoResultados(params: PnlParams): Promise<PnlData>
       prisma.sale.findMany({
         where: {
           status: { not: "CANCELLED" },
+          excludeFromRevenue: false,
           createdAt: { gte: from, lte: to },
           ...(branchId ? { branchId } : {}),
         },

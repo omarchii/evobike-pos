@@ -139,6 +139,7 @@ export default async function RentabilidadPage({
     prisma.sale.findMany({
       where: {
         status: "COMPLETED",
+        excludeFromRevenue: false,
         createdAt: { gte: fromDate, lte: toDate },
         ...(scope.branchId !== undefined ? { branchId: scope.branchId } : {}),
       },

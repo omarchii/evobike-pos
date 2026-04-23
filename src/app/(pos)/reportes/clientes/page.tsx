@@ -149,6 +149,7 @@ export default async function ClientesReportPage({
         ...branchFilter,
         customerId: { in: customerIds },
         status: "COMPLETED",
+        excludeFromRevenue: false,
       },
       _count: { _all: true },
       _sum: { total: true },

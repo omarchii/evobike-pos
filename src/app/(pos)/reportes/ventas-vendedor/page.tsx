@@ -194,6 +194,7 @@ export default async function VentasVendedorPage({
 
   const saleWhere: Prisma.SaleWhereInput = {
     status: statusFilter,
+    excludeFromRevenue: false,
     createdAt: { gte: fromDate, lte: toDate },
     ...(scope.branchId !== undefined ? { branchId: scope.branchId } : {}),
     ...(filterUserId ? { userId: filterUserId } : {}),

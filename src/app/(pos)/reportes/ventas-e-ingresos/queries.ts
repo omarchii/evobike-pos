@@ -109,6 +109,7 @@ function buildSaleWhere(
   const where: Prisma.SaleWhereInput = {
     status: { in: ["COMPLETED", "LAYAWAY"] },
     createdAt: { gte: filters.from, lte: filters.to },
+    excludeFromRevenue: false,
   };
 
   if (branchId) where.branchId = branchId;

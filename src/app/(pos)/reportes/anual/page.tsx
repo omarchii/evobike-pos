@@ -98,6 +98,7 @@ export default async function ReporteAnualPage({
       prisma.sale.findMany({
         where: {
           status: "COMPLETED",
+          excludeFromRevenue: false,
           createdAt: { gte: yearStart, lte: yearEnd },
         },
         select: { branchId: true, total: true, createdAt: true },
