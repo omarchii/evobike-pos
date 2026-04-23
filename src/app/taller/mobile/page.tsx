@@ -35,11 +35,19 @@ export default async function MobileDashboardPage() {
 
   const orders = rows.map(serializeMobileOrder);
 
+  // Timestamp estable compartido para los "hace X min" de todas las
+  // cards. SSR y el primer render cliente verán el mismo valor, evitando
+  // hydration mismatch. El polling de G.3 refrescará el árbol y con él
+  // este `nowMs`.
+  // eslint-disable-next-line react-hooks/purity -- corre por request, no en render
+  const nowMs = Date.now();
+
   return (
     <Dashboard
       userName={user.name ?? "Técnico"}
       branchName={branch?.name ?? "—"}
       orders={orders}
+      nowMs={nowMs}
     />
   );
 }

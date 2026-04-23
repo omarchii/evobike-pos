@@ -127,6 +127,7 @@ export async function seedTransactional(prisma: PrismaClient): Promise<void> {
   await seedSales(ctx);
   await seedPedidos(ctx);
   await seedServiceOrders(ctx);
+  await seedMobileDashboardFixture(ctx);
   await seedQuotations(ctx);
   await seedPurchaseReceipts(ctx);
 
@@ -1451,6 +1452,141 @@ async function seedServiceOrders(ctx: SeedContext): Promise<void> {
       `  ✅ ServiceOrders ${branch.code}: PENDING=${counts.PENDING}, IN_PROGRESS=${counts.IN_PROGRESS}, COMPLETED=${counts.COMPLETED}, DELIVERED=${counts.DELIVERED}.`,
     );
   }
+}
+
+// ─── T9.b Dashboard móvil fixture (P13-G.2) ──────────────────────────────────
+// Siembra ~12 órdenes ASIGNADAS a `tecnico.leo@evobike.mx` con distribución
+// que cubra los 3 tabs del dashboard móvil ("Mi cola", "Esperando", "Listas").
+// Idempotente: chequea si el técnico ya tiene órdenes con assignedTechId
+// y skipea para no duplicar en re-seeds.
+//
+// No genera Sale/prepaid — el móvil no los distingue visualmente y evita
+// tocar el invariante `sale_type_invariant`. Si en el futuro el móvil
+// pinta "prepagada", extender este bloque puntualmente.
+
+async function seedMobileDashboardFixture(ctx: SeedContext): Promise<void> {
+  const tecnicoLeo = await ctx.prisma.user.findUnique({
+    where: { email: "tecnico.leo@evobike.mx" },
+    select: { id: true, branchId: true },
+  });
+  if (!tecnicoLeo || !tecnicoLeo.branchId) {
+    console.log("  ⏭️  tecnico.leo no existe, skip fixture móvil.");
+    return;
+  }
+
+  const alreadyAssigned = await ctx.prisma.serviceOrder.count({
+    where: { assignedTechId: tecnicoLeo.id, branchId: tecnicoLeo.branchId },
+  });
+  if (alreadyAssigned > 0) {
+    console.log(
+      `  ⏭️  tecnico.leo ya tiene ${alreadyAssigned} órdenes asignadas, skip fixture móvil.`,
+    );
+    return;
+  }
+
+  const customers = await ctx.prisma.customer.findMany({
+    select: { id: true },
+    take: 12,
+  });
+  if (customers.length === 0) {
+    console.log("  ⏭️  Sin customers para fixture móvil, skip.");
+    return;
+  }
+
+  const customerBikes = await ctx.prisma.customerBike.findMany({
+    where: { branchId: tecnicoLeo.branchId, customerId: { not: null } },
+    select: { id: true, customerId: true },
+  });
+
+  const diagnoses = [
+    "Falla intermitente del motor",
+    "Frenos traseros con ruido",
+    "Batería descarga rápido",
+    "Cambios traseros sin ajuste",
+    "Llanta delantera desbalanceada",
+    "Pantalla no enciende",
+    "Controlador con error E03",
+    "Manubrio con holgura",
+    "Cadena salta en marchas altas",
+    "Luz trasera no funciona",
+    "Llave de encendido fallando",
+    "Asistencia eléctrica inconsistente",
+  ];
+
+  // Distribución objetivo (total 12):
+  //   2 PENDING                              → tab "Mi cola" (baja)
+  //   3 IN_PROGRESS, subStatus=null          → tab "Mi cola" (alta)
+  //   2 IN_PROGRESS, subStatus=WAITING_PARTS ┐
+  //   1 IN_PROGRESS, subStatus=WAITING_APPR. ├ tab "Esperando"
+  //   1 IN_PROGRESS, subStatus=PAUSED        ┘
+  //   3 COMPLETED                            → tab "Listas"
+  const plan: Array<{
+    status: ServiceOrderStatus;
+    subStatus: "WAITING_PARTS" | "WAITING_APPROVAL" | "PAUSED" | null;
+  }> = [
+    { status: ServiceOrderStatus.PENDING, subStatus: null },
+    { status: ServiceOrderStatus.PENDING, subStatus: null },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: null },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: null },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: null },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: "WAITING_PARTS" },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: "WAITING_PARTS" },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: "WAITING_APPROVAL" },
+    { status: ServiceOrderStatus.IN_PROGRESS, subStatus: "PAUSED" },
+    { status: ServiceOrderStatus.COMPLETED, subStatus: null },
+    { status: ServiceOrderStatus.COMPLETED, subStatus: null },
+    { status: ServiceOrderStatus.COMPLETED, subStatus: null },
+  ];
+
+  let created = 0;
+  for (let i = 0; i < plan.length; i++) {
+    const entry = plan[i];
+    const customerId = customers[i % customers.length].id;
+    const bike =
+      customerBikes.length > 0 ? customerBikes[i % customerBikes.length] : null;
+    const diagnosis = diagnoses[i % diagnoses.length];
+
+    try {
+      await ctx.prisma.$transaction(async (tx) => {
+        const branchRow = await tx.branch.findUniqueOrThrow({
+          where: { id: tecnicoLeo.branchId! },
+          select: { code: true },
+        });
+        const updated = await tx.branch.update({
+          where: { id: tecnicoLeo.branchId! },
+          data: { lastSaleFolioNumber: { increment: 1 } },
+          select: { lastSaleFolioNumber: true },
+        });
+        const folio = `${branchRow.code}-SRV-${String(updated.lastSaleFolioNumber).padStart(4, "0")}`;
+
+        await tx.serviceOrder.create({
+          data: {
+            folio,
+            branchId: tecnicoLeo.branchId!,
+            userId: tecnicoLeo.id,
+            assignedTechId: tecnicoLeo.id,
+            customerId,
+            customerBikeId: bike?.id ?? null,
+            bikeInfo: bike ? null : "Bici cliente genérica",
+            diagnosis,
+            subtotal: dec(0),
+            total: dec(0),
+            status: entry.status,
+            subStatus: entry.subStatus,
+            publicToken: generatePublicToken(),
+          },
+        });
+      });
+      created++;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`  ❌ Fixture móvil #${i}: ${msg}`);
+    }
+  }
+
+  console.log(
+    `  ✅ Fixture móvil tecnico.leo: ${created} órdenes (2 PENDING, 3 IN_PROGRESS, 4 esperando, 3 COMPLETED).`,
+  );
 }
 
 // ─── T10 Cotizaciones ────────────────────────────────────────────────────────
