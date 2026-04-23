@@ -214,8 +214,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (input.customerId) {
       customer = await prisma.customer.findUnique({ where: { id: input.customerId } });
     } else if (input.customerPhone) {
-      customer = await prisma.customer.findUnique({
-        where: { phone: input.customerPhone },
+      customer = await prisma.customer.findFirst({
+        where: { phone: input.customerPhone, deletedAt: null, mergedIntoId: null },
       });
     }
 

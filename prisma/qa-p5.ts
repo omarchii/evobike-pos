@@ -133,17 +133,21 @@ async function main() {
   });
   console.log("   ✓ 4 usuarios listos\n");
 
-  // 3. Customer sintético
+  // 3. Customer sintético (upsert manual: Customer.phone dejó de ser @unique
+  // tras el rediseño de clientes — BRIEF.md §3.1).
   console.log("👤 Upserting customer sintético...");
-  const customer = await prisma.customer.upsert({
+  let customer = await prisma.customer.findFirst({
     where: { phone: QA_CUSTOMER_PHONE },
-    create: {
-      name: "QA Cliente Cancelación",
-      phone: QA_CUSTOMER_PHONE,
-      email: "qa_customer@evobike.test",
-    },
-    update: {},
   });
+  if (!customer) {
+    customer = await prisma.customer.create({
+      data: {
+        name: "QA Cliente Cancelación",
+        phone: QA_CUSTOMER_PHONE,
+        email: "qa_customer@evobike.test",
+      },
+    });
+  }
   console.log(`   ✓ ${customer.name}\n`);
 
   // 4. CashRegisterSession abierta para qa_seller_leo

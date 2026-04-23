@@ -177,17 +177,21 @@ async function main() {
   console.log(`✅ Usuarios creados (${users.length}) — contraseña: evobike123`);
 
   // ── 3. Cliente demo ──────────────────────────────────────────────────────────
-  await prisma.customer.upsert({
+  // Customer.phone dejó de ser @unique (BRIEF.md §3.1); upsert manual.
+  const existingMostrador = await prisma.customer.findFirst({
     where: { phone: '9981234567' },
-    update: {},
-    create: {
-      name: 'Cliente Mostrador',
-      phone: '9981234567',
-      email: 'mostrador@evobike.mx',
-      creditLimit: 0,
-      balance: 0,
-    },
   });
+  if (!existingMostrador) {
+    await prisma.customer.create({
+      data: {
+        name: 'Cliente Mostrador',
+        phone: '9981234567',
+        email: 'mostrador@evobike.mx',
+        creditLimit: 0,
+        balance: 0,
+      },
+    });
+  }
 
   console.log('✅ Cliente demo creado\n');
 

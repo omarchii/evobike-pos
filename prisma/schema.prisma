@@ -59,6 +59,10 @@ model User {
   // === Reportes v1 ===
   pinnedReports String[] @default([]) // slugs; UI garantiza max 4
   uiPreferences Json?    // tweaks del panel de reportes (densidad, layouts, etc.)
+
+  // Customers redesign (Sub-fase A)
+  customerNotes    CustomerNote[]
+  customerEditLogs CustomerEditLog[]
 }
 
 model Branch {
@@ -415,6 +419,7 @@ model CashTransaction {
   sessionId        String
   saleId           String?
   userId           String? // Usuario que registró el movimiento. Nullable por backfill histórico.
+  customerId       String? // FK a Customer (timeline del perfil). Nullable: recargas standalone sin vínculo a Sale quedan null.
   type             CashTransactionType
   method           PaymentMethod
   amount           Decimal              @db.Decimal(10, 2)
@@ -427,16 +432,19 @@ model CashTransaction {
   depositCategory  CashDepositCategory? // Solo se pobla cuando type = CASH_DEPOSIT
   createdAt        DateTime             @default(now())
 
-  session CashRegisterSession @relation(fields: [sessionId], references: [id])
-  sale    Sale?               @relation(fields: [saleId], references: [id])
-  user    User?               @relation(fields: [userId], references: [id])
+  session  CashRegisterSession @relation(fields: [sessionId], references: [id])
+  sale     Sale?               @relation(fields: [saleId], references: [id])
+  user     User?               @relation(fields: [userId], references: [id])
+  customer Customer?           @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
 }
 
 // === CRM ===
 model Customer {
   id          String  @id @default(uuid())
   name        String
-  phone       String? @unique
+  phone       String?
   phone2      String?
   email       String?
   creditLimit Decimal @default(0) @db.Decimal(10, 2)
@@ -453,17 +461,47 @@ model Customer {
   shippingRefs    String?
 
   // Datos de facturación (todos opcionales)
-  rfc             String?
+  rfc             String? @unique
   razonSocial     String?
   regimenFiscal   String?
   usoCFDI         String?
   emailFiscal     String?
   direccionFiscal String?
 
-  sales         Sale[]
-  serviceOrders ServiceOrder[]
-  bikes         CustomerBike[]
-  quotations    Quotation[]
+  // === Customers redesign — Sub-fase A ===
+  birthday             DateTime?
+  isBusiness           Boolean               @default(false)
+  communicationConsent Boolean               @default(false)
+  tags                 String[]              @default([])
+  phonePrevious        String? // soft-save del teléfono anterior antes de sobrescribir
+  mergedIntoId         String? // FK a Customer — target de fusión (soft-merge)
+  mergedAt             DateTime?
+  deletedAt            DateTime?
+  deletedReason        CustomerDeleteReason?
+
+  sales            Sale[]
+  serviceOrders    ServiceOrder[]
+  bikes            CustomerBike[]
+  quotations       Quotation[]
+  cashTransactions CashTransaction[]
+
+  // Soft-merge self-relation
+  mergedInto       Customer?  @relation("CustomerMerge", fields: [mergedIntoId], references: [id])
+  mergedSources    Customer[] @relation("CustomerMerge")
+
+  notes    CustomerNote[]
+  editLogs CustomerEditLog[]
+
+  @@index([mergedIntoId])
+  @@index([deletedAt])
+  @@index([phone])
+  @@index([email])
+}
+
+enum CustomerDeleteReason {
+  DUPLICATE
+  REQUEST
+  ERROR
 }
 
 model CustomerBike {
@@ -476,6 +514,7 @@ model CustomerBike {
   model            String?
   color            String?
   voltaje          String?
+  odometerKm       Int? // Kilometraje capturado en recepción o editable desde perfil
   notes            String?
   createdAt        DateTime @default(now())
 
@@ -488,8 +527,49 @@ model CustomerBike {
   batteryAssignments BatteryAssignment[]
   assemblyOrders     AssemblyOrder[]
   stockTransferItems StockTransferItem[]
+  editLogs           CustomerEditLog[]
 
   @@unique([serialNumber, branchId])
+}
+
+// === Customers redesign — Sub-fase A ===
+model CustomerNote {
+  id         String           @id @default(cuid())
+  customerId String
+  customer   Customer         @relation(fields: [customerId], references: [id])
+  authorId   String
+  author     User             @relation(fields: [authorId], references: [id])
+  kind       CustomerNoteKind
+  body       String
+  pinned     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  @@index([customerId, createdAt(sort: Desc)])
+}
+
+enum CustomerNoteKind {
+  NOTE
+  PHONE_CALL
+  WHATSAPP_SENT
+  EMAIL_SENT
+}
+
+model CustomerEditLog {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  customerBikeId String? // opcional — para ediciones sobre CustomerBike (ej. odómetro)
+  customerBike   CustomerBike? @relation(fields: [customerBikeId], references: [id])
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  field          String // "rfc" | "creditLimit" | "razonSocial" | "phone" | "odometerKm" | ...
+  oldValue       String?
+  newValue       String?
+  reason         String? // motivo capturado en diálogos de confirmación
+  createdAt      DateTime @default(now())
+
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([customerBikeId, field])
 }
 
 // === WORKSHOP (TALLER) ===

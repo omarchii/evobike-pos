@@ -148,7 +148,8 @@ const CUSTOMER_LAST_NAMES = [
 ];
 
 async function seedCustomers(ctx: SeedContext): Promise<void> {
-  const existingSentinel = await ctx.prisma.customer.findUnique({
+  // Customer.phone dejó de ser @unique (BRIEF.md §3.1); usamos findFirst.
+  const existingSentinel = await ctx.prisma.customer.findFirst({
     where: { phone: "9981111001" },
   });
   if (existingSentinel) {

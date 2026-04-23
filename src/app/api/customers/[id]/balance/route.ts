@@ -59,6 +59,7 @@ export async function POST(
         data: {
           sessionId: activeSession.id,
           userId,
+          customerId,
           type: "PAYMENT_IN",
           method,
           amount,
