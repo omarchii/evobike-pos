@@ -1285,29 +1285,75 @@ regresivo "Esta solicitud expira en Xh" en la card de aprobación pendiente.
 **Donde diseñar:** chat (layout + UX) + Code. **Subagentes:** no.
 **Sesiones estimadas:** 1-2. **Riesgo:** bajo.
 
-### Sub-fase G — Dashboard móvil del técnico (aditivo, 2026-04-22)
+### Sub-fase G — Dashboard móvil del técnico ✅ Completa (2026-04-23)
 
-Identificado como hueco durante diseño: los mocks incluyen
-`dashboard_del_t_cnico_mobile_2/` pero no estaba en las sub-fases A-F. En piso,
-un técnico usa el celular — hoy solo tiene el Kanban desktop responsive en
-acordeón. Scope mínimo v1:
+Identificada como hueco durante diseño (aditivo 2026-04-22): los mocks
+incluían `dashboard_del_t_cnico_mobile_2/` pero no estaba en las sub-fases
+A-F. El técnico en piso usa celular — hasta G solo tenía el Kanban
+desktop responsive en acordeón, no priorizado para "mis órdenes".
 
-- Ruta `/workshop/mobile` (o reuso del Kanban con breakpoint específico,
-  decidir al implementar).
-- Lectura: órdenes asignadas a `assignedTechId = session.user.id` en estado
-  activo (PENDING + IN_PROGRESS + subStatus activos), agrupadas por status.
-- Acciones mínimas: tomar orden sin asignar (si está en su sucursal),
-  soltar orden asignada a sí mismo, cambiar subStatus (WAITING_PARTS /
-  WAITING_APPROVAL / PAUSED) sin DnD — botones tap-friendly.
-- Sin ficha técnica completa en móvil (eso se abre como deeplink al desktop
-  si hace falta).
+**Ruta final:** `/taller/mobile` (fuera de `(pos)/`, paralelo a
+`/taller/public/`), dark forzado, `force-dynamic`, guard TECHNICIAN-only
+(MANAGER/ADMIN/SELLER → `/workshop`).
+
+**Commits (3 sesiones, 4 commits):**
+
+- **G.0** `54350d0` — Hardening 3 endpoints + log `[workshop-mobile]`.
+  Gates de ownership para TECHNICIAN en `/assign` (permitir soltar
+  órdenes propias), `/sub-status` y `/workshop/orders/[id]/status`
+  (403 si `assignedTechId !== user.id`). Log estructurado JSON con
+  `mobileClient: boolean` leyendo `x-client` header — observabilidad
+  para métricas de piloto.
+- **G.1** `f296d95` — Ruta + layout + guard + query base. Serializer
+  flat en `src/lib/workshop-mobile.ts` (Decimal→Number, Date→ISO).
+  `error.tsx` mínimo. Timestamp `nowMs` server→client para evitar
+  hydration mismatch de `formatRelative`.
+- **G.2** `47bb9c9` — UI completa (header, KPI, tabs scrollables,
+  order-card, status-badge, empty state) + seed fixture
+  `seedMobileDashboardFixture` (12 órdenes para tecnico.leo,
+  distribución 2/3/4/3 por tab, idempotente, sin contaminar
+  invariante `sale_type` de E.2).
+- **G.3** `00e403a` — Acciones + FAB + polling + signOut + header
+  `x-client: mobile-dashboard`. Bottom-sheet contextual por estado
+  (PENDING / IN_PROGRESS null / IN_PROGRESS sub / COMPLETED) +
+  sub-menú de motivos en el mismo Sheet (sin Radix anidados).
+  `usePollingRefresh` 60s visibility-aware con tick inmediato al
+  volver al foreground. Endpoint nuevo `GET /api/workshop/orders/unassigned`
+  (branch scope, SELLER 403). Patrón crítico: cerrar sheet ANTES de
+  `router.refresh()` para no quedar flotando sobre DOM vacío tras
+  soltar última orden / completar última en cola.
+
+**Tabs:** Mi cola (PENDING ∪ IN_PROGRESS sin sub) · Esperando
+(IN_PROGRESS con sub) · Listas (COMPLETED). KPI: "N activas" + "+M por
+iniciar" si hay PENDING. Deeplink "Ver ficha completa" → `/workshop/[id]`
+desktop-responsive (recepción y ficha completa explícitamente fuera de
+scope v1 — quedan como deuda de Fase 6).
+
+**Deltas vs plan original (documentados en `project_p13_g.md`):**
+
+- Expandido de 1-2 → 3 sesiones: G.0 aislado como hardening (patrón E.0)
+  para no mezclar deuda pre-existente con UI nueva, y G.3 aislado por
+  concentrar toda la lógica de mutación.
+- Sub-menú de motivos dentro del mismo Sheet con flag `showSubMenu` (no
+  dos sheets anidados).
+- `mobile-fetch.ts` centraliza `x-client: mobile-dashboard` + `cache:
+  no-store` para que todos los fetch del móvil dejen trazo en los logs
+  `[workshop-mobile]` (mecanismo de métricas del piloto).
+
+**Deudas explícitas fuera de scope v1 (post-piloto / Fase 6):**
+
+1. MANAGER/ADMIN móvil → señal: conteo de líneas `[workshop-mobile]`
+   post-piloto 30 días (se empareja con vista de ocupación del gerente).
+2. Snapshot-diff de órdenes que desaparecen del feed.
+3. Mutación optimista con `useOptimistic`.
+4. Drag-to-dismiss del bottom-sheet.
+5. PWA manifest + íconos + service worker.
+6. Recepción móvil + ficha completa en móvil — explícito fuera de scope,
+   ficha usa deeplink a desktop.
 
 **Vista de ocupación del gerente (mock `vista_de_ocupaci_n_del_gerente_2/`)**
-se difiere a Fase 6 — no es crítica para el piloto y depende de métricas de
-productividad que maduran con uso real.
-
-**Donde diseñar:** chat ligero (Sonnet) + Code. **Subagentes:** no.
-**Sesiones estimadas:** 1-2. **Riesgo:** bajo. **Depende de:** A, B, Hotfix.
+se difiere a Fase 6 — no es crítica para el piloto y depende de métricas
+de productividad que maduran con uso real.
 
 ### Testing de P13 completo
 Se integra al scope de Fase 6 (hardening de producción). Tests por flujo
