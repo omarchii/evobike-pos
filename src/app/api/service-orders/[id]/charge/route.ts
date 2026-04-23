@@ -82,6 +82,14 @@ export async function POST(
         { status: 422 }
       );
     }
+    // Guard de type (E.3.c): WARRANTY/COURTESY/POLICY_MAINTENANCE no cobran,
+    // aunque el JWT del solicitante tenga rol MANAGER. Complementa el gate UI.
+    if (order.type !== "PAID") {
+      return NextResponse.json(
+        { success: false, error: "Esta orden no genera cobro" },
+        { status: 422 }
+      );
+    }
 
     const activeSession = await getActiveSession(branchId);
     if (!activeSession) {

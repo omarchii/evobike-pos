@@ -7,6 +7,7 @@ type PrepaidCardProps = {
   prepaid: boolean;
   prepaidAt: string | null;
   prepaidAmount: number | null;
+  /** null = pago mixto (split). Ver resolvePrepaidMethod (workshop-prepaid.ts). */
   prepaidMethod: PaymentMethod | null;
 };
 
@@ -18,6 +19,9 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   CREDIT_BALANCE: "Saldo a favor",
 };
 
+// Helpers locales: esta card es un comprobante financiero — necesitamos
+// centavos exactos y hora (dos prepagos el mismo día deben distinguirse).
+// formatMXN global redondea a entero y formatDate no incluye hora.
 function formatMXN(n: number) {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -44,9 +48,10 @@ export function PrepaidCard({
 }: PrepaidCardProps) {
   if (!prepaid) return null;
 
-  // Caso enriquecido (Hotfix.1+ con datos completos).
-  const hasFullData =
-    prepaidAt !== null && prepaidAmount !== null && prepaidMethod !== null;
+  // prepaidMethod=null es válido (pago mixto). prepaidAt/Amount deberían venir
+  // poblados post-E.2 + backfill; si faltan, es orden legacy pre-Hotfix.1.
+  const hasCore = prepaidAt !== null && prepaidAmount !== null;
+  const isSplit = hasCore && prepaidMethod === null;
 
   return (
     <div
@@ -82,12 +87,10 @@ export function PrepaidCard({
               color: "var(--on-sec-container)",
             }}
           >
-            {hasFullData
-              ? `Pagado ${formatMXN(prepaidAmount!)}`
-              : "Pre-pagado"}
+            {hasCore ? `Pagado ${formatMXN(prepaidAmount!)}` : "Pre-pagado"}
           </span>
         </div>
-        {hasFullData ? (
+        {hasCore ? (
           <p
             style={{
               fontSize: "0.75rem",
@@ -95,7 +98,8 @@ export function PrepaidCard({
               opacity: 0.85,
             }}
           >
-            {formatDate(prepaidAt!)} · {METHOD_LABEL[prepaidMethod!]}
+            {formatDate(prepaidAt!)}
+            {isSplit ? " · pago mixto" : ` · ${METHOD_LABEL[prepaidMethod!]}`}
           </p>
         ) : (
           <p

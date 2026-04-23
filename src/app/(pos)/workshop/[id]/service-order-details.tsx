@@ -170,6 +170,9 @@ export function ServiceOrderDetailsView({
 
   const isClosed = order.status === "DELIVERED" || order.status === "CANCELLED";
   const isManager = userRole === "MANAGER" || userRole === "ADMIN";
+  // Única rama que requiere caja abierta + form de pago. WARRANTY/COURTESY/
+  // POLICY_MAINTENANCE entregan sin cobro; PAID prepaid reusa la Sale existente.
+  const needsCashFlow = order.type === "PAID" && !order.prepaid;
 
   // ── Stock polling (D.3a) ──
   // Una sola invocación del hook compartida entre AddItemForm e ItemsTable
@@ -405,7 +408,7 @@ export function ServiceOrderDetailsView({
               <>
                 {/* Pre-pago info: ahora vive en <PrepaidCard /> abajo. */}
 
-                {!hasCashSession && !order.prepaid && (
+                {needsCashFlow && !hasCashSession && (
                   <p
                     style={{
                       fontSize: "0.75rem",
@@ -419,8 +422,9 @@ export function ServiceOrderDetailsView({
                   </p>
                 )}
 
-                {/* Cobrar ahora — only when not prepaid and has cash session */}
-                {!order.prepaid && (
+                {/* Cobrar ahora — sólo PAID no prepaid con caja abierta.
+                    Blindaje UI complementado por guard server-side en /charge. */}
+                {needsCashFlow && (
                   <button
                     onClick={() => setChargeOpen(true)}
                     disabled={!hasCashSession}
@@ -439,32 +443,32 @@ export function ServiceOrderDetailsView({
                   </button>
                 )}
 
-                {/* Entregar (y cobrar) */}
+                {/* Entregar (y cobrar). Sólo PAID !prepaid requiere caja. */}
                 <button
                   onClick={() => setDeliverOpen(true)}
-                  disabled={!order.prepaid && !hasCashSession}
+                  disabled={needsCashFlow && !hasCashSession}
                   title={
-                    !order.prepaid && !hasCashSession
+                    needsCashFlow && !hasCashSession
                       ? "Abre una caja primero"
                       : undefined
                   }
                   className="w-full flex items-center justify-center gap-2 font-semibold text-sm transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     background:
-                      !order.prepaid && !hasCashSession
+                      needsCashFlow && !hasCashSession
                         ? "var(--surf-high)"
                         : "linear-gradient(135deg, #1b4332, #2ecc71)",
                     color:
-                      !order.prepaid && !hasCashSession ? "var(--p)" : "#ffffff",
+                      needsCashFlow && !hasCashSession ? "var(--p)" : "#ffffff",
                     borderRadius: "var(--r-full)",
                     border: "none",
                     height: 44,
                     cursor:
-                      !order.prepaid && !hasCashSession ? "not-allowed" : "pointer",
+                      needsCashFlow && !hasCashSession ? "not-allowed" : "pointer",
                   }}
                 >
                   <ArrowRight className="h-4 w-4" />
-                  {order.prepaid ? "Entregar" : "Entregar y cobrar"}
+                  {needsCashFlow ? "Entregar y cobrar" : "Entregar"}
                 </button>
               </>
             )}
@@ -644,6 +648,7 @@ export function ServiceOrderDetailsView({
         orderId={order.id}
         total={order.total}
         prepaid={order.prepaid}
+        type={order.type}
       />
       <ApprovalDrawer
         open={approvalOpen}

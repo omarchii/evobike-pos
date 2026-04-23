@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ServiceOrderType } from "@prisma/client";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,13 @@ const METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: "ATRATO", label: "Atrato" },
 ];
 
+// Labels para los tipos que no generan cobro. PAID se omite deliberadamente.
+const NO_CHARGE_LABEL: Record<Exclude<ServiceOrderType, "PAID">, string> = {
+  WARRANTY: "Garantía",
+  COURTESY: "Cortesía",
+  POLICY_MAINTENANCE: "Mantenimiento de póliza",
+};
+
 interface DeliverModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,6 +58,8 @@ interface DeliverModalProps {
   total: number;
   /** Si prepaid=true, no se muestra formulario de pago */
   prepaid: boolean;
+  /** ServiceOrder.type — determina si hay cobro. Backend ramifica en /deliver. */
+  type: ServiceOrderType;
 }
 
 function formatMXN(n: number) {
@@ -66,6 +76,7 @@ export function DeliverModal({
   orderId,
   total,
   prepaid,
+  type,
 }: DeliverModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -76,11 +87,19 @@ export function DeliverModal({
   const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethod>("CARD");
   const [secondaryAmount, setSecondaryAmount] = useState("0.00");
 
+  // Rama por type + prepaid (backend ya ramifica en /deliver por order.type):
+  //   PAID  !prepaid  → payment form; body con paymentMethod + amount
+  //   PAID   prepaid  → sin form (Sale ya existe); body = {}
+  //   no-PAID         → sin form (Sale con total=0); body = {}
+  const requiresPaymentUI = type === "PAID" && !prepaid;
+  const isNoCharge = type !== "PAID";
+  const noChargeLabel = isNoCharge ? NO_CHARGE_LABEL[type] : null;
+
   const handleSubmit = async () => {
     setStockError(null);
     let body: Record<string, unknown> = {};
 
-    if (!prepaid) {
+    if (requiresPaymentUI) {
       const primaryAmt = parseFloat(amount);
       const secondaryAmt = isSplit ? parseFloat(secondaryAmount) : 0;
 
@@ -116,7 +135,9 @@ export function DeliverModal({
 
       if (data.success) {
         toast.success(
-          prepaid ? "Orden entregada" : `Cobrada y entregada — ${data.data?.folio ?? ""}`,
+          requiresPaymentUI
+            ? `Cobrada y entregada — ${data.data?.folio ?? ""}`
+            : "Orden entregada",
           { id: "deliver" }
         );
         onOpenChange(false);
@@ -160,10 +181,12 @@ export function DeliverModal({
               color: "var(--on-surf)",
             }}
           >
-            {prepaid ? "Entregar orden" : "Entregar y cobrar"}
+            {requiresPaymentUI ? "Entregar y cobrar" : "Entregar orden"}
           </DialogTitle>
           <p style={{ color: "var(--on-surf-var)", fontSize: "0.75rem" }}>
-            {prepaid
+            {isNoCharge
+              ? "Este servicio no genera cobro. Al confirmar se descuenta el stock de refacciones."
+              : prepaid
               ? "El cobro ya fue registrado. Al confirmar se descuenta el stock de refacciones."
               : "Se registra el cobro y se descuenta el stock de refacciones simultáneamente."}
           </p>
@@ -195,7 +218,11 @@ export function DeliverModal({
               marginTop: "0.25rem",
             }}
           >
-            {prepaid ? "Ya cobrado" : "Total a cobrar"}
+            {isNoCharge
+              ? `Sin cobro · ${noChargeLabel}`
+              : prepaid
+              ? "Ya cobrado"
+              : "Total a cobrar"}
           </span>
         </div>
 
@@ -212,9 +239,9 @@ export function DeliverModal({
           </div>
         )}
 
-        {/* Payment form (only when not prepaid) */}
+        {/* Payment form (only when PAID && !prepaid) */}
         <div className="px-6 pb-6 space-y-4">
-          {!prepaid && (
+          {requiresPaymentUI && (
             <>
               {/* Split toggle */}
               <button
@@ -318,9 +345,9 @@ export function DeliverModal({
             <PackageCheck className="h-4 w-4" />
             {loading
               ? "Procesando..."
-              : prepaid
-              ? "Confirmar entrega"
-              : "Entregar y cobrar"}
+              : requiresPaymentUI
+              ? "Entregar y cobrar"
+              : "Confirmar entrega"}
           </button>
         </div>
       </DialogContent>
