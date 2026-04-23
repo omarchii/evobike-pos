@@ -4,7 +4,7 @@ import type { BranchPDFData } from "@/lib/pdf/types";
 // Re-exportar para que los consumidores importen desde @/lib/branch
 export type { BranchPDFData } from "@/lib/pdf/types";
 
-export type TipoDocPDF = "cotizacion" | "pedido" | "ticket" | "poliza" | "reporte";
+export type TipoDocPDF = "cotizacion" | "pedido" | "ticket" | "poliza" | "reporte" | "servicio";
 
 export class BranchNotConfiguredError extends Error {
   constructor(public readonly missingFields: string[]) {
@@ -28,7 +28,8 @@ type BranchFieldKey =
   | "sealImageUrl"
   | "terminosCotizacion"
   | "terminosPedido"
-  | "terminosPoliza";
+  | "terminosPoliza"
+  | "terminosServicio";
 
 // Campos comunes requeridos en todos los tipos de documento
 const BASE_FIELDS: Array<{ key: BranchFieldKey; label: string }> = [
@@ -50,7 +51,10 @@ const EXTRA_BY_TYPE: Partial<
   cotizacion: { key: "terminosCotizacion", label: "Términos de cotización" },
   pedido: { key: "terminosPedido", label: "Términos de pedido" },
   poliza: { key: "terminosPoliza", label: "Términos de póliza" },
-  // 'ticket' y 'reporte' no requieren plantilla de términos
+  // 'ticket', 'reporte' y 'servicio' no requieren plantilla de términos:
+  // 'servicio' tiene fallback hardcoded por tipo en <LegalLegend />, y
+  // terminosServicio (branch-level) es opcional — si no está, el footer
+  // simplemente lo omite.
 };
 
 function isPlaceholder(value: string | null | undefined): boolean {
@@ -111,6 +115,7 @@ export async function assertBranchConfiguredForPDF(
     terminosCotizacion: branch.terminosCotizacion,
     terminosPedido: branch.terminosPedido,
     terminosPoliza: branch.terminosPoliza,
+    terminosServicio: branch.terminosServicio,
   };
 }
 

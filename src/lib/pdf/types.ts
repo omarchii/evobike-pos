@@ -21,6 +21,7 @@ export type BranchPDFData = {
   terminosCotizacion: string | null;
   terminosPedido: string | null;
   terminosPoliza: string | null;
+  terminosServicio: string | null;
 };
 
 export type PDFItem = {

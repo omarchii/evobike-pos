@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   ArrowUpRight,
   MessageSquare,
+  Download,
 } from "lucide-react";
+import { openPDFInNewTab } from "@/lib/pdf-client";
 import { ChargeModal } from "./charge-modal";
 import { DeliverModal } from "./deliver-modal";
 import { QaPanel } from "./qa-panel";
@@ -173,6 +175,12 @@ export function ServiceOrderDetailsView({
   // Única rama que requiere caja abierta + form de pago. WARRANTY/COURTESY/
   // POLICY_MAINTENANCE entregan sin cobro; PAID prepaid reusa la Sale existente.
   const needsCashFlow = order.type === "PAID" && !order.prepaid;
+  // Gate PDF (E.4): mismo criterio en endpoint y UI.
+  const canDownloadPdf =
+    order.status === "DELIVERED" ||
+    (order.status === "COMPLETED" && order.prepaid);
+  const handleDownloadPDF = () =>
+    openPDFInNewTab(`/api/service-orders/${order.id}/pdf`);
 
   // ── Stock polling (D.3a) ──
   // Una sola invocación del hook compartida entre AddItemForm e ItemsTable
@@ -521,6 +529,29 @@ export function ServiceOrderDetailsView({
                   Orden cancelada
                 </p>
               </div>
+            )}
+
+            {/* PDF download (E.4) — gate unificado con el endpoint:
+                DELIVERED → "Descargar comprobante"
+                COMPLETED && prepaid → "Descargar recibo de pre-pago" */}
+            {canDownloadPdf && (
+              <button
+                onClick={handleDownloadPDF}
+                className="w-full flex items-center justify-center gap-2 font-medium text-sm transition-opacity hover:opacity-80"
+                style={{
+                  background: "var(--surf-high)",
+                  color: "var(--p)",
+                  borderRadius: "var(--r-full)",
+                  border: "1px solid var(--ghost-border)",
+                  height: 40,
+                  cursor: "pointer",
+                }}
+              >
+                <Download className="h-4 w-4" />
+                {order.status === "DELIVERED"
+                  ? "Descargar comprobante"
+                  : "Descargar recibo de pre-pago"}
+              </button>
             )}
           </div>
 
