@@ -160,7 +160,7 @@ export function buildWorkshopWhatsappLink(args: {
 }
 
 /** Retorna los 10 dígitos del celular MX o null si no es válido. */
-function normalizeMxPhone(raw: string | null | undefined): string | null {
+export function normalizeMxPhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const digits = raw.replace(/\D/g, "");
   // Acepta 10 dígitos directos, o con lada 52 / 521 al frente.

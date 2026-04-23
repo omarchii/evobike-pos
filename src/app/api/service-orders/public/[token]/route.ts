@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { normalizeMxPhone } from "@/lib/workshop";
 
 // Sin auth. Retorna datos sanitizados para el portal público del cliente.
 // Alcance estricto (confirmado en plan): estado + total + approvals + metadata
 // de sucursal. Sin diagnosis, sin qaNotes, sin ítems crudos, sin precios por
-// línea, sin teléfono real del cliente.
+// línea, sin teléfono raw (el número vive solo server-side; se expone como
+// whatsappHref pre-formateado).
 export const dynamic = "force-dynamic";
 
 interface PublicApproval {
@@ -15,6 +17,7 @@ interface PublicApproval {
   status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: Date;
   respondedAt: Date | null;
+  expiresAt: Date;
 }
 
 interface PublicServiceOrderView {
@@ -25,26 +28,46 @@ interface PublicServiceOrderView {
   bikeInfo: string | null;
   total: number;
   qaPassed: boolean;
+  prepaid: boolean;
+  prepaidAt: Date | null;
+  prepaidAmount: number | null;
+  photoUrls: string[];
   createdAt: Date;
   updatedAt: Date;
   customerFirstName: string;
   branch: {
+    name: string;
     colonia: string | null;
     city: string | null;
-    phoneMasked: string | null;
+    whatsappHref: string | null;
   };
   approvals: PublicApproval[];
 }
 
-function maskPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length < 4) return null;
-  // Preserva los últimos 4 dígitos; resto → *.
-  const tail = digits.slice(-4);
-  const masked = "*".repeat(digits.length - 4) + tail;
-  // Formato ligero "55** **67 89" → lo dejamos contiguo para no asumir layout.
-  return masked;
+// Template customer→branch para el CTA "Hablar con un Asesor" del portal.
+// Se reemplaza solo {folio}; {estado}/{total}/{linkPublico} se dejan
+// intactos si el admin los puso — el field Branch.whatsappTemplateTaller
+// fue pensado branch→customer (notificaciones outbound), pero si el admin
+// lo personaliza para el canal inbound lo respetamos. Fallback genérico
+// cubre sucursales sin template configurado.
+function buildPortalWhatsappHref(args: {
+  branchPhone: string | null;
+  template: string | null;
+  folio: string;
+}): string | null {
+  const digits = normalizeMxPhone(args.branchPhone);
+  if (!digits) return null;
+  const raw =
+    args.template && args.template.trim().length > 0
+      ? args.template
+      : "Hola, tengo una duda sobre mi servicio {folio}. Gracias.";
+  const text = raw.replaceAll("{folio}", args.folio);
+  return `https://wa.me/52${digits}?text=${encodeURIComponent(text)}`;
+}
+
+function parsePhotoUrls(raw: Prisma.JsonValue | null): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((u): u is string => typeof u === "string");
 }
 
 export async function GET(
@@ -65,14 +88,20 @@ export async function GET(
         total: true,
         qaPassedAt: true,
         publicTokenEnabled: true,
+        prepaid: true,
+        prepaidAt: true,
+        prepaidAmount: true,
+        photoUrls: true,
         createdAt: true,
         updatedAt: true,
         customer: { select: { name: true } },
         branch: {
           select: {
+            name: true,
             colonia: true,
             city: true,
             phone: true,
+            whatsappTemplateTaller: true,
           },
         },
         approvals: {
@@ -83,6 +112,7 @@ export async function GET(
             status: true,
             requestedAt: true,
             respondedAt: true,
+            expiresAt: true,
           },
           orderBy: { requestedAt: "desc" },
         },
@@ -108,13 +138,23 @@ export async function GET(
       bikeInfo: order.bikeInfo,
       total: Number(order.total),
       qaPassed: order.qaPassedAt !== null,
+      prepaid: order.prepaid,
+      prepaidAt: order.prepaidAt,
+      prepaidAmount:
+        order.prepaidAmount !== null ? Number(order.prepaidAmount) : null,
+      photoUrls: parsePhotoUrls(order.photoUrls),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       customerFirstName: firstName,
       branch: {
+        name: order.branch.name,
         colonia: order.branch.colonia,
         city: order.branch.city,
-        phoneMasked: maskPhone(order.branch.phone),
+        whatsappHref: buildPortalWhatsappHref({
+          branchPhone: order.branch.phone,
+          template: order.branch.whatsappTemplateTaller,
+          folio: order.folio,
+        }),
       },
       approvals: order.approvals.map((a) => ({
         id: a.id,
@@ -123,6 +163,7 @@ export async function GET(
         status: a.status,
         requestedAt: a.requestedAt,
         respondedAt: a.respondedAt,
+        expiresAt: a.expiresAt,
       })),
     };
 
