@@ -146,6 +146,8 @@ export async function POST(req: NextRequest) {
         // Compute subtotal from frozen items
         const frozenSubtotal = frozenItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
+        // Invariante Sale.type (ver schema.prisma): orderType != null →
+        // type ∈ {LAYAWAY, BACKORDER} (match orderType).
         const frozenSale = await tx.sale.create({
           data: {
             folio: frozenFolio,
@@ -154,6 +156,7 @@ export async function POST(req: NextRequest) {
             customerId,
             status: "LAYAWAY",
             orderType,
+            type: orderType,
             subtotal: frozenSubtotal,
             discount: 0,
             total,
@@ -226,6 +229,8 @@ export async function POST(req: NextRequest) {
       const folio = `${branchPrefix}${folioPrefix}-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
 
       // 3. Crear Sale
+      // Invariante Sale.type (ver schema.prisma): orderType != null →
+      // type ∈ {LAYAWAY, BACKORDER} (match orderType).
       const sale = await tx.sale.create({
         data: {
           folio,
@@ -234,6 +239,7 @@ export async function POST(req: NextRequest) {
           customerId,
           status: "LAYAWAY",
           orderType,
+          type: orderType,
           subtotal: total,
           discount: 0,
           total,

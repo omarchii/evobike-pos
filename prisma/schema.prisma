@@ -556,7 +556,12 @@ model ServiceOrder {
   sale         Sale?
   prepaid      Boolean            @default(false)
   // Hotfix (2026-04-22) — aditivo, NULL para órdenes existentes con
-  // prepaid=true. La lógica de poblado vive en Sub-fase D (drawer de cobro).
+  // prepaid=true. Poblado por /charge (E.2) + backfill script one-shot.
+  // prepaidMethod — regla canónica:
+  //   payments.length === 1 → prepaidMethod = payments[0].method
+  //   payments.length >  1  → prepaidMethod = null (split; enum PaymentMethod
+  //                           no tiene MIXED y añadirlo contamina reportes de caja).
+  // Implementación: src/lib/workshop-prepaid.ts::resolvePrepaidMethod.
   prepaidAt      DateTime?
   prepaidAmount  Decimal?          @db.Decimal(10, 2)
   prepaidMethod  PaymentMethod?

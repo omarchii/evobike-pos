@@ -10,6 +10,7 @@ import {
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { resolvePrepaidMethod } from "@/lib/workshop-prepaid";
 import type { SessionUser } from "@/lib/auth-types";
 
 const chargeSchema = z.object({
@@ -112,7 +113,9 @@ export async function POST(
       });
       const folio = `${updatedBranch.code}T-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
 
-      // Create service Sale (serviceOrderId links it back)
+      // Create service Sale (serviceOrderId links it back).
+      // Invariante Sale.type (ver schema.prisma): serviceOrderId != null → type=SERVICE,
+      // orderType=null. excludeFromRevenue=false porque el cobro genera ingreso real.
       const sale = await tx.sale.create({
         data: {
           folio,
@@ -120,6 +123,8 @@ export async function POST(
           userId,
           customerId: order.customerId,
           status: "COMPLETED",
+          type: "SERVICE",
+          excludeFromRevenue: false,
           subtotal: total,
           discount: 0,
           total,
@@ -156,10 +161,21 @@ export async function POST(
         });
       }
 
-      // Mark service order as prepaid
+      // Mark service order as prepaid + populate audit trail (Hotfix.1 fields).
+      // prepaidMethod null si split (ver workshop-prepaid.ts::resolvePrepaidMethod).
+      const totalCharged = input.amount + (input.secondaryAmount ?? 0);
       await tx.serviceOrder.update({
         where: { id: serviceOrderId },
-        data: { prepaid: true },
+        data: {
+          prepaid: true,
+          prepaidAt: new Date(),
+          prepaidAmount: totalCharged,
+          prepaidMethod: resolvePrepaidMethod(
+            input.paymentMethod,
+            input.secondaryPaymentMethod,
+            input.secondaryAmount,
+          ),
+        },
       });
 
       return { saleId: sale.id, folio: sale.folio };

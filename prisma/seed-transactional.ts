@@ -16,6 +16,7 @@ import {
   PaymentMethod,
   CollectionStatus,
   SaleStatus,
+  SaleType,
   OrderType,
   ServiceOrderStatus,
   CommissionStatus,
@@ -1102,6 +1103,8 @@ async function seedPedidos(ctx: SeedContext): Promise<void> {
           }
 
           const folio = await nextSaleFolio(tx, branch.id, isLayaway ? "A" : "B");
+          // Invariante Sale.type (ver schema.prisma): orderType != null →
+          // type ∈ {LAYAWAY, BACKORDER} (match orderType).
           const sale = await tx.sale.create({
             data: {
               folio,
@@ -1110,6 +1113,7 @@ async function seedPedidos(ctx: SeedContext): Promise<void> {
               customerId,
               status: SaleStatus.LAYAWAY,
               orderType,
+              type: orderType === OrderType.LAYAWAY ? SaleType.LAYAWAY : SaleType.BACKORDER,
               subtotal: dec(total),
               discount: dec(0),
               total: dec(total),
@@ -1357,6 +1361,8 @@ async function seedServiceOrders(ctx: SeedContext): Promise<void> {
 
           const saleId = await ctx.prisma.$transaction(async (tx) => {
             const folio = await nextSaleFolio(tx, branch.id, "T");
+            // Invariante Sale.type (ver schema.prisma): serviceOrderId != null →
+            // type=SERVICE. excludeFromRevenue=false porque el fixture simula cobro real.
             const sale = await tx.sale.create({
               data: {
                 folio,
@@ -1364,6 +1370,8 @@ async function seedServiceOrders(ctx: SeedContext): Promise<void> {
                 userId: techId,
                 customerId,
                 status: SaleStatus.COMPLETED,
+                type: SaleType.SERVICE,
+                excludeFromRevenue: false,
                 subtotal: dec(total),
                 discount: dec(0),
                 total: dec(total),

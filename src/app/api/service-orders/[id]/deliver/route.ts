@@ -238,6 +238,9 @@ export async function POST(
         });
         const newFolio = `${updatedBranch.code}T-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
 
+        // Invariante Sale.type (ver schema.prisma): serviceOrderId != null →
+        // type=SERVICE, orderType=null. excludeFromRevenue=false — rama A es
+        // PAID no prepaid, el cobro genera ingreso real.
         const sale = await tx.sale.create({
           data: {
             folio: newFolio,
@@ -245,6 +248,8 @@ export async function POST(
             userId,
             customerId: order.customerId,
             status: "COMPLETED",
+            type: "SERVICE",
+            excludeFromRevenue: false,
             subtotal: total,
             discount: 0,
             total,
@@ -300,6 +305,10 @@ export async function POST(
         });
         const newFolio = `${updatedBranch.code}T-${String(updatedBranch.lastSaleFolioNumber).padStart(4, "0")}`;
 
+        // Invariante Sale.type (ver schema.prisma): serviceOrderId != null →
+        // type=SERVICE, orderType=null. excludeFromRevenue=true — rama C
+        // (WARRANTY/COURTESY/POLICY_MAINTENANCE) no genera ingreso real
+        // (total=0, sin CashTransaction); filtrada de KPIs en E.5.
         const sale = await tx.sale.create({
           data: {
             folio: newFolio,
@@ -307,6 +316,8 @@ export async function POST(
             userId,
             customerId: order.customerId,
             status: "COMPLETED",
+            type: "SERVICE",
+            excludeFromRevenue: true,
             subtotal: 0,
             discount: 0,
             total: 0,

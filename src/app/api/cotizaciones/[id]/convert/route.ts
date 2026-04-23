@@ -247,6 +247,8 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       const orderType: "LAYAWAY" | "BACKORDER" | null =
         input.targetType === "LAYAWAY" ? "LAYAWAY" : input.targetType === "BACKORDER" ? "BACKORDER" : null;
 
+      // Invariante Sale.type (ver schema.prisma): orderType != null →
+      // type = orderType; orderType == null (targetType === "SALE") → type = DIRECT.
       const sale = await tx.sale.create({
         data: {
           folio: saleFolio,
@@ -255,6 +257,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
           customerId: input.customerId,
           status: saleStatus,
           orderType,
+          type: orderType ?? "DIRECT",
           subtotal: finalSubtotal,
           discount: discountAmount,
           total: finalTotal,
