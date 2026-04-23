@@ -1,15 +1,9 @@
 "use client";
 
-// Shell del perfil de cliente (BRIEF §7.4 — Sub-fase E).
-// Maneja la lógica de tabs vía URL (?tab=...) y compone:
-//   1. Botón "Volver" + DetailHeader sticky
-//   2. KPI strip (3 tarjetas)
-//   3. Tabs: Resumen (E) · Ventas (G) · Taller (G) · Bicis (F) ·
-//      Cotizaciones (G) · Finanzas (H, MANAGER+) · Datos (I)
-//
-// Sub-fase E sólo entrega la implementación completa del tab Resumen.
-// Los demás tabs renderizan un placeholder con tokens del DESIGN.md
-// y enlazan a la vista existente cuando aplica.
+// Shell del perfil de cliente (BRIEF §7.4).
+// Maneja la lógica de tabs vía URL (?tab=...) y compone header sticky,
+// KPI strip y tabs Resumen · Ventas · Taller · Bicis · Cotizaciones ·
+// Finanzas (MANAGER+) · Datos.
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -18,7 +12,23 @@ import { Icon, type IconName } from "@/components/primitives/icon";
 import { CustomerDetailHeader } from "./customer-detail-header";
 import { CustomerKpiStrip } from "./customer-kpi-strip";
 import { TabResumen } from "./tab-resumen";
+import { TabBicis } from "./tab-bicis";
+import { TabVentas } from "./tab-ventas";
+import { TabTaller } from "./tab-taller";
+import { TabCotizaciones } from "./tab-cotizaciones";
+import { TabFinanzas } from "./tab-finanzas";
+import { TabDatos } from "./tab-datos";
 import type { CustomerProfileData } from "@/lib/customers/profile-data";
+import type {
+  BikeCardData,
+  QuotationRow,
+  SaleRow,
+  ServiceOrderRow,
+} from "@/lib/customers/profile-tabs-data";
+import type {
+  DatosData,
+  FinanzasData,
+} from "@/lib/customers/profile-finanzas-data";
 
 type TabKey =
   | "resumen"
@@ -34,38 +44,43 @@ interface TabDef {
   label: string;
   icon: IconName;
   managerOnly?: boolean;
-  pendingPhase?: string; // Sub-fase que entrega el contenido real.
 }
 
 const TABS: TabDef[] = [
   { key: "resumen", label: "Resumen", icon: "dashboard" },
-  { key: "ventas", label: "Ventas", icon: "sales", pendingPhase: "G" },
-  { key: "taller", label: "Taller", icon: "wrench", pendingPhase: "G" },
-  { key: "bicis", label: "Bicis", icon: "bike", pendingPhase: "F" },
-  {
-    key: "cotizaciones",
-    label: "Cotizaciones",
-    icon: "invoice",
-    pendingPhase: "G",
-  },
+  { key: "ventas", label: "Ventas", icon: "sales" },
+  { key: "taller", label: "Taller", icon: "wrench" },
+  { key: "bicis", label: "Bicis", icon: "bike" },
+  { key: "cotizaciones", label: "Cotizaciones", icon: "invoice" },
   {
     key: "finanzas",
     label: "Finanzas",
     icon: "commission",
     managerOnly: true,
-    pendingPhase: "H",
   },
-  { key: "datos", label: "Datos", icon: "user", pendingPhase: "I" },
+  { key: "datos", label: "Datos", icon: "user" },
 ];
 
 interface Props {
   data: CustomerProfileData;
   role: string;
+  bikes: BikeCardData[];
+  sales: SaleRow[];
+  serviceOrders: ServiceOrderRow[];
+  quotations: QuotationRow[];
+  finanzas: FinanzasData | null;
+  datos: DatosData | null;
 }
 
 export function CustomerProfileShell({
   data,
   role,
+  bikes,
+  sales,
+  serviceOrders,
+  quotations,
+  finanzas,
+  datos,
 }: Props): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,10 +178,36 @@ export function CustomerProfileShell({
         />
       )}
 
-      {active !== "resumen" && (
-        <PendingTab
-          tab={visibleTabs.find((t) => t.key === active)!}
+      {active === "bicis" && (
+        <TabBicis
           customerId={data.base.id}
+          customerName={data.base.name}
+          bikes={bikes}
+          role={role}
+        />
+      )}
+
+      {active === "ventas" && <TabVentas sales={sales} />}
+
+      {active === "taller" && <TabTaller orders={serviceOrders} />}
+
+      {active === "cotizaciones" && <TabCotizaciones quotations={quotations} />}
+
+      {active === "finanzas" && finanzas && (
+        <TabFinanzas
+          customerId={data.base.id}
+          customerName={data.base.name}
+          data={finanzas}
+        />
+      )}
+
+      {active === "datos" && datos && (
+        <TabDatos
+          customerId={data.base.id}
+          base={data.base}
+          segments={data.segments}
+          data={datos}
+          canManage={isManagerPlus}
         />
       )}
     </div>
@@ -188,58 +229,3 @@ function Pill({ count }: { count: number }): React.JSX.Element {
   );
 }
 
-function PendingTab({
-  tab,
-  customerId,
-}: {
-  tab: TabDef;
-  customerId: string;
-}): React.JSX.Element {
-  return (
-    <section
-      className="rounded-[var(--r-lg)] p-10 flex flex-col items-center gap-3 text-center"
-      style={{ background: "var(--surf-lowest)" }}
-    >
-      <span
-        className="h-12 w-12 rounded-[var(--r-lg)] flex items-center justify-center"
-        style={{
-          background: "color-mix(in srgb, var(--p) 12%, transparent)",
-          color: "var(--p)",
-        }}
-      >
-        <Icon name={tab.icon} size={20} />
-      </span>
-      <h3
-        className="text-base font-semibold tracking-[-0.01em]"
-        style={{
-          color: "var(--on-surf)",
-          fontFamily: "var(--font-display)",
-        }}
-      >
-        Tab {tab.label}
-      </h3>
-      <p
-        className="text-sm max-w-md"
-        style={{ color: "var(--on-surf-var)" }}
-      >
-        El rediseño de este tab se entrega en la sub-fase {tab.pendingPhase}.
-        Los datos están disponibles en el sistema y se incorporarán aquí en la
-        próxima sesión.
-      </p>
-      {tab.key === "finanzas" && (
-        <Link
-          href={`/reportes/clientes/${customerId}`}
-          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold"
-          style={{
-            borderRadius: "var(--r-full)",
-            background: "var(--surf-high)",
-            color: "var(--on-surf)",
-            fontFamily: "var(--font-display)",
-          }}
-        >
-          <Icon name="report" size={13} /> Ver estado de cuenta actual
-        </Link>
-      )}
-    </section>
-  );
-}
