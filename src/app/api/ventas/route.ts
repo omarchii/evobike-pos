@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 interface SessionUser {
   id: string;
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // Customer name search
   if (params.customer) {
-    where.customer = { name: { contains: params.customer, mode: "insensitive" } };
+    where.customer = { nameNormalized: { contains: normalizeForSearch(params.customer) } };
   }
 
   // Payment method filter via CashTransaction relation

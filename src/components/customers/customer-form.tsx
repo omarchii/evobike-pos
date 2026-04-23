@@ -15,6 +15,7 @@ import { Icon } from "@/components/primitives/icon";
 import { Chip } from "@/components/primitives/chip";
 import { normalizePhoneMX } from "@/lib/customers/phone";
 import { CUSTOMER_SENSITIVE_FIELDS } from "@/lib/customers/validation";
+import { useRegisterBreadcrumbLabel } from "@/lib/breadcrumbs/client-store";
 
 // Listas SAT (coinciden con las del customer-create-form legacy).
 const REGIMENES_FISCALES = [
@@ -77,7 +78,13 @@ const formSchema = z.object({
   usoCFDI: z.string().optional(),
   emailFiscalSame: z.boolean(),
   emailFiscal: z.string().trim().email("Correo fiscal inválido").optional().or(z.literal("")),
-  direccionFiscal: z.string().trim().optional(),
+  fiscalStreet: z.string().trim().optional(),
+  fiscalExtNum: z.string().trim().optional(),
+  fiscalIntNum: z.string().trim().optional(),
+  fiscalColonia: z.string().trim().optional(),
+  fiscalCity: z.string().trim().optional(),
+  fiscalState: z.string().trim().optional(),
+  fiscalZip: z.string().trim().optional(),
 
   shippingSameAsFiscal: z.boolean(),
   shippingStreet: z.string().trim().optional(),
@@ -106,7 +113,13 @@ export interface CustomerFormInitial {
   regimenFiscal: string | null;
   usoCFDI: string | null;
   emailFiscal: string | null;
-  direccionFiscal: string | null;
+  fiscalStreet: string | null;
+  fiscalExtNum: string | null;
+  fiscalIntNum: string | null;
+  fiscalColonia: string | null;
+  fiscalCity: string | null;
+  fiscalState: string | null;
+  fiscalZip: string | null;
   shippingStreet: string | null;
   shippingExtNum: string | null;
   shippingIntNum: string | null;
@@ -147,6 +160,11 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
   const isEdit = mode === "edit";
   const isManagerPlus = role === "ADMIN" || role === "MANAGER";
 
+  useRegisterBreadcrumbLabel(
+    isEdit && initial ? `/customers/${initial.id}` : "",
+    isEdit && initial ? initial.name : null,
+  );
+
   const defaults: FormValues = useMemo(() => {
     if (!initial) {
       return {
@@ -164,7 +182,13 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
         usoCFDI: "",
         emailFiscalSame: true,
         emailFiscal: "",
-        direccionFiscal: "",
+        fiscalStreet: "",
+        fiscalExtNum: "",
+        fiscalIntNum: "",
+        fiscalColonia: "",
+        fiscalCity: "",
+        fiscalState: "",
+        fiscalZip: "",
         shippingSameAsFiscal: false,
         shippingStreet: "",
         shippingExtNum: "",
@@ -193,7 +217,13 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
       usoCFDI: initial.usoCFDI ?? "",
       emailFiscalSame: emailSame,
       emailFiscal: emailSame ? "" : initial.emailFiscal ?? "",
-      direccionFiscal: initial.direccionFiscal ?? "",
+      fiscalStreet: initial.fiscalStreet ?? "",
+      fiscalExtNum: initial.fiscalExtNum ?? "",
+      fiscalIntNum: initial.fiscalIntNum ?? "",
+      fiscalColonia: initial.fiscalColonia ?? "",
+      fiscalCity: initial.fiscalCity ?? "",
+      fiscalState: initial.fiscalState ?? "",
+      fiscalZip: initial.fiscalZip ?? "",
       shippingSameAsFiscal: false,
       shippingStreet: initial.shippingStreet ?? "",
       shippingExtNum: initial.shippingExtNum ?? "",
@@ -303,7 +333,13 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
       regimenFiscal: values.regimenFiscal || null,
       usoCFDI: values.usoCFDI || null,
       emailFiscal: values.emailFiscalSame ? values.email || null : values.emailFiscal || null,
-      direccionFiscal: values.direccionFiscal || null,
+      fiscalStreet: values.fiscalStreet || null,
+      fiscalExtNum: values.fiscalExtNum || null,
+      fiscalIntNum: values.fiscalIntNum || null,
+      fiscalColonia: values.fiscalColonia || null,
+      fiscalCity: values.fiscalCity || null,
+      fiscalState: values.fiscalState || null,
+      fiscalZip: values.fiscalZip || null,
       shippingStreet: values.shippingStreet || null,
       shippingExtNum: values.shippingExtNum || null,
       shippingIntNum: values.shippingIntNum || null,
@@ -316,8 +352,14 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
     if (reason) payload.reason = reason;
 
     if (values.shippingSameAsFiscal) {
-      // La UI copia dirección fiscal → envío en un único string.
-      payload.shippingStreet = values.direccionFiscal || null;
+      // Copia los 7 campos fiscales → envío (shippingRefs no tiene equivalente fiscal).
+      payload.shippingStreet = values.fiscalStreet || null;
+      payload.shippingExtNum = values.fiscalExtNum || null;
+      payload.shippingIntNum = values.fiscalIntNum || null;
+      payload.shippingColonia = values.fiscalColonia || null;
+      payload.shippingCity = values.fiscalCity || null;
+      payload.shippingState = values.fiscalState || null;
+      payload.shippingZip = values.fiscalZip || null;
     }
 
     const url = isEdit ? `/api/customers/${initial!.id}` : `/api/customers`;
@@ -556,8 +598,26 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
                     }}
                   />
                 </FormField>
-                <FormField label="Dirección fiscal" className="col-span-2">
-                  <input {...register("direccionFiscal")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                <FormField label="Calle" className="col-span-2">
+                  <input {...register("fiscalStreet")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="Núm. exterior">
+                  <input {...register("fiscalExtNum")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="Núm. interior">
+                  <input {...register("fiscalIntNum")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="Colonia" className="col-span-2">
+                  <input {...register("fiscalColonia")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="Ciudad">
+                  <input {...register("fiscalCity")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="Estado">
+                  <input {...register("fiscalState")} className={INPUT_CLASS} style={INPUT_STYLE} />
+                </FormField>
+                <FormField label="C.P.">
+                  <input {...register("fiscalZip")} className={INPUT_CLASS} style={INPUT_STYLE} />
                 </FormField>
               </div>
             </Card>

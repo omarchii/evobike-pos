@@ -40,8 +40,8 @@ model User {
   authorizedCashSessions CashRegisterSession[] @relation("CashSessionAuthorizer")
   cashTransactions       CashTransaction[]
 
-  operationalExpensesRegistered OperationalExpense[] @relation("OperationalExpenseRegistradoPor")
-  operationalExpensesAnulled    OperationalExpense[] @relation("OperationalExpenseAnuladoPor")
+  operationalExpensesRegistered OperationalExpense[]  @relation("OperationalExpenseRegistradoPor")
+  operationalExpensesAnulled    OperationalExpense[]  @relation("OperationalExpenseAnuladoPor")
   bankBalanceSnapshots          BankBalanceSnapshot[] @relation("BankBalanceSnapshotRegistradoPor")
 
   transfersCreadas     StockTransfer[] @relation("TransferCreada")
@@ -58,7 +58,7 @@ model User {
 
   // === Reportes v1 ===
   pinnedReports String[] @default([]) // slugs; UI garantiza max 4
-  uiPreferences Json?    // tweaks del panel de reportes (densidad, layouts, etc.)
+  uiPreferences Json? // tweaks del panel de reportes (densidad, layouts, etc.)
 
   // Customers redesign (Sub-fase A)
   customerNotes    CustomerNote[]
@@ -137,16 +137,16 @@ enum ModeloCategoria {
 }
 
 model Modelo {
-  id           String          @id @default(uuid())
-  nombre       String          @unique
+  id           String           @id @default(uuid())
+  nombre       String           @unique
   descripcion  String?
   requiere_vin Boolean          @default(true)
   imageUrl     String?
   categoria    ModeloCategoria? // null = Modelo de batería. Vehículos: una de las 7 categorías.
   esBateria    Boolean          @default(false)
-  isActive     Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   coloresDisponibles ModeloColor[]
   configuraciones    ProductVariant[]
@@ -394,18 +394,18 @@ enum CashDepositCategory {
 }
 
 model CashRegisterSession {
-  id         String    @id @default(uuid())
-  branchId   String
-  userId     String
-  openedAt   DateTime  @default(now())
-  closedAt   DateTime?
+  id                String    @id @default(uuid())
+  branchId          String
+  userId            String
+  openedAt          DateTime  @default(now())
+  closedAt          DateTime?
   // Efectivo exclusivamente. Tarjeta/transferencia no aplican.
-  openingAmt     Decimal  @db.Decimal(10, 2)
-  closingAmt     Decimal? @db.Decimal(10, 2)
-  diferencia     Decimal? @db.Decimal(10, 2) // closingAmt - expectedAmt calculado server-side al cerrar; null mientras status = OPEN
-  authorizedById   String? // User que autorizó el cierre con diferencia (MANAGER/ADMIN). null si diferencia = 0 o SELLER sin diferencia.
-  status           String  @default("OPEN") // OPEN, CLOSED
-  denominationsJson Json?  // Desglose de billetes contados al cierre: { "1000": 2, "500": 3, ... }. null en sesiones legacy.
+  openingAmt        Decimal   @db.Decimal(10, 2)
+  closingAmt        Decimal?  @db.Decimal(10, 2)
+  diferencia        Decimal?  @db.Decimal(10, 2) // closingAmt - expectedAmt calculado server-side al cerrar; null mientras status = OPEN
+  authorizedById    String? // User que autorizó el cierre con diferencia (MANAGER/ADMIN). null si diferencia = 0 o SELLER sin diferencia.
+  status            String    @default("OPEN") // OPEN, CLOSED
+  denominationsJson Json? // Desglose de billetes contados al cierre: { "1000": 2, "500": 3, ... }. null en sesiones legacy.
 
   branch             Branch                @relation(fields: [branchId], references: [id])
   user               User                  @relation(fields: [userId], references: [id])
@@ -442,13 +442,16 @@ model CashTransaction {
 
 // === CRM ===
 model Customer {
-  id          String  @id @default(uuid())
-  name        String
-  phone       String?
-  phone2      String?
-  email       String?
-  creditLimit Decimal @default(0) @db.Decimal(10, 2)
-  balance     Decimal @default(0) @db.Decimal(10, 2)
+  id             String  @id @default(uuid())
+  name           String
+  // Derivado de `name`: minúsculas + sin acentos. Poblado en create/update
+  // para permitir búsqueda tolerante ("jose" matchea "José"). Indexado.
+  nameNormalized String  @default("")
+  phone          String?
+  phone2         String?
+  email          String?
+  creditLimit    Decimal @default(0) @db.Decimal(10, 2)
+  balance        Decimal @default(0) @db.Decimal(10, 2)
 
   // Dirección para flete (todos opcionales)
   shippingStreet  String?
@@ -466,6 +469,17 @@ model Customer {
   regimenFiscal   String?
   usoCFDI         String?
   emailFiscal     String?
+  // Dirección fiscal desglosada (los nuevos formularios escriben aquí).
+  fiscalStreet    String?
+  fiscalExtNum    String?
+  fiscalIntNum    String?
+  fiscalColonia   String?
+  fiscalCity      String?
+  fiscalState     String?
+  fiscalZip       String?
+  // Legacy: dirección fiscal en un único string. Se conserva para no perder
+  // datos capturados antes de la migración a campos desglosados. Los
+  // endpoints ya no escriben aquí; lectura fallback para registros antiguos.
   direccionFiscal String?
 
   // === Customers redesign — Sub-fase A ===
@@ -486,8 +500,8 @@ model Customer {
   cashTransactions CashTransaction[]
 
   // Soft-merge self-relation
-  mergedInto       Customer?  @relation("CustomerMerge", fields: [mergedIntoId], references: [id])
-  mergedSources    Customer[] @relation("CustomerMerge")
+  mergedInto    Customer?  @relation("CustomerMerge", fields: [mergedIntoId], references: [id])
+  mergedSources Customer[] @relation("CustomerMerge")
 
   notes    CustomerNote[]
   editLogs CustomerEditLog[]
@@ -496,6 +510,7 @@ model Customer {
   @@index([deletedAt])
   @@index([phone])
   @@index([email])
+  @@index([nameNormalized])
 }
 
 enum CustomerDeleteReason {
@@ -555,18 +570,18 @@ enum CustomerNoteKind {
 }
 
 model CustomerEditLog {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
+  customer       Customer      @relation(fields: [customerId], references: [id])
   customerBikeId String? // opcional — para ediciones sobre CustomerBike (ej. odómetro)
   customerBike   CustomerBike? @relation(fields: [customerBikeId], references: [id])
   userId         String
-  user           User     @relation(fields: [userId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
   field          String // "rfc" | "creditLimit" | "razonSocial" | "phone" | "odometerKm" | ...
   oldValue       String?
   newValue       String?
   reason         String? // motivo capturado en diálogos de confirmación
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
 
   @@index([customerId, createdAt(sort: Desc)])
   @@index([customerBikeId, field])
@@ -628,13 +643,13 @@ model ServiceOrder {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  branch       Branch             @relation(fields: [branchId], references: [id])
-  user         User               @relation(fields: [userId], references: [id])
-  customer     Customer           @relation(fields: [customerId], references: [id])
-  customerBike CustomerBike?      @relation(fields: [customerBikeId], references: [id])
-  items        ServiceOrderItem[]
-  sale         Sale?
-  prepaid      Boolean            @default(false)
+  branch        Branch             @relation(fields: [branchId], references: [id])
+  user          User               @relation(fields: [userId], references: [id])
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  customerBike  CustomerBike?      @relation(fields: [customerBikeId], references: [id])
+  items         ServiceOrderItem[]
+  sale          Sale?
+  prepaid       Boolean            @default(false)
   // Hotfix (2026-04-22) — aditivo, NULL para órdenes existentes con
   // prepaid=true. Poblado por /charge (E.2) + backfill script one-shot.
   // prepaidMethod — regla canónica:
@@ -647,26 +662,26 @@ model ServiceOrder {
   prepaidMethod  PaymentMethod?
 
   // Workshop redesign (Sub-fase A) — aditivo, todos nullable o con default
-  assignedTechId       String?
-  assignedTech         User?                  @relation("ServiceOrderAssignedTech", fields: [assignedTechId], references: [id])
-  servicedByUserId     String?
-  servicedByUser       User?                  @relation("ServiceOrderServicedBy", fields: [servicedByUserId], references: [id])
-  type                 ServiceOrderType       @default(PAID)
-  subStatus            ServiceOrderSubStatus? // solo relevante mientras status = IN_PROGRESS
-  qaPassedAt           DateTime?
-  qaPassedByUserId     String?
-  qaPassedByUser       User?                  @relation("ServiceOrderQaPassedBy", fields: [qaPassedByUserId], references: [id])
-  qaNotes              String?
-  publicToken          String?                @unique
-  publicTokenEnabled   Boolean                @default(true)
-  approvals            ServiceOrderApproval[]
+  assignedTechId     String?
+  assignedTech       User?                  @relation("ServiceOrderAssignedTech", fields: [assignedTechId], references: [id])
+  servicedByUserId   String?
+  servicedByUser     User?                  @relation("ServiceOrderServicedBy", fields: [servicedByUserId], references: [id])
+  type               ServiceOrderType       @default(PAID)
+  subStatus          ServiceOrderSubStatus? // solo relevante mientras status = IN_PROGRESS
+  qaPassedAt         DateTime?
+  qaPassedByUserId   String?
+  qaPassedByUser     User?                  @relation("ServiceOrderQaPassedBy", fields: [qaPassedByUserId], references: [id])
+  qaNotes            String?
+  publicToken        String?                @unique
+  publicTokenEnabled Boolean                @default(true)
+  approvals          ServiceOrderApproval[]
 
   // Workshop redesign (Sub-fase C — Recepción)
-  checklist            Json?      // [{key, state: "OK"|"FAIL"|"NA", note?}]
-  signatureData        String?    // base64 PNG (data URL); null si rechazada
-  signatureRejected    Boolean    @default(false)
-  photoUrls            Json?      // string[] — rutas a /public/workshop/...
-  expectedDeliveryDate String?    // "YYYY-MM-DD" — NO DateTime (patrón fechaVencimiento)
+  checklist            Json? // [{key, state: "OK"|"FAIL"|"NA", note?}]
+  signatureData        String? // base64 PNG (data URL); null si rechazada
+  signatureRejected    Boolean @default(false)
+  photoUrls            Json? // string[] — rutas a /public/workshop/...
+  expectedDeliveryDate String? // "YYYY-MM-DD" — NO DateTime (patrón fechaVencimiento)
 
   @@index([branchId, status])
   @@index([assignedTechId])
@@ -691,8 +706,8 @@ model ServiceOrderItem {
   serviceCatalog      ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
 
   // Workshop redesign (Sub-fase A)
-  laborMinutes Int?                         // solo cuando serviceCatalog.chargeModel = HOURLY
-  isExtra      Boolean  @default(false)     // true = agregado post-diagnóstico (requiere approval)
+  laborMinutes Int? // solo cuando serviceCatalog.chargeModel = HOURLY
+  isExtra      Boolean  @default(false) // true = agregado post-diagnóstico (requiere approval)
   createdAt    DateTime @default(now())
 }
 
@@ -753,7 +768,7 @@ model ServiceCatalog {
 
   // Workshop redesign (Sub-fase A) — mano de obra mixta (decisión #3 BRIEF)
   chargeModel      ChargeModel @default(FIXED)
-  estimatedMinutes Int?        // informativo en FIXED; base de cálculo en HOURLY
+  estimatedMinutes Int? // informativo en FIXED; base de cálculo en HOURLY
 
   branch            Branch             @relation(fields: [branchId], references: [id])
   serviceOrderItems ServiceOrderItem[]
@@ -766,7 +781,7 @@ model ServiceCatalog {
 model ServiceOrderApproval {
   id              String                       @id @default(uuid())
   serviceOrderId  String
-  itemsJson       Json                         // [{ nombre, cantidad, precio, subtotal }]
+  itemsJson       Json // [{ nombre, cantidad, precio, subtotal }]
   totalEstimado   Decimal                      @db.Decimal(10, 2)
   status          ServiceOrderApprovalStatus   @default(PENDING)
   channel         ServiceOrderApprovalChannel? // null mientras status = PENDING
@@ -832,9 +847,9 @@ model BatteryConfiguration {
   batteryVariantId String @map("batteryProductId")
   quantity         Int
 
-  modelo         Modelo         @relation(fields: [modeloId], references: [id])
-  voltaje        Voltaje        @relation(fields: [voltajeId], references: [id])
-  batteryVariant ProductVariant @relation("ConfiguredBattery", fields: [batteryVariantId], references: [id])
+  modelo         Modelo          @relation(fields: [modeloId], references: [id])
+  voltaje        Voltaje         @relation(fields: [voltajeId], references: [id])
+  batteryVariant ProductVariant  @relation("ConfiguredBattery", fields: [batteryVariantId], references: [id])
   assemblyOrders AssemblyOrder[]
 
   @@unique([modeloId, voltajeId, batteryVariantId])
@@ -862,14 +877,14 @@ model BatteryLot {
 }
 
 model Battery {
-  id               String        @id @default(cuid())
-  serialNumber     String        @unique
-  lotId            String
-  branchId         String
-  status           BatteryStatus @default(IN_STOCK)
-  assemblyOrderId  String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  serialNumber    String        @unique
+  lotId           String
+  branchId        String
+  status          BatteryStatus @default(IN_STOCK)
+  assemblyOrderId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   lot                BatteryLot          @relation(fields: [lotId], references: [id])
   branch             Branch              @relation(fields: [branchId], references: [id])
@@ -1081,7 +1096,7 @@ model PurchaseReceipt {
   facturaUrl            String?
   formaPagoProveedor    FormaPagoProveedor
   estadoPago            EstadoPagoProveedor
-  fechaVencimiento      String?             // "YYYY-MM-DD" — fecha calendario sin tz
+  fechaVencimiento      String? // "YYYY-MM-DD" — fecha calendario sin tz
   fechaPago             DateTime?
   totalPagado           Decimal             @db.Decimal(12, 2)
   notas                 String?
@@ -1266,16 +1281,16 @@ model StockTransferItem {
 // === REPORTS v1 ===
 
 enum ThresholdComparator {
-  LT  // menor que
+  LT // menor que
   LTE // menor o igual
-  GT  // mayor que
+  GT // mayor que
   GTE // mayor o igual
-  EQ  // igual
+  EQ // igual
 }
 
 model AlertThreshold {
   id             String              @id @default(uuid())
-  metricKey      String              // alineado con ALERT_METRICS en src/lib/reportes/alert-metrics.ts
+  metricKey      String // alineado con ALERT_METRICS en src/lib/reportes/alert-metrics.ts
   branchId       String
   branch         Branch              @relation(fields: [branchId], references: [id])
   thresholdValue Decimal             @db.Decimal(10, 2)

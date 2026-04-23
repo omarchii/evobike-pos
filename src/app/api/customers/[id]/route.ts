@@ -12,6 +12,7 @@ import {
   isManagerPlus,
   writeCustomerEditLog,
 } from "@/lib/customers/service";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 // Campos que SELLER puede editar.
 const SELLER_WRITABLE: readonly string[] = [
@@ -35,7 +36,13 @@ const SELLER_WRITABLE: readonly string[] = [
   "regimenFiscal",
   "usoCFDI",
   "emailFiscal",
-  "direccionFiscal",
+  "fiscalStreet",
+  "fiscalExtNum",
+  "fiscalIntNum",
+  "fiscalColonia",
+  "fiscalCity",
+  "fiscalState",
+  "fiscalZip",
 ];
 
 // Campos que requieren MANAGER+.
@@ -145,6 +152,9 @@ export async function PUT(
       const updateData: Prisma.CustomerUpdateInput = { ...(patch as Prisma.CustomerUpdateInput) };
       if ("phone" in patch && patch.phone !== before.phone) {
         updateData.phonePrevious = before.phone;
+      }
+      if ("name" in patch && typeof patch.name === "string") {
+        updateData.nameNormalized = normalizeForSearch(patch.name);
       }
 
       const after = await tx.customer.update({ where: { id }, data: updateData });

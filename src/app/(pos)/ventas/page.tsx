@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { SalesHistoryTable } from "./sales-history-table";
 import type { Prisma } from "@prisma/client";
 import { parseLocalDate } from "@/lib/reportes/date-range";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 export const dynamic = "force-dynamic";
 
@@ -95,7 +96,7 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
   }
 
   if (customerParam) {
-    where.customer = { name: { contains: customerParam, mode: "insensitive" } };
+    where.customer = { nameNormalized: { contains: normalizeForSearch(customerParam) } };
   }
 
   if (paymentMethodParam) {

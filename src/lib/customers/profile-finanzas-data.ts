@@ -225,6 +225,13 @@ export interface DatosData {
     razonSocial: string | null;
     regimenFiscal: string | null;
     usoCFDI: string | null;
+    fiscalStreet: string | null;
+    fiscalExtNum: string | null;
+    fiscalIntNum: string | null;
+    fiscalColonia: string | null;
+    fiscalCity: string | null;
+    fiscalState: string | null;
+    fiscalZip: string | null;
     direccionFiscal: string | null;
     shippingStreet: string | null;
     shippingExtNum: string | null;
@@ -256,6 +263,13 @@ export async function getCustomerDatosData(
         razonSocial: true,
         regimenFiscal: true,
         usoCFDI: true,
+        fiscalStreet: true,
+        fiscalExtNum: true,
+        fiscalIntNum: true,
+        fiscalColonia: true,
+        fiscalCity: true,
+        fiscalState: true,
+        fiscalZip: true,
         direccionFiscal: true,
         shippingStreet: true,
         shippingExtNum: true,
@@ -327,6 +341,13 @@ export async function getCustomerDatosData(
       razonSocial: customer.razonSocial,
       regimenFiscal: customer.regimenFiscal,
       usoCFDI: customer.usoCFDI,
+      fiscalStreet: customer.fiscalStreet,
+      fiscalExtNum: customer.fiscalExtNum,
+      fiscalIntNum: customer.fiscalIntNum,
+      fiscalColonia: customer.fiscalColonia,
+      fiscalCity: customer.fiscalCity,
+      fiscalState: customer.fiscalState,
+      fiscalZip: customer.fiscalZip,
       direccionFiscal: customer.direccionFiscal,
       shippingStreet: customer.shippingStreet,
       shippingExtNum: customer.shippingExtNum,

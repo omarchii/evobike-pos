@@ -15,6 +15,7 @@ import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
 import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
 import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 import type { SessionUser } from "@/lib/auth-types";
 
 // Item del payload al crear la orden. Todos son opcionales: el wizard de
@@ -223,13 +224,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       customer = await prisma.customer.create({
         data: {
           name: input.customerName,
+          nameNormalized: normalizeForSearch(input.customerName),
           phone: input.customerPhone || null,
         },
       });
     } else if (!input.customerId && customer.name !== input.customerName) {
       customer = await prisma.customer.update({
         where: { id: customer.id },
-        data: { name: input.customerName },
+        data: {
+          name: input.customerName,
+          nameNormalized: normalizeForSearch(input.customerName),
+        },
       });
     }
 

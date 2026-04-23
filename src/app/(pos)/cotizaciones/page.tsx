@@ -8,6 +8,7 @@ import QuotationsTable from "./_components/quotations-table";
 import QuotationsFilters from "./_components/quotations-filters";
 import QuotationsKpiStrip from "./_components/quotations-kpi-strip";
 import type { QuotationRow } from "./_components/quotations-table";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ export default async function CotizacionesPage({
     ? {
         OR: [
           { folio: { contains: q, mode: "insensitive" as const } },
-          { customer: { name: { contains: q, mode: "insensitive" as const } } },
+          { customer: { nameNormalized: { contains: normalizeForSearch(q) } } },
           { anonymousCustomerName: { contains: q, mode: "insensitive" as const } },
         ],
       }

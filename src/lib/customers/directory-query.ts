@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { listableCustomerWhere } from "./service";
 import { computeSegmentChips, type SegmentChip } from "./segmentation";
+import { normalizeForSearch } from "./normalize";
 
 export interface DirectoryCustomerRow {
   id: string;
@@ -64,7 +65,7 @@ function buildBaseWhere(filters: DirectoryFilters): Prisma.CustomerWhereInput {
   const qClause: Prisma.CustomerWhereInput | undefined = filters.q
     ? {
         OR: [
-          { name: { contains: filters.q, mode: "insensitive" } },
+          { nameNormalized: { contains: normalizeForSearch(filters.q) } },
           { phone: { contains: filters.q.replace(/\D/g, "") || filters.q } },
           { email: { contains: filters.q, mode: "insensitive" } },
           { rfc: { contains: filters.q.toUpperCase() } },

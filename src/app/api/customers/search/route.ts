@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthedUser } from "@/lib/auth-helpers";
 import { normalizePhoneMX } from "@/lib/customers/phone";
 import { listableCustomerWhere } from "@/lib/customers/service";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 // GET /api/customers/search
 //
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       where: {
         ...base,
         OR: [
-          { name: { contains: q, mode: "insensitive" } },
+          { nameNormalized: { contains: normalizeForSearch(q) } },
           { phone: { contains: phoneTerm ?? q } },
           { email: { contains: q, mode: "insensitive" } },
           { rfc: { contains: qUpper } },

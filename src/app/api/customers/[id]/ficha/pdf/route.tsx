@@ -175,6 +175,21 @@ export async function GET(
     .filter(Boolean)
     .join(" ");
 
+  // Prefiere los 7 campos desglosados; si están vacíos, cae a legacy
+  // direccionFiscal (text libre capturado antes de Sub-fase de split).
+  const direccionFiscalComposed =
+    [
+      customer.fiscalStreet,
+      customer.fiscalExtNum && `#${customer.fiscalExtNum}`,
+      customer.fiscalIntNum && `int. ${customer.fiscalIntNum}`,
+      customer.fiscalColonia,
+      customer.fiscalCity,
+      customer.fiscalState,
+      customer.fiscalZip && `CP ${customer.fiscalZip}`,
+    ]
+      .filter(Boolean)
+      .join(", ") || customer.direccionFiscal;
+
   const buffer = await renderToBuffer(
     <CustomerFichaPDF
       data={{
@@ -197,7 +212,7 @@ export async function GET(
           regimenFiscal: customer.regimenFiscal,
           usoCFDI: customer.usoCFDI,
           emailFiscal: customer.emailFiscal,
-          direccionFiscal: customer.direccionFiscal,
+          direccionFiscal: direccionFiscalComposed,
         },
         kpis: {
           ltvTotal: fmtMXN(ltvTotal),

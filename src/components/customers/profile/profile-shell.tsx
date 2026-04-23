@@ -8,6 +8,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTransition } from "react";
+import { useRegisterBreadcrumbLabel } from "@/lib/breadcrumbs/client-store";
 import { Icon, type IconName } from "@/components/primitives/icon";
 import { CustomerDetailHeader } from "./customer-detail-header";
 import { CustomerKpiStrip } from "./customer-kpi-strip";
@@ -85,6 +86,8 @@ export function CustomerProfileShell({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
+
+  useRegisterBreadcrumbLabel(`/customers/${data.base.id}`, data.base.name);
 
   const isManagerPlus = role === "ADMIN" || role === "MANAGER";
   const canPin = isManagerPlus;

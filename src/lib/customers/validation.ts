@@ -83,6 +83,14 @@ export const customerCreateSchema = z.object({
   regimenFiscal: optionalString(),
   usoCFDI: optionalString(),
   emailFiscal: optionalEmail(),
+  fiscalStreet: optionalString(),
+  fiscalExtNum: optionalString(),
+  fiscalIntNum: optionalString(),
+  fiscalColonia: optionalString(),
+  fiscalCity: optionalString(),
+  fiscalState: optionalString(),
+  fiscalZip: optionalString(),
+  // Legacy (solo lectura; nuevas capturas usan los 7 campos desglosados).
   direccionFiscal: optionalString(),
 });
 

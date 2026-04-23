@@ -160,7 +160,16 @@ export function TabDatos({
         <Field label="Régimen fiscal" value={data.base.regimenFiscal} />
         <Field label="Uso CFDI" value={data.base.usoCFDI} />
         <Field label="Correo fiscal" value={data.base.emailFiscal} />
-        <Field label="Dirección fiscal" value={data.base.direccionFiscal} />
+        <Field label="Calle" value={data.base.fiscalStreet} />
+        <Field label="Num Ext" value={data.base.fiscalExtNum} />
+        <Field label="Num Int" value={data.base.fiscalIntNum} />
+        <Field label="Colonia" value={data.base.fiscalColonia} />
+        <Field label="Ciudad" value={data.base.fiscalCity} />
+        <Field label="Estado" value={data.base.fiscalState} />
+        <Field label="CP" value={data.base.fiscalZip} />
+        {!data.base.fiscalStreet && data.base.direccionFiscal && (
+          <Field label="Dirección fiscal (legacy)" value={data.base.direccionFiscal} />
+        )}
       </Section>
 
       <Section title="Dirección de envío">

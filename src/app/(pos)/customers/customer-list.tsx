@@ -10,7 +10,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { DetailHeader } from "@/components/reportes/shell/detail-header";
 import { KpiGrid, type KpiSpec } from "@/components/reportes/shell/kpi-grid";
 import { Chip } from "@/components/primitives/chip";
 import { Icon } from "@/components/primitives/icon";
@@ -215,13 +214,7 @@ export function CustomerDirectoryView({
 
   return (
     <div className="space-y-4">
-      <DetailHeader
-        title="Clientes"
-        subtitle={`${total} cliente${total === 1 ? "" : "s"} · Sucursal global`}
-        onExport={handleExportCSV}
-      />
-
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
           href="/customers/new"
           className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold"
@@ -236,19 +229,29 @@ export function CustomerDirectoryView({
           <Icon name="plus" size={16} /> Nuevo cliente
         </Link>
 
-        {canSeeDeleted && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {canSeeDeleted && (
+            <button
+              onClick={() => updateParams({ showDeleted: filters.showDeleted ? null : "1" })}
+              className="flex items-center gap-1.5 rounded-[var(--r-full)] px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                background: filters.showDeleted ? "var(--surf-highest)" : "var(--surf-high)",
+                color: "var(--on-surf)",
+              }}
+            >
+              <Icon name={filters.showDeleted ? "eye" : "eyeOff"} size={13} />
+              {filters.showDeleted ? "Incluyendo eliminados" : "Mostrar eliminados"}
+            </button>
+          )}
           <button
-            onClick={() => updateParams({ showDeleted: filters.showDeleted ? null : "1" })}
+            onClick={handleExportCSV}
             className="flex items-center gap-1.5 rounded-[var(--r-full)] px-3 py-1.5 text-xs font-medium transition-colors"
-            style={{
-              background: filters.showDeleted ? "var(--surf-highest)" : "var(--surf-high)",
-              color: "var(--on-surf)",
-            }}
+            style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
           >
-            <Icon name={filters.showDeleted ? "eye" : "eyeOff"} size={13} />
-            {filters.showDeleted ? "Incluyendo eliminados" : "Mostrar eliminados"}
+            <Icon name="export" size={13} />
+            Exportar
           </button>
-        )}
+        </div>
       </div>
 
       <KpiGrid kpis={kpis} />
@@ -298,6 +301,12 @@ export function CustomerDirectoryView({
               </button>
             );
           })}
+          <span
+            className="ml-auto text-xs tabular-nums"
+            style={{ color: "var(--on-surf-var)" }}
+          >
+            {total} resultado{total === 1 ? "" : "s"}
+          </span>
         </div>
       </div>
 
@@ -341,9 +350,9 @@ export function CustomerDirectoryView({
         style={{ background: "var(--surf-lowest)" }}
       >
         <div
-          className="px-4 py-2.5 text-[0.6875rem] uppercase tracking-[0.05em] grid items-center"
+          className="px-4 py-2.5 text-[0.6875rem] uppercase tracking-[0.05em] grid items-center gap-x-4"
           style={{
-            gridTemplateColumns: "32px 2fr 1.2fr 80px 1fr 1.2fr 1.2fr 1.6fr",
+            gridTemplateColumns: "32px 2fr 1.2fr 80px 1fr 0.9fr 1fr 1.3fr 56px",
             color: "var(--on-surf-var)",
             background: "var(--surf-low)",
             fontWeight: 500,
@@ -357,11 +366,12 @@ export function CustomerDirectoryView({
           />
           <span>Cliente</span>
           <span>Ciudad</span>
-          <span>Bicis</span>
-          <span>Última compra</span>
-          <span className="text-right">LTV</span>
-          <span className="text-right">Saldo</span>
+          <span className="text-center">Bicis</span>
+          <span className="text-center">Última compra</span>
+          <span className="text-center">LTV</span>
+          <span className="text-center">Saldo</span>
           <span>Alertas</span>
+          <span className="text-center">Acciones</span>
         </div>
 
         {rows.length === 0 ? (
@@ -432,9 +442,9 @@ function DirectoryRow({
 
   return (
     <div
-      className="px-4 py-3 grid items-center text-sm border-t"
+      className="px-4 py-3 grid items-center text-sm border-t gap-x-4"
       style={{
-        gridTemplateColumns: "32px 2fr 1.2fr 80px 1fr 1.2fr 1.2fr 1.6fr",
+        gridTemplateColumns: "32px 2fr 1.2fr 80px 1fr 0.9fr 1fr 1.3fr 56px",
         borderColor: "var(--surf-low)",
         color: "var(--on-surf)",
       }}
@@ -474,14 +484,10 @@ function DirectoryRow({
             )}
           </Link>
           <div className="flex items-center gap-2 text-[0.6875rem]" style={{ color: "var(--on-surf-var)" }}>
-            {row.rfc && <span className="font-mono">{row.rfc}</span>}
             {row.phone && (
-              <>
-                <span>·</span>
-                <button onClick={onCopyPhone} className="hover:underline" title="Copiar teléfono">
-                  {formatPhoneDisplay(row.phone)}
-                </button>
-              </>
+              <button onClick={onCopyPhone} className="hover:underline" title="Copiar teléfono">
+                {formatPhoneDisplay(row.phone)}
+              </button>
             )}
           </div>
         </div>
@@ -489,53 +495,51 @@ function DirectoryRow({
       <div className="text-xs truncate" style={{ color: "var(--on-surf-var)" }}>
         {row.shippingCity ? `${row.shippingCity}${row.shippingState ? `, ${row.shippingState}` : ""}` : "—"}
       </div>
-      <div className="flex items-center gap-1 text-xs" style={{ color: "var(--on-surf-var)" }}>
+      <div className="flex items-center justify-center gap-1 text-xs" style={{ color: "var(--on-surf-var)" }}>
         <Icon name="bike" size={13} />
         {row.bikesCount}
       </div>
-      <div className="text-xs" style={{ color: "var(--on-surf-var)" }}>
+      <div className="text-center text-xs" style={{ color: "var(--on-surf-var)" }}>
         {row.lastSaleAt ? formatRelative(row.lastSaleAt) : "—"}
       </div>
-      <div className="text-right tabular-nums font-semibold">{formatMXN(row.ltv)}</div>
-      <div className="text-right tabular-nums">
+      <div className="text-center tabular-nums font-semibold">{formatMXN(row.ltv)}</div>
+      <div className="text-center tabular-nums">
         <span>{formatMXN(row.balance)}</span>
         {row.arPending > 0 && (
-          <div className="mt-0.5 flex justify-end">
+          <div className="mt-0.5 flex justify-center">
             <Chip variant="warn" label={`Por cobrar ${formatMXN(row.arPending, { compact: true })}`} />
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between gap-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-1 min-w-0">
-          {alertChips.map((chip) => (
-            <span key={chip} title={SEGMENT_TOOLTIPS[chip]}>
-              <Chip variant={CHIP_VARIANT[chip] ?? "neutral"} label={SEGMENT_LABELS[chip]} />
-            </span>
-          ))}
-          {overflow > 0 && (
-            <span
-              className="text-[0.625rem] font-medium"
-              style={{ color: "var(--on-surf-var)" }}
-              title={row.chips.slice(2).map((c) => SEGMENT_LABELS[c]).join(" · ")}
-            >
-              +{overflow}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {waUrl && (
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-7 w-7 rounded-full flex items-center justify-center"
-              style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
-              title="WhatsApp"
-            >
-              <Icon name="share" size={13} />
-            </a>
-          )}
-        </div>
+      <div className="flex flex-wrap items-center gap-1 min-w-0">
+        {alertChips.map((chip) => (
+          <span key={chip} title={SEGMENT_TOOLTIPS[chip]}>
+            <Chip variant={CHIP_VARIANT[chip] ?? "neutral"} label={SEGMENT_LABELS[chip]} />
+          </span>
+        ))}
+        {overflow > 0 && (
+          <span
+            className="text-[0.625rem] font-medium"
+            style={{ color: "var(--on-surf-var)" }}
+            title={row.chips.slice(2).map((c) => SEGMENT_LABELS[c]).join(" · ")}
+          >
+            +{overflow}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-center">
+        {waUrl && (
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-7 w-7 rounded-full flex items-center justify-center"
+            style={{ background: "var(--surf-high)", color: "var(--on-surf)" }}
+            title="WhatsApp"
+          >
+            <Icon name="share" size={13} />
+          </a>
+        )}
       </div>
     </div>
   );

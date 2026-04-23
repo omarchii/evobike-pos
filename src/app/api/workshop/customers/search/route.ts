@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 import type { SessionUser } from "@/lib/auth-types";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const customers = await prisma.customer.findMany({
     where: {
       OR: [
-        { name: { contains: q, mode: "insensitive" } },
+        { nameNormalized: { contains: normalizeForSearch(q) } },
         { phone: { contains: q } },
         { rfc: { contains: q, mode: "insensitive" } },
       ],

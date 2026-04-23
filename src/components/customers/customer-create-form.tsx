@@ -70,6 +70,7 @@ const schema = z.object({
   email: z.string().email("Correo inválido").optional().or(z.literal("")),
   communicationConsent: z.boolean().optional(),
 
+  shippingSameAsFiscal: z.boolean().optional(),
   shippingStreet: z.string().optional(),
   shippingExtNum: z.string().optional(),
   shippingIntNum: z.string().optional(),
@@ -84,7 +85,13 @@ const schema = z.object({
   regimenFiscal: z.string().optional(),
   usoCFDI: z.string().optional(),
   emailFiscal: z.string().email("Correo fiscal inválido").optional().or(z.literal("")),
-  direccionFiscal: z.string().optional(),
+  fiscalStreet: z.string().optional(),
+  fiscalExtNum: z.string().optional(),
+  fiscalIntNum: z.string().optional(),
+  fiscalColonia: z.string().optional(),
+  fiscalCity: z.string().optional(),
+  fiscalState: z.string().optional(),
+  fiscalZip: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -254,11 +261,23 @@ export function CustomerCreateForm({
 
   async function onSubmit(values: FormValues) {
     setSaving(true);
+    // Si el usuario marcó "misma dirección que facturación", copiamos los 7
+    // campos fiscales hacia los de envío antes de enviar.
+    const payload: FormValues = { ...values };
+    if (values.shippingSameAsFiscal) {
+      payload.shippingStreet = values.fiscalStreet ?? "";
+      payload.shippingExtNum = values.fiscalExtNum ?? "";
+      payload.shippingIntNum = values.fiscalIntNum ?? "";
+      payload.shippingColonia = values.fiscalColonia ?? "";
+      payload.shippingCity = values.fiscalCity ?? "";
+      payload.shippingState = values.fiscalState ?? "";
+      payload.shippingZip = values.fiscalZip ?? "";
+    }
     try {
       const res = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       const json: unknown = await res.json();
       if (
@@ -377,62 +396,73 @@ export function CustomerCreateForm({
       {!quickMode && (
         <div className="mb-5">
           <CollapsibleSection title="Dirección para flete">
-          <Field label="Calle" className="col-span-2">
-            <Input
-              {...register("shippingStreet")}
-              placeholder="Av. Principal"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Núm. exterior">
-            <Input
-              {...register("shippingExtNum")}
-              placeholder="123"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Núm. interior">
-            <Input
-              {...register("shippingIntNum")}
-              placeholder="A"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Colonia" className="col-span-2">
-            <Input
-              {...register("shippingColonia")}
-              placeholder="Col. Centro"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Ciudad">
-            <Input
-              {...register("shippingCity")}
-              placeholder="León"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Estado">
-            <Input
-              {...register("shippingState")}
-              placeholder="Guanajuato"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="C.P.">
-            <Input
-              {...register("shippingZip")}
-              placeholder="37000"
-              style={INPUT_STYLE}
-            />
-          </Field>
-          <Field label="Referencias" className="col-span-2">
-            <Input
-              {...register("shippingRefs")}
-              placeholder="Entre calles, color de fachada…"
-              style={INPUT_STYLE}
-            />
-          </Field>
+          <label
+            className="col-span-2 flex items-center gap-2 text-xs cursor-pointer"
+            style={{ color: "var(--on-surf-var)" }}
+          >
+            <input type="checkbox" {...register("shippingSameAsFiscal")} />
+            Misma dirección que facturación
+          </label>
+          {!watch("shippingSameAsFiscal") && (
+            <>
+              <Field label="Calle" className="col-span-2">
+                <Input
+                  {...register("shippingStreet")}
+                  placeholder="Av. Principal"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Núm. exterior">
+                <Input
+                  {...register("shippingExtNum")}
+                  placeholder="123"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Núm. interior">
+                <Input
+                  {...register("shippingIntNum")}
+                  placeholder="A"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Colonia" className="col-span-2">
+                <Input
+                  {...register("shippingColonia")}
+                  placeholder="Col. Centro"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Ciudad">
+                <Input
+                  {...register("shippingCity")}
+                  placeholder="León"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Estado">
+                <Input
+                  {...register("shippingState")}
+                  placeholder="Guanajuato"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="C.P.">
+                <Input
+                  {...register("shippingZip")}
+                  placeholder="37000"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+              <Field label="Referencias" className="col-span-2">
+                <Input
+                  {...register("shippingRefs")}
+                  placeholder="Entre calles, color de fachada…"
+                  style={INPUT_STYLE}
+                />
+              </Field>
+            </>
+          )}
         </CollapsibleSection>
       </div>
       )}
@@ -502,10 +532,52 @@ export function CustomerCreateForm({
               style={INPUT_STYLE}
             />
           </Field>
-          <Field label="Dirección fiscal" className="col-span-2">
+          <Field label="Calle" className="col-span-2">
             <Input
-              {...register("direccionFiscal")}
-              placeholder="Dirección registrada en el SAT"
+              {...register("fiscalStreet")}
+              placeholder="Av. Principal"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="Núm. exterior">
+            <Input
+              {...register("fiscalExtNum")}
+              placeholder="123"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="Núm. interior">
+            <Input
+              {...register("fiscalIntNum")}
+              placeholder="A"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="Colonia" className="col-span-2">
+            <Input
+              {...register("fiscalColonia")}
+              placeholder="Col. Centro"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="Ciudad">
+            <Input
+              {...register("fiscalCity")}
+              placeholder="León"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="Estado">
+            <Input
+              {...register("fiscalState")}
+              placeholder="Guanajuato"
+              style={INPUT_STYLE}
+            />
+          </Field>
+          <Field label="C.P.">
+            <Input
+              {...register("fiscalZip")}
+              placeholder="37000"
               style={INPUT_STYLE}
             />
           </Field>

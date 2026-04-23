@@ -12,6 +12,7 @@ import { Icon } from "@/components/primitives/icon";
 import { Chip } from "@/components/primitives/chip";
 import { formatMXN } from "@/lib/format";
 import { formatPhoneDisplay } from "@/lib/customers/phone";
+import { useRegisterBreadcrumbLabel } from "@/lib/breadcrumbs/client-store";
 
 interface CustomerSummary {
   id: string;
@@ -56,6 +57,9 @@ interface Props {
 
 export function MergeWizard({ source }: Props): React.JSX.Element {
   const router = useRouter();
+
+  useRegisterBreadcrumbLabel(`/customers/${source.id}`, source.name);
+
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);

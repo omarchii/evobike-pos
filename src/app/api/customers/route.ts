@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { getAuthedUser } from "@/lib/auth-helpers";
 import { customerCreateSchema } from "@/lib/customers/validation";
 import { listableCustomerWhere } from "@/lib/customers/service";
+import { normalizeForSearch } from "@/lib/customers/normalize";
 
 // GET /api/customers — directorio (SELLER+). Soporta filtros light.
 // BRIEF.md §7.2. Los filtros pesados (LTV, saldo por cobrar, etc.) se
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ...(q
       ? {
           OR: [
-            { name: { contains: q, mode: "insensitive" } },
+            { nameNormalized: { contains: normalizeForSearch(q) } },
             { phone: { contains: q } },
             { email: { contains: q, mode: "insensitive" } },
             { rfc: { contains: q.toUpperCase() } },
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const customer = await prisma.customer.create({
       data: {
         name: data.name,
+        nameNormalized: normalizeForSearch(data.name),
         phone: data.phone ?? null,
         phone2: data.phone2 ?? null,
         email: data.email ?? null,
@@ -123,7 +125,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         regimenFiscal: data.regimenFiscal ?? null,
         usoCFDI: data.usoCFDI ?? null,
         emailFiscal: data.emailFiscal ?? null,
-        direccionFiscal: data.direccionFiscal ?? null,
+        fiscalStreet: data.fiscalStreet ?? null,
+        fiscalExtNum: data.fiscalExtNum ?? null,
+        fiscalIntNum: data.fiscalIntNum ?? null,
+        fiscalColonia: data.fiscalColonia ?? null,
+        fiscalCity: data.fiscalCity ?? null,
+        fiscalState: data.fiscalState ?? null,
+        fiscalZip: data.fiscalZip ?? null,
       },
       select: {
         id: true,
