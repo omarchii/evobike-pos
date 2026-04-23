@@ -55,7 +55,13 @@ export async function PATCH(
   try {
     const order = await prisma.serviceOrder.findUnique({
       where: { id: orderId },
-      select: { id: true, branchId: true, servicedByUserId: true, subStatus: true },
+      select: {
+        id: true,
+        branchId: true,
+        servicedByUserId: true,
+        subStatus: true,
+        assignedTechId: true,
+      },
     });
     if (!order) {
       return NextResponse.json({ success: false, error: "Orden no encontrada" }, { status: 404 });
@@ -63,6 +69,12 @@ export async function PATCH(
     if (order.branchId !== branchId) {
       return NextResponse.json(
         { success: false, error: "Sin acceso a esta orden" },
+        { status: 403 },
+      );
+    }
+    if (user.role === "TECHNICIAN" && order.assignedTechId !== userId) {
+      return NextResponse.json(
+        { success: false, error: "Solo puedes modificar órdenes asignadas a ti" },
         { status: 403 },
       );
     }
@@ -83,6 +95,18 @@ export async function PATCH(
       where: { id: orderId },
       data,
     });
+
+    console.log(
+      "[workshop-mobile]",
+      JSON.stringify({
+        userId,
+        role: user.role,
+        orderId,
+        action: "status",
+        mobileClient: req.headers.get("x-client") === "mobile-dashboard",
+        ts: new Date().toISOString(),
+      }),
+    );
 
     return NextResponse.json({ success: true, data: { newStatus: updated.status } });
   } catch (error: unknown) {

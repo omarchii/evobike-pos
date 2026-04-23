@@ -14,8 +14,8 @@ const assignSchema = z.object({
 // PATCH /api/service-orders/[id]/assign
 // Asigna o reasigna técnico. Reglas de rol (decisión #1 BRIEF):
 //   MANAGER / ADMIN  → libre en órdenes de su sucursal.
-//   TECHNICIAN       → solo self-assign (assignedTechId === session.userId)
-//                      y solo si la orden no tiene técnico asignado.
+//   TECHNICIAN       → self-assign sobre órdenes libres; soltar solo
+//                      órdenes actualmente suyas.
 //   SELLER           → sin permisos.
 //
 // `assignedTechId: null` desasigna.
@@ -85,18 +85,28 @@ export async function PATCH(
     }
 
     if (isTechnician) {
-      // Solo self-assign sobre órdenes sin técnico.
-      if (assignedTechId !== userId) {
-        return NextResponse.json(
-          { success: false, error: "Un técnico solo puede tomarse a sí mismo" },
-          { status: 403 },
-        );
-      }
-      if (order.assignedTechId !== null) {
-        return NextResponse.json(
-          { success: false, error: "La orden ya tiene técnico asignado" },
-          { status: 409 },
-        );
+      if (assignedTechId === null) {
+        // Soltar: solo si la orden es actualmente suya.
+        if (order.assignedTechId !== userId) {
+          return NextResponse.json(
+            { success: false, error: "Solo puedes soltar órdenes asignadas a ti" },
+            { status: 403 },
+          );
+        }
+      } else {
+        // Tomar: solo self-assign sobre órdenes libres.
+        if (assignedTechId !== userId) {
+          return NextResponse.json(
+            { success: false, error: "Un técnico solo puede tomarse a sí mismo" },
+            { status: 403 },
+          );
+        }
+        if (order.assignedTechId !== null) {
+          return NextResponse.json(
+            { success: false, error: "La orden ya tiene técnico asignado" },
+            { status: 409 },
+          );
+        }
       }
     }
 
@@ -130,6 +140,18 @@ export async function PATCH(
       data: { assignedTechId },
       select: { id: true, assignedTechId: true },
     });
+
+    console.log(
+      "[workshop-mobile]",
+      JSON.stringify({
+        userId,
+        role,
+        orderId: serviceOrderId,
+        action: "assign",
+        mobileClient: req.headers.get("x-client") === "mobile-dashboard",
+        ts: new Date().toISOString(),
+      }),
+    );
 
     return NextResponse.json({
       success: true,

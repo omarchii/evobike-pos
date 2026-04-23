@@ -58,7 +58,13 @@ export async function POST(
 
     const order = await prisma.serviceOrder.findUnique({
       where: { id: serviceOrderId },
-      select: { id: true, branchId: true, status: true, subStatus: true },
+      select: {
+        id: true,
+        branchId: true,
+        status: true,
+        subStatus: true,
+        assignedTechId: true,
+      },
     });
     if (!order) {
       return NextResponse.json({ success: false, error: "Orden no encontrada" }, { status: 404 });
@@ -66,6 +72,12 @@ export async function POST(
     if (order.branchId !== branchId) {
       return NextResponse.json(
         { success: false, error: "Sin acceso a esta orden" },
+        { status: 403 },
+      );
+    }
+    if (user.role === "TECHNICIAN" && order.assignedTechId !== user.id) {
+      return NextResponse.json(
+        { success: false, error: "Solo puedes modificar órdenes asignadas a ti" },
         { status: 403 },
       );
     }
@@ -84,6 +96,18 @@ export async function POST(
       data: { subStatus },
       select: { id: true, subStatus: true },
     });
+
+    console.log(
+      "[workshop-mobile]",
+      JSON.stringify({
+        userId: user.id,
+        role: user.role,
+        orderId: serviceOrderId,
+        action: "sub-status",
+        mobileClient: req.headers.get("x-client") === "mobile-dashboard",
+        ts: new Date().toISOString(),
+      }),
+    );
 
     return NextResponse.json({
       success: true,
