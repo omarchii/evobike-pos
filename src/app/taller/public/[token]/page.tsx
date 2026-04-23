@@ -11,6 +11,7 @@ import type {
   ServiceOrderSubStatus,
   ServiceOrderApprovalStatus,
 } from "@prisma/client";
+import ApprovalActions from "./_components/approval-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -774,22 +775,11 @@ export default async function TallerPortalPublicPage({ params }: RouteParams) {
                   {formatMoney(Number(pendingApproval.totalEstimado))}
                 </span>
               </div>
-              {/* Los botones interactivos + countdown llegan en F.3
-                  (client component `ApprovalActions`). Por ahora mostramos
-                  la fecha de expiración estática para dar contexto. */}
-              <p
-                style={{
-                  marginTop: "0.75rem",
-                  fontSize: "0.75rem",
-                  color: "var(--on-warn-container)",
-                  background: "var(--warn-container)",
-                  padding: "0.5rem 0.75rem",
-                  borderRadius: "0.5rem",
-                  textAlign: "center" as const,
-                }}
-              >
-                Expira el {formatDateTime(pendingApproval.expiresAt)}
-              </p>
+              <ApprovalActions
+                approvalId={pendingApproval.id}
+                token={token}
+                expiresAt={pendingApproval.expiresAt}
+              />
             </div>
           )}
 
