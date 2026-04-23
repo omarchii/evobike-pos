@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { normalizeMxPhone } from "@/lib/workshop";
+import { buildPortalWhatsappHref, parsePhotoUrls } from "@/lib/workshop";
 
 // Sin auth. Retorna datos sanitizados para el portal público del cliente.
 // Alcance estricto (confirmado en plan): estado + total + approvals + metadata
@@ -42,32 +42,6 @@ interface PublicServiceOrderView {
     whatsappHref: string | null;
   };
   approvals: PublicApproval[];
-}
-
-// Template customer→branch para el CTA "Hablar con un Asesor" del portal.
-// Se reemplaza solo {folio}; {estado}/{total}/{linkPublico} se dejan
-// intactos si el admin los puso — el field Branch.whatsappTemplateTaller
-// fue pensado branch→customer (notificaciones outbound), pero si el admin
-// lo personaliza para el canal inbound lo respetamos. Fallback genérico
-// cubre sucursales sin template configurado.
-function buildPortalWhatsappHref(args: {
-  branchPhone: string | null;
-  template: string | null;
-  folio: string;
-}): string | null {
-  const digits = normalizeMxPhone(args.branchPhone);
-  if (!digits) return null;
-  const raw =
-    args.template && args.template.trim().length > 0
-      ? args.template
-      : "Hola, tengo una duda sobre mi servicio {folio}. Gracias.";
-  const text = raw.replaceAll("{folio}", args.folio);
-  return `https://wa.me/52${digits}?text=${encodeURIComponent(text)}`;
-}
-
-function parsePhotoUrls(raw: Prisma.JsonValue | null): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((u): u is string => typeof u === "string");
 }
 
 export async function GET(

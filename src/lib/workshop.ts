@@ -169,3 +169,43 @@ export function normalizeMxPhone(raw: string | null | undefined): string | null 
   if (digits.length === 13 && digits.startsWith("521")) return digits.slice(3);
   return null;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Helpers del portal público `/taller/public/[token]` (Sub-fase F).
+// Usados tanto por el endpoint API (F.1) como por el Server Component (F.2).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Construye el link wa.me que el cliente usa en el portal público para abrir
+ * una conversación con la sucursal. Dirección customer→branch (opuesta al
+ * `buildWorkshopWhatsappLink` branch→customer).
+ *
+ * Template: `Branch.whatsappTemplateTaller` si existe, fallback genérico si
+ * null. Solo `{folio}` se reemplaza — otros placeholders del field (que fue
+ * diseñado branch→customer) quedan literales.
+ *
+ * Retorna `null` si `Branch.phone` es inválido: la UI oculta el CTA.
+ */
+export function buildPortalWhatsappHref(args: {
+  branchPhone: string | null;
+  template: string | null;
+  folio: string;
+}): string | null {
+  const digits = normalizeMxPhone(args.branchPhone);
+  if (!digits) return null;
+  const raw =
+    args.template && args.template.trim().length > 0
+      ? args.template
+      : "Hola, tengo una duda sobre mi servicio {folio}. Gracias.";
+  const text = raw.replaceAll("{folio}", args.folio);
+  return `https://wa.me/52${digits}?text=${encodeURIComponent(text)}`;
+}
+
+/**
+ * Parsea `ServiceOrder.photoUrls` (Json?) a `string[]` defensivamente.
+ * Retorna [] si es null, no-array, o contiene entradas no-string.
+ */
+export function parsePhotoUrls(raw: Prisma.JsonValue | null): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((u): u is string => typeof u === "string");
+}
