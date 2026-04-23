@@ -44,6 +44,7 @@ export default async function MobileDashboardPage() {
 
   return (
     <Dashboard
+      userId={user.id}
       userName={user.name ?? "Técnico"}
       branchName={branch?.name ?? "—"}
       orders={orders}
