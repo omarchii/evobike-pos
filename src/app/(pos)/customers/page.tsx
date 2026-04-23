@@ -1,41 +1,74 @@
-import { prisma } from "@/lib/prisma";
-import CustomerList from "./customer-list";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getAuthedUser } from "@/lib/auth-helpers";
+import {
+  listDirectoryCustomers,
+  getDirectoryStats,
+  type DirectoryFilters,
+} from "@/lib/customers/directory-query";
+import { CustomerDirectoryView } from "./customer-list";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomersPage() {
-    const rawCustomers = await prisma.customer.findMany({
-        orderBy: { name: 'asc' },
-        include: {
-            // We include counts just for some stats
-            _count: {
-                select: { sales: true }
-            }
-        }
-    });
+const VALID_CHIPS = ["activos", "con-saldo", "empresas", "riesgo", "inactivos", "sin-consent"] as const;
+type ChipFilter = (typeof VALID_CHIPS)[number];
 
-    const customers = rawCustomers.map(c => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        email: c.email,
-        creditLimit: Number(c.creditLimit),
-        balance: Number(c.balance),
-        _count: { sales: c._count.sales },
-    }));
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-    return (
-        <div className="h-[calc(100vh-4rem)] flex flex-col">
-            <div className="mb-6 flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Directorio de Clientes</h1>
-                    <p className="text-slate-500">Gestiona la información y saldos a favor de tu cartera de clientes.</p>
-                </div>
-            </div>
+function getString(val: string | string[] | undefined): string | undefined {
+  if (!val) return undefined;
+  return Array.isArray(val) ? val[0] : val;
+}
 
-            <div className="flex-1 bg-white dark:bg-slate-950 rounded-xl border shadow-sm">
-                <CustomerList initialCustomers={customers} />
-            </div>
-        </div>
-    );
+const PAGE_SIZE = 50;
+
+export default async function CustomersPage({ searchParams }: PageProps): Promise<React.JSX.Element> {
+  const session = await getServerSession(authOptions);
+  const user = getAuthedUser(session);
+  if (!user) redirect("/login");
+
+  const params = await searchParams;
+  const q = getString(params.q)?.trim() || undefined;
+  const rawChip = getString(params.chip);
+  const chip = (VALID_CHIPS as readonly string[]).includes(rawChip ?? "")
+    ? (rawChip as ChipFilter)
+    : null;
+  const page = Math.max(1, Number(getString(params.page) ?? "1") || 1);
+  const showDeleted = getString(params.showDeleted) === "1";
+  const canSeeDeleted = user.role === "ADMIN" || user.role === "MANAGER";
+
+  const filters: DirectoryFilters = {
+    q,
+    chip,
+    includeDeleted: showDeleted && canSeeDeleted,
+  };
+
+  const [{ rows, total }, stats] = await Promise.all([
+    listDirectoryCustomers({
+      ...filters,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
+    getDirectoryStats(filters),
+  ]);
+
+  return (
+    <CustomerDirectoryView
+      rows={rows}
+      total={total}
+      stats={stats}
+      page={page}
+      pageSize={PAGE_SIZE}
+      filters={{
+        q: q ?? "",
+        chip,
+        showDeleted,
+      }}
+      canSeeDeleted={canSeeDeleted}
+      role={user.role}
+    />
+  );
 }
