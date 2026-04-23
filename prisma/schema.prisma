@@ -83,6 +83,7 @@ model Branch {
   terminosCotizacion       String?               @db.Text
   terminosPedido           String?               @db.Text
   terminosPoliza           String?               @db.Text
+  terminosServicio         String?               @db.Text
   lastSaleFolioNumber      Int                   @default(0)
   lastQuotationFolioNumber Int                   @default(0)
   users                    User[]
@@ -306,6 +307,15 @@ model Sale {
   notes                String?
   internalNote         String? // Visible para MANAGER; no aparece en el ticket del cliente
   orderType            OrderType?
+  // Invariante Sale.type (sin CHECK constraint; garantizado por sale.create callers + seed):
+  //   serviceOrderId != null  → type = SERVICE,  orderType = null
+  //   orderType != null       → type ∈ {LAYAWAY, BACKORDER} (match orderType)
+  //   else                    → type = DIRECT,   orderType = null
+  // orderType se conserva por compat (15 archivos lo consumen); eliminarlo es deuda de Fase 6.
+  // excludeFromRevenue filtra ventas sin ingreso real (WARRANTY/COURTESY/POLICY_MAINTENANCE) de
+  // los KPIs de reportes. No afecta ingresoTotal (total=0) — sí numVentas y ticketPromedio.
+  type                 SaleType      @default(DIRECT)
+  excludeFromRevenue   Boolean       @default(false)
   expectedDeliveryDate DateTime?
   quotationId          String?       @unique // cotización que originó esta venta (sin FK, set manual)
   serviceOrderId       String?       @unique
