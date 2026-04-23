@@ -176,6 +176,7 @@ export default async function DashboardPage({
             where: {
                 ...(viewBranchId ? { branchId: viewBranchId } : {}),
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
             },
             _sum: { total: true },
@@ -209,6 +210,7 @@ export default async function DashboardPage({
                     where: {
                         branchId: b.id,
                         status: "COMPLETED",
+                        excludeFromRevenue: false,
                         createdAt: { gte: periodInfo.from, lte: periodInfo.to },
                     },
                     _sum: { total: true },
@@ -229,6 +231,7 @@ export default async function DashboardPage({
             where: {
                 ...(viewBranchId ? { branchId: viewBranchId } : {}),
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
             },
             orderBy: { createdAt: "desc" },
@@ -408,6 +411,7 @@ export default async function DashboardPage({
             where: {
                 ...(viewBranchId ? { branchId: viewBranchId } : {}),
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
             },
             _sum: { total: true },
@@ -471,6 +475,7 @@ export default async function DashboardPage({
             where: {
                 ...(viewBranchId ? { branchId: viewBranchId } : {}),
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
             },
             select: { createdAt: true, total: true },
@@ -622,6 +627,7 @@ export default async function DashboardPage({
                 where: {
                     ...(viewBranchId ? { branchId: viewBranchId } : {}),
                     status: "COMPLETED",
+                    excludeFromRevenue: false,
                     createdAt: { gte: periodInfo.compFrom, lte: periodInfo.compTo },
                 },
                 _sum: { total: true },
@@ -718,6 +724,7 @@ export default async function DashboardPage({
             where: {
                 userId,
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: startOfDay, lte: endOfDay },
             },
             _sum: { total: true },
@@ -741,6 +748,7 @@ export default async function DashboardPage({
             where: {
                 userId,
                 status: "COMPLETED",
+                excludeFromRevenue: false,
             },
             orderBy: { createdAt: "desc" },
             take: 10,
@@ -863,6 +871,7 @@ export default async function DashboardPage({
                 where: {
                     userId,
                     status: "COMPLETED",
+                    excludeFromRevenue: false,
                     createdAt: { gte: startOfYesterday, lte: endOfYesterday },
                 },
                 _sum: { total: true },

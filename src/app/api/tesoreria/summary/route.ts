@@ -123,6 +123,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<SummaryRespons
 
         const saleWhere: Prisma.SaleWhereInput = {
             status: "COMPLETED",
+            excludeFromRevenue: false,
             createdAt: { gte: from, lte: to },
         };
         if (effectiveBranchId) saleWhere.branchId = effectiveBranchId;

@@ -127,6 +127,7 @@ export default async function TesoreriaPage({
             _sum: { total: true },
             where: {
                 status: "COMPLETED",
+                excludeFromRevenue: false,
                 createdAt: { gte: fromDate, lte: toDate },
                 ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
             },

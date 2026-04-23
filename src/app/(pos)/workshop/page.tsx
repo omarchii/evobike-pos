@@ -154,6 +154,7 @@ export default async function WorkshopPage() {
         ...branchFilter,
         serviceOrderId: { not: null },
         status: "COMPLETED",
+        excludeFromRevenue: false,
         createdAt: { gte: todayStart },
       },
       _sum: { total: true },
