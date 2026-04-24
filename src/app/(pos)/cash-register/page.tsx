@@ -6,7 +6,7 @@ import { CircleUser, Clock, ShieldCheck, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { summarizeSession } from "@/lib/cash-register";
 import type { SessionSummary } from "@/lib/cash-register";
-import { getAdminActiveBranch } from "@/lib/actions/branch";
+import { getViewBranchId } from "@/lib/branch-filter";
 import { AuthorizationInbox } from "@/components/pos/authorization/authorization-inbox";
 import { CashActionsBar } from "./cash-actions-bar";
 import { CashMovementsTable } from "./cash-movements-table";
@@ -31,31 +31,33 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
     if (!session?.user) redirect("/login");
 
     const user = session.user as SessionUser;
-    let branchId = user.branchId;
-    if (user.role === "ADMIN") {
-        const saved = await getAdminActiveBranch();
-        if (saved) branchId = saved.id;
-    }
+    // Caja es operativa por sucursal: un admin en vista Global no representa una
+    // caja concreta. getViewBranchId devuelve null → empty state explícito.
+    const viewBranchId = await getViewBranchId();
     const canRegisterWithdrawal = user.role === "MANAGER" || user.role === "ADMIN";
 
-    const activeSession = await prisma.cashRegisterSession.findFirst({
-        where: { branchId, status: "OPEN" },
-        include: {
-            user: { select: { name: true } },
-            branch: { select: { name: true } },
-            transactions: {
-                include: {
-                    sale: { select: { id: true, folio: true } },
-                    user: { select: { id: true, name: true } },
+    const activeSession = viewBranchId
+        ? await prisma.cashRegisterSession.findFirst({
+            where: { branchId: viewBranchId, status: "OPEN" },
+            include: {
+                user: { select: { name: true } },
+                branch: { select: { name: true } },
+                transactions: {
+                    include: {
+                        sale: { select: { id: true, folio: true } },
+                        user: { select: { id: true, name: true } },
+                    },
+                    orderBy: { createdAt: "desc" },
                 },
-                orderBy: { createdAt: "desc" },
             },
-        },
-    });
+        })
+        : null;
 
     const summary: SessionSummary | null = activeSession
         ? summarizeSession(activeSession)
         : null;
+
+    const isGlobalView = viewBranchId === null && user.role === "ADMIN";
 
     // ── Empty state: sin turno abierto ─────────────────────────────────────────
     if (!summary) {
@@ -78,23 +80,26 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
                         className="text-[1.75rem] font-bold tracking-[-0.01em]"
                         style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                     >
-                        No hay turno abierto
+                        {isGlobalView ? "Caja es operativa por sucursal" : "No hay turno abierto"}
                     </h1>
                     <p
                         className="mt-2 max-w-md text-[0.875rem]"
                         style={{ color: "var(--on-surf-var)" }}
                     >
-                        Abre una caja para comenzar la jornada. Usa el botón de apertura
-                        del topbar.
+                        {isGlobalView
+                            ? "Elegí una sucursal en el selector del topbar para ver su caja activa."
+                            : "Abre una caja para comenzar la jornada. Usa el botón de apertura del topbar."}
                     </p>
-                    <div className="mt-6">
-                        <CashActionsBar
-                            canRegisterWithdrawal={canRegisterWithdrawal}
-                            sessionOpen={false}
-                            userRole={user.role}
-                            session={null}
-                        />
-                    </div>
+                    {!isGlobalView && (
+                        <div className="mt-6">
+                            <CashActionsBar
+                                canRegisterWithdrawal={canRegisterWithdrawal}
+                                sessionOpen={false}
+                                userRole={user.role}
+                                session={null}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         );

@@ -6,17 +6,11 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import { getActiveSession } from "@/lib/cash-register";
-import { getAdminActiveBranch } from "@/lib/actions/branch";
+import { getViewBranchId } from "@/lib/branch-filter";
 import {
     AuthorizationConsumeError,
     consumeAuthorization,
 } from "@/lib/authorizations";
-
-async function resolveBranchId(role: string, fallbackBranchId: string): Promise<string> {
-    if (role !== "ADMIN") return fallbackBranchId;
-    const saved = await getAdminActiveBranch();
-    return saved?.id ?? fallbackBranchId;
-}
 
 type SerializedCashSession = Omit<
     CashRegisterSession,
@@ -58,18 +52,18 @@ function errorFromUnknown(error: unknown, scope: string): NextResponse {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
 }
 
-// GET /api/cash-register/session — sesión activa de la sucursal
+// GET /api/cash-register/session — sesión activa de la sucursal en vista
 export async function GET(): Promise<NextResponse> {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
     }
 
-    const sessionUser = session.user as unknown as { branchId: string; role: string };
-    const branchId = await resolveBranchId(sessionUser.role, sessionUser.branchId);
+    // Lectura: respeta vista (admin Global → null → no hay sesión a mostrar).
+    const branchId = await getViewBranchId();
 
     try {
-        const activeSession = await getActiveSession(branchId);
+        const activeSession = branchId ? await getActiveSession(branchId) : null;
         return NextResponse.json({
             success: true,
             data: activeSession ? serializeSession(activeSession) : null,
@@ -98,7 +92,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     try {
         const user = await requireActiveUser(session);
-        const branchId = await resolveBranchId(user.role, user.branchId);
+        // Principio Fase 1: writes nunca infieren del filtro. branchId viene de la
+        // sesión del cajero, no de la cookie. Admin sin sucursal no abre caja por
+        // este endpoint — ese flujo remoto va por Autorizaciones (pendiente).
+        const branchId = user.branchId;
+        if (!branchId) {
+            return NextResponse.json(
+                { success: false, error: "No tenés una sucursal asignada. Pedí apertura remota por el flujo de autorizaciones." },
+                { status: 403 },
+            );
+        }
 
         const existing = await getActiveSession(branchId);
         if (existing) {
@@ -173,7 +176,15 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 
     try {
         const user = await requireActiveUser(session);
-        const branchId = await resolveBranchId(user.role, user.branchId);
+        // Principio Fase 1: branchId viene de la sesión del operador, nunca del
+        // filtro. Cierre remoto de admin sin sucursal va por Autorizaciones.
+        const branchId = user.branchId;
+        if (!branchId) {
+            return NextResponse.json(
+                { success: false, error: "No tenés una sucursal asignada. Los cierres remotos van por el flujo de autorizaciones." },
+                { status: 403 },
+            );
+        }
 
         const activeSession = await prisma.cashRegisterSession.findFirst({
             where: { branchId, status: "OPEN" },

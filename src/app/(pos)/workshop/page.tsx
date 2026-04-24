@@ -13,7 +13,7 @@ import {
   type StaleOrderAlert,
 } from "./workshop-attention";
 import { parseLocalDate, toDateString } from "@/lib/reportes/date-range";
-import { operationalBranchWhere } from "@/lib/branch-scope";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser as ShellSessionUser } from "@/lib/auth-types";
 import type {
   SerializedBoardOrder,
@@ -69,17 +69,22 @@ function computeBikeDisplay(order: ActiveOrder): string | null {
   return order.bikeInfo ?? null;
 }
 
-export default async function WorkshopPage() {
+export default async function WorkshopPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
   const user = session.user as unknown as ShellSessionUser;
   const userId = user.id;
   const role = user.role;
 
-  // Módulo operativo: ADMIN honra cookie `admin_branch_id` del topbar;
-  // no-ADMIN usa JWT. Nunca vista global cross-branch aquí.
-  const branchFilter = await operationalBranchWhere({ user });
-  const branchId = branchFilter.branchId;
+  // Brief 2026-04-23: Taller pasa a "S" (admite Global). Reemplaza la
+  // política previa operationalBranchWhere de "jamás global" (ROADMAP §1204).
+  const resolvedParams = await searchParams;
+  const viewBranchId = await getViewBranchId(resolvedParams);
+  const branchFilter = branchWhere(viewBranchId);
 
   const todayStart = parseLocalDate(toDateString(new Date()), false) ?? new Date();
   // eslint-disable-next-line react-hooks/purity -- corre por request, no en render
@@ -261,21 +266,22 @@ export default async function WorkshopPage() {
         .filter((id): id is string => id !== null)
     ),
   ];
-  const stockMap = new Map<string, number>();
+  // Stock se evalúa contra la sucursal DEL order, no del filtro — en vista
+  // Global los orders abarcan varias sucursales y sumar stock cross-branch
+  // daría falsos OK.
+  const stockMap = new Map<string, number>(); // key: `${variantId}::${branchId}`
   if (allVariantIds.length > 0) {
     const stocks = await prisma.stock.findMany({
       where: {
         productVariantId: { in: allVariantIds },
-        branchId,
+        ...branchFilter,
       },
-      select: { productVariantId: true, quantity: true },
+      select: { productVariantId: true, quantity: true, branchId: true },
     });
     for (const s of stocks) {
       if (!s.productVariantId) continue;
-      stockMap.set(
-        s.productVariantId,
-        (stockMap.get(s.productVariantId) ?? 0) + s.quantity
-      );
+      const key = `${s.productVariantId}::${s.branchId}`;
+      stockMap.set(key, (stockMap.get(key) ?? 0) + s.quantity);
     }
   }
 
@@ -284,7 +290,8 @@ export default async function WorkshopPage() {
     const missing: string[] = [];
     for (const item of order.items) {
       if (!item.productVariantId) continue;
-      if ((stockMap.get(item.productVariantId) ?? 0) < item.quantity) {
+      const key = `${item.productVariantId}::${order.branchId}`;
+      if ((stockMap.get(key) ?? 0) < item.quantity) {
         missing.push(item.description);
       }
     }

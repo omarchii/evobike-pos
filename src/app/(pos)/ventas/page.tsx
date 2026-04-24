@@ -6,6 +6,7 @@ import { SalesHistoryTable } from "./sales-history-table";
 import type { Prisma } from "@prisma/client";
 import { parseLocalDate } from "@/lib/reportes/date-range";
 import { normalizeForSearch } from "@/lib/customers/normalize";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
   const user = session?.user as unknown as SessionUser | undefined;
   if (!user) notFound();
 
-  const { id: sessionUserId, branchId: sessionBranchId, role } = user;
+  const { id: sessionUserId, role } = user;
 
   const params = await searchParams;
   const fromParam = getString(params.from);
@@ -56,8 +57,11 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
   const paymentMethodParam = getString(params.paymentMethod);
   const folioParam = getString(params.folio);
   const customerParam = getString(params.customer);
-  const branchIdParam = getString(params.branchId);
   const cursorParam = getString(params.cursor);
+
+  // Filtro de sucursal: admin respeta getViewBranchId (URL efímero > cookie > Global);
+  // manager/seller quedan forzados a su sucursal asignada.
+  const viewBranchId = await getViewBranchId(params);
 
   // Default date range: last 30 days
   const now = new Date();
@@ -70,16 +74,14 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
   // Build where clause
   const where: Prisma.SaleWhereInput = {
     createdAt: { gte: fromDate, lte: toDate },
+    ...branchWhere(viewBranchId),
   };
 
   if (role === "SELLER") {
     where.userId = sessionUserId;
-  } else if (role === "MANAGER") {
-    if (sessionBranchId) where.branchId = sessionBranchId;
-    if (userIdParam) where.userId = userIdParam;
-  } else if (role === "ADMIN") {
-    if (branchIdParam) where.branchId = branchIdParam;
-    if (userIdParam) where.userId = userIdParam;
+  } else if (userIdParam) {
+    // MANAGER/ADMIN: filtro opcional por vendedor
+    where.userId = userIdParam;
   }
 
   if (statusParam) {
@@ -137,11 +139,11 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
         },
       },
     }),
-    // Fetch sellers for the filter select (scoped by role)
+    // Fetch sellers for the filter select (scoped al mismo branch que la vista)
     prisma.user.findMany({
       where: {
         role: { in: ["SELLER", "MANAGER", "ADMIN"] },
-        ...(role === "MANAGER" && sessionBranchId ? { branchId: sessionBranchId } : {}),
+        ...branchWhere(viewBranchId),
         ...(role === "SELLER" ? { id: sessionUserId } : {}),
       },
       select: { id: true, name: true },
@@ -178,7 +180,6 @@ export default async function VentasPage({ searchParams }: PageProps): Promise<R
     paymentMethod: paymentMethodParam ?? "",
     folio: folioParam ?? "",
     customer: customerParam ?? "",
-    branchId: branchIdParam ?? "",
   };
 
   return (

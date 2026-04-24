@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBranchMaintenanceServices, getBikeMaintenanceStatus } from "@/lib/workshop-maintenance";
 import { RecepcionWizard } from "./recepcion-wizard";
 import type { MaintenanceServiceOption, TechnicianOption } from "@/lib/workshop-types";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 export const dynamic = "force-dynamic";
@@ -34,8 +34,12 @@ export default async function RecepcionPage({
   const role = user.role;
 
   if (role === "SELLER") redirect("/workshop");
-  const branchId = await resolveOperationalBranchId({ user });
-  if (branchId === "__none__") redirect("/workshop");
+  // Recepción requiere sucursal concreta (crea una orden con branchId).
+  // Admin en Global no tiene sucursal: redirigimos al tablero para que pique
+  // una en el switcher. Deuda: admin debería tener picker en el form (principio
+  // "writes nunca infieren del filtro") — hoy toma la cookie como proxy.
+  const branchId = await getViewBranchId();
+  if (!branchId) redirect("/workshop");
 
   const params = await searchParams;
   const prefillBikeId = params.customerBikeId;

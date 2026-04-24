@@ -5,10 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { normalizeForSearch } from "@/lib/customers/normalize";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 
 interface SessionUser {
   id: string;
-  branchId: string | null;
   role: string;
 }
 
@@ -22,7 +22,7 @@ const querySchema = z.object({
   paymentMethod: z.string().optional(), // comma-separated
   folio: z.string().optional(),
   customer: z.string().optional(),
-  branchId: z.string().uuid().optional(),
+  branch: z.string().uuid().optional(),
 });
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const user = session.user as unknown as SessionUser;
-  const { id: sessionUserId, branchId: sessionBranchId, role } = user;
+  const { id: sessionUserId, role } = user;
 
   // Parse query params
   const rawParams = Object.fromEntries(req.nextUrl.searchParams.entries());
@@ -51,32 +51,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const fromDate = params.from ? new Date(params.from) : defaultFrom;
   const toDate = params.to ? new Date(params.to) : now;
 
+  // Filtro sucursal unificado: admin respeta ?branch= / cookie / Global;
+  // non-admin queda forzado a su sucursal.
+  const viewBranchId = await getViewBranchId(rawParams);
+
   // Build where clause with role-based enforcement
   const where: Prisma.SaleWhereInput = {
     createdAt: { gte: fromDate, lte: toDate },
+    ...branchWhere(viewBranchId),
   };
 
-  // Role-based branch/user enforcement
   if (role === "SELLER") {
-    // Sellers can only see their own sales
     where.userId = sessionUserId;
-  } else if (role === "MANAGER") {
-    // Managers can only see their branch
-    if (sessionBranchId) {
-      where.branchId = sessionBranchId;
-    }
-    // Optional: filter by specific userId within branch
-    if (params.userId) {
-      where.userId = params.userId;
-    }
-  } else if (role === "ADMIN") {
-    // Admin can filter by branchId or userId
-    if (params.branchId) {
-      where.branchId = params.branchId;
-    }
-    if (params.userId) {
-      where.userId = params.userId;
-    }
+  } else if (params.userId) {
+    // MANAGER/ADMIN: filtro opcional por vendedor
+    where.userId = params.userId;
   }
 
   // Status filter

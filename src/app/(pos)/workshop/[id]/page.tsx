@@ -8,7 +8,7 @@ import type { SerializedApproval, SerializedApprovalItem } from "./approvals-lis
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 import { expirePendingApprovalsTx } from "@/lib/workshop-approval-expiry";
 import { approvalItemsJsonSchema } from "@/lib/workshop-approvals";
@@ -25,8 +25,9 @@ export default async function WorkshopOrderPage(props: {
   const userId = user.id;
   const role = user.role;
 
-  // Branch efectivo: cookie para ADMIN, JWT para el resto.
-  const viewBranchId = await resolveOperationalBranchId({ user });
+  // Filtro efectivo: admin Global = null (ve todo); admin con filtro X =
+  // restringido a X; non-admin = su sucursal asignada.
+  const viewBranchId = await getViewBranchId();
 
   // Lazy expiry de approvals vencidas (D.2). Idempotente, segura ante
   // races por el WHERE condicional. Corre antes del findUnique para
@@ -74,9 +75,8 @@ export default async function WorkshopOrderPage(props: {
     },
   });
 
-  if (!order || order.branchId !== viewBranchId) {
-    notFound();
-  }
+  if (!order) notFound();
+  if (viewBranchId !== null && order.branchId !== viewBranchId) notFound();
 
   // Check for open cash register session (needed to show charge/deliver buttons)
   const cashSession = userId

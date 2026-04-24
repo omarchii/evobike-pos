@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MantenimientosTable, type MantenimientoRow } from "./mantenimientos-table";
 import { computeMaintenanceStatus } from "@/lib/workshop-maintenance";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 export const dynamic = "force-dynamic";
@@ -26,15 +26,14 @@ export default async function MantenimientosPage({
   const allowedRoles = ["TECHNICIAN", "MANAGER", "ADMIN"];
   if (!allowedRoles.includes(user.role)) redirect("/workshop");
 
-  await searchParams;
+  const resolvedParams = await searchParams;
 
-  // Branch efectivo: cookie para ADMIN, JWT para el resto. No hay vista
-  // global aquí — mantenimientos es módulo operativo.
-  const scopedBranchId = await resolveOperationalBranchId({ user });
+  // Brief 2026-04-23: Taller = S (admite Global). Antes era operativo "jamás global".
+  const viewBranchId = await getViewBranchId(resolvedParams);
 
   const bikes = await prisma.customerBike.findMany({
     where: {
-      branchId: scopedBranchId,
+      ...branchWhere(viewBranchId),
       assemblyOrders: {
         some: {
           saleId: { not: null },

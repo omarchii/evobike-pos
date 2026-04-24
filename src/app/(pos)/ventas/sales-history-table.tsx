@@ -16,7 +16,6 @@ interface CurrentFilters {
   paymentMethod: string;
   folio: string;
   customer: string;
-  branchId: string;
 }
 
 interface SalesHistoryTableProps {
@@ -232,7 +231,6 @@ export function SalesHistoryTable({
       paymentMethod: selectedPayment,
       folio,
       customer,
-      branchId: currentFilters.branchId,
       ...overrides,
     };
 
@@ -257,7 +255,6 @@ export function SalesHistoryTable({
     setOrDelete("paymentMethod", merged.paymentMethod);
     setOrDelete("folio", merged.folio);
     setOrDelete("customer", merged.customer);
-    if (role === "ADMIN") setOrDelete("branchId", merged.branchId);
 
     // Reset appended items on filter change
     setAppendedItems([]);
@@ -285,7 +282,6 @@ export function SalesHistoryTable({
       paymentMethod: selectedPayment,
       folio,
       customer,
-      branchId: currentFilters.branchId,
     };
 
     const params = new URLSearchParams(searchParams.toString());
@@ -303,7 +299,6 @@ export function SalesHistoryTable({
     setOrDelete("paymentMethod", merged.paymentMethod);
     setOrDelete("folio", merged.folio);
     setOrDelete("customer", merged.customer);
-    if (role === "ADMIN") setOrDelete("branchId", merged.branchId);
 
     setAppendedItems([]);
     setNextCursor(null);
