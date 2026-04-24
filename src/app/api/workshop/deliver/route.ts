@@ -9,7 +9,7 @@ import {
     assertSessionFreshOrThrow,
     OrphanedCashSessionError,
 } from "@/lib/cash-register";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 // Atrato no aplica para cobros de taller (cobro directo, sin financiera)
@@ -23,7 +23,7 @@ interface DeliverRequestBody {
 // POST /api/workshop/deliver
 // Cobra el total de una orden de taller y la marca como DELIVERED.
 // Requiere caja abierta en la sucursal efectiva (JWT para MANAGER/TECHNICIAN,
-// cookie `admin_branch_id` para ADMIN — ver `operationalBranchWhere`).
+// filtro del topbar para ADMIN — ver `getViewBranchId`).
 export async function POST(request: Request): Promise<NextResponse> {
     try {
         const session = await getServerSession(authOptions);
@@ -33,11 +33,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         const user = session.user as unknown as SessionUser;
         const userId = user.id;
-        const branchId = await resolveOperationalBranchId({ user });
+        const branchId = await getViewBranchId();
 
-        if (branchId === "__none__") {
+        if (!branchId) {
             return NextResponse.json(
-                { success: false, error: "Empleado sin sucursal asignada" },
+                { success: false, error: "Selecciona una sucursal para operar" },
                 { status: 400 }
             );
         }

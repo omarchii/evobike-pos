@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 import {
   MOBILE_ORDER_SELECT,
@@ -14,7 +15,13 @@ export default async function MobileDashboardPage() {
   // El guard vive en layout.tsx; aquí el non-null de session.user ya está
   // asegurado por el redirect previo. Tipamos para consumo.
   const user = session!.user as unknown as SessionUser;
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
+
+  // Técnico sin sucursal asignada (o admin en Global, caso edge) — el
+  // dashboard mobile requiere branch específico; devuelve a raíz.
+  if (!branchId) {
+    redirect("/");
+  }
 
   // Una sola query + filtrado client-side por tab: 12–20 órdenes típicas por
   // técnico, serializar todo es barato y evita 3 round-trips que no aportan.

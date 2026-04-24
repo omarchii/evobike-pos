@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { ServiceOrderStatus, Prisma } from "@prisma/client";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const statusSchema = z.object({
@@ -26,7 +26,13 @@ export async function PATCH(
 
   const user = session.user as unknown as SessionUser;
   const userId = user.id;
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
+  if (!branchId) {
+    return NextResponse.json(
+      { success: false, error: "Selecciona una sucursal para operar" },
+      { status: 400 },
+    );
+  }
   const { id: orderId } = await params;
 
   const body: unknown = await req.json();

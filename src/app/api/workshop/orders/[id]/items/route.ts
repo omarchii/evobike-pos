@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { calculateHourlyPrice } from "@/lib/workshop";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const addItemSchema = z
@@ -61,10 +61,10 @@ export async function POST(
   }
 
   const user = session.user as unknown as SessionUser;
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
 
-  if (branchId === "__none__") {
-    return NextResponse.json({ success: false, error: "Empleado sin sucursal asignada" }, { status: 400 });
+  if (!branchId) {
+    return NextResponse.json({ success: false, error: "Selecciona una sucursal para operar" }, { status: 400 });
   }
 
   const { id: serviceOrderId } = await params;
@@ -212,10 +212,10 @@ export async function DELETE(
   }
 
   const user = session.user as unknown as SessionUser;
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
 
-  if (branchId === "__none__") {
-    return NextResponse.json({ success: false, error: "Empleado sin sucursal asignada" }, { status: 400 });
+  if (!branchId) {
+    return NextResponse.json({ success: false, error: "Selecciona una sucursal para operar" }, { status: 400 });
   }
 
   const { id: serviceOrderId } = await params;

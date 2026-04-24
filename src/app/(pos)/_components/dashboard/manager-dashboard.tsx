@@ -220,9 +220,10 @@ export function ManagerDashboard({
         } else {
             params.set("branch", newBranchId);
         }
-        // Sincroniza la cookie `admin_branch_id` leída por `operationalBranchWhere`
+        // Sincroniza la cookie `admin_branch_id` leída por `getViewBranchId`
         // en módulos operativos (/workshop, /point-of-sale, ...). "Global" en el
-        // dashboard no limpia la cookie — operativos no tienen vista global.
+        // dashboard no limpia la cookie — operativos pueden seguir con su
+        // última sucursal al navegar sin Global.
         if (newBranchId !== null) {
             const row = branchComparison.find((b) => b.branchId === newBranchId);
             if (row) {

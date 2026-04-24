@@ -11,7 +11,7 @@ import {
   ApprovalAlreadyRespondedError,
   ApprovalItemsCorruptError,
 } from "@/lib/workshop-approvals";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const respondSchema = z.object({
@@ -36,10 +36,10 @@ export async function POST(
   }
 
   const user = session.user as unknown as SessionUser;
-  const branchId = await resolveOperationalBranchId({ user });
-  if (branchId === "__none__") {
+  const branchId = await getViewBranchId();
+  if (!branchId) {
     return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
+      { success: false, error: "Selecciona una sucursal para operar" },
       { status: 400 },
     );
   }

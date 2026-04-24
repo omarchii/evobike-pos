@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { X, Eye } from "lucide-react";
 import { switchAdminBranch } from "@/lib/actions/branch";
 
@@ -12,6 +12,12 @@ interface Props {
 export function BranchFilterBanner({ branchName }: Props) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const pathname = usePathname();
+
+    // Suprimido en Configuración → Sucursal (el switcher global se oculta
+    // ahí; el banner perdería significado porque no hay filtro operativo
+    // activo desde esa vista).
+    if (pathname?.startsWith("/configuracion/sucursal")) return null;
 
     function clear() {
         startTransition(async () => {

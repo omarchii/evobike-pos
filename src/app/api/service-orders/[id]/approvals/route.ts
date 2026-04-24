@@ -10,7 +10,7 @@ import {
   type WhatsappLinkReason,
 } from "@/lib/workshop";
 import { computeApprovalExpiresAt } from "@/lib/workshop-approval-expiry";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const approvalItemSchema = z.object({
@@ -61,10 +61,10 @@ export async function POST(
 
   const user = session.user as unknown as SessionUser;
   const userId = user.id;
-  const branchId = await resolveOperationalBranchId({ user });
-  if (branchId === "__none__") {
+  const branchId = await getViewBranchId();
+  if (!branchId) {
     return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
+      { success: false, error: "Selecciona una sucursal para operar" },
       { status: 400 },
     );
   }

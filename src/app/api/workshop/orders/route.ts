@@ -14,7 +14,7 @@ import {
 import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
 import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
 import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import { normalizeForSearch } from "@/lib/customers/normalize";
 import type { SessionUser } from "@/lib/auth-types";
 
@@ -172,11 +172,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const user = session.user as unknown as SessionUser;
   const userId = user.id;
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
 
-  if (branchId === "__none__") {
+  if (!branchId) {
     return NextResponse.json(
-      { success: false, error: "Empleado sin sucursal asignada." },
+      { success: false, error: "Selecciona una sucursal para operar" },
       { status: 400 },
     );
   }

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBikeMaintenanceStatus } from "@/lib/workshop-maintenance";
-import { resolveOperationalBranchId } from "@/lib/branch-scope";
+import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 export async function GET(
@@ -19,7 +19,13 @@ export async function GET(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 });
   }
 
-  const branchId = await resolveOperationalBranchId({ user });
+  const branchId = await getViewBranchId();
+  if (!branchId) {
+    return NextResponse.json(
+      { success: false, error: "Selecciona una sucursal para operar" },
+      { status: 400 },
+    );
+  }
   const { id } = await params;
 
   // Ownership gate: la bici debe pertenecer al branch efectivo.

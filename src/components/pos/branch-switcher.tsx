@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ChevronDown, Check, Globe } from "lucide-react";
 import { switchAdminBranch } from "@/lib/actions/branch";
 
@@ -22,6 +22,7 @@ export function BranchSwitcher({ activeBranchId, activeBranchName }: BranchSwitc
   const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     fetch("/api/configuracion/sucursales")
@@ -36,6 +37,11 @@ export function BranchSwitcher({ activeBranchId, activeBranchName }: BranchSwitc
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Configuración → Sucursal tiene su propio selector interno (qué sucursal
+  // configurar). Ocultamos el global para evitar confusión semántica —
+  // el global filtra datos operativos, el interno elige target de edición.
+  if (pathname?.startsWith("/configuracion/sucursal")) return null;
 
   function selectGlobal() {
     if (activeBranchId === null) { setOpen(false); return; }

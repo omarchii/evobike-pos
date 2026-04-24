@@ -80,8 +80,9 @@ export default async function WorkshopPage({
   const userId = user.id;
   const role = user.role;
 
-  // Brief 2026-04-23: Taller pasa a "S" (admite Global). Reemplaza la
-  // política previa operationalBranchWhere de "jamás global" (ROADMAP §1204).
+  // Brief 2026-04-23: Taller pasa a "S" (admite Global). Las APIs del
+  // módulo (que antes usaban operationalBranchWhere) rechazan Global —
+  // admin ve el board pero selecciona una sucursal antes de actuar.
   const resolvedParams = await searchParams;
   const viewBranchId = await getViewBranchId(resolvedParams);
   const branchFilter = branchWhere(viewBranchId);

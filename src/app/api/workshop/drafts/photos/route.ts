@@ -20,7 +20,7 @@ const DRAFTS_DIR = path.join(process.cwd(), "public", "workshop", "drafts");
 // Branch scope: este endpoint NO filtra por branch porque los drafts se
 // guardan por userId (per-user namespace) — no hay recursos cross-branch
 // que puedan fugarse. El move final a /workshop/orders/{orderId}/ ocurre
-// dentro del POST de orders, que sí aplica `operationalBranchWhere`.
+// dentro del POST de orders, que sí aplica `getViewBranchId`.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
