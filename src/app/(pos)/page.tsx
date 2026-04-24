@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 import { ManagerDashboard } from "@/app/(pos)/_components/dashboard/manager-dashboard";
 import { SellerDashboard } from "@/app/(pos)/_components/dashboard/seller-dashboard";
 import { TechnicianDashboard } from "@/app/(pos)/_components/dashboard/technician-dashboard";
@@ -119,27 +120,19 @@ export default async function DashboardPage({
 
     // === MANAGER / ADMIN branch ===
     if (role === "MANAGER" || role === "ADMIN") {
-        // Fetch all branches first — needed for branch selector validation
+        // Branch comparison aún necesita el listado completo de sucursales.
         const allBranches = await prisma.branch.findMany({
             select: { id: true, code: true, name: true },
             orderBy: { code: "asc" },
         });
 
-        // ADMIN defaults to global (null) unless ?branch= is explicitly set and valid.
-        // MANAGER/other roles are locked to their own branchId regardless of URL.
-        let viewBranchId = role === "ADMIN" ? null : branchId;
-        if (role === "ADMIN") {
-            const rawBranch = typeof resolvedParams.branch === "string" ? resolvedParams.branch : null;
-            if (rawBranch && allBranches.some((b) => b.id === rawBranch)) {
-                viewBranchId = rawBranch;
-            }
-        }
+        // ADMIN: precedencia ?branch= (efímero) > cookie > Global.
+        // MANAGER: forzado a su sucursal por el helper.
+        const viewBranchId = await getViewBranchId(resolvedParams);
 
         // Step 1: Get open session IDs for this branch (or all if ADMIN)
         const openSessions = await prisma.cashRegisterSession.findMany({
-            where: viewBranchId
-                ? { branchId: viewBranchId, status: "OPEN" }
-                : { status: "OPEN" },
+            where: { ...branchWhere(viewBranchId), status: "OPEN" },
             select: { id: true, openingAmt: true },
         });
         const openSessionIds = openSessions.map((s) => s.id);
@@ -174,7 +167,7 @@ export default async function DashboardPage({
         // Revenue + transactions for selected period
         const revenueAgg = await prisma.sale.aggregate({
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: "COMPLETED",
                 excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
@@ -188,7 +181,7 @@ export default async function DashboardPage({
         // Layaways pending amount
         const layawaysPrisma = await prisma.sale.findMany({
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: "LAYAWAY",
             },
             select: {
@@ -229,7 +222,7 @@ export default async function DashboardPage({
         // Recent sales in period (last 15)
         const recentSalesPrisma = await prisma.sale.findMany({
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: "COMPLETED",
                 excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
@@ -264,7 +257,7 @@ export default async function DashboardPage({
         // Active workshop orders
         const activeOrdersPrisma = await prisma.serviceOrder.findMany({
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: { in: ["PENDING", "IN_PROGRESS"] },
             },
             orderBy: { createdAt: "asc" },
@@ -301,7 +294,7 @@ export default async function DashboardPage({
             where: {
                 status: "PENDING",
                 createdAt: { gte: startOfMonth },
-                ...(viewBranchId ? { user: { branchId: viewBranchId } } : {}),
+                ...(viewBranchId ? { user: branchWhere(viewBranchId) } : {}),
             },
             orderBy: { createdAt: "desc" },
             select: {
@@ -365,7 +358,7 @@ export default async function DashboardPage({
             by: ["productVariantId"],
             where: {
                 sale: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: "COMPLETED",
                     createdAt: { gte: periodInfo.from, lte: periodInfo.to },
                 },
@@ -409,7 +402,7 @@ export default async function DashboardPage({
         const salesBySellerPrisma = await prisma.sale.groupBy({
             by: ["userId"],
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: "COMPLETED",
                 excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
@@ -438,7 +431,7 @@ export default async function DashboardPage({
         const cashFlowPrisma = await prisma.cashTransaction.groupBy({
             by: ["collectionStatus"],
             where: {
-                session: { branchId: viewBranchId ?? undefined },
+                session: branchWhere(viewBranchId),
                 type: "PAYMENT_IN",
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
             },
@@ -457,7 +450,7 @@ export default async function DashboardPage({
             by: ["status"],
             where: {
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
-                ...(viewBranchId ? { user: { branchId: viewBranchId } } : {}),
+                ...(viewBranchId ? { user: branchWhere(viewBranchId) } : {}),
                 status: { in: ["PENDING", "APPROVED"] },
             },
             _sum: { amount: true },
@@ -473,7 +466,7 @@ export default async function DashboardPage({
         // Revenue chart — period-aware (hourly for today, daily for week/month)
         const revenueChartRaw = await prisma.sale.findMany({
             where: {
-                ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                ...branchWhere(viewBranchId),
                 status: "COMPLETED",
                 excludeFromRevenue: false,
                 createdAt: { gte: periodInfo.from, lte: periodInfo.to },
@@ -550,7 +543,7 @@ export default async function DashboardPage({
         ] = await Promise.all([
             prisma.sale.findMany({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: "COMPLETED",
                     warrantyDocReady: false,
                 },
@@ -560,7 +553,7 @@ export default async function DashboardPage({
             }),
             prisma.sale.findMany({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     orderType: "BACKORDER",
                     status: "LAYAWAY",
                     createdAt: { lt: sevenDaysAgo },
@@ -571,7 +564,7 @@ export default async function DashboardPage({
             }),
             prisma.quotation.findMany({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
                     validUntil: { gte: now, lte: in48Hours },
                 },
@@ -587,7 +580,7 @@ export default async function DashboardPage({
             }),
             prisma.stock.findMany({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     quantity: { lte: 2 },
                 },
                 take: 8,
@@ -607,7 +600,7 @@ export default async function DashboardPage({
             }),
             prisma.assemblyOrder.findMany({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: "PENDING",
                 },
                 take: 5,
@@ -625,7 +618,7 @@ export default async function DashboardPage({
             }),
             prisma.sale.aggregate({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: "COMPLETED",
                     excludeFromRevenue: false,
                     createdAt: { gte: periodInfo.compFrom, lte: periodInfo.compTo },
@@ -635,13 +628,13 @@ export default async function DashboardPage({
             }),
             prisma.stock.count({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     quantity: { lte: 2 },
                 },
             }),
             prisma.assemblyOrder.count({
                 where: {
-                    ...(viewBranchId ? { branchId: viewBranchId } : {}),
+                    ...branchWhere(viewBranchId),
                     status: "PENDING",
                 },
             }),

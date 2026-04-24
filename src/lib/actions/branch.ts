@@ -6,14 +6,23 @@ import { authOptions } from "@/lib/auth";
 
 const COOKIE_NAME = "admin_branch_id";
 
-export async function switchAdminBranch(branchId: string, branchName: string) {
+export async function switchAdminBranch(
+  branchId: string | null,
+  branchName: string | null,
+) {
   const session = await getServerSession(authOptions);
   const user = session?.user as { role?: string } | undefined;
 
   if (!user || user.role !== "ADMIN") return;
 
   const jar = await cookies();
-  jar.set(COOKIE_NAME, JSON.stringify({ id: branchId, name: branchName }), {
+
+  if (branchId === null) {
+    jar.delete(COOKIE_NAME);
+    return;
+  }
+
+  jar.set(COOKIE_NAME, JSON.stringify({ id: branchId, name: branchName ?? "" }), {
     httpOnly: false,
     sameSite: "lax",
     path: "/",

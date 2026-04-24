@@ -7,6 +7,7 @@ import { CashSessionManager } from "@/components/pos/cash-session-manager";
 import { ThemeToggle } from "./theme-toggle";
 import { OrphanedSessionBanner } from "./orphaned-session-banner";
 import { BranchSwitcher } from "@/components/pos/branch-switcher";
+import { BranchFilterBanner } from "./branch-filter-banner";
 import { getAdminActiveBranch } from "@/lib/actions/branch";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
@@ -27,7 +28,7 @@ interface TopbarProps {
     user: SessionUser;
     isAdmin: boolean;
     canSeeNotifications: boolean;
-    activeBranchId: string;
+    activeBranchId: string | null;
     activeBranchName: string;
 }
 
@@ -82,16 +83,22 @@ export default async function PosLayout({
     const isAdmin = user.role === "ADMIN";
     const canSeeNotifications = user.role === "MANAGER" || user.role === "ADMIN";
 
-    // For admin: use cookie-stored active branch, falling back to their assigned branch
-    let activeBranchId = user.branchId ?? "";
-    let activeBranchName = user.branchName ?? "—";
-
+    // Admin: cookie define el filtro persistente; sin cookie = Global (null).
+    // Non-admin: siempre su sucursal asignada.
+    let activeBranchId: string | null;
+    let activeBranchName: string;
     if (isAdmin) {
         const saved = await getAdminActiveBranch();
         if (saved) {
             activeBranchId = saved.id;
             activeBranchName = saved.name;
+        } else {
+            activeBranchId = null;
+            activeBranchName = "Global";
         }
+    } else {
+        activeBranchId = user.branchId ?? "";
+        activeBranchName = user.branchName ?? "—";
     }
 
     // Compute effective pinned reports for sidebar cluster + read density preference
@@ -129,6 +136,9 @@ export default async function PosLayout({
                     activeBranchId={activeBranchId}
                     activeBranchName={activeBranchName}
                 />
+                {isAdmin && activeBranchId !== null && (
+                    <BranchFilterBanner branchName={activeBranchName} />
+                )}
                 <Breadcrumbs />
                 <main id="main-content" className="flex-1 overflow-y-auto relative">
                     <div className="p-8">
