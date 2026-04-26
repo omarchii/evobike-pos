@@ -17,7 +17,7 @@ interface ServiceOption {
   chargeModel: string;
 }
 
-interface SearchParams {
+interface SearchParams extends Record<string, string | string[] | undefined> {
   customerBikeId?: string;
   customerId?: string;
 }
@@ -38,10 +38,9 @@ export default async function RecepcionPage({
   // Admin en Global no tiene sucursal: redirigimos al tablero para que pique
   // una en el switcher. Deuda: admin debería tener picker en el form (principio
   // "writes nunca infieren del filtro") — hoy toma la cookie como proxy.
-  const branchId = await getViewBranchId();
-  if (!branchId) redirect("/workshop");
-
   const params = await searchParams;
+  const branchId = await getViewBranchId(params);
+  if (!branchId) redirect("/workshop");
   const prefillBikeId = params.customerBikeId;
   // customerBikeId GANA si ambos vienen (preserva flujo C.2 existente).
   const prefillCustomerId =
@@ -172,6 +171,7 @@ export default async function RecepcionPage({
         maintenanceServices={maintenanceServices as MaintenanceServiceOption[]}
         allServices={allServiceOptions}
         userRole={role}
+        branchId={branchId}
         prefillBike={prefillBike}
         prefillCustomer={prefillCustomer}
         prefillMaintenanceStatus={prefillMaintenanceStatus}

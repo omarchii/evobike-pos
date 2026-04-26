@@ -458,6 +458,11 @@ export default function WorkshopBoard({
 
   async function handleTransition(orderId: string, t: Transition | "invalid") {
     if (t === "invalid") return;
+    const order = localOrders.find((o) => o.id === orderId);
+    if (!order) {
+      toast.error("Orden no encontrada en el tablero");
+      return;
+    }
     const prev = localOrders;
     setLocalOrders((cur) =>
       cur.map((o) => {
@@ -475,13 +480,13 @@ export default function WorkshopBoard({
         res = await fetch(`/api/workshop/orders/${orderId}/status`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: t.statusPatch }),
+          body: JSON.stringify({ status: t.statusPatch, branchId: order.branchId }),
         });
       } else {
         res = await fetch(`/api/service-orders/${orderId}/sub-status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subStatus: t.subStatusPatch ?? null }),
+          body: JSON.stringify({ subStatus: t.subStatusPatch ?? null, branchId: order.branchId }),
         });
       }
       const result = (await res.json()) as { success: boolean; error?: string };

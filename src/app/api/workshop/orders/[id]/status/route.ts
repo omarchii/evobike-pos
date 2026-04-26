@@ -4,11 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { ServiceOrderStatus, Prisma } from "@prisma/client";
-import { getViewBranchId } from "@/lib/branch-filter";
+import { validateBranchWriteAccess } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const statusSchema = z.object({
   currentStatus: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "DELIVERED", "CANCELLED"]),
+  branchId: z.string().min(1).optional(),
 });
 
 // PATCH /api/workshop/orders/[id]/status — avanzar estado Kanban.
@@ -26,13 +27,6 @@ export async function PATCH(
 
   const user = session.user as unknown as SessionUser;
   const userId = user.id;
-  const branchId = await getViewBranchId();
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Selecciona una sucursal para operar" },
-      { status: 400 },
-    );
-  }
   const { id: orderId } = await params;
 
   const body: unknown = await req.json();
@@ -41,7 +35,7 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: "Estado inválido" }, { status: 400 });
   }
 
-  const { currentStatus } = parsed.data;
+  const { currentStatus, branchId } = parsed.data;
 
   let newStatus: ServiceOrderStatus;
   switch (currentStatus) {
@@ -72,10 +66,11 @@ export async function PATCH(
     if (!order) {
       return NextResponse.json({ success: false, error: "Orden no encontrada" }, { status: 404 });
     }
-    if (order.branchId !== branchId) {
+    const branchAccess = validateBranchWriteAccess(user, order.branchId, branchId);
+    if (!branchAccess.success) {
       return NextResponse.json(
-        { success: false, error: "Sin acceso a esta orden" },
-        { status: 403 },
+        { success: false, error: branchAccess.error },
+        { status: branchAccess.status },
       );
     }
     if (user.role === "TECHNICIAN" && order.assignedTechId !== userId) {

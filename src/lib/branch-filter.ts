@@ -7,6 +7,15 @@ import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "admin_branch_id";
 
+type BranchScopedUser = {
+    role?: string;
+    branchId?: string | null;
+};
+
+type BranchWriteAccessResult =
+    | { success: true; branchId: string }
+    | { success: false; status: 400 | 403 | 404; error: string };
+
 /**
  * Fragmento `where` de Prisma para el filtro por sucursal. Vista Global
  * (`viewBranchId === null`) retorna `{}` — sin filtro. Se puede esparcir a
@@ -74,4 +83,83 @@ export async function getViewBranchId(
         select: { id: true },
     });
     return found ? found.id : null;
+}
+
+/**
+ * Resuelve una sucursal operativa para escrituras que crean recursos nuevos.
+ * El branchId debe venir como intencion explicita del cliente/server page; no
+ * se infiere de cookies ni de `?branch=` dentro del Route Handler.
+ */
+export async function resolveWriteBranchId(
+    user: BranchScopedUser,
+    requestedBranchId: string | null | undefined,
+): Promise<BranchWriteAccessResult> {
+    if (user.role !== "ADMIN") {
+        if (!user.branchId) {
+            return {
+                success: false,
+                status: 403,
+                error: "No tienes una sucursal asignada.",
+            };
+        }
+        if (requestedBranchId && requestedBranchId !== user.branchId) {
+            return {
+                success: false,
+                status: 403,
+                error: "Sin acceso a esta sucursal",
+            };
+        }
+        return { success: true, branchId: user.branchId };
+    }
+
+    if (!requestedBranchId) {
+        return {
+            success: false,
+            status: 400,
+            error: "Selecciona una sucursal para operar",
+        };
+    }
+
+    const found = await prisma.branch.findUnique({
+        where: { id: requestedBranchId },
+        select: { id: true },
+    });
+    if (!found) {
+        return {
+            success: false,
+            status: 404,
+            error: "Sucursal no encontrada",
+        };
+    }
+
+    return { success: true, branchId: found.id };
+}
+
+/**
+ * Valida escrituras sobre recursos existentes, donde la verdad de sucursal
+ * viene del recurso en BD. Si el cliente manda branchId, se verifica que
+ * coincida para detectar intenciones inconsistentes.
+ */
+export function validateBranchWriteAccess(
+    user: BranchScopedUser,
+    resourceBranchId: string,
+    requestedBranchId?: string | null,
+): BranchWriteAccessResult {
+    if (requestedBranchId && requestedBranchId !== resourceBranchId) {
+        return {
+            success: false,
+            status: 403,
+            error: "La sucursal enviada no coincide con la orden.",
+        };
+    }
+
+    if (user.role !== "ADMIN" && user.branchId !== resourceBranchId) {
+        return {
+            success: false,
+            status: 403,
+            error: "Sin acceso a esta orden",
+        };
+    }
+
+    return { success: true, branchId: resourceBranchId };
 }

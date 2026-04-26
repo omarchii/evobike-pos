@@ -14,7 +14,7 @@ import {
 import { SERVICE_ORDER_TYPES } from "@/lib/workshop-enums";
 import { CHECKLIST_KEYS } from "@/lib/workshop-checklist";
 import { moveDraftToOrder, cleanupOrderPhotos } from "@/lib/workshop-photos";
-import { getViewBranchId } from "@/lib/branch-filter";
+import { resolveWriteBranchId } from "@/lib/branch-filter";
 import { normalizeForSearch } from "@/lib/customers/normalize";
 import type { SessionUser } from "@/lib/auth-types";
 
@@ -84,6 +84,7 @@ const newBikeSchema = z
 
 const newOrderSchema = z
   .object({
+    branchId: z.string().min(1, "Selecciona una sucursal para operar"),
     customerId: z.string().optional(),
     customerBikeId: z.string().optional(),
     customerName: z.string().min(1, "El nombre del cliente es obligatorio"),
@@ -172,14 +173,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const user = session.user as unknown as SessionUser;
   const userId = user.id;
-  const branchId = await getViewBranchId();
-
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Selecciona una sucursal para operar" },
-      { status: 400 },
-    );
-  }
 
   const body: unknown = await req.json();
   const parsed = newOrderSchema.safeParse(body);
@@ -189,6 +182,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const input = parsed.data;
+  const branchAccess = await resolveWriteBranchId(user, input.branchId);
+  if (!branchAccess.success) {
+    return NextResponse.json(
+      { success: false, error: branchAccess.error },
+      { status: branchAccess.status },
+    );
+  }
+  const branchId = branchAccess.branchId;
 
   // POLICY_MAINTENANCE exige customerBikeId como guard mínimo de Sub-fase A.
   // La validación de vigencia real (assertPolicyActive) es hoy no-op.

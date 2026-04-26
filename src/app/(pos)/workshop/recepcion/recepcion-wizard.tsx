@@ -196,6 +196,7 @@ interface RecepcionWizardProps {
   maintenanceServices: MaintenanceServiceOption[];
   allServices: ServiceOption[];
   userRole: string;
+  branchId: string;
   prefillBike: {
     id: string;
     brand: string | null;
@@ -266,6 +267,7 @@ export function RecepcionWizard({
   maintenanceServices,
   allServices,
   userRole,
+  branchId,
   prefillBike,
   prefillCustomer,
   prefillMaintenanceStatus,
@@ -382,6 +384,7 @@ export function RecepcionWizard({
           : undefined;
 
       const payload = {
+        branchId,
         customerId: data.customerId,
         customerName: data.customerName,
         customerPhone: data.customerPhone,

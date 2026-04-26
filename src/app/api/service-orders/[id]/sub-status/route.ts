@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import { SERVICE_ORDER_SUB_STATUS } from "@/lib/workshop-enums";
-import { getViewBranchId } from "@/lib/branch-filter";
+import { validateBranchWriteAccess } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 
 const subStatusSchema = z.object({
   // null limpia el sub-estado.
   subStatus: z.enum(SERVICE_ORDER_SUB_STATUS).nullable(),
+  branchId: z.string().min(1).optional(),
 });
 
 // POST /api/service-orders/[id]/sub-status
@@ -26,13 +27,6 @@ export async function POST(
   }
 
   const user = session.user as unknown as SessionUser;
-  const branchId = await getViewBranchId();
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Selecciona una sucursal para operar" },
-      { status: 400 },
-    );
-  }
   if (user.role === "SELLER") {
     // SELLER no trabaja órdenes de taller: solo operativos (TECHNICIAN/MANAGER/ADMIN).
     return NextResponse.json(
@@ -51,7 +45,7 @@ export async function POST(
       { status: 400 },
     );
   }
-  const { subStatus } = parsed.data;
+  const { subStatus, branchId } = parsed.data;
 
   try {
     await requireActiveUser(session);
@@ -69,10 +63,11 @@ export async function POST(
     if (!order) {
       return NextResponse.json({ success: false, error: "Orden no encontrada" }, { status: 404 });
     }
-    if (order.branchId !== branchId) {
+    const branchAccess = validateBranchWriteAccess(user, order.branchId, branchId);
+    if (!branchAccess.success) {
       return NextResponse.json(
-        { success: false, error: "Sin acceso a esta orden" },
-        { status: 403 },
+        { success: false, error: branchAccess.error },
+        { status: branchAccess.status },
       );
     }
     if (user.role === "TECHNICIAN" && order.assignedTechId !== user.id) {

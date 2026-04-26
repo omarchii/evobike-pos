@@ -325,6 +325,7 @@ export default async function WorkshopPage({
 
   const serializedActive: SerializedBoardOrder[] = active.map((o) => ({
     id: o.id,
+    branchId: o.branchId,
     folio: o.folio,
     status: o.status as SerializedBoardOrder["status"],
     subStatus: (o.subStatus ?? null) as SerializedBoardOrder["subStatus"],

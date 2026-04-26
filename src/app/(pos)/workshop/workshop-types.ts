@@ -3,6 +3,7 @@
 
 export type SerializedBoardOrder = {
   id: string;
+  branchId: string;
   folio: string;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
   subStatus: "WAITING_PARTS" | "WAITING_APPROVAL" | "PAUSED" | null;
