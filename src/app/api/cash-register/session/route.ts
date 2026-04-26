@@ -21,6 +21,8 @@ type SerializedCashSession = Omit<
     diferencia: number | null;
 };
 
+type CashSessionScope = "GLOBAL" | "BRANCH";
+
 function serializeSession(s: CashRegisterSession): SerializedCashSession {
     return {
         ...s,
@@ -41,11 +43,20 @@ function errorFromUnknown(error: unknown, scope: string): NextResponse {
         return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-        return NextResponse.json(
-            { success: false, error: "Sesión obsoleta. Cierra sesión y vuelve a iniciar." },
-            { status: 401 },
-        );
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+            return NextResponse.json(
+                { success: false, error: "Ya hay una caja abierta en esta sucursal." },
+                { status: 409 },
+            );
+        }
+
+        if (error.code === "P2003") {
+            return NextResponse.json(
+                { success: false, error: "Sesión obsoleta. Cierra sesión y vuelve a iniciar." },
+                { status: 401 },
+            );
+        }
     }
 
     const message = error instanceof Error ? error.message : "Error interno";
@@ -64,9 +75,12 @@ export async function GET(): Promise<NextResponse> {
 
     try {
         const activeSession = branchId ? await getActiveSession(branchId) : null;
+        const scope: CashSessionScope = branchId ? "BRANCH" : "GLOBAL";
         return NextResponse.json({
             success: true,
             data: activeSession ? serializeSession(activeSession) : null,
+            scope,
+            requiresBranchSelection: scope === "GLOBAL",
         });
     } catch (error: unknown) {
         return errorFromUnknown(error, "GET");

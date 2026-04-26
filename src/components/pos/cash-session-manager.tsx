@@ -126,12 +126,17 @@ export function CashSessionManager() {
     useEffect(() => {
         const checkSession = async () => {
             const res = await fetch("/api/cash-register/session").then(
-                (r) => r.json() as Promise<{ success: boolean; data?: { id: string } | null }>,
+                (r) => r.json() as Promise<{
+                    success: boolean;
+                    data?: { id: string } | null;
+                    scope?: "GLOBAL" | "BRANCH";
+                    requiresBranchSelection?: boolean;
+                }>,
             );
             if (res.success) {
                 if (res.data) {
                     setHasActiveSession(true);
-                } else {
+                } else if (!res.requiresBranchSelection && res.scope !== "GLOBAL") {
                     setIsOpen(true);
                 }
             }
