@@ -257,6 +257,56 @@ Sin estos 3, I3b.1 no es defensible operativamente.
 
 ---
 
+### 1.3.8 Interlocks cerrados — Pack B2 (2026-04-26)
+
+3 interlocks de producto/UX + permisos cerrados en sesión dedicada de chat (~60 min, formato frase por ítem). El framing inicial fue refinado vía 2 rondas de pushback que añadieron 4 gaps al pack v1: (1) orden interno I4→I5→I8 para que I4=(a) no obligue a revisitar I8; (2) I8 no contemplaba P13 — workshop tiene 2 ejes de autorización propios (`ServiceOrderApproval` cliente + per-rol técnico) verificados por grep, distintos de `AuthorizationRequest` (PIN manager), forzando agregar I8.0 scope antes de I8.1; (3) I8 caso #4 cruza con consulta cliente #9 (cap diario transferencias), forzando I8.2; (4) I5=(a) requería sub-decisiones igual que I3b en B1 (vencimiento · estado carrito · reserva inventario). Una vez incorporados los 4 gaps, una tercera ronda añadió 3 refinamientos de framing: anotar coste migración Prisma de I8.1=(a), formalizar carve-out como **regla 3-ejes** (no excepción ad-hoc), y anclar el TODO de I8.2 en cross-link a consulta #9 existente.
+
+#### Decisiones finales
+
+| Sub-decisión | Resultado |
+|---|---|
+| **I4** | **Separación estricta** — transferencias viven solo en `/transferencias`. Fix incluido: convertir el botón muerto de `inventario/page.tsx:51-53` ("Traslados" sin `onClick`) en deep-link real al módulo. **Sub-decisión TECHNICIAN: N/A** (con (b) no se introduce nueva superficie en `/inventario` que requiera definir visibilidad para el rol). Razón: `/transferencias` ya es módulo completo (tabs por status `solicitudes/borradores/transito/historial` + 4 dialogs `autorizar/cancelar/recibir/despachar` + API completa). Embed en inventario duplica UI sin añadir capacidad operativa real. **(a)** seguía abierta como override-bait si el almacenista vive en `/inventario` y "qué viene en camino" es contexto crítico — no hay signal operacional de eso. Caso #4 de I8 (anular transferencia despachada) dispara desde `/transferencias` (surface natural del módulo). |
+| **I5 (hallazgo previo)** | El doc cluster mintió en §1.8 cuando dijo "(a) preservar flujo actual (hoy parcial)". Verificado: **grep en repo no encuentra `saveAsQuotation`/`fromCart`/`guardarComoCotizacion` ni equivalente** — el flujo POS→cotización **no existe hoy**. Existe el reverso (P7-B `cotizaciones/[id]/_components/convert-quotation-dialog.tsx`, preservado). Eso reescribe I5.1 como "construir desde cero", no como "consolidar parcial". |
+| **I5.1** | **Construir** — botón "Guardar como cotización" en POS → genera `Quotation` con líneas del carrito + cliente + vencimiento. Razón: workflow común retail "lo voy a pensar" merece path nativo en POS. **(b)** elimina el flujo y fuerza al cajero a salir de POS y abrir `/cotizaciones/nueva` (form completo) repitiendo selección de items — fricción innecesaria para algo común. **(c)** PDF + WhatsApp del carrito sin `Quotation` pierde traceability/conversion analytics y rompe simetría con `convert-quotation-dialog` (no hay nada que convertir después). Build acotado: botón + endpoint que crea `Quotation` con shape conocido. |
+| **I5.2** | **Configurable por sucursal con fallback (d30)** — lee de `Configuracion`/`umbrales` existente. Si la config no está poblada, default 30 días. Razón: bici eléctrica gama alta puede tomar 60-90d de decisión; walk-in de refacción 30d. Hardcoded global castiga uno u otro. (cfg) reutiliza tabla que ya existe; el fallback evita bloquear el lanzamiento si Evobike no configura nada el día 1. |
+| **I5.3** | **Limpia** — el carrito POS se vacía tras crear cotización. Razón: el caso "guardo cotización" implica "el cliente se va a pensarlo" — mantener el carrito es ruido para el siguiente cliente. **(mantiene)** confunde al cajero ("¿este carrito sigue activo o ya se cotizó?"). **(pregunta)** suma modal en hot path por un edge case no observado. Si el cliente decide al momento, el flujo natural es seguir cobrando sin guardar cotización. |
+| **I5.4** | **No reserva stock** + nota P7-B documentada. Razón: cotización = intención, no compromiso. **(sí)** extiende hard-block de I3b a una entidad más liviana sin el bundle ghost-hygiene (TTL · force-release · job nightly) que justifica el bloqueo en `Pedido`; reservar acá crea ghost-stock sin red de seguridad. **(opt-in)** suma decisión cognitiva al cajero por edge case ("¿reservo o no?") sin guía clara. **Nota P7-B preservada:** conversión tardía vía `cotizaciones/[id]/_components/convert-quotation-dialog.tsx` re-valida stock al momento de convertir, no en la cotización original. Stock cambiado durante ventana de cotización es expectativa documentada, no bug. |
+| **I8.0** | **Carve-out con regla 3-ejes formal** (extiende I7, no lo contradice). Workshop opera fuera de la matriz porque sus 2 sistemas de autorización (`ServiceOrderApproval` cliente + per-rol técnico) divergen en los 3 ejes. Verificado por grep: `service-orders/[id]/approvals/route.ts` + `approvals/[approvalId]/respond` + variante pública en `service-orders/public/[token]/approvals/.../respond` (cerrado P13-D/F/G), más gating per-rol propio en `workshop/orders/[id]/status/route.ts:76`, `service-orders/[id]/sub-status:31,73`, `qa-panel.tsx:111`. Razón: subsumir genera abstracción artificial; carve-out documentado con regla genérica establece precedente sólido para futuros módulos. Ver "Regla de carve-out" abajo. |
+| **I8.1** | **Matriz única cross-cluster** en `src/lib/permissions/matrix.ts`. Tabla `{accion, rol, contexto}` → `permitido | requiere_autorizacion(tipo) | bloqueado`. Reutiliza infra `AuthorizationRequest` extendiendo `AuthorizationType` con 4 valores nuevos: `DEVOLUCION_POST_VENTANA`, `CANCELACION_CON_ABONOS`, `REFUND_SIN_CAJA`, `ANULACION_TRANSFERENCIA_DESPACHADA`. **Coste único migración Prisma +1-2h aceptado.** Razón: los 4 casos spanean POS/Caja/Pedidos/Transferencias — cumplen umbral I7 (≥2 módulos). **(b)** per-módulo replica patrón actual (`transferencias/page.tsx:36`) y deja drift cross-módulo como coste continuo: cada nueva regla negocia contexto en cada handler. Trade favorable: migración única vs entropía persistente. |
+| **I8.2** | **Diferir con cross-link a consulta cliente #9**. La interacción "anular transferencia despachada libera slot del cap diario" no se especula en la matriz hoy. Cross-link bidireccional: `memory/project_cliente_consultas_pendientes.md` ítem #9 anota "interactúa con I8 caso #4 — re-evaluar lugar de la regla (matriz vs handler) si se confirma cap"; reciprocidad acá. Razón: cap sin confirmar = especulación; matriz no debe asumir slots que pueden no existir. **(en matriz)** preferible cuando llegue confirmación; mientras tanto la regla vive en `transferencias/[id]/cancelar/route.ts` (donde está hoy) sin cambios. |
+
+#### Regla de carve-out (extiende I7, derivada de I8.0)
+
+> Un módulo puede operar fuera del registry/matriz compartido cuando su sistema difiere en los **3 ejes** (actor, canal, trigger) **Y** vive solo en un módulo (no cumple umbral 2+ de I7). Workshop hoy califica: actor=cliente externo (vs manager interno), canal=WhatsApp/portal (vs PIN local), trigger=cambio de scope/presupuesto (vs acción inmediata). Futuros módulos que pidan carve-out deben argumentar contra los 3 ejes; si dos módulos comparten un sistema, deja de calificar y se promueve.
+
+Esta regla extiende I7 simétricamente: I7 promueve por **umbral** (2+ módulos comparten → registry compartido); el carve-out se justifica por **divergencia** (3 ejes distintos + módulo único → permitido fuera). Sin esta regla, "workshop es especial" sería precedente débil que cualquier módulo puede invocar; con ella, hay criterio falsificable.
+
+#### Refinamientos pinned (al implementar)
+
+- **PR de I8.1 (matriz única):**
+  1. `prisma/schema.prisma:1117` extender `enum AuthorizationType` con 4 valores nuevos: `DEVOLUCION_POST_VENTANA`, `CANCELACION_CON_ABONOS`, `REFUND_SIN_CAJA`, `ANULACION_TRANSFERENCIA_DESPACHADA`. Migración Prisma alter-enum sin backfill.
+  2. Crear `src/lib/permissions/matrix.ts` con tipo `{accion, rol, contexto} → 'permitido' | { requiereAutorizacion: AuthorizationType } | 'bloqueado'`.
+  3. Migrar los 4 callsites ad-hoc al consumo central: `sales/[id]/cancel/route.ts`, `transferencias/[id]/cancelar/route.ts`, refund efectivo handler en sales/POS, devolución handler. Audit grep `requireRole|allowedRoles|isAdmin` antes del PR para no dejar callsites huérfanos.
+  4. Patrón `transferencias/page.tsx:36-38` (per-page redirect) **se preserva** para gating de ruta — la matriz cubre acciones, no acceso de página.
+- **PR de I5.1 (POS → cotización):** botón en carrito POS Terminal + endpoint `/api/cotizaciones/from-cart` que reusa shape de `/api/cotizaciones/route.ts:POST`. Dependencia: POS Terminal está **último** en orden de Fase A (regla invariante §1.6). Implementación entra cuando ese módulo se redisene.
+- **PR de I4 (fix botón muerto):** cambio mecánico en `inventario/page.tsx:51-53` — convertir `Button` con icon `ArrowRightLeft` en `<Link href="/transferencias">`. Puede aterrizar en el rediseño del módulo Inventario (§1.6 ítem 2) o como pre-step si se quiere desacoplar. **No es Fase 0** — toca código del módulo.
+- **Sub-decisión TECHNICIAN re-abrible:** si en algún punto Evobike pide que TECHNICIAN vea transferencias entrantes a su sucursal (read-only), reabrir como mini-pack independiente. Hoy `transferencias/page.tsx:36` lo redirige a `/`; ese comportamiento queda como default explícito.
+
+#### Preguntas latentes pre-implementación
+
+- **Override-bait de I4** (nota del user al votar): si en operación real el almacenista vive en `/inventario` y "qué viene en camino" es contexto crítico para su día, (a)+T2 (read-only entrantes para TECHNICIAN) gana. Sin signal operacional aún. Re-evaluable cuando arranque BRIEF de Inventario.
+- **Cross-link bidireccional con consulta cliente #9** (I8.2): la decisión sobre dónde vive la regla "anular transferencia libera slot" se reabre cuando el cliente confirme el cap diario. Sin cap, no hay slot; con cap, evaluar matriz vs handler.
+
+#### Implicaciones cross-cluster
+
+- **I4** aterriza en módulo Inventario (Fase A, §1.6 ítem 2). Cambio mecánico ~0.25h.
+- **I5** aterriza en módulo POS Terminal (Fase A, último, §1.6 ítem 10). Botón + endpoint + lectura de `Configuracion` para vencimiento default. Estimado: ~3-5h sumados al base de POS Terminal.
+- **I8** aterriza distribuido: helper central + migración Prisma como pre-step (~2-3h), refactor de los 4 callsites (~3-4h cada uno). Estimado: **~14-18h**, incluyendo audit grep de gating ad-hoc.
+- **Estimado bundle Pack B2 distribuido cross-cluster: ~17-23h.**
+- **Carve-out workshop preservado**: el rediseño de workshop ya cerrado (P13-D/F/G) **no se toca**. Cualquier intento futuro de "unificar" autorización workshop→matriz debe invalidar primero la regla 3-ejes.
+
+---
+
 ### 1.4 Devoluciones — 8 dimensiones cerradas (D1-D8)
 
 Devoluciones entra **in-scope** con el siguiente diseño:
@@ -278,19 +328,24 @@ Con D1 decidido en `/ventas/[id]`, **Ventas se reclasifica de (a) 0h → (b) 20-
 
 ---
 
-### 1.5 Gaps cross-módulo — Fase 0 (infra pre-cluster, ~15h)
+### 1.5 Gaps cross-módulo — Fase 0 (infra pre-cluster, 18-24h)
 
 Barridos que benefician a todos los módulos de Fase A. Se hacen **antes** de tocar cualquier módulo del cluster para que cada sesión arranque con tokens limpios.
 
+> **Re-conteo 2026-04-26** — auditoría previa al PR de Fase 0 detectó scope subestimado en 3 de 5 gaps. Conteos abajo son los reales del repo, no los originales de 2026-04-24. Estimado total subió de "~15h" a 18-24h.
+
 | # | Gap | Fix | Estimado |
 |---|---|---|---|
-| 1 | `--velocity-gradient` hardcoded en ~55 archivos | Crear token CSS `--velocity-gradient: linear-gradient(135deg, #1b4332, #2ecc71)` en `globals.css`. grep+replace sobre `linear-gradient(135deg, #1b4332, #2ecc71)` → `var(--velocity-gradient)` | 8-10h |
-| 2 | `rgba(178,204,192,0.X)` hardcoded (47 instancias con alphas no-estándar) | Evaluar 2 caminos: (a) aceptar shift visual y replace_all, o (b) introducir tokens `--ghost-border-weak` / `--ghost-border-strong` con pares light/dark. **Decisión pendiente** en la sesión de Fase 0 | 2-3h |
-| 3 | Tipos `SessionUser`, `BranchComparisonRow`, `SerializedPedido`, etc. duplicados inline en 110+ archivos | Consolidar en `src/types/{dashboard,pos,pedidos,quotations,auth}.ts` por módulo. No sustitución 1:1: tipo canónico + `Pick<>` en handlers que solo necesitan subset | 3-4h |
-| 4 | `var(--font-heading)` — token inexistente | Reemplazar por `var(--font-display)` en `configuracion/page.tsx:91,128` | 0.5h |
+| 1 | `--velocity-gradient` hardcoded — **82 instancias del literal exacto en 48 archivos + 51 variantes en 80 archivos totales** (ángulos distintos, alpha wrappers, casing). Doc 2026-04-24 decía "~55 archivos" | (a) Crear token CSS `--velocity-gradient: linear-gradient(135deg, #1b4332, #2ecc71)` en `globals.css`. (b) **Auditoría grep previa obligatoria** sobre las 51 variantes para triage manual: cuáles colapsan al token, cuáles preservan ángulo/opacidad propios. (c) replace_all del literal exacto. (d) Migración manual de las variantes que sí entran al token | 10-14h |
+| 2.a | `rgba(178, 204, 192, 0.X)` hardcoded — clusters dominantes 0.08 (~17) + 0.15 (~4) + 0.20 (~22) = **~43 instancias mecánicas**. Distribución bimodal con tail concentrado en 3 pantallas (portal taller, portal cotizaciones, reporte anual) | **(b') decidido 2026-04-26**: 2 tokens nuevos en `globals.css` siguiendo el patrón existente de `--ghost-border` (cada token duplica su alpha al pasar a dark, replicando el ratio 0.15→0.30 ya validado): `--ghost-border-soft` (0.08 light / 0.16 dark) para tabla row separators · `--ghost-border-strong` (0.20 light / 0.40 dark) para card/input/panel borders. `--ghost-border` (0.15 / 0.30) ya existe — sin cambios. replace_all mecánico de los 3 clusters (~43 instancias). **Spot check obligatorio light+dark en 4 pantallas:** `pos-terminal.tsx` (mayor consumidor de 0.20, 14×) · una lista con 0.08 (`autorizaciones-history.tsx` o `tab-modelos.tsx`) · `anual-client.tsx` (mezcla 0.04 + 0.15 + 0.30 — verifica si el tail diferido grita) · un diálogo con 0.20 (`free-form-dialog.tsx` o `convert-quotation-dialog.tsx`) | 3-5h |
+| 2.b | Tail diferido — **~48 instancias** con 12 alphas raros (0.04 / 0.10 / 0.18 / 0.22 / 0.25 / 0.30 / 0.35 / 0.40 / 0.45 / 0.50 / 0.60), concentradas en `taller/public/[token]/page.tsx`, `cotizaciones/public/[token]/page.tsx` y `reportes/anual/anual-client.tsx` | **NO migrar en Fase 0.** Son decisiones de diseño locales de 3 pantallas concretas. Se tocan módulo a módulo al rediseñar el portal cotizaciones (Fase A módulo 5) y reporte anual (Fase B); el portal taller (Fase F ya cerrada) solo si se rediseña en una iteración futura. **Política para código nuevo:** prohibido añadir literales `rgba(178,204,192,X)` con alphas fuera del set canónico — ver `AGENTS.md` §Tokens. Sub-decisión registrada para evitar que sesiones futuras crean que #2 está cerrado al 100% | Diferido a Fase A/B |
+| 3 | Tipos `SessionUser`, `BranchComparisonRow`, `SerializedPedido`, etc. duplicados inline. **237 ocurrencias en 87 archivos `.ts`** solo de esos 3 nombres (sin contar el resto de tipos duplicados) | Fase de discovery primero (1-2h): inventariar shapes únicos por dominio antes de consolidar. Después: consolidar en `src/types/{dashboard,pos,pedidos,quotations,auth}.ts`. No sustitución 1:1: tipo canónico + `Pick<>` en handlers que solo necesitan subset | 4-6h |
+| 4 | `var(--font-heading)` — token inexistente. **28 ocurrencias en 16 archivos** (patrón `var(--font-heading, 'Space Grotesk')` con fallback). Doc 2026-04-24 decía "configuracion/page.tsx:91,128" (2 líneas) | Replace_all `var(--font-heading, 'Space Grotesk')` → `var(--font-display)`. Verificar que ningún archivo dependa del fallback literal | 1-1.5h |
 | 5 | Primitivos sin barrel export | Crear `src/components/primitives/index.ts` exportando `Chip`, `Delta`, `Sparkline`, `SparkBars`, `ProgressSplit` + barrel para `src/components/reportes/shell/*` (`DetailHeader`, `FilterPanel`, `KpiGrid`, `ReportTable`) | 1h |
 
 **Regla:** Fase 0 no toca código de módulos — es solo infra de tokens, tipos y barrels. Ningún fix cosmético de módulo entra aquí.
+
+**Gate de verificación entre #1 y #3:** correr `tsc --noEmit` + `next build` después de cerrar #1 (token CSS, sin riesgo de tipos) y antes de arrancar #3 (consolidación de tipos, alto riesgo). Sin gate, blame se mezcla si #3 rompe build.
 
 **Helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2 ✅ cerrado 2026-04-25) NO va aquí** — es lógica de dominio, no infra. **PR del helper aterriza independiente, antes del cluster** (re-scope post Pack A.2: bug ACTIVO Evotank multi-config desde 2026-04-19 no espera a Catálogo — ver §1.3.6). Ver §1.3.6 "Decisiones finales" para API consolidada y §1.3.6 "Implicaciones cross-cluster" para bundle ~22-30h distribuido.
 
@@ -298,8 +353,8 @@ Barridos que benefician a todos los módulos de Fase A. Se hacen **antes** de to
 
 ### 1.6 Mapa de fases y orden de ejecución
 
-**Fase 0 — Infra pre-cluster** (~15h)
-Los 5 gaps cross-módulo de §1.5. Secuencial, una sola sesión.
+**Fase 0 — Infra pre-cluster** (18-24h, re-estimado 2026-04-26)
+Los 5 gaps cross-módulo de §1.5. Secuencial, varias sesiones (no cabe en una). Ver §1.5 para conteos auditados.
 
 **Fase A — Cluster interconectado** (~175-210h orientativas)
 Orden upstream → downstream:
@@ -352,9 +407,15 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ---
 
-### 1.8 Interlocks abiertos — pendientes de cierre en packs A.1 / A.2 / B1 / B2
+### 1.8 Interlocks cerrados — packs A.1 / A.2 / B1 / B2 (todos cerrados)
 
-**Estado al 2026-04-25 (post Pack B1):** 3 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5; 1 cerrado en Pack A.2 con 6 sub-decisiones — ver §1.3.6; 2 cerrados en Pack B1 con 8 sub-decisiones — ver §1.3.7). Lo restante (Pack B2: I4 · I5 · I8) sigue pendiente. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+**Estado al 2026-04-26:** ✅ **0 interlocks abiertos**. Los 4 packs cerrados:
+- Pack A.1 — 5 decisiones — ver §1.3.5 (cerrado 2026-04-25)
+- Pack A.2 — 1 interlock con 6 sub-decisiones (I10) — ver §1.3.6 (cerrado 2026-04-25)
+- Pack B1 — 2 interlocks con 8 sub-decisiones (I3b, I9) — ver §1.3.7 (cerrado 2026-04-25)
+- Pack B2 — 3 interlocks con 8 sub-decisiones (I4, I5, I8) — ver §1.3.8 (cerrado 2026-04-26)
+
+Esta sección queda como referencia histórica de las opciones consideradas. Los packs se cerraron en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
 
 **Gate 0 (cero red de seguridad de tests):** verificado 2026-04-25 — el repo no tiene harness Jest/Vitest (`find src -name "*.test.*"` → 0 archivos, `package.json` sin deps de testing). Cualquier sweep cross-callsite (helper canónico I10, migración de patrón, etc.) procede sin red de seguridad. Si en el futuro se introduce harness, los bundles ya cerrados no se re-ejecutan; los nuevos sí deben sumar tests al estimado.
 
@@ -431,19 +492,24 @@ Naming de `VoltageChangeLog → ConfigChangeLog` **NO entra en I10** — diferid
 
 ---
 
-#### Pack B2 — Producto / UX + permisos (~55 min, 3 items)
+#### Pack B2 ✅ Cerrado 2026-04-26 — Producto / UX + permisos (3 items, 8 sub-decisiones)
 
-Después de B1. **I8 depende de I7** cerrado en Pack A.
+3 interlocks cerrados en sesión dedicada (~60 min). **Decisiones integradas en §1.3.8** — esta tabla queda como referencia histórica de las opciones consideradas. Pushback del user añadió 4 gaps al framing v1 (orden interno I4→I5→I8 · I8 no contemplaba P13 → split I8.0/I8.1/I8.2 · I8 caso #4 cruza consulta cliente #9 → I8.2 · I5=(a) requería sub-decisiones igual que I3b → split I5.1/.2/.3/.4) y una tercera ronda 3 refinamientos (anotar coste migración Prisma · formalizar regla 3-ejes · anclar TODO en cross-link a #9).
 
-| # | Interlock | Opciones |
-|---|---|---|
-| **I4** | Inventario ↔ Transferencias: ¿visualización de transfers pendientes? | (a) Inventario con tab propio + link profundo a `/transferencias` · (b) Separación estricta (transfers sólo en `/transferencias`) |
-| **I5** | POS ↔ Cotizaciones: guardar carrito actual como cotización desde POS | (a) Preservar flujo actual (hoy parcial) · (b) Eliminar (cotizaciones sólo desde `/cotizaciones/nueva`) · (c) Convertir a "compartir carrito via WhatsApp + PDF" |
-| **I8** | Matriz de permisos inter-módulo. **Descuento POS excluido — permanece en consulta cliente #8**. Casos cubiertos: autorización devolución post-ventana · cancelación pedido con abonos · refund efectivo sin sesión abierta (excepción) · anulación transferencia ya despachada | (a) Matriz única cross-cluster · (b) Reglas per-módulo |
+| # | Interlock | Opciones consideradas | Decisión |
+|---|---|---|---|
+| **I4** | Inventario ↔ Transferencias: ¿visualización de transfers pendientes? | (a) Tab propio en Inventario + deep-link · (b) Separación estricta · sub-T (T1/T2/T3) si (a) | **(b)** separación estricta + fix botón muerto `inventario/page.tsx:51-53`. Sub-T N/A. Ver §1.3.8. |
+| **I5** | POS ↔ Cotizaciones: guardar carrito como cotización (verificado: hoy NO existe). Descompuesto en .1 política · .2 vencimiento · .3 estado carrito · .4 reserva inventario | .1 (a) construir · (b) eliminar · (c) reframe WhatsApp · .2 (d30/d60/d90/cfg) · .3 (limpia/mantiene/pregunta) · .4 (no/sí/opt-in) | **.1=(a) construir · .2=(cfg) configurable + fallback (d30) · .3=(limpia) · .4=(no)** + nota P7-B preservada. Ver §1.3.8. |
+| **I8** | Matriz de permisos inter-módulo. **Descuento POS excluido — permanece en consulta cliente #8**. 4 casos: devolución post-ventana · cancelación pedido con abonos · refund efectivo sin sesión · anulación transferencia despachada. Descompuesto en .0 scope (P13 subsume vs carve-out) · .1 forma · .2 cruce con consulta #9 | .0 (subsume/carve-out) · .1 (a) matriz única · (b) per-módulo · .2 (en matriz/diferir) | **.0=(carve-out con regla 3-ejes formal) · .1=(a) matriz única** con migración Prisma +1-2h · **.2=(diferir con cross-link a #9)**. Ver §1.3.8. |
 
 ---
 
-**Próximo paso operacional:** disparar **Pack B2** (`I4` Inventario↔Transferencias · `I5` POS↔Cotizaciones · `I8` matriz permisos inter-módulo) en sesión separada con respiro post-B1. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. **PR del helper canónico (I10)** puede arrancar independiente del cluster — bug ACTIVO desde 2026-04-19 no espera a Catálogo (ver §1.3.6 "Implicaciones cross-cluster"). Pack A.1 cerrado 2026-04-25 (§1.3.5). Pack A.2 cerrado 2026-04-25 (§1.3.6). Pack B1 cerrado 2026-04-25 (§1.3.7).
+**Próximo paso operacional:** todos los packs cerrados. Disparar:
+1. **Fase 0** (§1.5) — infra pre-cluster 18-24h (CSS tokens, tipos, barrels). Sin dependencia de packs.
+2. **PR del helper canónico (I10)** — independiente del cluster, bug ACTIVO desde 2026-04-19 (ver §1.3.6 "Implicaciones cross-cluster").
+3. **BRIEFs JIT por módulo** del cluster Fase A — empezando por Catálogo (sale de Configuración, §1.6 ítem 1).
+
+Pack A.1 cerrado 2026-04-25 (§1.3.5). Pack A.2 cerrado 2026-04-25 (§1.3.6). Pack B1 cerrado 2026-04-25 (§1.3.7). Pack B2 cerrado 2026-04-26 (§1.3.8).
 
 ---
 
@@ -540,3 +606,4 @@ Para que Claude Design / Code sepa qué archivos citar como vara visual:
 | 2026-04-25 | **Pack A.1 cerrado** (§1.3.5). 5 decisiones: I1a canonicalizar `displayName` · I1b helper puro `src/lib/products/display.ts` · I3a disponible + desglose discoverable (tap en touch) + fix de datos `disponible = total − reservado − en_tránsito` · I6 helpers nombrados por caso de producto sobre `branchWhere` · I7 híbrido seed minimal (3 primarios `EN_CURSO/TERMINADO/CANCELADO` + regla de promoción 2+ módulos). Estimado distribuido cross-cluster ~6-10h. §1.8 marcado ✅ y header actualizado a 6 abiertos. Pack A.2 (I10) sigue pendiente — respiro entre packs |
 | 2026-04-25 | **Pack A.2 cerrado** (§1.3.6). 6 sub-decisiones de I10: helper canónico · 2 funciones públicas (`findConfigsByModelVoltage` plural + `resolveConfigForBike` singular) · A1' `BatteryConfigKey` con `batteryCapacidadId` business · pure lib `src/lib/battery-configurations.ts` server-only con `db: Tx` opcional · sweep 10/12 atómico + 2 deferred (`assembly/route:205`, `assembly/complete:141`) con `console.warn` · Convención A full snapshot 4 axes en `VoltageChangeLog` (S4-prep). Verificación 3-for-3: cada round (seed callsites · schema axis · routing real · seed data multi-config Evotank) cambió o refinó la decisión preliminar. **`resolveConfigForBatteryVariant` y `unsafePickArbitraryConfig` eliminadas** durante la iteración — ambas reproducían S1 con otra cara. **Bug `seed:529` ACTIVO confirmado** vía `seed.ts:638-645` (8 filas Evotank multi-config) — no latente. PR del helper se libera de aterrizar en Catálogo y arranca **independiente, antes del cluster**. Estimado bundle ~22-30h distribuido. §1.8 header actualizado a 5 abiertos, próximo paso operacional cambiado a Pack B1 |
 | 2026-04-25 | **Pack B1 cerrado** (§1.3.7). 2 interlocks con 8 sub-decisiones tras 2 rondas de pushback que reframearon el pack: I3b descompuesto en .1 política raíz · .2 granularidad · .3 momento · .4 concurrencia técnica · .5 manejo origen (gaps detectados: granularidad parcial · timing addcart vs checkout · concurrencia sin lock); I9 limpio sacando caso (1) devolución→arqueo del scope (invalidación local del mismo cajero, no cross-actor); acoplamiento I3b↔I9-(3) resuelto por orden de cierre. Decisiones: **I3b.1=(a) hard block** + bundle ghost-hygiene (TTL pedidos · force-release admin · job nightly) · **I3b.2=(e) solo excedente** con clamp UX · **I3b.3=(ambos)** addcart best-effort + checkout autoritativo · **I3b.4=(v) optimistic concurrency** con `version Int @default(0)` explícito + retry bounded 3× backoff 50/100/200ms + surface al cajero · **I3b.5=SKIP** · **I9-(1)=fuera del scope** · **I9-(2)=(a) polling 60s** extendiendo `use-stock-availability.ts` · **I9-(3)=(a) heredar 60s del mismo hook** con breakdown `{disponibleNeto, reservadoAssembly, reservadoPedido}`. **Consulta cliente #10 capturada** (scope reserva sucursal vs global). **Audit revisable pre-implementación** del 30s actual en `use-stock-availability.ts` (JSDoc desactualizado, 4 hooks con `setInterval` en repo). Estimado bundle ~12-18h distribuido. §1.8 header actualizado a 3 abiertos, próximo paso operacional cambiado a Pack B2 |
+| 2026-04-26 | **Pack B2 cerrado** (§1.3.8). 3 interlocks con 8 sub-decisiones tras 2 rondas de pushback que añadieron 4 gaps al pack v1 (orden interno I4→I5→I8 · I8 no contemplaba P13 → split I8.0 scope antes de .1 forma · I8 caso #4 cruza consulta #9 → I8.2 · I5=(a) requería sub-decisiones igual que I3b → split .1/.2/.3/.4) y una tercera ronda 3 refinamientos (anotar coste migración Prisma · formalizar carve-out como **regla 3-ejes** · anclar TODO en cross-link a consulta #9 existente). Decisiones: **I4=(b) separación estricta** + fix botón muerto `inventario/page.tsx:51-53` (sub-T N/A) · **I5 hallazgo:** verificado por grep que POS→cotización **no existe hoy** (doc cluster mintió en §1.8) → I5.1 reescrita a "construir desde cero" · **I5.1=(a) construir** botón POS · **I5.2=(cfg)** configurable por sucursal con fallback (d30) · **I5.3=(limpia)** carrito · **I5.4=(no)** reservar stock + nota P7-B preservada · **I8.0=(carve-out con regla 3-ejes formal)** que extiende I7 simétricamente (workshop califica: actor cliente externo · canal WhatsApp/portal · trigger cambio scope) · **I8.1=(a) matriz única** en `src/lib/permissions/matrix.ts` con migración Prisma `enum AuthorizationType` + 4 valores nuevos (`DEVOLUCION_POST_VENTANA`, `CANCELACION_CON_ABONOS`, `REFUND_SIN_CAJA`, `ANULACION_TRANSFERENCIA_DESPACHADA`), coste +1-2h aceptado · **I8.2=(diferir con cross-link a consulta #9)** — interacción "anular transferencia libera slot" se reabre cuando el cliente confirme cap diario. Estimado bundle ~17-23h distribuido. **§1.8 colapsada a referencia histórica** (0 abiertos, todos los packs cerrados). Próximo paso operacional cambia a: Fase 0 (§1.5) + PR helper I10 + BRIEFs JIT por módulo del cluster |
