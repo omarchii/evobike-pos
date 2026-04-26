@@ -101,6 +101,35 @@ Dashboard · Tesorería · Autorizaciones · Configuración (sin Catálogo).
 
 ---
 
+### 1.3.5 Interlocks cerrados — Pack A.1 (2026-04-25)
+
+5 decisiones de shape de data upstream cerradas en sesión dedicada de chat (~30 min, formato frase por ítem). Evidencia concreta del problema verificada contra código antes de decidir.
+
+| Interlock | Decisión |
+|---|---|
+| **I1a** | **Canonicalizar `displayName` server-side**. Una fuente para todo el cluster. Razón: 4 composiciones distintas hoy (`(pos)/page.tsx:665` espacios · `cotizaciones/public/[token]/page.tsx:463` middots con orden distinto · `api/pedidos/[id]/pdf/route.tsx:117` guiones · `workshop/[id]/page.tsx:133` espacios) garantizan drift mañana. Agregar `capacidad.label` post-S1 será 1 cambio en lugar de 8. |
+| **I1b** | **Helper puro `src/lib/products/display.ts`**. Patrón establecido del repo (`branch-filter.ts`, `format.ts`, `workshop.ts`), type-safe vía inputs, grep-able trivial, sin migración de schema. Las otras 3 opciones (Prisma derived / view SQL / trigger) son sobreingeniería para el tamaño del problema. |
+| **I3a** | **Solo "disponible" con desglose discoverable**. Tooltip-on-hover en desktop; **tap-to-expand o ícono "i" siempre visible en touch** (no asumir hover — Workshop Mobile cerrado en G3 commit `00e403a` es el caso obvio). `/inventario` mantiene los 3 buckets visibles en su detail view. **Implica fix de datos, no solo UI:** la query debe devolver `disponible = total − reservado − en_tránsito` — no basta cambiar la UI sobre `stocks[0].quantity` (`inventario/page.tsx:40`); ese es el bug actual del vendedor sobrevendiendo reservados de Assembly. |
+| **I6** | **Helpers nombrados por caso de producto** (no god-helper con flags). 4 casos = 4 helpers explícitos sobre `branchWhere` existente: stock-read POS · return-lookup cross-branch · scope transferencias 2-branches · scope cotización (operador vs cliente). Razón: cada flujo es una decisión de producto, no un flag de query — meter todo en un helper único termina en 6 parámetros opcionales y oculta la semántica. |
+| **I7** | **Híbrido seed minimal**. Registry universal arranca con exactamente **3 valores: `EN_CURSO`, `TERMINADO`, `CANCELADO`**. Sub-estados quedan locales por defecto. **Regla de promoción explícita:** un sub-estado asciende al registry solo si se repite en **2+ módulos**. La regla corta el debate ahora ("¿`DELIVERED` cuenta como terminal? ¿`PAGADA` es lo mismo que `COMPLETED`?") posponiéndolo hasta evidencia de reuso. Mezcla EN/ES de los enums actuales NO se resuelve acá — diferido a Fase 6 §rename. |
+
+**Refinamientos pinned (al implementar):**
+
+- **I3a fix de datos** → al rediseñar Inventario (módulo 2 del cluster, post-Catálogo), la query del dashboard de stock debe devolver `disponible` neto (`total − reservado − en_tránsito`), no `stocks[0].quantity` bruto. Anotar en `BRIEF_inventario.md` cuando se arme.
+- **I3a touch-friendly** → componente de stock (probablemente nuevo en barrel de primitivos) expone prop `interaction: "hover" | "tap"` o detecta `pointer: coarse` via media query. No bloquea decisión, es plumbing del componente.
+- **I7 regla de promoción** → cuando un sub-estado aparezca en 2+ módulos, se evalúa promoción al registry. Hasta entonces vive local en su módulo.
+
+**Implicaciones cross-cluster:**
+
+- Helper de `displayName` aterriza al **inicio del módulo Catálogo** (módulo 1 del cluster, donde se introducen las entidades). Migración de los ~8 callsites identificados como evidencia entra como one-shot del propio módulo Catálogo, no se difiere.
+- 4 helpers de I6 viven en `src/lib/branch-filter.ts` extendiendo el módulo existente (no crear archivos nuevos).
+- Registry I7 vive en `src/lib/status-registry.ts` (nuevo). Cada módulo del cluster importa los 3 primarios; sub-estados se definen junto al módulo.
+- Estimado distribuido cross-cluster: **~6-10h** (helper `displayName` ~2h al introducirse en Catálogo · 4 helpers branch ~2h al primer módulo que los toque · registry I7 + chips primarios cross-cluster ~2-6h distribuido).
+
+**Pendiente (Pack A.2):** I10 — lookup canónico de `BatteryConfiguration` con 6 sub-decisiones acopladas (helper · signatures · A1/A2/A3 · forma · 4 huérfanos one-shot · backfill `VoltageChangeLog`). Sesión separada con respiro post-A.1.
+
+---
+
 ### 1.4 Devoluciones — 8 dimensiones cerradas (D1-D8)
 
 Devoluciones entra **in-scope** con el siguiente diseño:
@@ -198,7 +227,7 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ### 1.8 Interlocks abiertos — pendientes de cierre en packs A.1 / A.2 / B1 / B2
 
-**Estado al 2026-04-25:** 11 interlocks abiertos, divididos en **4 packs** por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+**Estado al 2026-04-25:** 6 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5). Lo restante sigue dividido en 3 packs (A.2 / B1 / B2) por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
 
 **Gate 0 (cero red de seguridad de tests):** verificado 2026-04-25 — el repo no tiene harness Jest/Vitest (`find src -name "*.test.*"` → 0 archivos, `package.json` sin deps de testing). Cualquier sweep cross-callsite (helper canónico I10, migración de patrón, etc.) procede sin red de seguridad. Si en el futuro se introduce harness, los bundles ya cerrados no se re-ejecutan; los nuevos sí deben sumar tests al estimado.
 
@@ -238,17 +267,17 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ---
 
-#### Pack A.1 — Upstream shape de data, parte general (~35-45 min, 5 items)
+#### Pack A.1 ✅ Cerrado 2026-04-25 — Upstream shape de data, parte general (5 items)
 
-Afectan cómo los módulos del cluster se comunican entre sí. Cerrarlos primero evita rework de contratos al tocar packs B. **I10 (BatteryConfiguration) sale a Pack A.2 separado** por densidad de sub-decisiones (6) y riesgo de fatiga si se mete junto con los 5 originales.
+5 interlocks cerrados en sesión dedicada (~30 min). **Decisiones integradas en §1.3.5** — esta tabla queda como referencia histórica de las opciones consideradas.
 
-| # | Interlock | Opciones |
-|---|---|---|
-| **I1a** | ¿`displayName` de producto se canonicaliza server-side para consistencia cross-módulo, o cada módulo compone a su manera? | (a) Canonicalizar (una fuente para todo el cluster) · (b) Status quo (cada módulo libre) |
-| **I1b** | Si I1a=canonicalizado: fuente técnica del helper | (a) Helper puro `src/lib/products/display.ts` · (b) Campo derivado Prisma · (c) View SQL · (d) Trigger |
-| **I3a** | Visualización buckets de stock en UI | (a) Buckets separados (disponible + en tránsito + reservado) · (b) Solo disponible con tooltip hover · (c) Total único sin discriminar (status quo) |
-| **I6** | Multi-branch transversal. Define firma de queries para 4 casos: POS al buscar stock · Devoluciones cross-branch sí/no · Transferencias 2 branches · Cotizaciones/Pedidos filtran por branch del cliente vs del operador. Consume los cambios pendientes en `src/lib/branch-filter.ts` | (a) Regla única cross-cluster (helper canónico consumible con opciones) · (b) Cada módulo decide · (c) 4-5 reglas específicas por caso |
-| **I7** | Diccionario de estados compartido cross-módulo (`Sale.status` + `Order.status` + `SaleReturn.status` + `Quotation.status` + `ServiceOrder.status` + `StockTransfer.status` + etc.) | (a) Registry único central con mapeo chips/colores/i18n · (b) Status quo (cada módulo mantiene los suyos) · (c) Híbrido: primarios centralizados, sub-estados locales |
+| # | Interlock | Opciones consideradas | Decisión |
+|---|---|---|---|
+| **I1a** | ¿`displayName` de producto se canonicaliza server-side, o cada módulo compone a su manera? | (a) Canonicalizar · (b) Status quo | **(a)** — ver §1.3.5 |
+| **I1b** | Si I1a=canonicalizado: fuente técnica | (a) Helper puro · (b) Prisma derived · (c) View SQL · (d) Trigger | **(a)** — ver §1.3.5 |
+| **I3a** | Visualización buckets de stock | (a) Buckets separados · (b) Disponible + tooltip · (c) Total único (status quo) | **(b)** + fix de datos + tap-to-expand en touch — ver §1.3.5 |
+| **I6** | Multi-branch transversal (4 casos: POS stock · Devoluciones cross-branch · Transferencias · Cotizaciones/Pedidos) | (a) Regla única con flags · (b) Cada módulo decide · (c) Helpers específicos por caso | **(c)** — ver §1.3.5 |
+| **I7** | Diccionario de estados compartido cross-módulo | (a) Registry único · (b) Status quo · (c) Híbrido | **(c)** seed minimal (3 primarios) + regla de promoción 2+ módulos — ver §1.3.5 |
 
 ---
 
@@ -287,7 +316,7 @@ Después de B1. **I8 depende de I7** cerrado en Pack A.
 
 ---
 
-**Próximo paso operacional:** disparar **Pack A.1** en sesión siguiente con el formato "frase por ítem"; **Pack A.2 (I10)** en sesión separada con respiro. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. Helper canónico de I10 NO va en Fase 0 — aterriza al inicio del módulo Catálogo del cluster.
+**Próximo paso operacional:** disparar **Pack A.2 (I10)** en sesión separada con respiro post-A.1. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. Helper canónico de I10 NO va en Fase 0 — aterriza al inicio del módulo Catálogo del cluster. Pack A.1 cerrado 2026-04-25 (ver §1.3.5).
 
 ---
 
@@ -381,3 +410,4 @@ Para que Claude Design / Code sepa qué archivos citar como vara visual:
 | 2026-04-24 | Versión inicial. 11 decisiones cerradas, 3 [consulta cliente] pendientes, 12 módulos clasificados, Catálogo sale de Configuración al cluster |
 | 2026-04-24 | §1.8 agregado — 10 interlocks abiertos divididos en Pack A (5) / B1 (2) / B2 (3). Formato de respuesta "frase por ítem". Pendientes de cierre en sesiones siguientes |
 | 2026-04-25 | **Audit S4/S5/BatteryConfiguration:** se detecta deuda cross-módulo de 11 callsites con key 2-axis ignorando capacidad (pre-data S1 migration `20260419060000`). S5 marcada falsamente como cerrada en `ROADMAP.md:823-824` (verificación contra código: `assertPolicyActive` sigue no-op). Cambios al doc: §1.6 ítem 10 amplía S4 a 11-15h; §1.5 documenta que helper canónico va en Catálogo, no Fase 0; §1.8 agrega **I10** (con 6 sub-decisiones), parte Pack A en **A.1 (5 originales) + A.2 (I10 sola)** por riesgo de fatiga decisional, agrega Gate 0 (cero test harness) y sub-sección "Aterrizajes acoplados al rediseño" (S4 / helper / S5.b). Bundle distribuido cross-cluster ~22-30h. Naming `VoltageChangeLog → ConfigChangeLog` diferido a FASE 6 §rename post-launch |
+| 2026-04-25 | **Pack A.1 cerrado** (§1.3.5). 5 decisiones: I1a canonicalizar `displayName` · I1b helper puro `src/lib/products/display.ts` · I3a disponible + desglose discoverable (tap en touch) + fix de datos `disponible = total − reservado − en_tránsito` · I6 helpers nombrados por caso de producto sobre `branchWhere` · I7 híbrido seed minimal (3 primarios `EN_CURSO/TERMINADO/CANCELADO` + regla de promoción 2+ módulos). Estimado distribuido cross-cluster ~6-10h. §1.8 marcado ✅ y header actualizado a 6 abiertos. Pack A.2 (I10) sigue pendiente — respiro entre packs |
