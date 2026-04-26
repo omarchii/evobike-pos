@@ -8,6 +8,10 @@
  * y skipea si ya corrió. Para re-seedear, truncar las tablas manualmente.
  */
 import {
+  findConfigsByModelVoltage,
+  resolveConfigForBike,
+} from "@/lib/battery-configurations";
+import {
   PrismaClient,
   Prisma,
   MovementType,
@@ -484,11 +488,8 @@ async function seedAssemblyOrders(ctx: SeedContext): Promise<void> {
 
     const variantsWithConfig: typeof variants = [];
     for (const v of variants) {
-      const cfg = await ctx.prisma.batteryConfiguration.findFirst({
-        where: { modeloId: v.modelo.id, voltajeId: v.voltaje.id },
-        select: { id: true },
-      });
-      if (cfg) variantsWithConfig.push(v);
+      const cfgs = await findConfigsByModelVoltage(v.modelo.id, v.voltaje.id, ctx.prisma);
+      if (cfgs.length > 0) variantsWithConfig.push(v);
     }
 
     if (variantsWithConfig.length === 0) continue;
@@ -526,10 +527,28 @@ async function seedAssemblyOrders(ctx: SeedContext): Promise<void> {
             },
           });
 
-          const cfg = await tx.batteryConfiguration.findFirst({
+          // I10 deterministic seed (Pack A.2 §1.3.6): pick lowest-Ah capacidad and
+          // verify via resolveConfigForBike. Validates helper end-to-end — primer
+          // caller real post-sweep. Pre-I10 era findFirst({m,v}) arbitrario,
+          // bug ACTIVO Evotank multi-config desde 2026-04-19.
+          const candidates = await tx.batteryConfiguration.findMany({
             where: { modeloId: variant.modelo.id, voltajeId: variant.voltaje.id },
-            select: { batteryVariantId: true, quantity: true },
+            include: {
+              batteryVariant: { select: { capacidad: { select: { id: true, valorAh: true } } } },
+            },
+            orderBy: { batteryVariant: { capacidad: { valorAh: "asc" } } },
           });
+          const deterministicCapacidadId = candidates[0]?.batteryVariant?.capacidad?.id ?? null;
+          const cfg = deterministicCapacidadId
+            ? await resolveConfigForBike(
+                {
+                  modeloId: variant.modelo.id,
+                  voltajeId: variant.voltaje.id,
+                  batteryCapacidadId: deterministicCapacidadId,
+                },
+                tx,
+              )
+            : (candidates[0] ?? null);
           if (!cfg) {
             await tx.assemblyOrder.update({
               where: { id: order.id },
@@ -713,14 +732,12 @@ async function seedSales(ctx: SeedContext): Promise<void> {
     const assemblableVariantIds = new Set<string>();
     for (const row of variantsInStock) {
       if (!row.productVariant) continue;
-      const cfg = await ctx.prisma.batteryConfiguration.findFirst({
-        where: {
-          modeloId: row.productVariant.modelo.id,
-          voltajeId: row.productVariant.voltaje.id,
-        },
-        select: { id: true },
-      });
-      if (cfg) assemblableVariantIds.add(row.productVariant.id);
+      const cfgs = await findConfigsByModelVoltage(
+        row.productVariant.modelo.id,
+        row.productVariant.voltaje.id,
+        ctx.prisma,
+      );
+      if (cfgs.length > 0) assemblableVariantIds.add(row.productVariant.id);
     }
 
     // CustomerBikes disponibles (ensambladas, sin dueño)

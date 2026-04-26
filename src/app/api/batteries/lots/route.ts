@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 import { z } from "zod";
 
 interface SessionUser {
@@ -138,23 +139,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         );
       }
 
-      const batteryConfig = await prisma.batteryConfiguration.findFirst({
-        where: {
-          modeloId: saleItem.productVariant.modelo_id,
-          voltajeId: saleItem.productVariant.voltaje_id,
-        },
-        select: { batteryVariantId: true, quantity: true },
-      });
+      // I10 (Pack A.2 §1.3.6 I10.4): findConfigsByModelVoltage(m,v).find(c => c.batteryVariantId === incomingId)
+      // En multi-config (Evotank 45/52Ah), el batteryVariantId del lote entrante
+      // identifica unívocamente cuál config aplica. Pre-I10 era findFirst arbitrario,
+      // que rechazaba lotes válidos cuando picksolo elegía la "otra" config.
+      const candidates = await findConfigsByModelVoltage(
+        saleItem.productVariant.modelo_id,
+        saleItem.productVariant.voltaje_id,
+      );
+      const batteryConfig = candidates.find((c) => c.batteryVariantId === productVariantId);
 
-      if (!batteryConfig) {
+      if (candidates.length === 0) {
         return NextResponse.json(
           { success: false, error: "El producto del pedido no requiere baterías" },
           { status: 422 }
         );
       }
 
-      // El tipo de batería del lote debe coincidir con el de la configuración
-      if (batteryConfig.batteryVariantId !== productVariantId) {
+      // El tipo de batería del lote debe coincidir con alguna de las configs
+      if (!batteryConfig) {
         return NextResponse.json(
           {
             success: false,

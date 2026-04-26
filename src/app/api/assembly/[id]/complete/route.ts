@@ -138,13 +138,23 @@ export async function PATCH(
       let batteryVariantId: string | null = null;
 
       if (order.productVariant) {
-        const batteryConfig = await tx.batteryConfiguration.findFirst({
+        // TODO I10 deferred (Pack A.2 §1.3.6 I10.5): este endpoint todavía picksolo arbitrario
+        // si hay multi-config para (modelo, voltaje) — bug ACTIVO Evotank 45/52Ah desde 2026-04-19.
+        // Migrar a resolveConfigForBike(BatteryConfigKey) cuando S4 conecte el selector V·Ah POS
+        // y `assemblyOrder` reciba batteryCapacidadId del flujo de creación.
+        const candidates = await tx.batteryConfiguration.findMany({
           where: {
             modeloId: order.productVariant.modelo_id,
             voltajeId: order.productVariant.voltaje_id,
           },
           select: { quantity: true, batteryVariantId: true },
         });
+        if (candidates.length > 1) {
+          console.warn(
+            `[I10-deferred] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en /api/assembly/[id]/complete, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4.`
+          );
+        }
+        const batteryConfig = candidates[0] ?? null;
         requiredQuantity = batteryConfig?.quantity ?? null;
         batteryVariantId = batteryConfig?.batteryVariantId ?? null;
       }

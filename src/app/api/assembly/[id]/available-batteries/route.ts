@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 
 interface SessionUser {
   id: string;
@@ -51,18 +52,24 @@ export async function GET(
     }
 
     // 2. Resolver config: si la orden tiene una pre-asignada (recepción acoplada S3),
-    // usar esa. Si no, caer a la busqueda legacy por (modelo, voltaje) — arbitraria en multi-Ah.
+    // usar esa. Si no, fallback al helper canónico — sigue picksolo arbitrario para
+    // multi-config Evotank, pero ahora con visibilidad explícita vía console.warn.
+    // TODO I10 deferred (Pack A.2 §1.3.6): migrar a resolveConfigForBike(BatteryConfigKey)
+    // cuando S4 incluya batteryCapacidadId en la firma del endpoint o pre-asigne config.
     let batteryConfig: { batteryVariantId: string; quantity: number } | null =
       order.batteryConfiguration;
 
     if (!batteryConfig && order.productVariant) {
-      batteryConfig = await prisma.batteryConfiguration.findFirst({
-        where: {
-          modeloId: order.productVariant.modelo_id,
-          voltajeId: order.productVariant.voltaje_id,
-        },
-        select: { batteryVariantId: true, quantity: true },
-      });
+      const candidates = await findConfigsByModelVoltage(
+        order.productVariant.modelo_id,
+        order.productVariant.voltaje_id,
+      );
+      if (candidates.length > 1) {
+        console.warn(
+          `[I10-deferred] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en /api/assembly/[id]/available-batteries fallback, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4.`
+        );
+      }
+      batteryConfig = candidates[0] ?? null;
     }
 
     if (!batteryConfig) {
