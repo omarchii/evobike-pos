@@ -480,7 +480,7 @@ export default function WorkshopBoard({
         res = await fetch(`/api/workshop/orders/${orderId}/status`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: t.statusPatch, branchId: order.branchId }),
+          body: JSON.stringify({ currentStatus: order.status, branchId: order.branchId }),
         });
       } else {
         res = await fetch(`/api/service-orders/${orderId}/sub-status`, {
