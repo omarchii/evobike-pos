@@ -126,7 +126,87 @@ Dashboard · Tesorería · Autorizaciones · Configuración (sin Catálogo).
 - Registry I7 vive en `src/lib/status-registry.ts` (nuevo). Cada módulo del cluster importa los 3 primarios; sub-estados se definen junto al módulo.
 - Estimado distribuido cross-cluster: **~6-10h** (helper `displayName` ~2h al introducirse en Catálogo · 4 helpers branch ~2h al primer módulo que los toque · registry I7 + chips primarios cross-cluster ~2-6h distribuido).
 
-**Pendiente (Pack A.2):** I10 — lookup canónico de `BatteryConfiguration` con 6 sub-decisiones acopladas (helper · signatures · A1/A2/A3 · forma · 4 huérfanos one-shot · backfill `VoltageChangeLog`). Sesión separada con respiro post-A.1.
+**Pack A.2 cerrado 2026-04-25** — ver §1.3.6 más abajo. Las 6 sub-decisiones acopladas de I10 (helper · signatures · API axis · forma · sweep · backfill `VoltageChangeLog`) integradas en sesión dedicada con verificación 3-for-3.
+
+---
+
+### 1.3.6 Interlocks cerrados — Pack A.2 (2026-04-25)
+
+1 interlock con 6 sub-decisiones acopladas (**I10 — lookup canónico de `BatteryConfiguration`**) cerrado en sesión dedicada de chat. Verificación 3-for-3: cada round (seed callsites · schema axis · routing real · seed data multi-config) cambió o refinó la dirección preliminar.
+
+#### Decisiones finales
+
+| Sub-decisión | Resultado |
+|---|---|
+| **I10.1** | Helper canónico (no status quo per-módulo). 3 refuerzos al ADR: (a) los 4 huérfanos Assembly empujan al helper — status quo deja bug latente indefinidamente; (b) **type-safety vía `BatteryConfigKey` 3-axis** es el argumento más fuerte (compile-time vs runtime 5 meses después); (c) sweep atómico single-PR o no se hace. |
+| **I10.2** | **2 funciones públicas finales:** `findConfigsByModelVoltage(m, v)` plural (escape hatch para listings, JSDoc explícito "no `[0]`") + `resolveConfigForBike(BatteryConfigKey)` singular. `resolveConfigForBatteryVariant` **eliminada** post-verificación de schema (mismo `batteryVariantId` puede aparecer en `BatteryConfiguration` de 2 bicis distintas → firma raw reproduce S1 con otra cara). `findConfigByDimensions({m,v,c})` también descartada (los 3 callsites de seed tienen variant en mano, flujo 1). |
+| **I10.3** | **A1' — `BatteryConfigKey = {modeloId, voltajeId, batteryCapacidadId}`**. La capacidad NO es atributo de la bici (en `ProductVariant` de bici es `null` — `schema.prisma:204`); es selección runtime del usuario al armar/vender. Política unificada **throw-on-2+ matches** (0→null, 1→único, 2+→Error con mensaje accionable). JSDoc plural reframed: "no es default — es escape hatch para listings, prohibido `[0]`/`find()` por shape único". Distribución routing-table 9 listing + 3 con caveat S4 + 0 raw, documentada en commit body. |
+| **I10.4** | **Pure lib `src/lib/battery-configurations.ts`** server-only (espejo `branch-filter.ts`/`workshop.ts`). Type alias `Tx = Prisma.TransactionClient \| PrismaClient` (espejo `customers/service.ts:8` — único alias del repo). Param `db: Tx = prisma` opcional con default — primer read helper cross-tx en repo. Implementación con **relation filter 1-shot** (`batteryVariant: { capacidad_id }`) en `resolveConfigForBike` (no 2 round-trips). **`unsafePickArbitraryConfig` eliminada** post-verificación de seed (Opción 3d) — 0 callers reales tras re-routing de los 3 callsites S4-dependientes. |
+| **I10.5** | **Migración 10/12 atómica + 2 deferred visibles** (re-scope explícito vs I10.1 "atómico o no se hace"). PR del helper independiente, **antes de cualquier módulo del cluster** (bug ACTIVO desde 2026-04-19 no espera a Catálogo). 9 callsites listing → `findConfigsByModelVoltage`. `seed-transactional.ts:529` → `resolveConfigForBike` con capacidad **deterministic** (sorted ascending por `valor_ah`, `[0]`). 2 endpoints prod (`api/assembly/route.ts:205` POST + `api/assembly/[id]/complete:141`) **DEFERRED** con `findFirst({m,v})` raw + `console.warn` cuando detecte multi-config + `// TODO I10 deferred` apuntando a `resolveConfigForBike` post-S4. **Bug colateral `quantity` colapsado en `pedidos:178`** diferido a deuda separada (lógica de aggregation requiere reescritura S4-driven). Test plan: smoke + `npm run seed`. Grep audit post-sweep con **allowlist explícita** (2 ocurrencias esperadas, file:line documentadas en commit body). |
+| **I10.6** | **Forward-looking S4-prep** (NO se materializa en PR I10). Schema change con S4, no con I10. **Convención A** — full snapshot 4 axes siempre (post-S4 los 4 fields siempre populated, incluso si solo cambió 1 axis; backwards-compat con consumers actuales de `fromVoltage/toVoltage`). 2 fields nuevos: `fromCapacidad/toCapacidad: String?` snapshot label (espejo patrón existente, sin FK). **Sin script de backfill, sin flag `legacyMissingCapacity`**: regla `WHERE fromCapacidad IS NULL` filtra legacy trivialmente porque post-S4 NULL nunca pasa. Naming-rename `VoltageChangeLog → ConfigChangeLog` sigue diferido a Fase 6 §rename post-launch. |
+
+#### Hallazgos críticos surgidos en la verificación 3-for-3
+
+Cada round de verificación cambió o refinó la decisión:
+
+1. **I10.2 — seed callsites tienen variant en mano (`flujo 1`)**, no IDs sueltos. Confirma que `resolveConfigForBike` cubre los 3 callsites de seed sin necesidad de `findConfigByDimensions` (eliminada del API).
+2. **I10.3 — `capacidad_id` en bici es NULL siempre** (`schema.prisma:204`, comentario explícito `:232`). Capacidad es atributo de **batería seleccionada runtime**, no de bici. Invalidó A1 ingenuo, llevó a A1' con `batteryCapacidadId` business explícito.
+3. **I10.4 — `resolveConfigForBatteryVariant` materializa S1 con otra cara**. Mismo `batteryVariantId` puede aparecer en configs de 2 bicis distintas (mismo pack 48V sirviendo a Modelo A y Modelo B). Función eliminada; callsite `api/batteries/lots:141` migrado a `findConfigsByModelVoltage(m,v).find(c => c.batteryVariantId === incomingId)` por shape de los 3 axes.
+4. **I10.5 — seed source crea 8 filas Evotank multi-config** (`seed.ts:638-645`, 4 modelos × 45Ah/52Ah). **Bug ACTIVO** desde 2026-04-19, no latente. Migración de los 2 endpoints prod a `unsafePickArbitraryConfig` (con throw-on-2+) rompería `assembly create` y `complete` para Evotank inmediatamente post-merge en cualquier ambiente seedeado. Re-scope de I10.1 forzado: 10/12 atómico + 2 deferred con `console.warn`.
+
+#### API final consolidada
+
+```ts
+// src/lib/battery-configurations.ts
+import "server-only";
+import type { Prisma, PrismaClient, BatteryConfiguration } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+
+export type Tx = Prisma.TransactionClient | PrismaClient;
+export type BatteryConfigKey = {
+  modeloId: string;
+  voltajeId: string;
+  batteryCapacidadId: string;
+};
+
+/**
+ * Devuelve TODAS las configs candidatas para un (modelo, voltaje).
+ * Usar SOLO para selectores UI o listings que iteran configs candidatas.
+ * NO uses [0] ni find() por shape único — eso reproduce S1.
+ * Si tenés capacidad seleccionada → resolveConfigForBike.
+ */
+export async function findConfigsByModelVoltage(
+  modeloId: string,
+  voltajeId: string,
+  db: Tx = prisma,
+): Promise<BatteryConfiguration[]>;
+
+/**
+ * Resuelve la config única para una bici dada la capacidad de batería seleccionada
+ * por el usuario. Throws si 2+ matches (axis insuficiente — falta color?).
+ */
+export async function resolveConfigForBike(
+  key: BatteryConfigKey,
+  db: Tx = prisma,
+): Promise<BatteryConfiguration | null>;
+```
+
+Política unificada throw-on-2+. Relation filter 1-shot. 9 callers reales en sweep + 1 caller post-sweep (`seed:529` deterministic). 2 endpoints prod deferred a S4 con visibilidad explícita.
+
+#### Implicaciones cross-cluster
+
+- PR del helper aterriza **independiente, antes del cluster** — bug ACTIVO desde 2026-04-19 no espera a Catálogo.
+- Distribución 9 listing + 1 deterministic seed + 2 deferred prod + bug `pedidos:178` como deuda separada.
+- Estimado del bundle: **~22-30h distribuido cross-cluster**.
+- S4 (selector V·Ah POS) hereda 2 callsites a re-migrar (`assembly/route:205`, `assembly/complete:141`) + schema migration `VoltageChangeLog` con Convención A.
+- S5.b (`assertPolicyActive` real + `batteryAvailabilityMap` por capacidad) sigue como sub-fase P13-H follow-up post-cluster, ahora desbloqueada técnicamente por el helper.
+
+#### Refinamientos pinned (al implementar PR del helper)
+
+- Selects de seed (`prisma/seed-transactional.ts:475-483` y `:700-708`) deben extenderse para incluir `capacidad: { select: { id: true } }` — sin esto, `seed:529` no tiene `batteryCapacidadId` para pasar a `resolveConfigForBike`.
+- `resolveConfigForBike` shippea con caveat operacional documentado en commit body: "0 callers iniciales — primera validación end-to-end vía `seed:529` post-sweep. Si N semanas sin caller real, decisión defendible es eliminar y reintroducir cuando S4 conecte".
+- Commit body del helper debe citar `feedback_grep_before_declaring_closed.md` con los 12 callsites listados, distribución 9/3, y los 2 deferred file:line para grep allowlist.
+- `console.warn` en los 2 endpoints deferred convierte deuda en forenses: `"[I10-deferred] N configs para (m, v) en {endpoint}, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4."`
 
 ---
 
@@ -165,7 +245,7 @@ Barridos que benefician a todos los módulos de Fase A. Se hacen **antes** de to
 
 **Regla:** Fase 0 no toca código de módulos — es solo infra de tokens, tipos y barrels. Ningún fix cosmético de módulo entra aquí.
 
-**Helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2) NO va aquí** — es lógica de dominio, no infra. Aterriza al inicio del módulo Catálogo (primer módulo del Cluster Fase A) junto con la migración one-shot de los 4 callsites huérfanos del cluster (3 endpoints `api/assembly/*` server-side + `api/batteries/lots/route.ts:141`). Ver §1.8 Pack A.2 (interlock I10) y §FASE 6 ROADMAP §"Lookup canónico de `BatteryConfiguration`" para detalle del bundle (~22-30h distribuido cross-cluster).
+**Helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2 ✅ cerrado 2026-04-25) NO va aquí** — es lógica de dominio, no infra. **PR del helper aterriza independiente, antes del cluster** (re-scope post Pack A.2: bug ACTIVO Evotank multi-config desde 2026-04-19 no espera a Catálogo — ver §1.3.6). Ver §1.3.6 "Decisiones finales" para API consolidada y §1.3.6 "Implicaciones cross-cluster" para bundle ~22-30h distribuido.
 
 ---
 
@@ -227,7 +307,7 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ### 1.8 Interlocks abiertos — pendientes de cierre en packs A.1 / A.2 / B1 / B2
 
-**Estado al 2026-04-25:** 6 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5). Lo restante sigue dividido en 3 packs (A.2 / B1 / B2) por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+**Estado al 2026-04-25 (post Pack A.2):** 5 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5; 1 cerrado en Pack A.2 con 6 sub-decisiones — ver §1.3.6). Lo restante sigue dividido en 2 packs (B1 / B2) por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
 
 **Gate 0 (cero red de seguridad de tests):** verificado 2026-04-25 — el repo no tiene harness Jest/Vitest (`find src -name "*.test.*"` → 0 archivos, `package.json` sin deps de testing). Cualquier sweep cross-callsite (helper canónico I10, migración de patrón, etc.) procede sin red de seguridad. Si en el futuro se introduce harness, los bundles ya cerrados no se re-ejecutan; los nuevos sí deben sumar tests al estimado.
 
@@ -281,13 +361,13 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ---
 
-#### Pack A.2 — Lookup canónico de `BatteryConfiguration` (~50-60 min, 1 interlock con 6 sub-decisiones)
+#### Pack A.2 ✅ Cerrado 2026-04-25 — Lookup canónico de `BatteryConfiguration` (1 interlock con 6 sub-decisiones)
 
-Sale separado de A.1 por densidad de decisión (6 sub-decisiones acopladas) y por riesgo de fatiga (1.5-2h sumado supera el umbral del doc). Dispara **después del respiro post Pack A.1** (mínimo 1 sesión distinta — la regla "no 2 packs en la misma sesión" del `project_cluster_decisions_session.md` aplica entre A.1 y A.2).
+1 interlock cerrado en sesión dedicada con verificación 3-for-3 (~90 min — más del estimado original ~50-60 min porque cada round de verificación reabrió decisiones ya tomadas; las verificaciones cambiaron el outcome 4/4 veces, validando empíricamente la regla operativa de `feedback_grep_before_declaring_closed.md`). **Decisiones integradas en §1.3.6** — esta tabla queda como referencia histórica de las opciones consideradas.
 
-| # | Interlock | Sub-decisiones a cerrar |
-|---|---|---|
-| **I10** | Lookup canónico de `BatteryConfiguration` cross-módulo. Schema unique es `(modeloId, voltajeId, batteryVariantId)`; **11 callsites** (9 producción + 2 seed) lo ignoran y componen `${modeloId}:${voltajeId}` 2-axis causando ambigüedad multi-Ah desde S1 (migration `20260419060000_add_battery_capacity_axis`, 2026-04-19). | **(1)** Helper canónico vs status quo per-módulo. **(2)** Signatures que expone — `resolveConfigForVariant(variant)`, `findConfigsByModelVoltage(m,v)`, `findConfigByDimensions({m,v,c})`. **(3)** Public API — A1 (`capacidadId` business) / A2 (`capacidadId` explícito) / A3 (`batteryVariantId` schema raw); coexisten o uno gana. **(4)** Forma — pure lib (`src/lib/batteries.ts` siguiendo convención de `branch-filter.ts`/`workshop.ts`) / Prisma extension / server action. **(5)** Migración de los 4 callsites huérfanos del cluster (3 endpoints `api/assembly/*` server-side + `api/batteries/lots/route.ts:141`) — one-shot al introducir helper en Catálogo, NO esperando rediseño de Assembly (clasificado (a) limpio). **(6)** Backfill `VoltageChangeLog` histórico tras agregar `fromCapacidad`/`toCapacidad`: nullable + script best-effort (mira capacidad actual del bike) / nullable hard sin backfill / default null + flag pre-S4. |
+| # | Interlock | Sub-decisiones consideradas | Resultado |
+|---|---|---|---|
+| **I10** | Lookup canónico de `BatteryConfiguration` cross-módulo. Schema unique es `(modeloId, voltajeId, batteryVariantId)`; 12 callsites (9 producción + 3 seed, recuento corregido vs original "11 = 9+2") lo ignoran y componen `${modeloId}:${voltajeId}` 2-axis causando ambigüedad multi-Ah desde S1 (migration `20260419060000_add_battery_capacity_axis`, 2026-04-19). | **(1)** Helper canónico vs status quo per-módulo. **(2)** Signatures (`resolveConfigForVariant`, `findConfigsByModelVoltage`, `findConfigByDimensions`). **(3)** API axis (A1/A2/A3 capacidadId business vs batteryVariantId raw). **(4)** Forma (pure lib / extension / server action). **(5)** Migración 4 huérfanos vs sweep total atómico. **(6)** Backfill `VoltageChangeLog` histórico. | **API final 2 funciones públicas** (`findConfigsByModelVoltage` + `resolveConfigForBike`); **A1' con `batteryCapacidadId` business**; **pure lib `src/lib/battery-configurations.ts`** server-only con `db: Tx = prisma` opcional; **sweep 10/12 atómico + 2 deferred** con `console.warn`; **Convención A full snapshot 4 axes** sin script ni flag. Ver §1.3.6. |
 
 Naming de `VoltageChangeLog → ConfigChangeLog` **NO entra en I10** — diferido a §FASE 6 ROADMAP §rename post-launch (toca FK columns en `BatteryAssignment` que vive en Workshop ya rediseñado, fuera del cluster, riesgo de regresión en zona estable; naming preexistente ya inconsistente entre `voltageChangeLogId` con "Log" y `installedAtVoltageChangeId`/`removedAtVoltageChangeId` sin "Log").
 
@@ -295,7 +375,7 @@ Naming de `VoltageChangeLog → ConfigChangeLog` **NO entra en I10** — diferid
 
 #### Pack B1 — Comportamiento / integración (~35 min, 2 items)
 
-Dispara **después del respiro post Pack A.2** (mínimo 1 sesión distinta).
+Próximo a disparar (post Pack A.2 cerrado). Mínimo 1 sesión distinta de respiro entre packs.
 
 | # | Interlock | Opciones |
 |---|---|---|
@@ -316,7 +396,7 @@ Después de B1. **I8 depende de I7** cerrado en Pack A.
 
 ---
 
-**Próximo paso operacional:** disparar **Pack A.2 (I10)** en sesión separada con respiro post-A.1. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. Helper canónico de I10 NO va en Fase 0 — aterriza al inicio del módulo Catálogo del cluster. Pack A.1 cerrado 2026-04-25 (ver §1.3.5).
+**Próximo paso operacional:** disparar **Pack B1** (`I3b` stock reservado · `I9` notificaciones cross-módulo) en sesión separada con respiro post-A.2. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. **PR del helper canónico (I10)** puede arrancar independiente del cluster — bug ACTIVO desde 2026-04-19 no espera a Catálogo (ver §1.3.6 "Implicaciones cross-cluster"). Pack A.1 cerrado 2026-04-25 (§1.3.5). Pack A.2 cerrado 2026-04-25 (§1.3.6).
 
 ---
 
@@ -411,3 +491,4 @@ Para que Claude Design / Code sepa qué archivos citar como vara visual:
 | 2026-04-24 | §1.8 agregado — 10 interlocks abiertos divididos en Pack A (5) / B1 (2) / B2 (3). Formato de respuesta "frase por ítem". Pendientes de cierre en sesiones siguientes |
 | 2026-04-25 | **Audit S4/S5/BatteryConfiguration:** se detecta deuda cross-módulo de 11 callsites con key 2-axis ignorando capacidad (pre-data S1 migration `20260419060000`). S5 marcada falsamente como cerrada en `ROADMAP.md:823-824` (verificación contra código: `assertPolicyActive` sigue no-op). Cambios al doc: §1.6 ítem 10 amplía S4 a 11-15h; §1.5 documenta que helper canónico va en Catálogo, no Fase 0; §1.8 agrega **I10** (con 6 sub-decisiones), parte Pack A en **A.1 (5 originales) + A.2 (I10 sola)** por riesgo de fatiga decisional, agrega Gate 0 (cero test harness) y sub-sección "Aterrizajes acoplados al rediseño" (S4 / helper / S5.b). Bundle distribuido cross-cluster ~22-30h. Naming `VoltageChangeLog → ConfigChangeLog` diferido a FASE 6 §rename post-launch |
 | 2026-04-25 | **Pack A.1 cerrado** (§1.3.5). 5 decisiones: I1a canonicalizar `displayName` · I1b helper puro `src/lib/products/display.ts` · I3a disponible + desglose discoverable (tap en touch) + fix de datos `disponible = total − reservado − en_tránsito` · I6 helpers nombrados por caso de producto sobre `branchWhere` · I7 híbrido seed minimal (3 primarios `EN_CURSO/TERMINADO/CANCELADO` + regla de promoción 2+ módulos). Estimado distribuido cross-cluster ~6-10h. §1.8 marcado ✅ y header actualizado a 6 abiertos. Pack A.2 (I10) sigue pendiente — respiro entre packs |
+| 2026-04-25 | **Pack A.2 cerrado** (§1.3.6). 6 sub-decisiones de I10: helper canónico · 2 funciones públicas (`findConfigsByModelVoltage` plural + `resolveConfigForBike` singular) · A1' `BatteryConfigKey` con `batteryCapacidadId` business · pure lib `src/lib/battery-configurations.ts` server-only con `db: Tx` opcional · sweep 10/12 atómico + 2 deferred (`assembly/route:205`, `assembly/complete:141`) con `console.warn` · Convención A full snapshot 4 axes en `VoltageChangeLog` (S4-prep). Verificación 3-for-3: cada round (seed callsites · schema axis · routing real · seed data multi-config Evotank) cambió o refinó la decisión preliminar. **`resolveConfigForBatteryVariant` y `unsafePickArbitraryConfig` eliminadas** durante la iteración — ambas reproducían S1 con otra cara. **Bug `seed:529` ACTIVO confirmado** vía `seed.ts:638-645` (8 filas Evotank multi-config) — no latente. PR del helper se libera de aterrizar en Catálogo y arranca **independiente, antes del cluster**. Estimado bundle ~22-30h distribuido. §1.8 header actualizado a 5 abiertos, próximo paso operacional cambiado a Pack B1 |
