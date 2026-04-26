@@ -210,6 +210,53 @@ Política unificada throw-on-2+. Relation filter 1-shot. 9 callers reales en swe
 
 ---
 
+### 1.3.7 Interlocks cerrados — Pack B1 (2026-04-25)
+
+2 interlocks de comportamiento/integración cerrados en sesión dedicada de chat (~50 min, formato frase por ítem). El framing inicial fue refinado vía pushback del user: I3b se descompuso en 4 sub-decisiones acopladas (política raíz · granularidad · momento · concurrencia técnica) tras detectar 3 gaps (granularidad parcial · timing add-cart vs checkout · concurrencia sin lock); I9 se limpió sacando caso (1) del scope (devolución→arqueo es invalidación local del mismo cajero, no cross-actor). Acoplamiento I3b ↔ I9-(3) resuelto por orden: I3b primero, I9-(3) heredando contexto.
+
+#### Decisiones finales
+
+| Sub-decisión | Resultado |
+|---|---|
+| **I3b.1** | **Hard block** — POS no permite vender stock reservado por `BatteryAssignment` (Assembly) o pedidos con abono parcial. Razón: failure mode "cliente pagó anticipo y se vende su batería" es asimétricamente caro (daño de confianza, no de inventario). **(b)** warn requiere construir la maquinaria de (a) igual (`disponible − reservas` para mostrar el modal) + suma I3b.5 + bajo presión real degrada a (c) por click reflejo. **(c)** status quo usa al técnico del taller como detector de conflictos cuando la bici ya está parcialmente armada — peor lugar para descubrir el error. En baja-media concurrencia los falsos positivos están acotados; el costo asimétrico justifica el bloqueo. |
+| **I3b.2** | **Solo excedente** — `max(0, disponible − reservas)` con clamp UX in-line ("3 disponibles, 2 reservadas para Assembly #X, ¿vender 3?"). Razón: el propósito de (a) es precisión, no castigo. **(t)** total bloquearía 3 ventas legítimas para proteger 2 reservadas — incoherente con el principio y crea incentivo a desactivar el sistema. UX de quantity-clamp es patrón e-commerce estándar, no diseño nuevo; costo de implementación acotado a `max(0, …)` + toast con justificación. |
+| **I3b.3** | **Ambos** — best-effort al agregar (extensión `use-stock-availability.ts` cacheado) + autoritativo al cobrar (transacción protegida por I3b.4). Razón: con .1=hard, checkout-only convierte al cajero en mensajero del fracaso frente al cliente esperando con tarjeta en la mano. Add-cart provee feedback temprano para descubrir el bloqueo ANTES de armar el ticket completo. Dos capas, dos propósitos; único combo que no penaliza al cajero por intentar trabajar. |
+| **I3b.4** | **Optimistic concurrency** — `version Int @default(0)` en `ProductVariant` + write condicional `WHERE version = X` + retry bounded (3 intentos con backoff exponencial 50/100/200ms) + surface al cajero al agotar (`"El inventario cambió, reintenta"`). Razón: Prisma-idiomático, sin infra nueva, zero overhead en happy path; manejo explícito en el caso raro. **(s)** serializable Postgres cascadea retry wrapper en cada callsite POS y lanza serialization failures bajo concurrencia (no es "BEGIN ISOLATION LEVEL SERIALIZABLE y listo"). **(l)** advisory lock introduce semántica de locking global que el repo no usa, sumando opacidad y riesgo de deadlock por orden de adquisición. **(o)** descartado por incoherencia con .1. |
+| **I3b.5** | **SKIP** — solo aplicaba si I3b.1=(b). Cerramos .1=(a) → no entra al pack. |
+| **I9 (1)** | **Sale del scope** — Devolución → Caja (arqueo) es invalidación local del mismo cajero, no notificación cross-módulo. `router.refresh()` post-mutación o re-fetch del componente `CashSession` basta. No es decisión, es default. |
+| **I9 (2)** | **Polling 60s** — extender `use-stock-availability.ts` con cadencia 60s para "transferencia → POS sucursal receptora". Razón: bajo el perfil supuesto **<10 transferencias/día/sucursal** (consulta cliente #10 — default revisable), 30s desperdicia ~2880 fetches/día por ~10 eventos sin razón clara; 300s abre ventana de 5min donde vendedor responde "no hay" estando ya disponible; 60s cabe en el "déjame verificar un momento" natural de interacción presencial y reutiliza cadencia workshop-mobile (DRY de patrón). **(b)** descartado: vendedor mirando POS no navega. **(c)** realtime con canal: ROI negativo bajo perfil supuesto + infra sin precedente repo, justificable solo si cliente confirma >50/día. |
+| **I9 (3)** | **Heredar 60s del mismo hook** — `use-stock-availability.ts` extendido para devolver `{disponibleNeto, reservadoAssembly, reservadoPedido}`; cada consumidor lee lo que necesita (addcart check → `disponibleNeto`, catálogo → breakdown para badge "reservado para Pedido #N"). Razón: simetría con I3b.3=(ambos) — feedback temprano > sorpresa tardía con cliente esperando. **(n)** sin polling revive ese error una capa más arriba (catálogo en lugar de addcart). **(d)** cadencia diferenciada optimiza costo marginal: incluir breakdown en el mismo fetch ya extendido a 60s para (2) tiene delta computacional cercano a cero vs duplicar hook+endpoint. **(c)** descartado por mismo argumento que en (2). |
+
+#### Bundle ghost-reservation hygiene (scope que arrastra I3b.1)
+
+El bloqueo duro genera deuda de **ghost reservations** (Assembly cancelado sin cerrar `BatteryAssignment`, abono caducado sin liberar). Sin tratamiento, (a) degrada a (c) en 3 meses porque el operador desactiva el bloqueo de facto creando ventas en negativo o aprendiendo workarounds. El entregable hard-block incluye:
+
+1. **TTL configurable** en reservas por abono parcial (`Pedido.expiresAt`).
+2. **Acción admin "force-release"** en `BatteryAssignment` huérfanos (panel admin con justificación obligatoria).
+3. **Job nightly** que detecte huérfanos (Assembly cancelado con `BatteryAssignment` activo · pedido con `expiresAt < now()` y reserva activa) y notifique al operador del origen.
+
+Sin estos 3, I3b.1 no es defensible operativamente.
+
+#### Refinamientos pinned (al implementar)
+
+- **Schema migration** previa al hard-block: `ALTER TABLE ProductVariant ADD COLUMN version INT NOT NULL DEFAULT 0;`. Toda escritura de stock incrementa `version`; reads del check de venta capturan el valor actual y el write condicionado a `WHERE version = X` rebota si otra TX modificó entre medias.
+- **Retry bounded explícito**: 3 intentos con backoff exponencial 50/100/200ms; al cuarto, surface al cajero `"El inventario cambió, reintenta"`. Sin límite explícito, retry infinito en hot path. Sin surface al cajero, degrada silenciosamente a (o) oversell.
+- **Hook unificado** `use-stock-availability.ts` extendido devuelve `{disponibleNeto, reservadoAssembly, reservadoPedido}`; cadencia 60s consistente para casos (2) y (3). Cada consumidor lee solo lo que necesita.
+- **Audit revisable pre-implementación del 30s actual** en `use-stock-availability.ts`: ¿es razón explícita (workshop hot-path donde 30s ya se siente lento) o default del primer caso? El JSDoc actual del hook dice "único consumo de polling en el proyecto" — comentario desactualizado (4 hooks con `setInterval` en repo: `use-stock-availability:52` · `use-authorization-polling:72,129` · `use-polling-refresh:26` · `notification-bell:94`). Probablemente default sin pensar. Si lo segundo, unificar a 60s globalmente reduce carga sin perder UX. Si workshop justifica 30s, conservar y agregar variante 60s para el caso transferencia. Audit antes de tocar el hook; no bloquea la decisión.
+
+#### Preguntas latentes pre-implementación
+
+- **Scope de reserva por pedido — sucursal vs global** (consulta cliente **#10**, agregada 2026-04-25): si Evobike permite pago de abono en sucursal A con recogida en sucursal B, la reserva es global (todos los POS deben verla). Si la reserva queda atada a la sucursal donde se cobró, POS-B la ignora porque ese stock no es suyo. Cambia la query de `disponibleNeto` (filtrar reservas por sucursal del POS o no) pero **no la cadencia 60s**. Resolver en próxima reunión cliente Evobike.
+
+#### Implicaciones cross-cluster
+
+- I3b aterriza al **inicio del módulo POS Terminal** del cluster (Fase A, módulo 4 según §1.6). Hard block + bundle ghost-hygiene + optimistic concurrency en `ProductVariant` — schema migration `version Int @default(0)` entra como pre-step antes de tocar UI POS.
+- I9-(2)/(3) extienden `use-stock-availability.ts` existente — sin archivo nuevo. Coordinar con rediseño Workshop (mantiene 30s o unifica) y POS Terminal (incorpora 60s con breakdown).
+- Bundle ghost-hygiene es trabajo distribuido: TTL en `Pedido.expiresAt` (~1h) · force-release admin panel (~3h) · job nightly con notificación (~3h). **~7-8h adicional al estimado base de I3b.**
+- Estimado distribuido cross-cluster: **~12-18h** (hard-block + clamp UX + addcart-cache extension + checkout-tx con optimistic concurrency + retry surface + bundle ghost-hygiene + extensión hook 60s con breakdown).
+
+---
+
 ### 1.4 Devoluciones — 8 dimensiones cerradas (D1-D8)
 
 Devoluciones entra **in-scope** con el siguiente diseño:
@@ -307,7 +354,7 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ### 1.8 Interlocks abiertos — pendientes de cierre en packs A.1 / A.2 / B1 / B2
 
-**Estado al 2026-04-25 (post Pack A.2):** 5 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5; 1 cerrado en Pack A.2 con 6 sub-decisiones — ver §1.3.6). Lo restante sigue dividido en 2 packs (B1 / B2) por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+**Estado al 2026-04-25 (post Pack B1):** 3 interlocks abiertos (5 cerrados en Pack A.1 — ver §1.3.5; 1 cerrado en Pack A.2 con 6 sub-decisiones — ver §1.3.6; 2 cerrados en Pack B1 con 8 sub-decisiones — ver §1.3.7). Lo restante (Pack B2: I4 · I5 · I8) sigue pendiente. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
 
 **Gate 0 (cero red de seguridad de tests):** verificado 2026-04-25 — el repo no tiene harness Jest/Vitest (`find src -name "*.test.*"` → 0 archivos, `package.json` sin deps de testing). Cualquier sweep cross-callsite (helper canónico I10, migración de patrón, etc.) procede sin red de seguridad. Si en el futuro se introduce harness, los bundles ya cerrados no se re-ejecutan; los nuevos sí deben sumar tests al estimado.
 
@@ -373,14 +420,14 @@ Naming de `VoltageChangeLog → ConfigChangeLog` **NO entra en I10** — diferid
 
 ---
 
-#### Pack B1 — Comportamiento / integración (~35 min, 2 items)
+#### Pack B1 ✅ Cerrado 2026-04-25 — Comportamiento / integración (2 items, 8 sub-decisiones)
 
-Próximo a disparar (post Pack A.2 cerrado). Mínimo 1 sesión distinta de respiro entre packs.
+2 interlocks cerrados en sesión dedicada (~50 min). **Decisiones integradas en §1.3.7** — esta tabla queda como referencia histórica de las opciones consideradas.
 
-| # | Interlock | Opciones |
-|---|---|---|
-| **I3b** | Comportamiento al consumir stock reservado: POS intenta vender variante reservada por Assembly o comprometida en pedido con abono parcial | (a) Bloquea hard · (b) Advierte con confirmación · (c) Permite (status quo) |
-| **I9** | Notificaciones/realtime entre módulos. Casos: Devolución → Caja (arqueo) · Transferencia recibida → POS (stock nuevo) · Pedido pagado → Inventario (reserva) | (a) Polling (patrón workshop-mobile 60s) · (b) Invalidación manual por navegación (`router.refresh()`) · (c) Realtime con canal |
+| # | Interlock | Opciones consideradas | Decisión |
+|---|---|---|---|
+| **I3b** | Comportamiento al consumir stock reservado: POS intenta vender variante reservada por Assembly o comprometida en pedido con abono parcial. Tras pushback del user, descompuesto en 5 sub-decisiones (.1 política · .2 granularidad · .3 momento · .4 concurrencia técnica · .5 manejo origen tras override) | .1 (a) hard · (b) warn · (c) permit · .2 (t) total · (e) excedente · .3 (addcart) · (checkout) · (ambos) · .4 (s) serializable · (v) optimistic · (l) advisory · (o) oversell · .5 (libera) · (mantiene) · (notifica) | **.1=(a)** + bundle ghost-hygiene · **.2=(e)** clamp UX · **.3=(ambos)** · **.4=(v)** + retry bounded 3× + surface · **.5=SKIP** (solo aplicaba a .1=b). Ver §1.3.7. |
+| **I9** | Notificaciones/realtime entre módulos. Caso (1) devolución→arqueo sale del scope (invalidación local del mismo cajero, no cross-actor); quedan caso (2) transferencia→POS receptora y caso (3) pedido pagado→otros vendedores. **Acoplamiento I3b ↔ I9-(3)** resuelto por orden | (a) Polling 30/60/300s · (b) `router.refresh()` por navegación · (c) Realtime con canal · (n) Sin polling | **(1)=fuera del scope · (2)=(a) polling 60s · (3)=(a) heredar 60s del mismo hook** con breakdown `{disponibleNeto, reservadoAssembly, reservadoPedido}`. Ver §1.3.7. |
 
 ---
 
@@ -396,7 +443,7 @@ Después de B1. **I8 depende de I7** cerrado en Pack A.
 
 ---
 
-**Próximo paso operacional:** disparar **Pack B1** (`I3b` stock reservado · `I9` notificaciones cross-módulo) en sesión separada con respiro post-A.2. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. **PR del helper canónico (I10)** puede arrancar independiente del cluster — bug ACTIVO desde 2026-04-19 no espera a Catálogo (ver §1.3.6 "Implicaciones cross-cluster"). Pack A.1 cerrado 2026-04-25 (§1.3.5). Pack A.2 cerrado 2026-04-25 (§1.3.6).
+**Próximo paso operacional:** disparar **Pack B2** (`I4` Inventario↔Transferencias · `I5` POS↔Cotizaciones · `I8` matriz permisos inter-módulo) en sesión separada con respiro post-B1. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. **PR del helper canónico (I10)** puede arrancar independiente del cluster — bug ACTIVO desde 2026-04-19 no espera a Catálogo (ver §1.3.6 "Implicaciones cross-cluster"). Pack A.1 cerrado 2026-04-25 (§1.3.5). Pack A.2 cerrado 2026-04-25 (§1.3.6). Pack B1 cerrado 2026-04-25 (§1.3.7).
 
 ---
 
@@ -492,3 +539,4 @@ Para que Claude Design / Code sepa qué archivos citar como vara visual:
 | 2026-04-25 | **Audit S4/S5/BatteryConfiguration:** se detecta deuda cross-módulo de 11 callsites con key 2-axis ignorando capacidad (pre-data S1 migration `20260419060000`). S5 marcada falsamente como cerrada en `ROADMAP.md:823-824` (verificación contra código: `assertPolicyActive` sigue no-op). Cambios al doc: §1.6 ítem 10 amplía S4 a 11-15h; §1.5 documenta que helper canónico va en Catálogo, no Fase 0; §1.8 agrega **I10** (con 6 sub-decisiones), parte Pack A en **A.1 (5 originales) + A.2 (I10 sola)** por riesgo de fatiga decisional, agrega Gate 0 (cero test harness) y sub-sección "Aterrizajes acoplados al rediseño" (S4 / helper / S5.b). Bundle distribuido cross-cluster ~22-30h. Naming `VoltageChangeLog → ConfigChangeLog` diferido a FASE 6 §rename post-launch |
 | 2026-04-25 | **Pack A.1 cerrado** (§1.3.5). 5 decisiones: I1a canonicalizar `displayName` · I1b helper puro `src/lib/products/display.ts` · I3a disponible + desglose discoverable (tap en touch) + fix de datos `disponible = total − reservado − en_tránsito` · I6 helpers nombrados por caso de producto sobre `branchWhere` · I7 híbrido seed minimal (3 primarios `EN_CURSO/TERMINADO/CANCELADO` + regla de promoción 2+ módulos). Estimado distribuido cross-cluster ~6-10h. §1.8 marcado ✅ y header actualizado a 6 abiertos. Pack A.2 (I10) sigue pendiente — respiro entre packs |
 | 2026-04-25 | **Pack A.2 cerrado** (§1.3.6). 6 sub-decisiones de I10: helper canónico · 2 funciones públicas (`findConfigsByModelVoltage` plural + `resolveConfigForBike` singular) · A1' `BatteryConfigKey` con `batteryCapacidadId` business · pure lib `src/lib/battery-configurations.ts` server-only con `db: Tx` opcional · sweep 10/12 atómico + 2 deferred (`assembly/route:205`, `assembly/complete:141`) con `console.warn` · Convención A full snapshot 4 axes en `VoltageChangeLog` (S4-prep). Verificación 3-for-3: cada round (seed callsites · schema axis · routing real · seed data multi-config Evotank) cambió o refinó la decisión preliminar. **`resolveConfigForBatteryVariant` y `unsafePickArbitraryConfig` eliminadas** durante la iteración — ambas reproducían S1 con otra cara. **Bug `seed:529` ACTIVO confirmado** vía `seed.ts:638-645` (8 filas Evotank multi-config) — no latente. PR del helper se libera de aterrizar en Catálogo y arranca **independiente, antes del cluster**. Estimado bundle ~22-30h distribuido. §1.8 header actualizado a 5 abiertos, próximo paso operacional cambiado a Pack B1 |
+| 2026-04-25 | **Pack B1 cerrado** (§1.3.7). 2 interlocks con 8 sub-decisiones tras 2 rondas de pushback que reframearon el pack: I3b descompuesto en .1 política raíz · .2 granularidad · .3 momento · .4 concurrencia técnica · .5 manejo origen (gaps detectados: granularidad parcial · timing addcart vs checkout · concurrencia sin lock); I9 limpio sacando caso (1) devolución→arqueo del scope (invalidación local del mismo cajero, no cross-actor); acoplamiento I3b↔I9-(3) resuelto por orden de cierre. Decisiones: **I3b.1=(a) hard block** + bundle ghost-hygiene (TTL pedidos · force-release admin · job nightly) · **I3b.2=(e) solo excedente** con clamp UX · **I3b.3=(ambos)** addcart best-effort + checkout autoritativo · **I3b.4=(v) optimistic concurrency** con `version Int @default(0)` explícito + retry bounded 3× backoff 50/100/200ms + surface al cajero · **I3b.5=SKIP** · **I9-(1)=fuera del scope** · **I9-(2)=(a) polling 60s** extendiendo `use-stock-availability.ts` · **I9-(3)=(a) heredar 60s del mismo hook** con breakdown `{disponibleNeto, reservadoAssembly, reservadoPedido}`. **Consulta cliente #10 capturada** (scope reserva sucursal vs global). **Audit revisable pre-implementación** del 30s actual en `use-stock-availability.ts` (JSDoc desactualizado, 4 hooks con `setInterval` en repo). Estimado bundle ~12-18h distribuido. §1.8 header actualizado a 3 abiertos, próximo paso operacional cambiado a Pack B2 |
