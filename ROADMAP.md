@@ -820,8 +820,13 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
       (pendiente P13-C), Stock OK (S5 pesado en P13-D), ribbon PRE-PAG (requiere
       decisión arquitectónica en P13-E), Prioridad (renombrada).
   ✅ (7) Responsive fallback < md: acordeón vertical, DnD deshabilitado, filtros en sheet glassmorphism.
-  ✅ (8) S5 parte pesada confirmada en P13-D (batteryAvailabilityMap al agregar ítems)
-      y P13-E (assertPolicyActive al entregar). NO implementado en B.
+  ⚠️ (8) S5 parte pesada **planeada** para P13-D (`batteryAvailabilityMap` al agregar ítems)
+      y P13-E (`assertPolicyActive` al entregar) — **NO implementada**. Verificación
+      2026-04-25 contra código real: `src/lib/workshop.ts:81` sigue no-op
+      (`void _bikeId; void _tx`); `src/app/(pos)/assembly/page.tsx:213` `batteryAvailabilityMap`
+      compone key `${modelo_id}:${voltaje_id}` ignorando capacidad. Se reubica a sub-fase
+      **P13-H follow-up** (4-5h, fuera del cluster). S5.a (display ligero V·Ah inline) sí
+      quedó cerrado en B. Ver `feedback_grep_before_declaring_closed.md` para learning.
 - **Deuda arquitectónica identificada en P13-B (2026-04-21) → resuelta 2026-04-22 con opción (a)**
   Ribbon "Pre-pagado" en tarjetas del Kanban requiere saber si hay pre-pago antes de
   DELIVERED. Hoy `Sale` se crea solo al entregar, así que no hay dato. **Decisión:**
@@ -1382,21 +1387,37 @@ Schema: `AssemblyOrder.batteryConfigurationId` + `Battery.assemblyOrderId` (ambo
 - Validación UI completa end-to-end pausada por rediseño pendiente del módulo. Pruebas parciales: Caso A (1 config) funcional; Casos B (multi-Ah), C (llega después) y D (cancelación libera reserva) sin validar en navegador.
 - La UI actual del form de recepción funciona pero está destinada a rediseño — evitar seguir parchando cosméticos.
 
-### S4 — POS: selector de config al vender ⏸️ (aterrizar con rediseño del POS Terminal — Paso 2 módulo 11)
-Cuando el vendedor cierra venta de un modelo con >1 config (ej. EVOTANK 180 72V → 45Ah o 52Ah), hoy el sistema asigna la primera arbitrariamente. Scope:
-- UI del POS: selector inline de `BatteryConfiguration` cuando el variant tiene >1 config para su voltaje.
-- Schema: ampliar `VoltageChangeLog` a "cambio de config completa" (V+Ah) para trazar cambios pre-venta.
+### S4 — POS: selector de config al vender ⏸️ (aterrizar con módulo POS Terminal del Cluster Fase A — ver `docs/design-prompts/CLUSTER_DECISIONS.md §1.6` ítem 10)
+
+**Scope ampliado tras audit 2026-04-25** (estimado revisado **11-15h**, antes 6-8h):
+
+Cuando el vendedor cierra venta de un modelo con >1 config (ej. EVOTANK 180 72V → 45Ah o 52Ah), hoy el sistema asigna la primera arbitrariamente — `pos-terminal.tsx:710` ejecuta `.find()` 2-axis ignorando capacidad.
+
+- UI del POS: selector inline de `BatteryConfiguration` cuando el variant tiene >1 config para su voltaje (~6-8h).
+- **Schema migración: ampliar `VoltageChangeLog` con `fromCapacidad`/`toCapacidad`** (o equivalente — la sub-decisión #6 de I10 Pack A.2 cierra el shape exacto y la estrategia de backfill histórico).
+- 6 callsites de `VoltageChangeLog` requieren update: `api/sales/route.ts`, `api/sales/[id]/cancel/route.ts`, `api/customer-bikes/[id]/route.ts`, `api/customers/[id]/bicis/[bikeId]/historial/pdf/route.tsx`, `lib/customers/profile-tabs-data.ts`, `components/customers/profile/tab-bicis.tsx` (~4-5.5h schema + callsites + UI).
+- Migración del callsite POS (`pos-terminal.tsx:710` + `point-of-sale/page.tsx:110`) al helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2) — ~1-2h.
 - API de venta: validar que la config elegida corresponda al variant vendido.
+
+**Naming** (`AssemblyOrder.voltageChangeLogId` con "Log" vs `BatteryAssignment.installedAtVoltageChangeId`/`removedAtVoltageChangeId` sin "Log") **NO se renombra ahora** — naming preexistente ya inconsistente y `BatteryAssignment` vive en módulo Workshop (rediseñado, fuera del cluster). Diferido a §FASE 6 §rename post-launch.
 
 **Por qué se pospone:** el POS Terminal es el último módulo del rediseño (riesgo máximo de regresión). Meter el selector antes implica reescribir UI dos veces.
 
-### S5 — Taller: Kanban por capacidad de batería ⏸️ (aterrizar con rediseño de Taller — Paso 2 módulo 4 / P13 Sub-fase B)
-Hoy el chip Kanban agrupa por `(modelo, voltaje)`. Con S1, dos EVOTANK 72V con baterías distintas (45Ah vs 52Ah) se ven idénticos — el técnico no sabe cuál montar. Scope:
-- Ampliar key del chip a `(modeloId, voltajeId, capacidadId)`.
-- Actualizar `assertPolicyActive` (validación de stock de batería específica) y `batteryAvailabilityMap`.
-- Filtrado/agrupación en UI Kanban.
+### S5.a — Taller: display ligero V·Ah en chip Kanban ✅ (2026-04-21, commit `b687807`, dentro de P13-B)
+Tarjeta del Kanban renderiza `bikeInfo · V · Ah` inline. Cerrado.
 
-**Por qué se pospone:** P13 Sub-fase B (rediseño del Kanban) ya está planeado y va a reescribir la UI del tablero completo. S5 se integra como parte del rediseño, no como parche aparte.
+### S5.b — Taller: stock por capacidad real (`assertPolicyActive` + `batteryAvailabilityMap`) ⏸️ (aterrizar como sub-fase **P13-H follow-up**, NO en POS)
+
+**Estado real verificado 2026-04-25** (corrige afirmación falsa de P13-B/D/E ítem (8)):
+- `src/lib/workshop.ts:81` `assertPolicyActive` sigue no-op (`void _bikeId; void _tx`).
+- `src/app/(pos)/assembly/page.tsx:213` `batteryAvailabilityMap` compone key 2-axis ignorando capacidad.
+
+Scope (~4-5h):
+- `assertPolicyActive` real: lógica de negocio para validación de stock de batería por capacidad específica. Sub-decisiones a cerrar al implementar: ¿qué cuenta como disponible? ¿reservas de otros service orders se descuentan? ¿falla con 422 hard o warn UX?
+- Ampliar key de `batteryAvailabilityMap` a la dimensión faltante consumiendo el helper canónico (decisión I10 Pack A.2).
+- Sin migración de UI Kanban (S5.a ya cubre display).
+
+**Por qué se pospone fuera del POS:** el código vive en `src/lib/workshop.ts` (Taller, ya rediseñado, fuera del cluster) y `src/app/(pos)/assembly/page.tsx` (Assembly, clasificado (a) limpio). Acoplarlo a POS mezcla decisión de schema (compartida con S4 vía I10) con implementación (territorio distinto). Independiente de S4 una vez I10 esté cerrado.
 
 ---
 
@@ -1570,6 +1591,8 @@ Ver sección FASE 6 más abajo para el detalle completo.
 - **Escala del Kanban de Taller (diferido desde P13-B, sumado 2026-04-22)** — `/workshop` hoy hidrata 7 columnas con `force-dynamic` + DnD sin paginación ni virtualización. En P13-Hotfix se añade `take: 100` por columna ordenado por `updatedAt desc` más SWR revalidate de 30s para el chip de disponibilidad; DELIVERED/CANCELLED siguen filtradas a "solo hoy". Cuando una sucursal mantenga > 50 órdenes activas sostenidas, agregar: (a) virtualización con `@tanstack/react-virtual` en columnas largas, (b) índice compuesto `(branchId, status, subStatus, updatedAt desc)` en `ServiceOrder` si EXPLAIN muestra seq scan, (c) paginación cursor en endpoints `/api/workshop/orders` con `?cursor=&limit=`. No bloqueante mientras el volumen sea bajo; validar con un EXPLAIN al abrir piloto con volumen real.
 - **Política ADMIN branch-scope (formalizar, sumado 2026-04-22)** — Incidente detectado en P13 pre-Hotfix: órdenes de otras sucursales visibles desde sesión filtrada por branch en el topbar, incluso para ADMIN. La regla "filtrar por `branchId` del JWT excepto ADMIN" es too blunt — ADMIN necesita scope respetado cuando trabaja en un branch específico. **Patrón canónico:** `viewBranchId` = branch del topbar (siempre honrado) en módulos operativos (`/workshop`, `/point-of-sale`, `/inventario`, `/tesoreria`, `/autorizaciones`); **global-only** en `/reportes/*` (ejecutivo) y `/configuracion/*`. Documentar en `AGENTS.md §Reglas` como extensión de la regla branchId. Audit cross-módulo al cerrar Hotfix.1 — probablemente hay más endpoints con el mismo patrón roto.
 - **Vista de ocupación del gerente (diferida desde P13-G, 2026-04-22)** — El mock `vista_de_ocupaci_n_del_gerente_2/` existe pero no se prioriza en P13. Requiere métricas de productividad (horas facturables vs. efectivas, OT/subutilización por técnico) que sólo maduran con uso real post-piloto. Retomar tras ~60 días de operación con datos reales; evaluar si vale o se reduce a dashboard KPI simple en `/workshop/ocupacion`.
+- **Lookup canónico de `BatteryConfiguration` cross-módulo (audit 2026-04-25)** — 11 callsites componen key 2-axis `${modeloId}:${voltajeId}` ignorando la dimensión de capacidad introducida por S1 (migration `20260419060000_add_battery_capacity_axis`). Producción (9): `api/inventory/receipts/route.ts:262,272`, `inventario/recepciones/nuevo/page.tsx:129,149`, `pedidos/[id]/page.tsx:178,206`, `assembly/page.tsx:194,213`, `pos-terminal.tsx:710`, `api/assembly/route.ts:204`, `api/assembly/[id]/complete/route.ts:141`, `api/assembly/[id]/available-batteries/route.ts:59`, `api/batteries/lots/route.ts:141`. Seed (2): `prisma/seed-transactional.ts:488,530`. **Resolución NO en Fase 6** sino distribuida en el cluster: helper canónico (decisión I10 Pack A.2) introducido al inicio del módulo Catálogo + one-shot migration de 4 huérfanos (3 assembly server-side + lots) al introducir helper; 5 in-scope migrados al rediseñar cada módulo (Inventario, Pedidos, POS); seed migrado al final. Bundle ~22-30h distribuido cross-cluster (sin opción rename). Ítem en Fase 6 solo para traceabilidad — el trabajo se ejecuta antes. Ver `feedback_grep_before_declaring_closed.md` para learning del incidente.
+- **Rename `VoltageChangeLog → ConfigChangeLog` post-launch (cosmético, diferido)** — Tras S4 ampliar el modelo con `fromCapacidad`/`toCapacidad`, el nombre `VoltageChangeLog` es semánticamente impreciso. Naming preexistente **ya inconsistente** (verificado 2026-04-25): `AssemblyOrder.voltageChangeLogId` (con "Log") vs `BatteryAssignment.installedAtVoltageChangeId`/`removedAtVoltageChangeId` (sin "Log"). Rename tocaría 3 FKs cross-tabla incluyendo `BatteryAssignment` que vive en módulo Workshop (ya rediseñado, fuera del cluster) — riesgo de regresión en zona estable. Diferido a sweep dedicado post-launch coordinado con Workshop, ~2-3h. Cosmético: no bloquea funcionalidad ni introduce bugs.
 
 ---
 

@@ -136,6 +136,8 @@ Barridos que benefician a todos los módulos de Fase A. Se hacen **antes** de to
 
 **Regla:** Fase 0 no toca código de módulos — es solo infra de tokens, tipos y barrels. Ningún fix cosmético de módulo entra aquí.
 
+**Helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2) NO va aquí** — es lógica de dominio, no infra. Aterriza al inicio del módulo Catálogo (primer módulo del Cluster Fase A) junto con la migración one-shot de los 4 callsites huérfanos del cluster (3 endpoints `api/assembly/*` server-side + `api/batteries/lots/route.ts:141`). Ver §1.8 Pack A.2 (interlock I10) y §FASE 6 ROADMAP §"Lookup canónico de `BatteryConfiguration`" para detalle del bundle (~22-30h distribuido cross-cluster).
+
 ---
 
 ### 1.6 Mapa de fases y orden de ejecución
@@ -155,7 +157,7 @@ Orden upstream → downstream:
 7. **Ventas + Devoluciones** (un solo entregable) — 20-25h
 8. **Assembly** — 0h (verificación)
 9. **Cash Register / Caja** — 0h (verificación, pero mover como unidad con POS)
-10. **POS Terminal** (ÚLTIMO, regla invariante) — 25-35h + Fase S4 (selector config V·Ah). **Candidato a Claude Design.**
+10. **POS Terminal** (ÚLTIMO, regla invariante) — 25-35h base + **S4 ampliada (11-15h, audit 2026-04-25)**: selector config V·Ah ~6-8h + migración `VoltageChangeLog` con `fromCapacidad`/`toCapacidad` en 6 archivos ~4-5.5h + migración de `pos-terminal.tsx:710` y `point-of-sale/page.tsx:110` al helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2) ~1-2h. **Candidato a Claude Design.**
 
 **Fase B — Reportes restantes (paralelo permitido con Fase A tardía)**
 S11-S17 del plan `docs/reportes-redesign/REPORTES_V1_DECISIONS.md`. S13/S14 (Stock crítico, Stock rotación) consumen decisiones de Catálogo e Inventario — correr al final o después de Fase A.
@@ -194,9 +196,11 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ---
 
-### 1.8 Interlocks abiertos — pendientes de cierre en packs A / B1 / B2
+### 1.8 Interlocks abiertos — pendientes de cierre en packs A.1 / A.2 / B1 / B2
 
-**Estado al 2026-04-24:** 10 interlocks abiertos, divididos en 3 packs por dependencia y densidad de decisión. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+**Estado al 2026-04-25:** 11 interlocks abiertos, divididos en **4 packs** por dependencia, densidad y riesgo de fatiga decisional. Los packs se cierran en sesiones dedicadas de chat (no implementación) con formato **una frase por ítem** (2-4 líneas, no "I1a=a").
+
+**Gate 0 (cero red de seguridad de tests):** verificado 2026-04-25 — el repo no tiene harness Jest/Vitest (`find src -name "*.test.*"` → 0 archivos, `package.json` sin deps de testing). Cualquier sweep cross-callsite (helper canónico I10, migración de patrón, etc.) procede sin red de seguridad. Si en el futuro se introduce harness, los bundles ya cerrados no se re-ejecutan; los nuevos sí deben sumar tests al estimado.
 
 **Formato esperado de respuesta (ejemplo):**
 > **I1a** — Sí, canonicalizar. Razón: 8+ módulos muestran el mismo producto y hoy lo arman distinto. Es la fuente #1 de drift visual silencioso. Cambiar fórmula después se vuelve cacería.
@@ -218,7 +222,11 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 **Bloqueados por consulta cliente (ver §2):**
 - POS ↔ Autorizaciones (umbral descuento) — memoria consulta #8
-- POS ↔ Catálogo (Fase S4 selector V·Ah) — aterriza con POS
+
+**Aterrizajes acoplados al rediseño (no requieren cliente):**
+- **S4** (selector V·Ah POS) → módulo POS Terminal del cluster (§1.6 ítem 10) — 11-15h ampliado (audit 2026-04-25).
+- **Helper canónico `BatteryConfiguration`** (decisión I10 Pack A.2) → inicio del módulo Catálogo del cluster + one-shot migration de 4 huérfanos (3 endpoints assembly server-side + `api/batteries/lots/route.ts:141`).
+- **S5.b** (`assertPolicyActive` real + `batteryAvailabilityMap` por capacidad) → sub-fase **P13-H follow-up** post-cluster (NO en POS — vive en territorio Taller/Assembly). Independiente de S4 una vez I10 cerrado. ~4-5h.
 
 **Preservar patrón actual (no son decisión):**
 - Imagen de producto: `variant.imageUrl > modelo.imageUrl > icono fallback` (status quo)
@@ -230,9 +238,9 @@ Ref: audit masivo 2026-04-24. Horas orientativas; no calendario comprometido.
 
 ---
 
-#### Pack A — Upstream shape de data (~35-45 min, 5 items)
+#### Pack A.1 — Upstream shape de data, parte general (~35-45 min, 5 items)
 
-Afectan cómo los módulos del cluster se comunican entre sí. Cerrarlos primero evita rework de contratos al tocar packs B.
+Afectan cómo los módulos del cluster se comunican entre sí. Cerrarlos primero evita rework de contratos al tocar packs B. **I10 (BatteryConfiguration) sale a Pack A.2 separado** por densidad de sub-decisiones (6) y riesgo de fatiga si se mete junto con los 5 originales.
 
 | # | Interlock | Opciones |
 |---|---|---|
@@ -244,9 +252,21 @@ Afectan cómo los módulos del cluster se comunican entre sí. Cerrarlos primero
 
 ---
 
+#### Pack A.2 — Lookup canónico de `BatteryConfiguration` (~50-60 min, 1 interlock con 6 sub-decisiones)
+
+Sale separado de A.1 por densidad de decisión (6 sub-decisiones acopladas) y por riesgo de fatiga (1.5-2h sumado supera el umbral del doc). Dispara **después del respiro post Pack A.1** (mínimo 1 sesión distinta — la regla "no 2 packs en la misma sesión" del `project_cluster_decisions_session.md` aplica entre A.1 y A.2).
+
+| # | Interlock | Sub-decisiones a cerrar |
+|---|---|---|
+| **I10** | Lookup canónico de `BatteryConfiguration` cross-módulo. Schema unique es `(modeloId, voltajeId, batteryVariantId)`; **11 callsites** (9 producción + 2 seed) lo ignoran y componen `${modeloId}:${voltajeId}` 2-axis causando ambigüedad multi-Ah desde S1 (migration `20260419060000_add_battery_capacity_axis`, 2026-04-19). | **(1)** Helper canónico vs status quo per-módulo. **(2)** Signatures que expone — `resolveConfigForVariant(variant)`, `findConfigsByModelVoltage(m,v)`, `findConfigByDimensions({m,v,c})`. **(3)** Public API — A1 (`capacidadId` business) / A2 (`capacidadId` explícito) / A3 (`batteryVariantId` schema raw); coexisten o uno gana. **(4)** Forma — pure lib (`src/lib/batteries.ts` siguiendo convención de `branch-filter.ts`/`workshop.ts`) / Prisma extension / server action. **(5)** Migración de los 4 callsites huérfanos del cluster (3 endpoints `api/assembly/*` server-side + `api/batteries/lots/route.ts:141`) — one-shot al introducir helper en Catálogo, NO esperando rediseño de Assembly (clasificado (a) limpio). **(6)** Backfill `VoltageChangeLog` histórico tras agregar `fromCapacidad`/`toCapacidad`: nullable + script best-effort (mira capacidad actual del bike) / nullable hard sin backfill / default null + flag pre-S4. |
+
+Naming de `VoltageChangeLog → ConfigChangeLog` **NO entra en I10** — diferido a §FASE 6 ROADMAP §rename post-launch (toca FK columns en `BatteryAssignment` que vive en Workshop ya rediseñado, fuera del cluster, riesgo de regresión en zona estable; naming preexistente ya inconsistente entre `voltageChangeLogId` con "Log" y `installedAtVoltageChangeId`/`removedAtVoltageChangeId` sin "Log").
+
+---
+
 #### Pack B1 — Comportamiento / integración (~35 min, 2 items)
 
-Dispara **después del respiro post Pack A** (mínimo 1 sesión distinta).
+Dispara **después del respiro post Pack A.2** (mínimo 1 sesión distinta).
 
 | # | Interlock | Opciones |
 |---|---|---|
@@ -267,7 +287,7 @@ Después de B1. **I8 depende de I7** cerrado en Pack A.
 
 ---
 
-**Próximo paso operacional:** disparar Pack A en sesión siguiente con el formato "frase por ítem". Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto.
+**Próximo paso operacional:** disparar **Pack A.1** en sesión siguiente con el formato "frase por ítem"; **Pack A.2 (I10)** en sesión separada con respiro. Fase 0 (§1.5) puede arrancar en paralelo sin bloqueo — es puro CSS/tokens/barrel sin decisiones de producto. Helper canónico de I10 NO va en Fase 0 — aterriza al inicio del módulo Catálogo del cluster.
 
 ---
 
@@ -360,3 +380,4 @@ Para que Claude Design / Code sepa qué archivos citar como vara visual:
 |---|---|
 | 2026-04-24 | Versión inicial. 11 decisiones cerradas, 3 [consulta cliente] pendientes, 12 módulos clasificados, Catálogo sale de Configuración al cluster |
 | 2026-04-24 | §1.8 agregado — 10 interlocks abiertos divididos en Pack A (5) / B1 (2) / B2 (3). Formato de respuesta "frase por ítem". Pendientes de cierre en sesiones siguientes |
+| 2026-04-25 | **Audit S4/S5/BatteryConfiguration:** se detecta deuda cross-módulo de 11 callsites con key 2-axis ignorando capacidad (pre-data S1 migration `20260419060000`). S5 marcada falsamente como cerrada en `ROADMAP.md:823-824` (verificación contra código: `assertPolicyActive` sigue no-op). Cambios al doc: §1.6 ítem 10 amplía S4 a 11-15h; §1.5 documenta que helper canónico va en Catálogo, no Fase 0; §1.8 agrega **I10** (con 6 sub-decisiones), parte Pack A en **A.1 (5 originales) + A.2 (I10 sola)** por riesgo de fatiga decisional, agrega Gate 0 (cero test harness) y sub-sección "Aterrizajes acoplados al rediseño" (S4 / helper / S5.b). Bundle distribuido cross-cluster ~22-30h. Naming `VoltageChangeLog → ConfigChangeLog` diferido a FASE 6 §rename post-launch |
