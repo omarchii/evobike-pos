@@ -455,7 +455,7 @@ export function CompleteAssemblyDialog({
             onClick={handleComplete}
             disabled={!canSubmit || submitting}
             style={{
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               color: "#fff",
               borderRadius: "1.5rem",
               border: "none",

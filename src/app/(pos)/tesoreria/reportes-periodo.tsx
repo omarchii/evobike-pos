@@ -76,7 +76,7 @@ export function ReportesPeriodo({
                             style={{
                                 width: `${ingresosPct}%`,
                                 background:
-                                    "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                                    "var(--velocity-gradient)",
                             }}
                         />
                     </div>

@@ -388,7 +388,7 @@ export function ServiceOrderDetailsView({
                   disabled={isAdvancing}
                   className="w-full flex items-center justify-center gap-2 font-semibold text-sm transition-opacity disabled:opacity-50"
                   style={{
-                    background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                    background: "var(--velocity-gradient)",
                     color: "#ffffff",
                     borderRadius: "var(--r-full)",
                     border: "none",
@@ -465,7 +465,7 @@ export function ServiceOrderDetailsView({
                     background:
                       needsCashFlow && !hasCashSession
                         ? "var(--surf-high)"
-                        : "linear-gradient(135deg, #1b4332, #2ecc71)",
+                        : "var(--velocity-gradient)",
                     color:
                       needsCashFlow && !hasCashSession ? "var(--p)" : "#ffffff",
                     borderRadius: "var(--r-full)",

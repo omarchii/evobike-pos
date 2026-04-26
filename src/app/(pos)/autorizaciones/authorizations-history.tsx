@@ -205,7 +205,7 @@ export function AuthorizationsHistory({
                 {rows.map((r) => {
                   const s = STATUS_STYLES[r.status];
                   return (
-                    <tr key={r.id} style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}>
+                    <tr key={r.id} style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}>
                       <td className="px-5 py-3" style={{ color: "var(--on-surf-var)" }}>
                         {formatDate(r.createdAt)}
                       </td>

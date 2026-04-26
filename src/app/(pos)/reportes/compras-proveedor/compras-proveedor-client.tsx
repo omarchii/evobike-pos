@@ -617,7 +617,7 @@ export function ComprasProveedorClient({
                               style={{
                                 width: `${pct}%`,
                                 background:
-                                  "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                                  "var(--velocity-gradient)",
                               }}
                             />
                           </div>

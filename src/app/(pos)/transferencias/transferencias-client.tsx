@@ -119,7 +119,7 @@ export function TransferenciasClient({
           onClick={() => setShowNueva(true)}
           className="flex items-center gap-2 shrink-0"
           style={{
-            background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+            background: "var(--velocity-gradient)",
             color: "#FFFFFF",
             borderRadius: "var(--r-full)",
             border: "none",
@@ -165,7 +165,7 @@ export function TransferenciasClient({
                 <span
                   className="text-[0.625rem] font-bold rounded-full px-1.5 py-px leading-none"
                   style={{
-                    background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                    background: "var(--velocity-gradient)",
                     color: "#ffffff",
                   }}
                 >

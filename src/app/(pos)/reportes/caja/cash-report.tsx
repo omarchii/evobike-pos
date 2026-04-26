@@ -770,7 +770,7 @@ function KpiCard({
       className="p-5 rounded-2xl"
       style={{
         background: gradient
-          ? "linear-gradient(135deg, #1b4332, #2ecc71)"
+          ? "var(--velocity-gradient)"
           : "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
       }}

@@ -49,7 +49,7 @@ export default function QuotationsKpiStrip({
           style={
             card.gradient
               ? {
-                  background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  background: "var(--velocity-gradient)",
                   boxShadow: "var(--shadow)",
                 }
               : {

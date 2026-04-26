@@ -442,7 +442,7 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
               className="px-5 py-2 text-sm font-semibold disabled:opacity-60"
               style={{
                 borderRadius: "var(--r-full)",
-                background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                background: "var(--velocity-gradient)",
                 color: "var(--on-p)",
                 fontFamily: "var(--font-display)",
                 border: "none",
@@ -904,7 +904,7 @@ function ReasonDialog({
             className="px-5 py-2 text-sm font-semibold"
             style={{
               borderRadius: "var(--r-full)",
-              background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+              background: "var(--velocity-gradient)",
               color: "var(--on-p)",
               fontFamily: "var(--font-display)",
               border: "none",

@@ -203,7 +203,7 @@ function LinesTable({
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}>
+            <tr key={i} style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}>
               {row.map((cell, j) => (
                 <td
                   key={j}
@@ -923,7 +923,7 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
             style={{
               background: paying
                 ? "var(--surf-high)"
-                : "linear-gradient(135deg, #1b4332, #2ecc71)",
+                : "var(--velocity-gradient)",
               color: paying ? "var(--on-surf-var)" : "#ffffff",
               border: "none",
               cursor: paying ? "not-allowed" : "pointer",

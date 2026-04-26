@@ -75,7 +75,7 @@ export function CustomerDetailHeader({
           <div
             className="h-12 w-12 rounded-[var(--r-lg)] flex items-center justify-center shrink-0"
             style={{
-              background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+              background: "var(--velocity-gradient)",
               color: "var(--on-p)",
               fontFamily: "var(--font-display)",
               fontWeight: 700,
@@ -157,7 +157,7 @@ export function CustomerDetailHeader({
             href={`/workshop/recepcion?customerId=${customerId}`}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--r-full)] text-xs font-semibold"
             style={{
-              background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+              background: "var(--velocity-gradient)",
               color: "var(--on-p)",
               fontFamily: "var(--font-display)",
             }}

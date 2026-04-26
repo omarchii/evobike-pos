@@ -85,7 +85,7 @@ export function BatteryLotsPanel({ initialLots, batteryVariants }: Props): React
           onClick={() => setIsDialogOpen(true)}
           className="font-semibold"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#ffffff",
             borderRadius: "1.5rem",
             border: "none",
@@ -117,7 +117,7 @@ export function BatteryLotsPanel({ initialLots, batteryVariants }: Props): React
             onClick={() => setIsDialogOpen(true)}
             className="mt-4"
             style={{
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               color: "#fff",
               borderRadius: "1.5rem",
               border: "none",
@@ -173,7 +173,7 @@ export function BatteryLotsPanel({ initialLots, batteryVariants }: Props): React
                 className="grid items-center px-4 py-3 transition-colors"
                 style={{
                   gridTemplateColumns: "1fr 1fr 1fr 120px 96px 96px 32px",
-                  borderBottom: "1px solid rgba(178,204,192,0.08)",
+                  borderBottom: "1px solid var(--ghost-border-soft)",
                 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLDivElement).style.background = "var(--surf-high)";

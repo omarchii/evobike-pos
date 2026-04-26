@@ -334,7 +334,7 @@ export function DeliverModal({
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 font-semibold text-sm transition-opacity disabled:opacity-50"
             style={{
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               color: "#ffffff",
               borderRadius: "var(--r-full)",
               border: "none",

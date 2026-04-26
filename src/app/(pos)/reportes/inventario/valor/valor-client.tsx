@@ -123,7 +123,7 @@ export function ValorInventarioClient({
         <div className="flex items-center gap-3">
           <div
             className="flex items-center justify-center w-10 h-10 rounded-xl"
-            style={{ background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)" }}
+            style={{ background: "var(--velocity-gradient)" }}
           >
             <BarChart3 size={20} style={{ color: "#ffffff" }} />
           </div>
@@ -160,7 +160,7 @@ export function ValorInventarioClient({
         <div
           className="rounded-2xl px-4 py-3 flex items-center gap-3"
           style={{
-            background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+            background: "var(--velocity-gradient)",
             boxShadow: "var(--shadow)",
           }}
         >
@@ -287,7 +287,7 @@ export function ValorInventarioClient({
           onClick={applyFilters}
           className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#fff",
           }}
         >
@@ -325,7 +325,7 @@ export function ValorInventarioClient({
                 {filteredRows.map((row) => (
                   <tr
                     key={row.stockId}
-                    style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+                    style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = "var(--surf-high)";
                     }}

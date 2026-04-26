@@ -497,7 +497,10 @@ Toda violación en esta lista rompe light o dark mode silenciosamente. Los linte
 
 | Anti-pattern | Reemplazo | Razón |
 | --- | --- | --- |
-| `rgba(178, 204, 192, 0.15)` / `.2` / `.08` | `var(--ghost-border)` | El token adapta a `rgba(45,74,58,0.30)` en dark; el hardcoded se mantiene verde claro sobre fondo negro |
+| `rgba(178, 204, 192, 0.08)` | `var(--ghost-border-soft)` | Tabla row separators / zebra. Adapta a `rgba(45,74,58,0.16)` en dark — duplica alpha siguiendo el patrón de `--ghost-border` |
+| `rgba(178, 204, 192, 0.15)` | `var(--ghost-border)` | Default. Adapta a `rgba(45,74,58,0.30)` en dark; el hardcoded se mantiene verde claro sobre fondo negro |
+| `rgba(178, 204, 192, 0.20)` | `var(--ghost-border-strong)` | Card/input/panel borders. Adapta a `rgba(45,74,58,0.40)` en dark — duplica alpha igual que los otros dos |
+| Cualquier otro alpha de `rgba(178, 204, 192, X)` | **Prohibido en código nuevo.** Tail diferido (Fase A/B) | 22 instancias post-Fase 0 con 11 alphas distintos (0.04 / 0.10 / 0.18 / 0.22 / 0.25 / 0.30 / 0.35 / 0.40 / 0.45 / 0.50 / 0.60), localizadas mayormente en portal taller, portal cotizaciones y reporte anual. Se migran módulo a módulo durante el rediseño respectivo, no en Fase 0 |
 | `text-white` como color de texto general | `text-[var(--on-surf)]` o `text-[var(--on-p)]` | Excepción única: KPI card con Velocity Gradient (la spec manda `color: #ffffff` fijo porque el gradient es identidad permanente) |
 | `#dc2626` / `bg-red-500` / cualquier rojo Tailwind | `var(--ter)` + `var(--ter-container)` + `var(--on-ter-container)` | El rojo canónico es `#e74c3c` light / `#ff8080` dark — Tailwind red-500 no flipea |
 | `bg-white` | `bg-[var(--surf-lowest)]` | `surf-lowest` = `#ffffff` light pero `#222222` dark |

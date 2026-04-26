@@ -783,7 +783,7 @@ export default function QuotationForm({
                     })
                   }
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                  style={{ background: "var(--velocity-gradient)" }}
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Agregar del catálogo
@@ -969,7 +969,7 @@ export default function QuotationForm({
 
               <div
                 className="pt-2 mt-2"
-                style={{ borderTop: "1px solid rgba(178,204,192,0.2)" }}
+                style={{ borderTop: "1px solid var(--ghost-border-strong)" }}
               >
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold" style={{ color: "var(--on-surf)" }}>
@@ -1002,7 +1002,7 @@ export default function QuotationForm({
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                style={{ background: "var(--velocity-gradient)" }}
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {mode === "create" ? "Guardar cotización" : "Guardar cambios"}

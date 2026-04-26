@@ -368,7 +368,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                   fontWeight: 700,
                   background:
                     step >= s
-                      ? "linear-gradient(135deg, #1b4332, #2ecc71)"
+                      ? "var(--velocity-gradient)"
                       : "var(--surf-high)",
                   color: step >= s ? "#fff" : "var(--on-surf-var)",
                 }}
@@ -598,7 +598,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                   type="submit"
                   disabled={vinValidState === "checking" || vinValidState === "taken" || !requiredBatteries}
                   style={{
-                    background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                    background: "var(--velocity-gradient)",
                     color: "#fff",
                     borderRadius: "1.5rem",
                     border: "none",
@@ -692,7 +692,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                   onClick={() => handleSubmit(true)}
                   disabled={!allBatteriesValid || submitting}
                   style={{
-                    background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                    background: "var(--velocity-gradient)",
                     color: "#fff",
                     borderRadius: "1.5rem",
                     border: "none",

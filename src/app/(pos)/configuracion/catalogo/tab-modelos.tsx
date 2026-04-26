@@ -203,7 +203,7 @@ export function TabModelos({
                     <tr
                       key={m.id}
                       style={{
-                        borderBottom: "1px solid rgba(178,204,192,0.08)",
+                        borderBottom: "1px solid var(--ghost-border-soft)",
                         opacity: m.isActive ? 1 : 0.55,
                       }}
                     >

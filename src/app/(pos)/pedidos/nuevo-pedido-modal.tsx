@@ -1108,7 +1108,7 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
               background:
                 orderType === "BACKORDER"
                   ? "linear-gradient(135deg, #1a1a2e, var(--ter))"
-                  : "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  : "var(--velocity-gradient)",
               color: "#fff",
               borderRadius: "var(--r-full)",
               border: "none",

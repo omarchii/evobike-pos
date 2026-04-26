@@ -83,7 +83,7 @@ function KpiCard({
       className="rounded-2xl p-5 flex flex-col gap-1 min-w-[120px]"
       style={{
         background: featured
-          ? "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)"
+          ? "var(--velocity-gradient)"
           : "var(--surf-lowest)",
         boxShadow: "var(--shadow)",
         color: featured ? "#ffffff" : undefined,
@@ -363,7 +363,7 @@ export function MantenimientosTable({
                 {filtered.map((r) => (
                   <tr
                     key={r.bikeId}
-                    style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+                    style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
                     className="hover:bg-[var(--surf-high)] transition-colors"
                   >
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--on-surf)" }}>

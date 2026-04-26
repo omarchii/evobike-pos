@@ -1013,7 +1013,7 @@ export function RecepcionForm({
                     return (
                       <tr
                         key={line.lineId}
-                        style={{ borderBottom: "1px solid rgba(178, 204, 192, 0.08)" }}
+                        style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
                       >
                         <td style={{ padding: "0.5rem", maxWidth: "140px" }}>
                           <div
@@ -1359,7 +1359,7 @@ export function RecepcionForm({
                 style={{
                   background: submitting
                     ? "var(--surf-high)"
-                    : "linear-gradient(135deg, #1b4332, #2ecc71)",
+                    : "var(--velocity-gradient)",
                   color: submitting ? "var(--on-surf-var)" : "#ffffff",
                   border: "none",
                   cursor: submitting ? "not-allowed" : "pointer",

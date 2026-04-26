@@ -174,7 +174,7 @@ export function RemoteStockPopover({
                   }}
                   className="w-full transition-opacity hover:opacity-80"
                   style={{
-                    background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                    background: "var(--velocity-gradient)",
                     color: "#FFFFFF",
                     borderRadius: "var(--r-full)",
                     border: "none",

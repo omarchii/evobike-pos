@@ -263,7 +263,7 @@ export function AssemblyBoard({
         <Button
           onClick={() => setNewDialogOpen(true)}
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#fff",
             borderRadius: "1.5rem",
             border: "none",
@@ -641,7 +641,7 @@ function ReceiptGroupCard({
               fontSize: "0.72rem",
               color: "#fff",
               fontWeight: 600,
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               border: "none",
               borderRadius: "0.75rem",
               cursor: "pointer",
@@ -817,7 +817,7 @@ function AssemblyCard({
                   fontSize: "0.72rem",
                   color: "#fff",
                   fontWeight: 600,
-                  background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  background: "var(--velocity-gradient)",
                   border: "none",
                   borderRadius: "0.75rem",
                   cursor: "pointer",

@@ -105,7 +105,7 @@ export const SELECT_STYLE: CSSProperties = {
 };
 
 export const PRIMARY_BUTTON_STYLE: CSSProperties = {
-    background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+    background: "var(--velocity-gradient)",
     color: "#FFFFFF",
     borderRadius: "var(--r-full)",
     border: "none",

@@ -304,7 +304,7 @@ export function NewBatteryLotDialog({
               disabled={isPending || (preview?.dupes.length ?? 0) > 0}
               className="w-full font-semibold"
               style={{
-                background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                background: "var(--velocity-gradient)",
                 color: "#ffffff",
                 borderRadius: "1.5rem",
                 border: "none",

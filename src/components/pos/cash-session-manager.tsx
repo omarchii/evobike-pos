@@ -64,7 +64,7 @@ const LABEL_STYLE: React.CSSProperties = {
 };
 
 const PRIMARY_BUTTON_STYLE: React.CSSProperties = {
-    background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+    background: "var(--velocity-gradient)",
     color: "#FFFFFF",
     borderRadius: "var(--r-full)",
     border: "none",
@@ -229,7 +229,7 @@ export function CashSessionManager() {
                                     width: 48,
                                     height: 48,
                                     borderRadius: "var(--r-full)",
-                                    background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                                    background: "var(--velocity-gradient)",
                                     color: "#FFFFFF",
                                 }}
                             >

@@ -280,7 +280,7 @@ function UsersTable({
           {rows.map((u) => (
             <tr
               key={u.id}
-              style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+              style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
             >
               <td className="px-5 py-3 text-[var(--on-surf)]">{u.name}</td>
               <td className="px-5 py-3 text-[var(--on-surf-var)]">{u.email}</td>

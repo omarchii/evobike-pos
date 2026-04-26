@@ -92,7 +92,7 @@ export function TabDatos({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
           style={{
             borderRadius: "var(--r-full)",
-            background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+            background: "var(--velocity-gradient)",
             color: "var(--on-p)",
             fontFamily: "var(--font-display)",
           }}

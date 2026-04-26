@@ -233,7 +233,7 @@ export function CommissionRules({
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#fff",
           }}
         >
@@ -583,7 +583,7 @@ export function CommissionRules({
                 disabled={saving || isPending}
                 className="flex-1 px-4 py-2.5 rounded-full text-sm font-semibold transition-all"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  background: "var(--velocity-gradient)",
                   color: "#fff",
                   opacity: saving ? 0.6 : 1,
                 }}
@@ -613,7 +613,7 @@ function RuleTableRow({
     <tr
       className="transition-colors"
       style={{
-        borderBottom: "1px solid rgba(178,204,192,0.08)",
+        borderBottom: "1px solid var(--ghost-border-soft)",
       }}
       onMouseEnter={(e) =>
         (e.currentTarget.style.background = "var(--surf-high)")

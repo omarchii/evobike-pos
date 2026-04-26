@@ -543,7 +543,7 @@ export function RecepcionWizard({
             disabled={isSubmitting}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity"
             style={{
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               opacity: isSubmitting ? 0.7 : 1,
               cursor: isSubmitting ? "not-allowed" : "pointer",
             }}

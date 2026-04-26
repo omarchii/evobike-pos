@@ -72,7 +72,7 @@ const AMOUNT_INPUT_STYLE: React.CSSProperties = {
 };
 
 const PRIMARY_BUTTON_STYLE: React.CSSProperties = {
-    background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+    background: "var(--velocity-gradient)",
     color: "#FFFFFF",
     borderRadius: "var(--r-full)",
     border: "none",

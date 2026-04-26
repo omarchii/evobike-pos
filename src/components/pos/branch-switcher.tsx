@@ -69,7 +69,7 @@ export function BranchSwitcher({ activeBranchId, activeBranchName }: BranchSwitc
         onClick={() => setOpen((v) => !v)}
         disabled={isPending}
         className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white transition-opacity disabled:opacity-60"
-        style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+        style={{ background: "var(--velocity-gradient)" }}
       >
         <span>BRANCH: {label}</span>
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />

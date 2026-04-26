@@ -380,7 +380,7 @@ function ModelCard({
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                background: "var(--velocity-gradient)",
                 color: "#fff",
                 border: "none",
                 fontSize: 18,
@@ -516,7 +516,7 @@ function SimpleProductCard({
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                background: "var(--velocity-gradient)",
                 color: "#fff",
                 border: "none",
               }}
@@ -1176,7 +1176,7 @@ export default function PosTerminal({
               style={
                 categoryFilter === cat.key
                   ? {
-                    background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+                    background: "var(--velocity-gradient)",
                     color: "var(--on-primary)",
                   }
                   : {
@@ -1372,8 +1372,8 @@ export default function PosTerminal({
         className="w-[360px] shrink-0 flex flex-col border-l overflow-hidden"
         style={{
           background: "var(--surf-low)",
-          borderLeft: "1px solid rgba(178,204,192,0.2)",
-          borderColor: "rgba(178,204,192,0.2)",
+          borderLeft: "1px solid var(--ghost-border-strong)",
+          borderColor: "var(--ghost-border-strong)",
         }}
       >
         {/* Panel header */}
@@ -1381,7 +1381,7 @@ export default function PosTerminal({
           className="px-4 py-3.5 shrink-0 border-b"
           style={{
             background: "var(--surf-low)",
-            borderColor: "rgba(178,204,192,0.2)",
+            borderColor: "var(--ghost-border-strong)",
           }}
         >
           <div className="flex items-center justify-between mb-1">
@@ -1582,7 +1582,7 @@ export default function PosTerminal({
                         // SIN_STOCK — disabled
                         pillStyle = {
                           background: "transparent",
-                          border: "1px solid rgba(178,204,192,0.2)",
+                          border: "1px solid var(--ghost-border-strong)",
                           color: "var(--on-surf-var)",
                           opacity: 0.4,
                           pointerEvents: "none" as const,
@@ -1907,7 +1907,7 @@ export default function PosTerminal({
                                     ? "1px solid var(--p-bright)"
                                     : batteryStatuses[idx] === "invalid"
                                       ? "1px solid var(--ter)"
-                                      : "1px solid rgba(178,204,192,0.2)",
+                                      : "1px solid var(--ghost-border-strong)",
                                 borderRadius: 10,
                                 color: "var(--on-surf)",
                                 padding: "10px 40px 10px 14px",
@@ -2245,7 +2245,7 @@ export default function PosTerminal({
                     className="w-full pl-5 pr-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                     style={{
                       background: "var(--surf-low)",
-                      border: "1px solid rgba(178,204,192,0.2)",
+                      border: "1px solid var(--ghost-border-strong)",
                       color: "var(--on-surf)",
                     }}
                     placeholder="0.00"
@@ -2264,7 +2264,7 @@ export default function PosTerminal({
                       className="w-full px-2 py-1.5 text-[10px] rounded-lg focus:outline-none"
                       style={{
                         background: "var(--surf-low)",
-                        border: "1px solid rgba(178,204,192,0.2)",
+                        border: "1px solid var(--ghost-border-strong)",
                         color: "var(--on-surf)",
                       }}
                       placeholder="Motivo del descuento..."
@@ -2309,7 +2309,7 @@ export default function PosTerminal({
                   className="w-full px-3 py-2 text-[10px] rounded-lg resize-none focus:outline-none"
                   style={{
                     background: "var(--surf-low)",
-                    border: "1px solid rgba(178,204,192,0.2)",
+                    border: "1px solid var(--ghost-border-strong)",
                     color: "var(--on-surf)",
                   }}
                   placeholder="Observaciones para gerencia..."
@@ -2690,7 +2690,7 @@ export default function PosTerminal({
                           border:
                             primaryMethod === "CREDIT_BALANCE"
                               ? "1px solid var(--p-bright)"
-                              : "1px solid rgba(178,204,192,0.2)",
+                              : "1px solid var(--ghost-border-strong)",
                           background:
                             primaryMethod === "CREDIT_BALANCE"
                               ? "var(--sec-container)"
@@ -2741,7 +2741,7 @@ export default function PosTerminal({
                           className="flex-1 px-2 py-1 text-[10px] rounded-lg focus:outline-none"
                           style={{
                             background: "var(--surf-low)",
-                            border: "1px solid rgba(178,204,192,0.2)",
+                            border: "1px solid var(--ghost-border-strong)",
                             color: "var(--on-surf)",
                           }}
                           placeholder="Monto..."
@@ -2760,7 +2760,7 @@ export default function PosTerminal({
                             className="w-16 h-6 text-[9px] shrink-0 px-1"
                             style={{
                               background: "var(--surf-low)",
-                              border: "1px solid rgba(178,204,192,0.2)",
+                              border: "1px solid var(--ghost-border-strong)",
                             }}
                           >
                             <SelectValue />
@@ -2779,7 +2779,7 @@ export default function PosTerminal({
                           className="flex-1 px-2 py-1 text-[10px] rounded-lg text-right"
                           style={{
                             background: "var(--surf-low)",
-                            border: "1px solid rgba(178,204,192,0.2)",
+                            border: "1px solid var(--ghost-border-strong)",
                             color: "var(--on-surf-var)",
                           }}
                         >
@@ -2973,7 +2973,7 @@ export default function PosTerminal({
                       onChange={(e) => setCashReceived(e.target.value)}
                       style={{
                         fontSize: 20, textAlign: "center", height: 48, marginTop: 4,
-                        background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)",
+                        background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)",
                         color: "var(--on-surf)"
                       }}
                     />
@@ -2983,7 +2983,7 @@ export default function PosTerminal({
                             onClick={() => setCashReceived(val.toString())}
                             style={{ 
                               flex: 1, padding: "6px", fontSize: 12, borderRadius: 8,
-                              background: "var(--surf-high)", border: "1px solid rgba(178,204,192,0.2)",
+                              background: "var(--surf-high)", border: "1px solid var(--ghost-border-strong)",
                               color: "var(--on-surf)", fontWeight: 600, transition: "background 0.2s"
                             }}
                           >
@@ -3020,7 +3020,7 @@ export default function PosTerminal({
                       <Input 
                         maxLength={4} placeholder="0000"
                         value={cardLast4} onChange={e => setCardLast4(e.target.value.replace(/\D/g, ''))}
-                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)", color: "var(--on-surf)" }}
                       />
                     </div>
                     <div>
@@ -3028,7 +3028,7 @@ export default function PosTerminal({
                       <Input 
                         placeholder="Autorización"
                         value={cardAuth} onChange={e => setCardAuth(e.target.value)}
-                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                        style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)", color: "var(--on-surf)" }}
                       />
                     </div>
                   </div>
@@ -3047,7 +3047,7 @@ export default function PosTerminal({
                     <Input 
                       placeholder="Folio o número de operación"
                       value={transferRef} onChange={e => setTransferRef(e.target.value)}
-                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)", color: "var(--on-surf)" }}
                     />
                   </div>
                   <div>
@@ -3055,7 +3055,7 @@ export default function PosTerminal({
                     <Input 
                       placeholder="BBVA, Banorte, SPEI..."
                       value={transferBank} onChange={e => setTransferBank(e.target.value)}
-                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)", color: "var(--on-surf)" }}
                     />
                   </div>
                 </div>
@@ -3073,7 +3073,7 @@ export default function PosTerminal({
                     <Input 
                       placeholder="AT-XXXXXXXX"
                       value={atratoReq} onChange={e => setAtratoReq(e.target.value)}
-                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "rgba(178,204,192,0.2)", color: "var(--on-surf)" }}
+                      style={{ marginTop: 4, background: "var(--surf-low)", borderColor: "var(--ghost-border-strong)", color: "var(--on-surf)" }}
                     />
                   </div>
                   <div className="flex items-center gap-2 mt-4" style={{ background: "var(--surf-high)", padding: 12, borderRadius: "var(--r-md)", border: "1px solid var(--ghost-border)" }}>
@@ -3095,7 +3095,7 @@ export default function PosTerminal({
                   style={{
                     flex: 1, padding: "12px", borderRadius: 999,
                     background: "var(--surf-high)", color: "var(--on-surf)",
-                    border: "1px solid rgba(178,204,192,0.2)", fontSize: 13, fontWeight: 600
+                    border: "1px solid var(--ghost-border-strong)", fontSize: 13, fontWeight: 600
                   }}
                 >
                   Cancelar
@@ -3105,7 +3105,7 @@ export default function PosTerminal({
                   disabled={!canConfirm}
                   style={{
                     flex: 1, padding: "12px", borderRadius: 999, border: "none",
-                    background: canConfirm ? "linear-gradient(135deg, #1B4332, #2ECC71)" : "var(--surf-highest)", 
+                    background: canConfirm ? "var(--velocity-gradient)" : "var(--surf-highest)", 
                     color: canConfirm ? "white" : "var(--on-surf-var)", 
                     fontSize: 13, fontWeight: 600,
                     cursor: canConfirm ? "pointer" : "not-allowed",

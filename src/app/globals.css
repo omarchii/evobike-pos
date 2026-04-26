@@ -120,9 +120,20 @@
   --data-8: #4A6670; /* Gris-azulado */
 }
 
-/* Ghost border token for field inputs (outline-variant @ correct alpha per mode) */
+/* Ghost border tokens for field inputs / table separators / card borders.
+   Cada token duplica su alpha al pasar a dark mode, replicando el ratio
+   0.15→0.30 ya validado en --ghost-border. Set canónico: 0.08 / 0.15 / 0.20.
+   Cualquier otro alpha es decisión local de módulo (tail diferido). */
 :root {
+  --ghost-border-soft: rgba(178, 204, 192, 0.08);
   --ghost-border: rgba(178, 204, 192, 0.15);
+  --ghost-border-strong: rgba(178, 204, 192, 0.20);
+}
+
+/* Velocity gradient — identidad de marca (mismo valor light + dark).
+   Tokenizar evita 80+ literales hardcoded y permite ajuste central. */
+:root {
+  --velocity-gradient: linear-gradient(135deg, #1b4332, #2ecc71);
 }
 
 .density-compact {
@@ -145,7 +156,9 @@
 
 /* EvoFlow Green Edition — Dark mode tokens */
 .dark {
+  --ghost-border-soft: rgba(45, 74, 58, 0.16);
   --ghost-border: rgba(45, 74, 58, 0.30);
+  --ghost-border-strong: rgba(45, 74, 58, 0.40);
   --p: #a5d0b9;
   --p-mid: #7ab89a;
   --p-bright: #2ecc71;

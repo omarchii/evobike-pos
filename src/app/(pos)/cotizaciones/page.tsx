@@ -180,7 +180,7 @@ export default async function CotizacionesPage({
         <Link
           href="/cotizaciones/nueva"
           className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+          style={{ background: "var(--velocity-gradient)" }}
         >
           + Nueva cotización
         </Link>

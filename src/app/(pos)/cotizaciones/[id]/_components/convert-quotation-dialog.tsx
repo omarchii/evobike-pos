@@ -562,7 +562,7 @@ export default function ConvertQuotationDialog({
                       )}
                       <div
                         className="flex justify-between items-center pt-2"
-                        style={{ borderTop: "1px solid rgba(178,204,192,0.2)" }}
+                        style={{ borderTop: "1px solid var(--ghost-border-strong)" }}
                       >
                         <span
                           className="text-sm font-semibold"
@@ -631,7 +631,7 @@ export default function ConvertQuotationDialog({
                 disabled={!canSubmit}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                  background: "var(--velocity-gradient)",
                   boxShadow: canSubmit ? "0 4px 12px rgba(46,204,113,0.3)" : "none",
                 }}
               >

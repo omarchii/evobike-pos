@@ -143,7 +143,11 @@ Siempre filtrar por la sucursal del usuario, excepto ADMIN.
 - Sistema de diseño: **EvoFlow Green Edition** (dual mode — light/dark). La spec completa vive en `DESIGN.md`; esta sección lista solo las reglas operativas.
 - **Tokens antes que valores literales.** Cualquier color, borde sutil, radius o familia tipográfica debe venir de una CSS variable definida en `globals.css`. Si necesitas un valor que no existe como token, primero tokenízalo en `globals.css` con pares light/dark, después úsalo.
 - **Prohibido hardcodear** (rompen dark mode silenciosamente):
-  - `rgba(178,204,192,0.15)` / `.2` / `.08` → `var(--ghost-border)`
+  - `rgba(178,204,192,0.08)` → `var(--ghost-border-soft)` (table row separators, zebra)
+  - `rgba(178,204,192,0.15)` → `var(--ghost-border)` (default — separators medios, header de tabla)
+  - `rgba(178,204,192,0.20)` → `var(--ghost-border-strong)` (card/input/panel borders)
+  - **Cualquier otro alpha** de `rgba(178,204,192,X)` queda prohibido en código nuevo. Si necesitas un peso fuera del set canónico (0.08 / 0.15 / 0.20), abre decisión antes — no añadas literales nuevos. Tail diferido (22 instancias post-Fase 0 en `taller/public/[token]`, `cotizaciones/public/[token]`, `reportes/anual/anual-client.tsx` + algunos sueltos) se migra módulo a módulo en Fase A/B.
+  - **Velocity gradient con ángulo o dirección distintos al canónico (`135deg`)**: hoy hay 3 outliers intencionales (`manager-dashboard.tsx:409` con `to top` y `anual-client.tsx:165,206` con `180deg` reversed). No introducir nuevos sin abrir decisión. Si se generaliza un ángulo, tokenizarlo (`--velocity-gradient-y`, etc.).
   - Rojos literales (`#dc2626`, `bg-red-500`, `text-red-600`) → `var(--ter)` / `var(--ter-container)` / `var(--on-ter-container)`
   - `bg-white`, `#ffffff` como fondo de card → `bg-[var(--surf-lowest)]`
   - `text-black`, `#000000` → `text-[var(--on-surf)]`

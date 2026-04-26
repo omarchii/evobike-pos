@@ -144,7 +144,7 @@ export function TabBaterias({
                     style={{
                       background: "var(--surf-lowest)",
                       color: "var(--on-surf)",
-                      borderBottom: "1px solid rgba(178,204,192,0.08)",
+                      borderBottom: "1px solid var(--ghost-border-soft)",
                       zIndex: 1,
                     }}
                   >
@@ -156,7 +156,7 @@ export function TabBaterias({
                       <td
                         key={col.id}
                         className="px-2 py-2 text-center"
-                        style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+                        style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
                       >
                         {cell.kind === "populated" ? (
                           <CellPopulated

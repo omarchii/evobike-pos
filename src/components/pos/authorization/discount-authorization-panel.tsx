@@ -158,7 +158,7 @@ export function DiscountAuthorizationPanel({
         className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
         style={{
           background: "var(--surf-low)",
-          border: "1px solid rgba(178,204,192,0.2)",
+          border: "1px solid var(--ghost-border-strong)",
         }}
       >
         <Loader2 className="w-3 h-3 animate-spin" style={{ color: "var(--p)" }} />
@@ -228,7 +228,7 @@ export function DiscountAuthorizationPanel({
             background: "var(--surf-low)",
             border: pinError
               ? "1px solid var(--ter)"
-              : "1px solid rgba(178,204,192,0.2)",
+              : "1px solid var(--ghost-border-strong)",
             color: "var(--on-surf)",
           }}
           placeholder="PIN Manager…"
@@ -246,7 +246,7 @@ export function DiscountAuthorizationPanel({
           disabled={verifying || !pin}
           className="px-2 py-1.5 rounded-lg text-[9px] font-medium"
           style={{
-            background: "linear-gradient(135deg, #1B4332, #2ECC71)",
+            background: "var(--velocity-gradient)",
             color: "var(--on-primary)",
             opacity: verifying || !pin ? 0.6 : 1,
           }}

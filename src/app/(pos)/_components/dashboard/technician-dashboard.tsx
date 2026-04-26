@@ -106,7 +106,7 @@ export function TechnicianDashboard({
             {/* Panel 1: 4 KPI cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* KPI 1: Activas — accent */}
-                <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
+                <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "var(--velocity-gradient)" }}>
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-white/70">
                             ACTIVAS

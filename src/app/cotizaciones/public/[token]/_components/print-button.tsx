@@ -16,7 +16,7 @@ export default function PrintButton() {
         gap: "0.5rem",
         padding: "0.75rem 1.25rem",
         borderRadius: "9999px",
-        background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+        background: "var(--velocity-gradient)",
         color: "#ffffff",
         fontFamily: "'Inter', sans-serif",
         fontSize: "0.875rem",

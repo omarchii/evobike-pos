@@ -280,7 +280,7 @@ function KpiCards({ months, year }: KpiProps): React.JSX.Element {
           className="rounded-2xl p-5"
           style={{
             background: c.highlight
-              ? "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)"
+              ? "var(--velocity-gradient)"
               : "var(--surf-lowest)",
             boxShadow: "var(--shadow)",
           }}
@@ -355,7 +355,7 @@ function TablaComparativa({ months, branches }: TablaComparativaProps): React.JS
     color: "var(--on-surf)",
     textAlign: "right",
     whiteSpace: "nowrap",
-    borderBottom: "1px solid rgba(178,204,192,0.15)",
+    borderBottom: "1px solid var(--ghost-border)",
   };
 
   const headCell: CSSProperties = {
@@ -479,7 +479,7 @@ function TablaConsolidada({ months }: TablaConsolidadaProps): React.JSX.Element 
     color: "var(--on-surf)",
     textAlign: "right",
     whiteSpace: "nowrap",
-    borderBottom: "1px solid rgba(178,204,192,0.15)",
+    borderBottom: "1px solid var(--ghost-border)",
   };
 
   const headCell: CSSProperties = {
@@ -687,7 +687,7 @@ export function AnualClient({ data }: AnualClientProps): React.JSX.Element {
           {/* View toggle */}
           <div
             className="flex rounded-[var(--r-md)] overflow-hidden"
-            style={{ border: "1px solid rgba(178,204,192,0.2)" }}
+            style={{ border: "1px solid var(--ghost-border-strong)" }}
           >
             {(["comparativa", "consolidado"] as const).map((v) => (
               <button
@@ -762,7 +762,7 @@ export function AnualClient({ data }: AnualClientProps): React.JSX.Element {
           >
             <div
               className="px-5 py-4 flex items-center justify-between"
-              style={{ borderBottom: "1px solid rgba(178,204,192,0.15)" }}
+              style={{ borderBottom: "1px solid var(--ghost-border)" }}
             >
               <p
                 style={{

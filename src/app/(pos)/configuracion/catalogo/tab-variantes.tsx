@@ -145,7 +145,7 @@ export function TabVariantes({
                 <tr
                   key={v.id}
                   style={{
-                    borderBottom: "1px solid rgba(178,204,192,0.08)",
+                    borderBottom: "1px solid var(--ghost-border-soft)",
                     opacity: v.isActive ? 1 : 0.55,
                   }}
                 >

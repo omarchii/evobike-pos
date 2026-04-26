@@ -222,7 +222,7 @@ export function CustomerDirectoryView({
             fontFamily: "var(--font-display)",
             color: "var(--on-p)",
             borderRadius: "var(--r-full)",
-            background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+            background: "var(--velocity-gradient)",
             boxShadow: "0px 8px 24px -4px rgba(46,204,113,0.35)",
           }}
         >
@@ -662,7 +662,7 @@ function WhatsAppListModal({
             className="px-5 py-2 text-sm font-semibold disabled:opacity-60"
             style={{
               borderRadius: "var(--r-full)",
-              background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+              background: "var(--velocity-gradient)",
               color: "var(--on-p)",
               fontFamily: "var(--font-display)",
               border: "none",

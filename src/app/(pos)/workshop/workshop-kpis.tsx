@@ -63,7 +63,7 @@ export default function WorkshopKpis({ data }: { data: WorkshopKpiData }) {
                     <div
                         key={kpi.label}
                         className={`${KPI_CARD_BASE} text-white`}
-                        style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                        style={{ background: "var(--velocity-gradient)" }}
                     >
                         <div className="flex items-center justify-between mb-3">
                             <span className={`${KPI_LABEL} text-white/70`}>{kpi.label}</span>

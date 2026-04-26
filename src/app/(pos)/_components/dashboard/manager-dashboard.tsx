@@ -251,7 +251,7 @@ export function ManagerDashboard({
                                     ? "text-white"
                                     : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
                             }`}
-                            style={viewBranchId === null ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                            style={viewBranchId === null ? { background: "var(--velocity-gradient)" } : undefined}
                         >
                             Global
                         </button>
@@ -264,7 +264,7 @@ export function ManagerDashboard({
                                         ? "text-white"
                                         : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
                                 }`}
-                                style={viewBranchId === b.branchId ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                                style={viewBranchId === b.branchId ? { background: "var(--velocity-gradient)" } : undefined}
                             >
                                 {b.branchCode}
                             </button>
@@ -286,7 +286,7 @@ export function ManagerDashboard({
                                     ? "text-white"
                                     : "text-[var(--on-surf-var)] hover:text-[var(--on-surf)] hover:bg-[var(--surf-high)]"
                             }`}
-                            style={period === opt.value ? { background: "linear-gradient(135deg, #1b4332, #2ecc71)" } : undefined}
+                            style={period === opt.value ? { background: "var(--velocity-gradient)" } : undefined}
                         >
                             {opt.label}
                         </button>
@@ -301,7 +301,7 @@ export function ManagerDashboard({
             {/* Row 1: 4 KPI cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* KPI 1: Ingresos — accent card */}
-                <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
+                <div className="rounded-[var(--r-lg)] p-5 text-white" style={{ background: "var(--velocity-gradient)" }}>
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-white/70">
                             INGRESOS {periodLabel.toUpperCase()}
@@ -458,7 +458,7 @@ export function ManagerDashboard({
                                     <div className="h-2 rounded-full bg-[var(--surf-high)]">
                                         <div
                                             className="h-2 rounded-full"
-                                            style={{ width: `${barWidth}%`, background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                                            style={{ width: `${barWidth}%`, background: "var(--velocity-gradient)" }}
                                         />
                                     </div>
                                     <p className="text-[10px] text-[var(--on-surf-var)] mt-0.5">
@@ -716,7 +716,7 @@ export function ManagerDashboard({
                                         <div className="h-2 rounded-full bg-[var(--surf-high)]">
                                             <div
                                                 className="h-2 rounded-full"
-                                                style={{ width: `${barWidth}%`, background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+                                                style={{ width: `${barWidth}%`, background: "var(--velocity-gradient)" }}
                                             />
                                         </div>
                                     </div>

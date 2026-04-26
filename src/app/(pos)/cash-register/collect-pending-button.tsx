@@ -107,7 +107,7 @@ export function CollectPendingButton({
                     <AlertDialogAction
                         onClick={handleConfirm}
                         style={{
-                            background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                            background: "var(--velocity-gradient)",
                             color: "#FFFFFF",
                             border: "none",
                         }}

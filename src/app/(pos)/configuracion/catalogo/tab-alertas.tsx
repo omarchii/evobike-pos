@@ -142,7 +142,7 @@ export function TabAlertas({
                 return (
                   <tr
                     key={a.stockId}
-                    style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+                    style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
                   >
                     <td className="px-5 py-3">
                       <span

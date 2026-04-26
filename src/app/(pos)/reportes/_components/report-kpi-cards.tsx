@@ -29,7 +29,7 @@ export function ReportKpiCards({
             className="rounded-2xl p-5"
             style={{
               background: isHighlight
-                ? "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)"
+                ? "var(--velocity-gradient)"
                 : "var(--surf-lowest)",
               boxShadow: "var(--shadow)",
             }}

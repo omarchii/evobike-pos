@@ -184,7 +184,7 @@ export function RecepcionesList({
           href="/inventario/recepciones/nuevo"
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold shrink-0"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#ffffff",
             fontFamily: "var(--font-body)",
             textDecoration: "none",

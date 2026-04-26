@@ -144,7 +144,7 @@ export default function PedidosList({ pedidos, customers, variants }: PedidosLis
             onClick={() => setNuevoPedidoOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold"
             style={{
-              background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+              background: "var(--velocity-gradient)",
               color: "#fff",
             }}
           >
@@ -197,7 +197,7 @@ export default function PedidosList({ pedidos, customers, variants }: PedidosLis
           onClick={() => setNuevoPedidoOpen(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shrink-0"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#fff",
           }}
         >

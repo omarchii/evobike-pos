@@ -83,7 +83,7 @@ export default function QuotationsTable({ quotations, page, totalPages, searchPa
         <Link
           href="/cotizaciones/nueva"
           className="px-4 py-2 rounded-full text-xs font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}
+          style={{ background: "var(--velocity-gradient)" }}
         >
           + Nueva cotización
         </Link>

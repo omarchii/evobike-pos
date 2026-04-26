@@ -74,7 +74,7 @@ export function RechargeBalanceDialog({
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold w-full"
             style={{
               borderRadius: "var(--r-full)",
-              background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+              background: "var(--velocity-gradient)",
               color: "var(--on-p)",
               fontFamily: "var(--font-display)",
             }}
@@ -226,7 +226,7 @@ export function RechargeBalanceDialog({
                 className="px-5 py-2 text-sm font-semibold disabled:opacity-60"
                 style={{
                   borderRadius: "var(--r-full)",
-                  background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                  background: "var(--velocity-gradient)",
                   color: "var(--on-p)",
                   fontFamily: "var(--font-display)",
                   border: "none",

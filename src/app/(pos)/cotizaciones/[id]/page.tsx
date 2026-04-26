@@ -185,7 +185,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
         {/* Total */}
         <div
           className="rounded-xl p-4"
-          style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)", boxShadow: "var(--shadow)" }}
+          style={{ background: "var(--velocity-gradient)", boxShadow: "var(--shadow)" }}
         >
           <p className="text-[0.625rem] font-medium tracking-widest uppercase mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>
             Total

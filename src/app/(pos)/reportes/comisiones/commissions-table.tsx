@@ -344,7 +344,7 @@ export function CommissionsTable({
           onClick={applyFilters}
           className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
           style={{
-            background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+            background: "var(--velocity-gradient)",
             color: "#fff",
           }}
         >
@@ -380,7 +380,7 @@ export function CommissionsTable({
                 disabled={batchLoading}
                 className="text-sm font-semibold px-4 py-1.5 rounded-full transition-all"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  background: "var(--velocity-gradient)",
                   color: "#fff",
                   opacity: batchLoading ? 0.6 : 1,
                 }}
@@ -459,7 +459,7 @@ export function CommissionsTable({
                       key={row.id}
                       className="transition-colors"
                       style={{
-                        borderBottom: "1px solid rgba(178,204,192,0.08)",
+                        borderBottom: "1px solid var(--ghost-border-soft)",
                         background: isSelected ? "var(--surf-high)" : "transparent",
                       }}
                       onMouseEnter={(e) => {

@@ -767,7 +767,7 @@ export default function WorkshopBoard({
         <Link
           href="/workshop/recepcion"
           className="ml-auto flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold text-[var(--on-p)] transition-opacity hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)" }}
+          style={{ background: "var(--velocity-gradient)" }}
         >
           + Nueva Orden
         </Link>

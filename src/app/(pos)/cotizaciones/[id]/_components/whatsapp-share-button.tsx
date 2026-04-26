@@ -228,7 +228,7 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
                 disabled={sending || manualPhone.length === 0}
                 className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332, #2ecc71)",
+                  background: "var(--velocity-gradient)",
                   color: "#ffffff",
                 }}
               >

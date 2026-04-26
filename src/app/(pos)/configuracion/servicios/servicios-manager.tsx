@@ -277,7 +277,7 @@ function Table({
           {rows.map((s) => (
             <tr
               key={s.id}
-              style={{ borderBottom: "1px solid rgba(178,204,192,0.08)" }}
+              style={{ borderBottom: "1px solid var(--ghost-border-soft)" }}
             >
               <td className="px-5 py-3 text-[var(--on-surf)]">
                 <span className="inline-flex items-center gap-2">

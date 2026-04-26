@@ -300,7 +300,7 @@ export function TransferenciaDetalleClient({
                 onClick={handleDespachar}
                 className="flex items-center gap-2 text-sm font-semibold rounded-full px-5 h-10"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                  background: "var(--velocity-gradient)",
                   color: "#ffffff",
                   border: "none",
                   cursor: "pointer",
@@ -316,7 +316,7 @@ export function TransferenciaDetalleClient({
                 onClick={() => setOpenModal("recibir")}
                 className="flex items-center gap-2 text-sm font-semibold rounded-full px-5 h-10"
                 style={{
-                  background: "linear-gradient(135deg, #1b4332 0%, #2ecc71 100%)",
+                  background: "var(--velocity-gradient)",
                   color: "#ffffff",
                   border: "none",
                   cursor: "pointer",

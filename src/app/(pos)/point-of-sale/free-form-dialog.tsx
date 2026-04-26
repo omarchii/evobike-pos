@@ -161,7 +161,7 @@ export function FreeFormDialog({
               padding: "8px 16px",
               borderRadius: 999,
               background: canAdd
-                ? "linear-gradient(135deg, #1B4332, #2ECC71)"
+                ? "var(--velocity-gradient)"
                 : "var(--surf-highest)",
               color: canAdd ? "var(--on-p)" : "var(--on-surf-var)",
               fontFamily: "var(--font-body)",
@@ -184,7 +184,7 @@ const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
   background: "var(--surf-lowest)",
   color: "var(--on-surf)",
-  border: "1px solid rgba(178,204,192,0.2)",
+  border: "1px solid var(--ghost-border-strong)",
   borderRadius: "var(--r-md)",
   padding: "8px 10px",
   fontFamily: "var(--font-body)",

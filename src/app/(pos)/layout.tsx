@@ -41,7 +41,7 @@ function Topbar({ user, isAdmin, canSeeNotifications, activeBranchId, activeBran
                 {isAdmin ? (
                     <BranchSwitcher activeBranchId={activeBranchId} activeBranchName={activeBranchName} />
                 ) : (
-                    <div className="px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white" style={{ background: "linear-gradient(135deg, #1b4332, #2ecc71)" }}>
+                    <div className="px-3 py-1 rounded-full text-xs font-medium uppercase tracking-widest whitespace-nowrap text-white" style={{ background: "var(--velocity-gradient)" }}>
                         BRANCH: {user.branchName ?? "—"}
                     </div>
                 )}
