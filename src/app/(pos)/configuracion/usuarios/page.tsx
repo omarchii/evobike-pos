@@ -43,7 +43,7 @@ export default async function UsuariosPage() {
       <div>
         <h1
           className="text-3xl font-semibold"
-          style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Gestión de usuarios
         </h1>

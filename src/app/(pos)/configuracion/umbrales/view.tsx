@@ -265,7 +265,7 @@ export function UmbralesView({ branches, thresholds, role }: UmbralesViewProps) 
       <div>
         <h1
           className="text-3xl font-semibold text-[var(--on-surf)]"
-          style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Umbrales de alerta
         </h1>
@@ -294,7 +294,7 @@ export function UmbralesView({ branches, thresholds, role }: UmbralesViewProps) 
               <Icon name={report.icon} size={16} />
               <h2
                 className="text-base font-semibold text-[var(--on-surf)]"
-                style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+                style={{ fontFamily: "var(--font-display)" }}
               >
                 {report.title}
               </h2>

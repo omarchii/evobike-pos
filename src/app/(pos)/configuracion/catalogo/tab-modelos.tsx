@@ -478,7 +478,7 @@ function ModeloDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-2xl max-h-[90vh] overflow-y-auto" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             {isEdit ? "Editar modelo" : "Nuevo modelo"}
           </DialogTitle>
         </DialogHeader>

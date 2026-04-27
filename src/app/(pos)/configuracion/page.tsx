@@ -88,7 +88,7 @@ export default async function ConfiguracionIndexPage() {
       <div>
         <h1
           className="text-3xl font-semibold"
-          style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Configuración
         </h1>
@@ -125,7 +125,7 @@ export default async function ConfiguracionIndexPage() {
                 <div className="flex items-center gap-2">
                   <h2
                     className="text-base font-semibold text-[var(--on-surf)]"
-                    style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+                    style={{ fontFamily: "var(--font-display)" }}
                   >
                     {card.label}
                   </h2>

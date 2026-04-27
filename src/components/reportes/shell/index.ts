@@ -19,3 +19,4 @@ export { ThresholdsModal } from "./thresholds-modal";
 export type { ThresholdsModalProps } from "./thresholds-modal";
 export { ThresholdsProvider, useThresholds, useThresholdForMetric } from "./thresholds-context";
 export type { ThresholdRow } from "./thresholds-context";
+export { ThresholdBadge } from "./threshold-badge";

@@ -466,7 +466,7 @@ function CreateUserDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-lg" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             Nuevo usuario
           </DialogTitle>
         </DialogHeader>
@@ -583,7 +583,7 @@ function EditUserDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-lg" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             Editar usuario
           </DialogTitle>
         </DialogHeader>
@@ -683,7 +683,7 @@ function ResetPasswordDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-md" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             Resetear contraseña
           </DialogTitle>
         </DialogHeader>
@@ -800,7 +800,7 @@ function SetPinDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-md" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             {user.hasPin ? "Cambiar PIN" : "Establecer PIN"}
           </DialogTitle>
         </DialogHeader>

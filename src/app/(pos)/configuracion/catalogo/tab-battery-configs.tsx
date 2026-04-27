@@ -293,7 +293,7 @@ function BatteryConfigDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="p-0 gap-0 overflow-hidden max-w-lg" style={modalStyle()}>
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             {isEdit ? "Editar configuración" : "Nueva configuración"}
           </DialogTitle>
         </DialogHeader>

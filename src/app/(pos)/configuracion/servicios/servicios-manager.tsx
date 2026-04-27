@@ -424,7 +424,7 @@ function ServiceDialog({
         }}
       >
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}>
+          <DialogTitle style={{ fontFamily: "var(--font-display)" }}>
             {mode === "create" ? "Nuevo servicio" : "Editar servicio"}
           </DialogTitle>
         </DialogHeader>

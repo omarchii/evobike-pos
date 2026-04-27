@@ -34,7 +34,7 @@ export default async function SucursalConfigPage({
       <div className="max-w-5xl mx-auto">
         <h1
           className="text-3xl font-semibold mb-4"
-          style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Configuración de sucursal
         </h1>
@@ -80,7 +80,7 @@ export default async function SucursalConfigPage({
         <div>
           <h1
             className="text-3xl font-semibold"
-            style={{ fontFamily: "var(--font-heading, 'Space Grotesk')" }}
+            style={{ fontFamily: "var(--font-display)" }}
           >
             Configuración de sucursal
           </h1>
