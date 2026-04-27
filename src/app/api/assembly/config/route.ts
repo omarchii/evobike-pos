@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -12,7 +12,13 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = session.user as unknown as SessionUser;
+  if (role !== "ADMIN" && !branchId) {
+    return NextResponse.json(
+      { success: false, error: "Usuario sin sucursal asignada" },
+      { status: 400 }
+    );
+  }
 
   try {
     // 1. Todas las BatteryConfigurations con sus relaciones

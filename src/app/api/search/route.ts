@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
@@ -97,9 +97,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const user = session.user as unknown as BranchedSessionUser;
+    const user = session.user as unknown as SessionUser;
     const isAdmin = user.role === "ADMIN";
     const canSeeAuthorizations = user.role === "ADMIN" || user.role === "MANAGER";
+    if (!isAdmin && !user.branchId) {
+        return NextResponse.json({ error: "Usuario sin sucursal asignada" }, { status: 400 });
+    }
     const branchId: string | null = isAdmin ? null : user.branchId;
 
     const url = new URL(request.url);

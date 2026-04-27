@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -55,7 +55,7 @@ export interface SaleDetailData {
 
 export default async function VentaDetallePage({ params }: PageProps): Promise<React.JSX.Element> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as BranchedSessionUser | undefined;
+  const user = session?.user as SessionUser | undefined;
   if (!user) notFound();
 
   const { id } = await params;

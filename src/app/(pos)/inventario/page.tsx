@@ -1,4 +1,3 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { PackageSearch, PackagePlus, ArrowRightLeft } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 
 export const dynamic = "force-dynamic";
 
 export default async function InventoryPage() {
     const session = await getServerSession(authOptions);
-    const branchId = (session?.user as BranchedSessionUser)?.branchId;
+    const user = requireBranchedUserOrRedirect(session, "/");
+    const { branchId } = user;
 
     // Get products with their stocks in this branch
     const rawProducts = await prisma.productVariant.findMany({

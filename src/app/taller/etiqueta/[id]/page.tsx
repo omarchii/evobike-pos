@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -26,7 +26,7 @@ export default async function EtiquetaPage(props: {
     redirect("/login");
   }
 
-  const { branchId, role } = session.user as unknown as BranchedSessionUser;
+  const { branchId, role } = session.user as unknown as SessionUser;
 
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },

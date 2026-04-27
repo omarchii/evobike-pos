@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
 
   if (!ALLOWED_ROLES.includes(role)) {
     return NextResponse.json(

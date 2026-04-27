@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as BranchedSessionUser | undefined;
+  const user = session?.user as unknown as SessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },

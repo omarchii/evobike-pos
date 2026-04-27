@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
@@ -79,12 +79,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = session.user as unknown as SessionUser;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(
       { success: false, error: "Solo MANAGER o ADMIN pueden consultar compras al proveedor" },
       { status: 403 },
+    );
+  }
+  if (role !== "ADMIN" && !branchId) {
+    return NextResponse.json(
+      { success: false, error: "Usuario sin sucursal asignada" },
+      { status: 400 },
     );
   }
 
@@ -100,7 +106,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const where: Prisma.PurchaseReceiptWhereInput = {};
   // ADMIN puede filtrar por cualquier sucursal; el resto queda fijado a la suya.
-  where.branchId = role === "ADMIN" ? (branchParam ?? undefined) : branchId;
+  where.branchId = role === "ADMIN" ? (branchParam ?? undefined) : branchId!;
 
   if (estadoParam && ESTADO_PAGO_VALUES.includes(estadoParam)) {
     where.estadoPago = estadoParam as (typeof ESTADO_PAGO)[number];
@@ -171,7 +177,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { id: userId, role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(

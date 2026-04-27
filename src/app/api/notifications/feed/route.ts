@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
@@ -177,7 +177,7 @@ function mapOrphanItem(
 
 export async function GET(): Promise<NextResponse<NotificationFeedResponse | { error: string }>> {
     const session = await getServerSession(authOptions);
-    const user = session?.user as unknown as BranchedSessionUser | undefined;
+    const user = session?.user as unknown as SessionUser | undefined;
 
     if (!user) {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -187,6 +187,9 @@ export async function GET(): Promise<NextResponse<NotificationFeedResponse | { e
     }
 
     const isAdmin = user.role === "ADMIN";
+    if (!isAdmin && !user.branchId) {
+        return NextResponse.json({ error: "Usuario sin sucursal asignada" }, { status: 400 });
+    }
     const now = new Date();
 
     // Autorizaciones pendientes no expiradas
@@ -197,7 +200,7 @@ export async function GET(): Promise<NextResponse<NotificationFeedResponse | { e
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
         ],
-        ...(isAdmin ? {} : { branchId: user.branchId }),
+        ...(isAdmin ? {} : { branchId: user.branchId! }),
     };
 
     // OTs esperando aprobación — ServiceOrderApproval PENDING (source of truth formal)
@@ -205,7 +208,7 @@ export async function GET(): Promise<NextResponse<NotificationFeedResponse | { e
         status: "PENDING",
         ...(isAdmin
             ? {}
-            : { serviceOrder: { branchId: user.branchId } }),
+            : { serviceOrder: { branchId: user.branchId! } }),
     };
 
     // Recepciones sin factura (últimos 30 días)
@@ -213,7 +216,7 @@ export async function GET(): Promise<NextResponse<NotificationFeedResponse | { e
     const receiptWhere: Prisma.PurchaseReceiptWhereInput = {
         facturaUrl: null,
         createdAt: { gte: thirtyDaysAgo },
-        ...(isAdmin ? {} : { branchId: user.branchId }),
+        ...(isAdmin ? {} : { branchId: user.branchId! }),
     };
 
     // Cortes huérfanos — MANAGER: una sola branch. ADMIN: agregamos todas las activas.
@@ -235,7 +238,8 @@ export async function GET(): Promise<NextResponse<NotificationFeedResponse | { e
                   );
               })()
             : (async () => {
-                  const s = await getOrphanedSession(user.branchId);
+                  // Guard arriba garantiza branchId non-null en rama no-ADMIN
+                  const s = await getOrphanedSession(user.branchId!);
                   return s ? [{ session: s, branchName: null }] : [];
               })();
 

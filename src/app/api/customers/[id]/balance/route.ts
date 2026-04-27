@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
@@ -22,11 +22,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-
-  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { id: userId, branchId } = guard.user;
   const { id: customerId } = await params;
 
   const body: unknown = await req.json();

@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
+  const { id: userId, branchId } = session.user as unknown as SessionUser;
 
   if (!branchId) {
     return NextResponse.json(
@@ -263,7 +263,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = session.user as unknown as SessionUser;
+  if (role !== "ADMIN" && !branchId) {
+    return NextResponse.json(
+      { success: false, error: "Usuario sin sucursal asignada" },
+      { status: 400 }
+    );
+  }
 
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
@@ -271,7 +277,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const skip = (page - 1) * limit;
 
   // ADMIN ve todos los lotes; el resto solo los de su sucursal
-  const branchFilter = role === "ADMIN" ? {} : { branchId };
+  const branchFilter = role === "ADMIN" ? {} : { branchId: branchId! };
 
   try {
     const [lots, total] = await Promise.all([

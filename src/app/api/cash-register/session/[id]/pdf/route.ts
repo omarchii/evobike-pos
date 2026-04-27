@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -35,7 +35,7 @@ export async function GET(
   }
 
   const { role, branchId: sessionBranchId } =
-    session.user as unknown as BranchedSessionUser;
+    session.user as unknown as SessionUser;
 
   if (role === "SELLER" || role === "TECHNICIAN") {
     return NextResponse.json(

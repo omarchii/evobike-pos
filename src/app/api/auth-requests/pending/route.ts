@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -6,15 +6,21 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as BranchedSessionUser | undefined;
+  const user = session?.user as unknown as SessionUser | undefined;
   if (!user || (user.role !== "MANAGER" && user.role !== "ADMIN")) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
       { status: 403 },
     );
   }
+  if (user.role !== "ADMIN" && !user.branchId) {
+    return NextResponse.json(
+      { success: false, error: "Usuario sin sucursal asignada" },
+      { status: 400 },
+    );
+  }
 
-  const branchFilter = user.role === "ADMIN" ? {} : { branchId: user.branchId };
+  const branchFilter = user.role === "ADMIN" ? {} : { branchId: user.branchId! };
 
   // Auto-expire solicitudes vencidas antes de listar. Barato: una sola UPDATE con índice
   // (branchId, status). No rompe nada si ninguna está vencida.

@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -25,7 +25,7 @@ export async function GET(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { branchId, role } = session.user as unknown as BranchedSessionUser;
+  const { branchId, role } = session.user as unknown as SessionUser;
   const { id: saleId } = await params;
 
   // 2. Load sale with all needed relations

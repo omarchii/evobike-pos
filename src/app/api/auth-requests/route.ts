@@ -1,4 +1,4 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -12,11 +12,17 @@ import {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as BranchedSessionUser | undefined;
+  const user = session?.user as unknown as SessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
       { status: 401 },
+    );
+  }
+  if (user.role !== "ADMIN" && !user.branchId) {
+    return NextResponse.json(
+      { success: false, error: "Usuario sin sucursal asignada" },
+      { status: 400 },
     );
   }
 
@@ -32,7 +38,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (user.role === "ADMIN") {
     if (branchIdParam) where.branchId = branchIdParam;
   } else {
-    where.branchId = user.branchId;
+    where.branchId = user.branchId!;
   }
   if (
     tipo &&
@@ -121,7 +127,7 @@ const baseSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as BranchedSessionUser | undefined;
+  const user = session?.user as unknown as SessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
