@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,13 +10,9 @@ import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-    branchId: string;
-}
-
 export default async function InventoryPage() {
     const session = await getServerSession(authOptions);
-    const branchId = (session?.user as SessionUser)?.branchId;
+    const branchId = (session?.user as BranchedSessionUser)?.branchId;
 
     // Get products with their stocks in this branch
     const rawProducts = await prisma.productVariant.findMany({

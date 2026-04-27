@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,12 +6,6 @@ import { prisma } from "@/lib/prisma";
 import sharp from "sharp";
 import { promises as fs } from "fs";
 import path from "path";
-
-interface SessionUser {
-  id: string;
-  branchId: string | null;
-  role: string;
-}
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;

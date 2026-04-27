@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -7,12 +8,6 @@ import type { Prisma } from "@prisma/client";
 import { parseLocalDate } from "@/lib/reportes/date-range";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string | null;
-  role: string;
-}
 
 // ── Types shared with client component ───────────────────────────────────────
 

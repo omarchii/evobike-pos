@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,12 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { parseLocalDate } from "@/lib/reportes/date-range";
-
-interface SessionUser {
-  id: string;
-  branchId: string | null;
-  role: string;
-}
 
 const querySchema = z.object({
   view: z.enum(["sessions", "period"]).default("sessions"),

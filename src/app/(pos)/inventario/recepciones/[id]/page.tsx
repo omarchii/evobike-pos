@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,11 +10,6 @@ import type { SerializedReceiptDetail } from "./recepcion-detail";
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-  role: string;
-  branchId: string;
-}
-
 export default async function RecepcionDetailPage({
   params,
 }: {
@@ -21,7 +17,7 @@ export default async function RecepcionDetailPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const { id } = await params;

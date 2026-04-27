@@ -1,14 +1,9 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 // ── GET /api/assembly — Listar órdenes de montaje ─────────────────────────────
 
@@ -18,7 +13,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   const branchFilter = role === "ADMIN" ? {} : { branchId };
 
   const { searchParams } = new URL(req.url);
@@ -147,7 +142,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
 
   if (!branchId) {
     return NextResponse.json(

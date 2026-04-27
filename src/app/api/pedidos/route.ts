@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -40,11 +41,6 @@ const pedidoSchema = z.object({
   total: z.number().nonnegative().optional(),
 });
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -52,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
     }
 
-    const { id: userId, branchId } = session.user as unknown as SessionUser;
+    const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
     if (!branchId) {
       return NextResponse.json(
         { success: false, error: "Usuario sin sucursal asignada" },

@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,12 +10,6 @@ import { normalizeForSearch } from "@/lib/customers/normalize";
 import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string | null;
-  role: string;
-}
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

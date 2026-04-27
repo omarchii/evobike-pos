@@ -1,15 +1,10 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { REPORTS_BY_SLUG } from "@/lib/reportes/reports-config";
 import type { ReportRole } from "@/lib/reportes/reports-config";
 import { getSaleDetail } from "@/app/(pos)/reportes/ventas-e-ingresos/queries";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);

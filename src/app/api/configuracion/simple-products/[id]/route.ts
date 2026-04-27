@@ -1,15 +1,10 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeModeloAplicable } from "@/lib/products";
 import { z } from "zod";
-
-interface SessionUser {
-  id: string;
-  branchId: string | null;
-  role: string;
-}
 
 const CATEGORIAS = ["ACCESORIO", "CARGADOR", "REFACCION", "BATERIA_STANDALONE"] as const;
 

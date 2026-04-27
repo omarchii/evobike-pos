@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,11 +8,6 @@ import { RecepcionesList } from "./recepciones-list";
 import type { SerializedReceiptListItem, ReceiptFilters } from "./types";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  role: string;
-  branchId: string;
-}
 
 const PAGE_SIZE = 20;
 const VALID_ESTADOS = ["PAGADA", "PENDIENTE", "CREDITO"] as const;
@@ -24,7 +20,7 @@ export default async function RecepcionesPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const params = await searchParams;

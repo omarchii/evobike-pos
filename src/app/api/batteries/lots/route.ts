@@ -1,15 +1,10 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 import { z } from "zod";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 class LotError extends Error {
   status: number;
@@ -38,7 +33,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
 
   if (!branchId) {
     return NextResponse.json(
@@ -268,7 +263,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
 
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));

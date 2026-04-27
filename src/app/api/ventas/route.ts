@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -6,11 +7,6 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { normalizeForSearch } from "@/lib/customers/normalize";
 import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
-
-interface SessionUser {
-  id: string;
-  role: string;
-}
 
 const querySchema = z.object({
   cursor: z.string().optional(),

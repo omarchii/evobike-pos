@@ -1,13 +1,8 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 // GET /api/cotizaciones/search?folio=LEO-COT-0001
 // Búsqueda cross-branch por folio (para flujo de conversión en sucursal distinta).
@@ -18,7 +13,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { branchId } = session.user as unknown as SessionUser;
+  const { branchId } = session.user as unknown as BranchedSessionUser;
   if (!branchId) {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },

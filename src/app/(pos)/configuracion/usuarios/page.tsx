@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -5,12 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { UsersManager } from "./users-manager";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export default async function UsuariosPage() {
   const session = await getServerSession(authOptions);

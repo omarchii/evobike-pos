@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,16 +10,9 @@ import {
   validatePinForBranch,
 } from "@/lib/authorizations";
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-  name?: string | null;
-}
-
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as SessionUser | undefined;
+  const user = session?.user as unknown as BranchedSessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
@@ -127,7 +121,7 @@ const baseSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as SessionUser | undefined;
+  const user = session?.user as unknown as BranchedSessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },

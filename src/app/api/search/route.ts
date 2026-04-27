@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
@@ -39,12 +40,6 @@ export type SearchResponse = {
     total: number;
     groups: SearchGroup[];
 };
-
-interface SessionUser {
-    id: string;
-    branchId: string;
-    role: string;
-}
 
 const CATEGORY_LABEL: Record<SearchCategory, string> = {
     customer: "Clientes",
@@ -102,7 +97,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const user = session.user as unknown as SessionUser;
+    const user = session.user as unknown as BranchedSessionUser;
     const isAdmin = user.role === "ADMIN";
     const canSeeAuthorizations = user.role === "ADMIN" || user.role === "MANAGER";
     const branchId: string | null = isAdmin ? null : user.branchId;

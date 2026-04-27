@@ -1,12 +1,8 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-interface SessionUser {
-  role: string;
-  branchId: string;
-}
 
 // GET /api/assembly/config — datos para el modal de creación de montaje
 // Retorna solo modelos que tienen BatteryConfiguration y sus voltajes/colores disponibles.
@@ -16,7 +12,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
 
   try {
     // 1. Todas las BatteryConfigurations con sus relaciones

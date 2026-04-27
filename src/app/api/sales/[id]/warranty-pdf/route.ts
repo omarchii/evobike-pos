@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -12,12 +13,6 @@ import { resolveSealBuffer } from "@/lib/pdf/components/document-footer";
 import { PolizaPDF } from "@/lib/pdf/templates/poliza-pdf";
 import type { PolizaPDFData } from "@/lib/pdf/templates/poliza-pdf";
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
-
 // GET /api/sales/[id]/warranty-pdf
 // Returns the warranty PDF. 409 if warrantyDocReady = false (reensamble still pending).
 export async function GET(
@@ -30,7 +25,7 @@ export async function GET(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { branchId, role } = session.user as unknown as SessionUser;
+  const { branchId, role } = session.user as unknown as BranchedSessionUser;
   const { id: saleId } = await params;
 
   // 2. Load sale with all needed relations

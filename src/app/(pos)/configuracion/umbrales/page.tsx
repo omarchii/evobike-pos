@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,12 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { UmbralesView } from "./view";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export default async function UmbralesPage() {
   const session = await getServerSession(authOptions);

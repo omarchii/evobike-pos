@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -16,12 +17,6 @@ import { OrphanedInlineBanner } from "./orphaned-inline-banner";
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-    id: string;
-    branchId: string;
-    role: string;
-}
-
 function formatCurrency(val: number): string {
     return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(val);
 }
@@ -30,7 +25,7 @@ export default async function CashRegisterPage(): Promise<React.ReactElement> {
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect("/login");
 
-    const user = session.user as SessionUser;
+    const user = session.user as BranchedSessionUser;
     // Caja es operativa por sucursal: un admin en vista Global no representa una
     // caja concreta. getViewBranchId devuelve null → empty state explícito.
     const viewBranchId = await getViewBranchId();

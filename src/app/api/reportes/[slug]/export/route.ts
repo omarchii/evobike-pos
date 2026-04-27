@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -15,12 +16,6 @@ import {
   BranchNotConfiguredError,
 } from "@/lib/branch";
 import { resolveSealBuffer } from "@/lib/pdf/components/document-footer";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 const inFlight = new Map<string, Promise<NextResponse>>();
 

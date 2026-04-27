@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,15 +8,6 @@ import { SellerDashboard } from "@/app/(pos)/_components/dashboard/seller-dashbo
 import { TechnicianDashboard } from "@/app/(pos)/_components/dashboard/technician-dashboard";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    role: string;
-    branchId: string | null;
-    branchName: string | null;
-}
 
 type PeriodType = "today" | "week" | "month";
 

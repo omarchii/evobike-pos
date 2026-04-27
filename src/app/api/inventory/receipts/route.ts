@@ -1,15 +1,10 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 const FORMA_PAGO = ["CONTADO", "CREDITO", "TRANSFERENCIA"] as const;
 const ESTADO_PAGO = ["PAGADA", "PENDIENTE", "CREDITO"] as const;
@@ -84,7 +79,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(
@@ -176,7 +171,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
-  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, role, branchId } = session.user as unknown as BranchedSessionUser;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(

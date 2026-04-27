@@ -1,14 +1,9 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 const ALLOWED_ROLES = ["TECHNICIAN", "MANAGER", "ADMIN"];
 
@@ -24,7 +19,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, role, branchId } = session.user as unknown as BranchedSessionUser;
 
   if (!ALLOWED_ROLES.includes(role)) {
     return NextResponse.json(

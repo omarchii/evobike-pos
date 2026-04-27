@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -20,12 +21,6 @@ import { SalesView } from "./view";
 import { getMetricsForReport } from "@/lib/reportes/alert-metrics";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

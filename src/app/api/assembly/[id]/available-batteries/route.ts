@@ -1,14 +1,9 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 // GET /api/assembly/[id]/available-batteries
 // Devuelve los lotes compatibles (tipo batería correcto, IN_STOCK >= 1) para una AssemblyOrder.
@@ -23,7 +18,7 @@ export async function GET(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   const { id } = await params;
 
   try {

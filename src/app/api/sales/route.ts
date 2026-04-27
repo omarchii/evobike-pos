@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -13,12 +14,6 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 const paymentMethodSchema = z.object({
   method: z.enum(["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"]),
@@ -158,7 +153,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId, role: userRole } = session.user as unknown as SessionUser;
+  const { id: userId, branchId, role: userRole } = session.user as unknown as BranchedSessionUser;
 
   if (!branchId) {
     return NextResponse.json({ success: false, error: "Usuario sin sucursal asignada" }, { status: 400 });

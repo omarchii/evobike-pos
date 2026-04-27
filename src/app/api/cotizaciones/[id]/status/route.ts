@@ -1,15 +1,10 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveStatus } from "@/lib/quotations";
 import { QuotationStatus } from "@prisma/client";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -36,7 +31,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { branchId, role } = session.user as unknown as SessionUser;
+  const { branchId, role } = session.user as unknown as BranchedSessionUser;
 
   if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
     return NextResponse.json({ success: false, error: "Sin permisos" }, { status: 403 });

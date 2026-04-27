@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -6,12 +7,6 @@ import type { ReportRole } from "@/lib/reportes/reports-config";
 import { ExportacionContableView } from "./view";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export default async function ExportacionContablePage() {
   const session = await getServerSession(authOptions);

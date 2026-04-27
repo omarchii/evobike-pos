@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,18 +9,11 @@ import { Zap } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-  branchName: string;
-}
-
 export default async function AssemblyPage(): Promise<React.JSX.Element> {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   const branchFilter = role === "ADMIN" ? {} : { branchId };
 
   const [rawLots, batteryVariants, allBatteryConfigs, assemblyOrders] = await Promise.all([

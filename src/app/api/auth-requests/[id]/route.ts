@@ -1,21 +1,16 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireIfNeeded } from "@/lib/authorizations";
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as SessionUser | undefined;
+  const user = session?.user as unknown as BranchedSessionUser | undefined;
   if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },

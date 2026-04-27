@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,15 +10,9 @@ import type { ModeloOption, CustomerOption, ManagerOption } from "./quotation-fo
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
-
 export default async function NuevaCotizacionPage() {
   const session = await getServerSession(authOptions);
-  const user = session?.user as SessionUser | undefined;
+  const user = session?.user as BranchedSessionUser | undefined;
   if (!user?.branchId) redirect("/");
 
   const { branchId } = user;

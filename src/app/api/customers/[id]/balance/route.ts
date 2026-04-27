@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,11 +10,6 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-}
 
 const balanceSchema = z.object({
   amount: z.number().positive("Monto inválido"),
@@ -30,7 +26,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
   const { id: customerId } = await params;
 
   const body: unknown = await req.json();

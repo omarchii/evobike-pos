@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,11 +6,6 @@ import sharp from "sharp";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
-
-interface SessionUser {
-  id: string;
-  role: string;
-}
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIMES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);

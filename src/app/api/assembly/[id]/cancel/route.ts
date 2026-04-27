@@ -1,13 +1,8 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string;
-}
 
 // PATCH /api/assembly/[id]/cancel — Cancelar orden pendiente
 export async function PATCH(
@@ -19,7 +14,7 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const { role, branchId } = session.user as unknown as BranchedSessionUser;
   const { id } = await params;
 
   try {

@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -10,18 +11,13 @@ import { getEffectiveStatus } from "@/lib/quotations";
 
 export const dynamic = "force-dynamic";
 
-interface SessionUser {
-  branchId: string;
-  role: string;
-}
-
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
 export default async function EditarCotizacionPage({ params }: RouteParams) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as SessionUser | undefined;
+  const user = session?.user as BranchedSessionUser | undefined;
   if (!user?.branchId) notFound();
 
   const { id } = await params;

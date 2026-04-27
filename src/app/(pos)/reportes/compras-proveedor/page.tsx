@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,12 +9,6 @@ import { serializeDecimal } from "@/lib/reportes/money";
 import { ComprasProveedorClient } from "./compras-proveedor-client";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 const VALID_ESTADO_PAGO = ["all", "pagada", "pendiente"] as const;
 type FilterEstadoPago = (typeof VALID_ESTADO_PAGO)[number];

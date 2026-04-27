@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -8,12 +9,6 @@ import type { Prisma } from "@prisma/client";
 import { MermasReportClient } from "./mermas-report-client";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 export interface MermaRow {
   transferId: string;

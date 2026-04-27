@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -80,12 +81,6 @@ export interface CurrentFilters {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 function getString(val: string | string[] | undefined): string {
   if (!val) return "";

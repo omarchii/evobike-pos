@@ -1,13 +1,8 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -24,7 +19,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
   }
 
-  const { id: userId, branchId } = session.user as unknown as SessionUser;
+  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
   if (!branchId) {
     return NextResponse.json(
       { success: false, error: "Usuario sin sucursal asignada" },

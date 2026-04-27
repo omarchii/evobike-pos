@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -11,13 +12,6 @@ import {
 import { resolveSealBuffer } from "@/lib/pdf/components/document-footer";
 import { CortePDF } from "@/lib/pdf/templates/corte-pdf";
 import type { CortePDFData, CorteDenominacion } from "@/lib/pdf/templates/corte-pdf";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-  name?: string;
-}
 
 function formatDateTime(date: Date): string {
   return date.toLocaleDateString("es-MX", {
@@ -41,7 +35,7 @@ export async function GET(
   }
 
   const { role, branchId: sessionBranchId } =
-    session.user as unknown as SessionUser;
+    session.user as unknown as BranchedSessionUser;
 
   if (role === "SELLER" || role === "TECHNICIAN") {
     return NextResponse.json(

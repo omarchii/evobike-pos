@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -18,12 +19,6 @@ import { TicketPDF } from "@/lib/pdf/templates/ticket-pdf";
 import type { TicketPDFData } from "@/lib/pdf/templates/ticket-pdf";
 import type { PDFItem } from "@/lib/pdf/types";
 
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
-
 const PAYMENT_LABELS: Record<string, string> = {
   CASH: "Efectivo",
   CARD: "Tarjeta de débito/crédito",
@@ -43,7 +38,7 @@ export async function GET(
   }
 
   const { id: userId, role, branchId: sessionBranchId } =
-    session.user as unknown as SessionUser;
+    session.user as unknown as BranchedSessionUser;
 
   const { id } = await params;
 

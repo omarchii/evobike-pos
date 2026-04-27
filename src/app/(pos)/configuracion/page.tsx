@@ -1,14 +1,9 @@
+import type { SessionUser } from "@/lib/auth-types";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { Building2, Users, Wrench, CircleDollarSign, Package, AlertTriangle } from "lucide-react";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 interface ConfigCard {
   label: string;

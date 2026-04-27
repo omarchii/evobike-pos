@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -19,12 +20,6 @@ import { ReportesPeriodo } from "./reportes-periodo";
 import { EXPENSE_CATEGORIES, type ExpenseCategoryTuple } from "./shared-tokens";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-    id: string;
-    branchId: string;
-    role: string;
-}
 
 function parseDateParam(v: string | undefined): Date | null {
     if (!v) return null;
@@ -57,7 +52,7 @@ export default async function TesoreriaPage({
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect("/login");
 
-    const user = session.user as SessionUser;
+    const user = session.user as BranchedSessionUser;
     if (user.role !== "ADMIN" && user.role !== "MANAGER") {
         redirect("/");
     }

@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -13,12 +14,6 @@ import type { Prisma } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 // ── Tipos del session user ─────────────────────────────────────────────────────
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 // ── Tipos serializados para el Client Component ───────────────────────────────
 

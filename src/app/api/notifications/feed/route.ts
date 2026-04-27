@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
@@ -38,12 +39,6 @@ export type NotificationFeedResponse = {
     total: number;
     groups: NotificationGroup[];
 };
-
-interface SessionUser {
-    id: string;
-    branchId: string;
-    role: string;
-}
 
 const CATEGORY_LABEL: Record<NotificationCategory, string> = {
     autorizaciones: "Autorizaciones",
@@ -182,7 +177,7 @@ function mapOrphanItem(
 
 export async function GET(): Promise<NextResponse<NotificationFeedResponse | { error: string }>> {
     const session = await getServerSession(authOptions);
-    const user = session?.user as unknown as SessionUser | undefined;
+    const user = session?.user as unknown as BranchedSessionUser | undefined;
 
     if (!user) {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });

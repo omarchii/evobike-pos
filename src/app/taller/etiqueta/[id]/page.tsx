@@ -1,3 +1,4 @@
+import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,12 +8,6 @@ import QRCode from "qrcode";
 import { LabelActions } from "./_components/label-actions";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  branchId: string;
-  role: string;
-}
 
 const TYPE_CHIP: Record<string, { bg: string; color: string; label: string }> = {
   PAID: { bg: "#f0f7f4", color: "#3d5247", label: "Pagada" },
@@ -31,7 +26,7 @@ export default async function EtiquetaPage(props: {
     redirect("/login");
   }
 
-  const { branchId, role } = session.user as unknown as SessionUser;
+  const { branchId, role } = session.user as unknown as BranchedSessionUser;
 
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },

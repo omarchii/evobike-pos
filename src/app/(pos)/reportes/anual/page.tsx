@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/lib/auth-types";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -6,12 +7,6 @@ import { serializeDecimal } from "@/lib/reportes/money";
 import { AnualClient } from "./anual-client";
 
 export const dynamic = "force-dynamic";
-
-interface SessionUser {
-  id: string;
-  role: string;
-  branchId: string | null;
-}
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
