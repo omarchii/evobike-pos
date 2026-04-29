@@ -2430,30 +2430,6 @@ export default function PosTerminal({
                   />
                 )}
 
-                {/* Free-form line dialog (P3.5) */}
-                <FreeFormDialog
-                  open={freeFormOpen}
-                  onOpenChange={setFreeFormOpen}
-                  onAdd={({ description, price, quantity }) => {
-                    setCart((prev) => [
-                      ...prev,
-                      {
-                        variantId: `freeform-${Date.now()}-${prev.length}`,
-                        modeloId: "",
-                        modeloNombre: description,
-                        colorNombre: "",
-                        voltajeLabel: "",
-                        sku: "",
-                        price,
-                        quantity,
-                        isSerialized: false,
-                        isFreeForm: true,
-                        description,
-                      },
-                    ]);
-                  }}
-                />
-
                 {/* Layaway toggle */}
                 <div className="flex items-center justify-between">
                   <Label
@@ -3130,6 +3106,30 @@ export default function PosTerminal({
           myBranchName={branchName}
         />
       )}
+
+      {/* Free-form line dialog (P3.5) */}
+      <FreeFormDialog
+        open={freeFormOpen}
+        onOpenChange={setFreeFormOpen}
+        onAdd={({ description, price, quantity }) => {
+          setCart((prev) => [
+            ...prev,
+            {
+              variantId: `freeform-${Date.now()}-${prev.length}`,
+              modeloId: "",
+              modeloNombre: description,
+              colorNombre: "",
+              voltajeLabel: "",
+              sku: "",
+              price,
+              quantity,
+              isSerialized: false,
+              isFreeForm: true,
+              description,
+            },
+          ]);
+        }}
+      />
     </div>
   );
 }
