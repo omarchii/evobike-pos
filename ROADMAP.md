@@ -7,19 +7,21 @@ Este archivo es la fuente de verdad del trabajo pendiente. Actualizar al complet
 
 ## ⏸️ BLOQUEADOS — Esperando datos del cliente
 
-| Tema | Qué falta | Impacto |
-|---|---|---|
-| **Amperajes por voltaje** | Qué modelos usan 48V/12Ah vs 48V/20Ah etc. | Migración de campo en `Voltaje` o `ProductVariant` |
-| **Catálogo de refacciones incompleto** | 940 filas en `refacciones_revisar.csv` con nombre inválido por PDF con imágenes | Completar seed de refacciones |
+| Tema                                   | Qué falta                                                                       | Impacto                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Amperajes por voltaje**              | Qué modelos usan 48V/12Ah vs 48V/20Ah etc.                                      | Migración de campo en `Voltaje` o `ProductVariant` |
+| **Catálogo de refacciones incompleto** | 940 filas en `refacciones_revisar.csv` con nombre inválido por PDF con imágenes | Completar seed de refacciones                      |
 
 ---
 
 ## FASE P0 — Arquitectura de productos simples (SimpleProduct)
+
 **Modelo: Opus | Dependencias: ninguna**
 
 Decisión arquitectónica crítica. Define el schema que todo lo demás usa.
 
 ### Tareas
+
 - Diseñar modelo `SimpleProduct` en `prisma/schema.prisma`:
   - `id`, `nombre`, `descripcion?`, `categoria` (enum), `modeloAplicable?`
   - `precioPublico` Decimal — precio que ve y paga el cliente
@@ -40,6 +42,7 @@ Decisión arquitectónica crítica. Define el schema que todo lo demás usa.
 - Campos `stockMinimo`/`stockMaximo` también aplican a baterías de ensamble (agregar a `ProductVariant` o manejar en `SimpleProduct` unificado — decisión de Opus)
 
 ### Archivos clave
+
 - `prisma/schema.prisma`
 - `src/app/api/inventory/receipts/route.ts`
 - `src/app/api/batteries/lots/route.ts`
@@ -48,11 +51,13 @@ Decisión arquitectónica crítica. Define el schema que todo lo demás usa.
 ---
 
 ## FASE P1 — Módulo de Configuración
+
 **Modelo: Opus diseño → Sonnet implementación | Dependencias: P0**
 
 Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 
 ### P1-A — Datos de sucursal ✅ (2026-04-12)
+
 - Campos aditivos en `Branch`: `rfc`, `razonSocial`, `regimenFiscal`, `street/extNum/intNum/colonia/city/state/zip`, `phone`, `email`, `website`, `sealImageUrl`, `terminosCotizacion/Pedido/Poliza`. El campo legacy `address` se conserva.
 - Migración: `20260412060000_add_branch_config_fields` (aditiva, sin reset).
 - API Routes (solo ADMIN):
@@ -65,6 +70,7 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - Sidebar: ítem "Configuración" ahora navega a `/configuracion/sucursal` y es exclusivo de ADMIN.
 
 ### P1-B — Gestión de usuarios ✅ (2026-04-12)
+
 - Schema aditivo: `User.isActive Boolean @default(true)`. Migración `20260412070000_add_user_is_active`.
 - API Routes (solo ADMIN):
   - `GET/POST /api/configuracion/usuarios` — listado (filtro opcional `?branchId=` + `?includeInactive=true`) y creación con Zod + bcrypt.
@@ -75,11 +81,13 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - Refacciones no-borrado: CRUD soft vía toggle de `isActive`.
 
 ### P1-C — Catálogo de servicios del taller ✅ (2026-04-12)
+
 - API Routes (`/api/configuracion/servicios` + `[id]`) — CRUD sobre `ServiceCatalog`. ADMIN cross-branch (`?branchId=` y `branchId` en POST); MANAGER restringido a su sucursal.
 - UI `/configuracion/servicios` con tabla activos/inactivos, selector de sucursal para ADMIN, modal para crear/editar (nombre + `basePrice`).
 - Nota: el campo `tipo` (mano de obra vs. refacción) no se añadió al modelo: las refacciones viven en `SimpleProduct` (P0). `ServiceCatalog` representa solo mano de obra/servicios.
 
 ### P1-D — Reglas de comisión ✅ (2026-04-12)
+
 - Existente `/reportes/comisiones/reglas` (Fase 5-D) extendido para ADMIN cross-branch:
   - `GET /api/comisiones/reglas` acepta `?branchId=` (ignorado para MANAGER).
   - `POST` acepta `branchId` opcional (solo ADMIN) y valida existencia de la sucursal.
@@ -87,6 +95,7 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - UI: selector de sucursal (ADMIN) arriba + dentro del modal de crear. El módulo `/configuracion/comisiones` redirige a `/reportes/comisiones/reglas`.
 
 ### P1-E — Catálogo de productos ✅ (2026-04-12)
+
 - Schema aditivo: `Modelo.categoria` (enum `BICICLETA | TRICICLO | SCOOTER | JUGUETE | CARGA`), `Modelo.esBateria`, `Modelo.isActive`, `Color.isActive`, `Voltaje.isActive`, `ProductVariant.isActive`. Migración `20260412080000_add_category_and_soft_delete_to_catalog` (aditiva, sin reset). El modelo "Batería" existente se marca con `esBateria = true` en la migración.
 - Decisión arquitectónica: las baterías viven en modelos dedicados (flag `Modelo.esBateria`), separadas de los modelos de vehículos. Esto cierra la ambigüedad de "qué variantes pueden seleccionarse como batería en `BatteryConfiguration`".
 - Helper `src/lib/products.ts#normalizeModeloAplicable()` para normalizar strings libres (NFD, uppercase, trim, colapso de espacios) antes de persistir en `SimpleProduct.modeloAplicable`.
@@ -109,6 +118,7 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - `/configuracion` ahora habilita la tarjeta "Catálogo de productos" para ADMIN y MANAGER.
 
 ### Archivos clave
+
 - `src/app/(pos)/configuracion/` (nueva ruta)
 - `prisma/schema.prisma` (campo `categoria` en `Modelo`)
 - `src/app/api/configuracion/` (nuevas API Routes)
@@ -116,16 +126,19 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 ---
 
 ## FASE P2 — Datos de prueba realistas ✅ Completa (2026-04-12)
+
 **Modelo: Sonnet | Dependencias: P0 + P1**
 
 ### Implementado
 
 **Sesión 1 — SimpleProducts + stock**
+
 - `prisma/seed.ts` carga `accesorios.csv` (39 productos) y `refacciones.csv` (2,622 refacciones) vía upsert por `codigo`.
 - `normalizeModeloAplicable()` aplicado a cada fila. `"GLOBAL"` → `null` para mantener la convención de P1-E.
 - Stock inicial de SimpleProducts por sucursal (5,322 entradas) con `InventoryMovement(PURCHASE_RECEIPT)` dentro de la misma `$transaction`.
 
 **Sesión 2 — Datos transaccionales**
+
 - Nuevo módulo `prisma/seed-transactional.ts` (~1,500 líneas) invocado desde `seed.ts`.
 - 30 Customers (15 completos con datos fiscales, 10 básicos, 5 con `balance > 0`).
 - Stock de ProductVariants de vehículos (758 entradas) con su InventoryMovement.
@@ -139,23 +152,28 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - Cotizaciones: 20 globales (DRAFT/SENT/CONVERTED/EXPIRED).
 
 ### Decisiones de implementación
+
 - **Folio en seed usa `branch.code`** (no `branch.name` como la API real) porque "Sucursal Leo" y "Sucursal Av 135" normalizan ambos a prefix `"SUC"` → colisión. El cambio es local al seed y no afecta la lógica de producción.
 - **Idempotencia** por marcadores: cada tarea chequea existencia (cuenta o sentinela) y skipea si ya corrió. Para re-seedear, truncar las tablas transaccionales manualmente.
 - **Comisiones**: replican la cascade strategy de Fase 5-E (regla específica por `modeloId` → fallback genérica). Solo ventas directas generan comisión; pedidos y servicios no (consistente con `POST /api/pedidos` y service-orders).
 - **Ensamblable** se define por existencia de `BatteryConfiguration` para `(modelo_id, voltaje_id)`, no por `Modelo.requiere_vin`, porque el seed de catálogo original deja `requiere_vin=false` por un upsert-drift. Evita tocar ese seed.
 
 ### Archivos clave
+
 - `prisma/seed.ts`
 - `prisma/seed-transactional.ts`
 - `prisma/data/accesorios.csv`
 - `prisma/data/refacciones.csv`
 - `prisma/data/refacciones_revisar.csv` (pendiente de revisión manual en Fase 6)
+
 ---
 
 ## FASE P3 — Fixes y mejoras POS ✅ (2026-04-12)
+
 **Modelo: Sonnet | Dependencias: P0 + P2**
 
 ### P3.1–P3.3 ✅
+
 - Labels en español en compra guiada (`"SYSTEM VOLTAGE"` → `"Voltaje del sistema"`, `"FRAME COLOR"` → `"Color del cuadro"`).
 - Tabs del POS por categoría real de `Modelo.categoria`: `Bicicletas | Triciclos | Scooters | Juguetes | Carga`.
 - Mensaje claro de reensamble al cambiar voltaje pre-venta: aviso explícito "Esta unidad requiere reensamble a [X]V" antes de confirmar.
@@ -163,15 +181,18 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 - Botón "Agregar concepto libre" en POS: dialog con descripción + precio + cantidad, usa `SaleItem.isFreeForm = true` ya existente en backend.
 
 ### P3.4 ✅ — SimpleProduct en el POS (mixto)
+
 - **P3.4a — Backend polimórfico:** `saleItemSchema` y `frozenItemSchema` de `POST /api/sales` aceptan `simpleProductId` opcional. `superRefine` valida exactamente uno de `{productVariantId, simpleProductId, isFreeForm}`. Stock check/decrement e `InventoryMovement` usan la constraint `simpleProductId_branchId` cuando aplica. `SaleItem` persiste `simpleProductId` + `description = sp.nombre` snapshot. Comisiones solo se generan por `ProductVariant` (SimpleProduct no comisiona). `POST /api/pedidos` extiende `frozenItems` con `simpleProductId` para conversión de cotizaciones con líneas mixtas.
   - Decisión: flat schema con `superRefine` en lugar de `z.discriminatedUnion`. Razón: mantiene compatibilidad con callers existentes (POS normal, quotation conversion, seed) sin refactor de todos los payloads. El invariant XOR queda validado server-side.
 - **P3.4b — Tab "Accesorios" en POS:** nueva pestaña que sustituye el grid de modelos por un grid de `SimpleProduct`. Sub-filtros por `modeloAplicable` (Todos / Universal / nombre del modelo). Card incluye badge de categoría (Accesorio/Cargador/Refacción/Batería), stock por sucursal y precio público. `page.tsx` carga `SimpleProduct` activos + stock de la sucursal del vendedor.
 - **P3.4c — Cart mixto:** `CartItem` extendido con `simpleProductId?` y `simpleCategoria?`. `handleAddSimpleProduct` agrupa duplicados (incrementa cantidad respetando stock). `handleCheckout` manda `productVariantId: null` y `simpleProductId` para líneas de accesorio. El render del cart muestra `{categoría} · {SKU}` para SimpleProduct, concepto libre para free-form, y `color/voltaje` para vehículos. Un mismo carrito puede combinar vehículos + accesorios + concepto libre + baterías standalone en una sola venta o apartado.
 
 ### Pendiente P3 (movido a otras fases)
+
 - Sidebar: item "Reportes" con sub-items → sigue en Fase 5-H.
 
 ### Archivos clave
+
 - `src/app/(pos)/point-of-sale/pos-terminal.tsx` ✅
 - `src/app/(pos)/point-of-sale/page.tsx` ✅
 - `src/app/(pos)/point-of-sale/free-form-dialog.tsx` ✅
@@ -181,11 +202,13 @@ Solo accesible por rol ADMIN. Ruta: `/configuracion`.
 ---
 
 ## FASE P4 — Inventario enriquecido (Compras al proveedor) ✅ (2026-04-12)
+
 **Modelo: Sonnet | Dependencias: P0**
 
 Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 
 ### P4-A — Schema + migración + seed ✅ (2026-04-12)
+
 - Nuevo modelo cabecera `PurchaseReceipt` (cuid) con FKs a `Branch` y `User`. Una factura puede cubrir N SKUs (vehículos + SimpleProducts + baterías). Sin `saleId` — la vinculación Pedido↔Recepción vive en `BatteryLot.saleItemId` y `AssemblyOrder.saleId` con granularidad de ítem (una recepción es N:M con pedidos).
 - Enums `FormaPagoProveedor` (`CONTADO | CREDITO | TRANSFERENCIA`) y `EstadoPagoProveedor` (`PAGADA | PENDIENTE | CREDITO`).
 - Campos del modelo: `proveedor`, `folioFacturaProveedor?`, `facturaUrl?`, `formaPagoProveedor`, `estadoPago`, `fechaVencimiento?`, `fechaPago?`, `totalPagado Decimal(12,2)`, `notas?`.
@@ -201,6 +224,7 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
   - Idempotente por `findFirst({ proveedor: "Histórico previo a P4", branchId })`.
 
 ### P4-B — API Routes ✅ (2026-04-12)
+
 - `POST /api/inventory/receipts` reescrito: Zod con `discriminatedUnion("kind", [variant, simple])`, `totalPagado` calculado server-side (ignora cliente), `superRefine` para reglas cruzadas (CREDITO ⇒ fechaVencimiento; CONTADO+CREDITO inconsistente; PAGADA rechaza fechaVencimiento). `fechaPago` server-side cuando estadoPago=PAGADA. `ProductVariant.costo` y `SimpleProduct.precioMayorista` **no se tocan** (separa costo catálogo del costo histórico en `InventoryMovement.precioUnitarioPagado` — fundamental para rentabilidad en P10-C). P2002 ⇒ 409 español. Guard MANAGER+ADMIN.
 - `POST /api/batteries/lots` acepta `purchaseReceiptId?` opcional. Validación de cabecera (existencia + mismo branch) **dentro** del `$transaction` para evitar TOCTOU.
 - `GET /api/inventory/receipts` — listado paginado con filtros `estadoPago`, `vencimientoDesde`, `vencimientoHasta`, `branchId` (ADMIN). Scoping automático por branch para no-ADMIN. Resuelve cuentas por pagar (P10-F).
@@ -212,6 +236,7 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 - Micro-migración `20260412110000_drop_purchase_receipt_saleid` — se eliminó `PurchaseReceipt.saleId` porque el vínculo Pedido↔Recepción vive con granularidad correcta en `BatteryLot.saleItemId` y `AssemblyOrder.saleId` (2H-D); a nivel cabecera era ambiguo (N:M real).
 
 ### P4-C — UI ✅ (2026-04-12)
+
 - Migración de rutas a español: `/inventory/` → `/inventario/`, consistente con el resto del app. La API en inglés (`/api/inventory/receipts`) queda intacta.
 - Nuevas rutas: `/inventario/recepciones` (listado), `/inventario/recepciones/nuevo` (formulario), `/inventario/recepciones/[id]` (detalle).
 - Listado con filtros sincronizados a URL (estadoPago, proveedor, rango vencimiento). Server Component con Prisma directo — cubre el caso operativo de cuentas por pagar. P10-F queda reducido a reporte agregado / export CSV.
@@ -221,12 +246,14 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 - Deuda documentada: normalización de proveedor (string libre, trim + collapse whitespace pendiente en API).
 
 ### Esto desbloquea automáticamente
+
 - Historial de compras al proveedor (query sobre `PurchaseReceipt`).
 - Cuentas por pagar (P10-F — filtros por `estadoPago = PENDIENTE | CREDITO`).
 - Costo real del inventario (`precioUnitarioPagado` × stock).
 - Rentabilidad (precio venta vs precio compra).
 
 ### Archivos clave
+
 - `prisma/schema.prisma` ✅
 - `prisma/migrations/20260412100000_enrich_inventory_receipt/` ✅
 - `prisma/seed-transactional.ts` ✅
@@ -248,6 +275,7 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
 Aplica a: cancelaciones de venta y descuentos sobre precio.
 
 ### P5-A ✅ — Schema + PIN + UI de configuración
+
 - Nuevo modelo `AuthorizationRequest` con enums `AuthorizationType` (CANCELACION | DESCUENTO), `AuthorizationStatus` (PENDING | APPROVED | REJECTED | EXPIRED) y `AuthorizationMode` (PRESENCIAL | REMOTA). Incluye `branchId` (bandeja sin join), `expiresAt` (REMOTA: now+5min), `rejectReason`. Relaciones a `Branch`, `Sale?`, requester/approver en `User`.
 - `User.pin String?` (hash bcrypt, 4-6 dígitos). Campo separado del `password` — UX mala al teclear la contraseña completa del manager frente al vendedor.
 - Migración drift-safe con `prisma migrate diff` + archivo manual + `migrate resolve --applied`.
@@ -255,6 +283,7 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 - UI en `/configuracion/usuarios`: badge "Sin PIN" para MANAGER/ADMIN sin configurar, ícono candado por fila, `SetPinDialog` con confirm y botón eliminar.
 
 ### P5-B ✅ — API de autorizaciones
+
 - Helper `src/lib/authorizations.ts`: `validatePinForBranch(pin, branchId)`, `expireIfNeeded(request)` (lazy + idempotente), `consumeAuthorization(tx, input)` transaccional con `AuthorizationConsumeError` tipada.
 - **Lock de no-reuso**: DESCUENTO → `AuthorizationRequest.saleId IS NULL` (se setea al consumir en la misma $transaction); CANCELACION → `Sale.status → CANCELLED` (lock natural).
 - `POST /api/auth-requests`: PRESENCIAL valida PIN inline y crea APPROVED; REMOTA crea PENDING + `expiresAt = now + 5min`. Rechaza auto-autorización (`manager.id === requester.id`).
@@ -264,6 +293,7 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 - `GET /api/auth-requests/pending`: bandeja del manager, auto-expira vencidas con un `updateMany` barato por índice `(branchId, status)`, excluye `requestedBy === currentUser`.
 
 ### P5-C ✅ — Integración en POS y cancelación
+
 - Decisión polling vs WebSockets (Opus): **polling** — sin precedente de real-time en el repo, sin infra stateful, 3s es suficiente para la UX.
 - Hook compartido `useAuthorizationPolling` con cleanup estricto: `setInterval` limpiado en el return del `useEffect`, flag `cancelled` para fetches en vuelo, detiene polling al alcanzar estado terminal y tras 3 errores consecutivos.
 - `POST /api/sales` acepta `discountAuthorizationId`. **SELLER con `discountAmount > 0` requiere autorización APPROVED**; MANAGER/ADMIN pueden autoaprobarse (su rol es la autorización). Consumo en $transaction con `AuthorizationConsumeError` mapeado a 400.
@@ -272,11 +302,13 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 - `/ventas/[id]`: botón "Cancelar venta" + `CancelSaleModal` reutilizable con el mismo flujo presencial/remoto. Refresca la vista al cancelar.
 
 ### P5-D ✅ — Bandeja + historial
+
 - `AuthorizationInbox` en dashboard manager: card que polla `/api/auth-requests/pending` cada 10s con cleanup de `setInterval` y `AbortController` para fetches en vuelo. Lista pendientes con countdown, solicitante y motivo. Aprobar/Rechazar abre `ResolveDialog` con PIN + motivo opcional (para rechazo).
 - Página `/autorizaciones` (MANAGER+ADMIN): historial filtrable por tipo, estado, sucursal (solo ADMIN) y rango de fechas. Server Component con Prisma directo; filtros en URL via `useTransition`. Links clickables a `/ventas/[id]` para cancelaciones.
 - Link "Autorizaciones" en sidebar (MANAGER+ADMIN) con icono `ShieldCheck`.
 
 ### Archivos clave
+
 - `prisma/schema.prisma` — `User.pin`, `AuthorizationRequest`, enums
 - `prisma/migrations/20260413000000_add_authorization_requests_and_user_pin/`
 - `src/lib/authorizations.ts` — helper compartido
@@ -292,11 +324,13 @@ Aplica a: cancelaciones de venta y descuentos sobre precio.
 ---
 
 ## FASE P6 — Documentos PDF ✅ Completo (P6-A ✅ P6-B ✅ P6-C ✅ P6-D ✅ P6-E ✅)
+
 **Modelo: Sonnet | Librería: @react-pdf/renderer@4.4.1 | Dependencias: P1-A obligatorio**
 
 IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `Branch`.
 
 ### P6-S1 — Infraestructura base ✅ (2026-04-14)
+
 - Instala `@react-pdf/renderer@4.4.1` y `numero-a-letras` (con declaración de tipos en `src/types/`).
 - Fuentes Inter TTF (400/500/600/700) descargadas en `public/fonts/`.
 - `public/evobike-logo-pdf.png` — copia real PNG del logo (el `.png` original era WebP disfrazado; react-pdf no puede leerlo; todos los componentes PDF apuntan a este archivo).
@@ -311,6 +345,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - Dev preview: `GET /api/dev/pdf-preview?branchId=X` genera cotización dummy; `src/app/(pos)/dev/pdf-preview/page.tsx` con iframe. Ambos bloquean con `notFound()` fuera de `development`.
 
 ### Archivos clave P6-S1
+
 - `public/fonts/Inter-{Regular,Medium,SemiBold,Bold}.ttf` ✅
 - `public/evobike-logo-pdf.png` ✅
 - `src/lib/pdf/` ✅
@@ -322,11 +357,13 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 ### P6-S2 — Templates Cotización y Ticket ✅ (2026-04-14)
 
 **Prerequisitos completados en esta sesión:**
+
 - `TotalsBlock` ganó prop `descuento?: number` — fila "Descuento" se muestra solo si > 0. Las demás plantillas no la pasan.
 - `DocumentFooter.terminosText.lineHeight` reducido 1.5 → 1.3 para párrafos compactos.
 - `src/lib/pdf-client.ts` (client-side único): `openPDFInNewTab(url)` — fetch → 412 check → blob → `window.open`. Mantiene la separación: `src/lib/pdf/` es server-only.
 
 **P6-A — PDF Cotización** ✅
+
 - Template `CotizacionPDF` + interface `CotizacionPDFData` en `src/lib/pdf/templates/cotizacion-pdf.tsx`.
 - Usa todos los componentes base (`BaseDocument`, `DocumentHeader`, `ClientInfoBlock`, `ItemsTable`, `TotalsBlock`, `DocumentFooter`).
 - `descuento` global: si > 0 se pasa a `TotalsBlock` y aparece fila entre Subtotal e IVA.
@@ -337,6 +374,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - Botón "Descargar PDF" en `quotation-actions-bar.tsx` (floating action bar, antes de Cancelar).
 
 **P6-C — PDF Ticket de venta** ✅
+
 - Template `TicketPDF` + interface `TicketPDFData` en `src/lib/pdf/templates/ticket-pdf.tsx`.
 - `TicketPDFData.cliente` es `{nombre, telefono, email} | null` (las ventas no siempre tienen cliente).
 - Bloque de metadatos: fecha, vendedor, cliente (solo si existe). Sin `ClientInfoBlock` — diseño propio con chips.
@@ -348,6 +386,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - Botón "Descargar Ticket" en `sale-detail.tsx` (top bar, junto a "Imprimir póliza").
 
 ### Archivos clave P6-S2
+
 - `src/lib/pdf-client.ts` ✅ (helper client-side)
 - `src/lib/pdf/components/totals-block.tsx` ✅ (prop `descuento` opcional)
 - `src/lib/pdf/components/document-footer.tsx` ✅ (lineHeight 1.3)
@@ -369,6 +408,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 ### P6-D — PDF Póliza de garantía ✅ (ver P6-S3)
 
 ### P6-E — PDF Comprobante de cierre de corte ✅ (2026-04-15)
+
 - Migración `denominationsJson Json?` en `CashRegisterSession` — nullable para sesiones legacy.
 - PATCH `/api/cash-register/session` persiste el desglose de billetes en el mismo UPDATE de cierre.
 - Template `CortePDF` en `src/lib/pdf/templates/corte-pdf.tsx`: bloque de sesión, resumen financiero con diferencia coloreada (verde sobrante / rojo faltante), tabla de denominaciones (o texto "Desglose no disponible" para sesiones legacy), bloque amber de autorización si aplica.
@@ -380,6 +420,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 ### P6-S3 — Templates Pedido y Póliza ✅ (2026-04-14)
 
 **P6-B — PDF Recibo de Pedido / Apartado** ✅
+
 - Componente `AbonosTimeline` en `src/lib/pdf/components/abonos-timeline.tsx` — tabla Fecha/Monto/Método/Cobrador + filas resumen total abonado (verde) y saldo restante (rojo si > 0, verde si liquidado).
 - Template `PedidoPDF` + interface `PedidoPDFData` en `src/lib/pdf/templates/pedido-pdf.tsx`.
 - Badge de status inline sobre el bloque cliente: PENDIENTE/ABONADO PARCIAL/LIQUIDADO/CANCELADO con colores propios.
@@ -389,6 +430,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - Botón "Descargar Recibo" en `pedido-detalle.tsx` (top bar, junto a la acción principal).
 
 **P6-D — PDF Póliza de Garantía** ✅
+
 - Componente `VehicleInfoBlock` en `src/lib/pdf/components/vehicle-info-block.tsx` — MODELO/COLOR/VOLTAJE/VIN con mismo estilo chip que bloque cliente.
 - Template `PolizaPDF` + interface `PolizaPDFData` en `src/lib/pdf/templates/poliza-pdf.tsx`.
 - Sin tabla de items ni totales — solo datos del vehículo + baterías + términos legales.
@@ -398,6 +440,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - `handlePrintWarranty` en `sale-detail.tsx` actualizado: async, maneja 409 con toast (muestra conteo de ensambles), 412 para sucursal sin configurar.
 
 ### Archivos clave P6-S3
+
 - `src/lib/pdf/components/abonos-timeline.tsx` ✅
 - `src/lib/pdf/components/vehicle-info-block.tsx` ✅
 - `src/lib/pdf/templates/pedido-pdf.tsx` ✅
@@ -408,6 +451,7 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 - `src/app/(pos)/ventas/[id]/sale-detail.tsx` ✅ (handlePrintWarranty async + 409)
 
 ### Archivos clave P6-E
+
 - `prisma/migrations/20260415061254_add_denominations_json_to_cash_session/` ✅
 - `src/lib/pdf/templates/corte-pdf.tsx` ✅
 - `src/app/api/cash-register/session/[id]/pdf/route.ts` ✅
@@ -417,35 +461,44 @@ IVA 16% fijo en todos los documentos. Todos usan datos de sucursal + sello de `B
 ---
 
 ## FASE P7 — Cotizaciones mejoradas ✅ Completo (2026-04-15)
+
 **Modelo: Sonnet | Dependencias: P6-A**
 
 ### P7-A — Rediseño de `QuotationStatus` ✅ (2026-04-15)
+
 Enum reemplazado:
+
 ```
 DRAFT → EN_ESPERA_CLIENTE → EN_ESPERA_FABRICA → PAGADA → FINALIZADA
                                                → RECHAZADA
 ```
+
 Migración `20260415_redesign_quotation_status`: mapeo `SENT` → `EN_ESPERA_CLIENTE`, `CONVERTED` → `FINALIZADA`, `CANCELLED` → `RECHAZADA`. `EXPIRED` es estado computado (no persiste en DB) — se deriva en runtime via `getEffectiveStatus()` solo para `DRAFT` y `EN_ESPERA_CLIENTE` con `validUntil < now`. `EN_ESPERA_FABRICA`, `PAGADA`, `FINALIZADA` y `RECHAZADA` no expiran (hay compromiso activo o son estados terminales).
 
 ### P7-B — Máquina de transiciones + endpoint unificado ✅ (2026-04-15)
+
 `PATCH /api/cotizaciones/[id]/status` con Zod + `superRefine`. Transiciones válidas:
+
 - `DRAFT` → `EN_ESPERA_CLIENTE` | `EN_ESPERA_FABRICA` | `RECHAZADA`
 - `EN_ESPERA_CLIENTE` → `EN_ESPERA_FABRICA` | `PAGADA` | `RECHAZADA`
 - `EN_ESPERA_FABRICA` → `PAGADA` | `RECHAZADA`
 - `PAGADA` → `FINALIZADA` | `RECHAZADA`
 
 ### P7-C — Ajustes al PDF de cotización ✅ (2026-04-15)
+
 - RFC y domicilio fiscal del cliente eliminados del PDF. `ClientInfoBlock` renderiza RFC solo si `client.rfc !== undefined` (no rompe otros PDFs que sí lo pasan).
 - `branch.terminosCotizacion` ya se usaba desde P6-A; `DocumentFooter` omite la sección si está vacío/null.
 - No hay badge de status en el PDF — C3 no aplica.
 
 ### P7-D — Cotizaciones en perfil del cliente ✅ (2026-04-15)
+
 - Tab "Cotizaciones" agregado a `/customers/[id]` (4 tabs: Ventas · Taller · VIN · Cotizaciones).
 - Query `Quotation.findMany({ where: { customerId }, take: 20, orderBy: createdAt desc })`.
 - `getEffectiveStatus()` aplicado antes de renderizar cada badge.
 - `QuotationStatusBadge` movido a `src/components/quotation-status-badge.tsx` (compartido); `quotations-table.tsx` actualizado al nuevo import.
 
 ### Archivos clave P7
+
 - `prisma/schema.prisma` ✅ (enum `QuotationStatus`)
 - `src/app/api/cotizaciones/[id]/status/route.ts` ✅
 - `src/lib/quotations.ts` ✅ (`getEffectiveStatus`, `getDaysRemaining`, `formatMXN`, `formatDate`)
@@ -459,18 +512,22 @@ Migración `20260415_redesign_quotation_status`: mapeo `SENT` → `EN_ESPERA_CLI
 ---
 
 ## FASE P8 — Vista de historial de abonos ✅ Completo (2026-04-15)
+
 **Modelo: Sonnet | Dependencias: ninguna nueva**
 
 ### Estado al iniciar la sesión
+
 El timeline visual ya existía en `pedido-detalle.tsx:438-508` (commits previos): punto + ícono por método, fecha, vendedor que cobró, monto y última fila destacada con gradient. El PDF P6-B (`abonos-timeline.tsx`) también ya incluía la tabla de abonos con totales.
 
 ### Cierre P8
+
 - **Saldo restante por abono** — `DetallePayment.remainingAfter` calculado server-side en `page.tsx` con `reduce` (purity-safe). Microtexto bajo el monto: "Restante tras este abono: $X,XXX.XX" (10px, `var(--on-surf-var)`, alineado a la derecha).
 - **Contador de exhibiciones** — header pasa de "Historial de abonos (N)" a "Historial de abonos · N exhibiciones realizadas" (singular `exhibición realizada` cuando N=1).
 - **Decisión de modelo** — `CashTransaction` y `Sale` no distinguen enganche vs exhibición. El `downPayment` de `POST /api/sales` solo nombra el monto inicial de un LAYAWAY pero persiste como `CashTransaction` idéntica al resto. Label uniforme; si en el futuro se requiere "1 enganche + N exhibiciones", se necesita migración (campo en `CashTransaction` o convención "primer pago = enganche").
 - **Mini-fix colateral** (commit aparte) — `pedido-detalle.tsx:110` clampea `pending` con `Math.max(0, …)` para evitar negativos por sobreabono manual.
 
 ### Archivos modificados
+
 - `src/app/(pos)/pedidos/[id]/page.tsx` — nuevo `remainingAfter` en `DetallePayment`.
 - `src/app/(pos)/pedidos/[id]/pedido-detalle.tsx` — microtexto, nuevo label del header y clamp del `pending`.
 - PDF P6-B (`abonos-timeline.tsx`) — intacto.
@@ -478,15 +535,18 @@ El timeline visual ya existía en `pedido-detalle.tsx:438-508` (commits previos)
 ---
 
 ## FASE P9 — Tesorería ✅ (2026-04-15)
+
 **Modelo: Sonnet | Dependencias: ninguna**
 
 Ruta: `/tesoreria` (MANAGER + ADMIN).
 
 ### Schema aplicado (migración `20260415074752_add_operational_expense_and_bank_balance`)
+
 - `OperationalExpense` con enum `ExpenseCategory` (RENTA, SERVICIOS, NOMINA, PUBLICIDAD, TRANSPORTE, MANTENIMIENTO_INMUEBLE, IMPUESTOS, COMISIONES_BANCARIAS, OTRO) y anulación inmutable (`isAnulado + anuladoPor + anuladoAt + motivoAnulacion`). Índices por `branchId+fecha` y `branchId+categoria`.
 - `BankBalanceSnapshot` **sin `branchId`** — es saldo de empresa, no de sucursal. Historial inmutable; el "saldo actual" es siempre el último `createdAt`.
 
 ### APIs (`/api/tesoreria/`)
+
 - `expenses` POST/GET — MANAGER (su sucursal) + ADMIN (cross-branch vía `branchId` en body). Zod rechaza `CASH` (los cash viven en `CashTransaction`). `superRefine` exige `comprobanteUrl` cuando `metodoPago === "TRANSFER"`.
 - `expenses/[id]` PATCH — solo `descripcion/categoria/comprobanteUrl`. Mandar `monto/fecha/metodoPago` responde **422** explícito. MANAGER solo su sucursal + mismo día. Bloqueado si `isAnulado` (409).
 - `expenses/[id]/anular` POST — **solo ADMIN**, motivo min 5, idempotente (409 si ya anulado).
@@ -495,13 +555,16 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `summary` GET — ingresos = ventas completadas, egresos = `gastosEfectivo + gastosOperativos + comprasProveedor`, `gastosPorCategoria` unificado con denominador `gastosEfectivo + gastosOperativos`, saldo efectivo vía `summarizeSession().expectedCash`, saldo bancario del último snapshot.
 
 ### UI `/tesoreria/page.tsx` (Server Component)
+
 3 secciones tonales (sin `border-b`): saldos (2 cards), gastos (filtros URL-params + tabla mixta operational+cash), reportes (barras CSS sin librería de charts). Tabla mixta usa badge "Efectivo" para filas de `CashTransaction` (no editables — link a `/cash-register`). Botón "Actualizar saldo" disabled para MANAGER con tooltip.
 
 ### Helpers (`src/lib/tesoreria.ts`)
+
 - `mapCashExpenseToOperational()` — mapeo MENSAJERIA→TRANSPORTE, PAPELERIA/LIMPIEZA→SERVICIOS, MANTENIMIENTO→MANTENIMIENTO_INMUEBLE, resto→OTRO. Solo para agregado del summary; NO muta `CashTransaction`.
 - `getActiveBankBalance`, `getExpensesInRange`, `getCashExpensesInRange`, `getDefaultMonthRange`, `OPERATIONAL_EXPENSE_METHODS`.
 
 ### Archivos tocados
+
 - `prisma/schema.prisma` + `prisma/migrations/20260415074752_add_operational_expense_and_bank_balance/`
 - `src/lib/tesoreria.ts` (nuevo)
 - `src/app/api/tesoreria/**` (7 archivos nuevos)
@@ -509,11 +572,13 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `src/app/(pos)/sidebar.tsx` (agregada entrada "Tesorería" icono `Landmark`, roles `MANAGER+ADMIN`, después de "Caja")
 
 ### Deuda conocida
+
 - **Create-then-upload** (compartida con P4-A) — el modal envía placeholder URL (`https://placeholder.local/tmp`) al crear con `metodoPago=TRANSFER` y lo sobrescribe con el upload posterior. Blast radius bajo (filtro "Solo sin comprobante" lo detecta). Refactor consolidado a upload-first con token diferido a **Fase 6** (hardening) — ver sección "Create-then-upload → upload-first con token" en FASE 6.
 
 ---
 
 ## FASE P10 — Reportes expandidos ✅ (Completo — 2026-04-17)
+
 **Modelo: Sonnet | Dependencias: P4 para rentabilidad**
 
 > **Rediseño v1 (2026-04-18):** Decisiones cerradas → [`docs/reportes-redesign/REPORTES_V1_DECISIONS.md`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md)
@@ -521,6 +586,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 ### Infraestructura compartida P10 ✅ (Lote 1 — 2026-04-16)
 
 `src/lib/reportes/` — 6 módulos:
+
 - `csv.ts` — `downloadCSV(rows: Record<string, unknown>[], filename)`, BOM UTF-8 para Excel.
 - `money.ts` — `serializeDecimal(d)`, `formatMXN(n)`.
 - `branch-scope.ts` — `branchWhere(session, filterBranchId?)` → `{ branchId?: string }`.
@@ -531,6 +597,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `money.ts` — agrega `IVA_RATE = 0.16` (Lote 5).
 
 `src/app/(pos)/reportes/_components/` — 6 componentes:
+
 - `ReportHeader` — título + icono + filtros + acciones.
 - `ReportKpiCards` — grid `2/3/5 cols`; primera card con Velocity Gradient.
 - `ReportTable<T>` — genérica con `TableColumn<T>[]`, `keyExtractor`, `isLoading`, `emptyMessage`.
@@ -539,6 +606,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `ReportBranchFilter` — select de sucursales, retorna `null` si `role !== "ADMIN"`.
 
 ### P10-A — Ventas por vendedor ✅ (Lote 1 — 2026-04-16)
+
 - Ruta: `/reportes/ventas-vendedor` (MANAGER + ADMIN).
 - Columnas: folio, cliente, modelo, voltaje, fecha, total, método de pago, estado.
 - KPIs (solo ventas COMPLETED): total vendido, tickets, ticket promedio, unidades, vendedores activos.
@@ -549,6 +617,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - `getPaymentLabel()`: un método → label español; varios → "MIXTO".
 
 ### P10-B — Estado de cuenta por cliente ✅ (Lote 4 — 2026-04-16)
+
 - Dos niveles: **Nivel 1** `/reportes/clientes` (lista agregada) + **Nivel 2** `/reportes/clientes/[id]` (detalle por cliente). Roles: `SELLER + MANAGER + ADMIN`.
 - **Branch scoping para clientes globales**: `Customer` no tiene `branchId`. Para SELLER/MANAGER se resuelve el universo de clientes vía subqueries `Sale.findMany({ distinct: ["customerId"], where: branchFilter })` + equivalente en `Quotation`, union en `Set<string>`. ADMIN puede filtrar por sucursal. No se exponen compras del cliente en otras sucursales.
 - **Nivel 1 — Lista agregada**:
@@ -570,6 +639,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Sidebar: "Estado de cuenta" → `/reportes/clientes`, icon `Wallet`, **todos los roles** (SELLER+MANAGER+ADMIN).
 
 ### P10-C — Rentabilidad por producto ✅ (Lote 5 — 2026-04-16)
+
 - Ruta: `/reportes/rentabilidad` (MANAGER + ADMIN).
 - Fuente: `Sale(COMPLETED)` + `SaleItem` en el rango de fechas + `resolveCostsBatch` global (último RECEIPT → catálogo).
 - Procesamiento: `computeLineRevenues(sale)` por cada venta → prorrateo de `Sale.discount` → `revenueNeto = revenueConIva / 1.16`. Agrega por producto (key `v:{id}` / `s:{id}`). Líneas libres (`isFreeForm` o sin FK) → excluidas del margen, contadas en KPI.
@@ -582,6 +652,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - **Diagnóstico de descuentos** (`prisma/diagnostic-p10c-discount.ts`): BD actual tiene 1 venta COMPLETED, 0 con `Sale.discount > 0`, 0 `SaleItem.discount > 0`. Prorrateo neutral en datos actuales.
 
 ### P10-D — Valor de inventario ✅ (Lote 5 — 2026-04-16)
+
 - Ruta: `/reportes/inventario/valor` (MANAGER + ADMIN).
 - Fuente: `Stock(quantity > 0)` + `resolveCostsBatch` global. Incluye productos inactivos si tienen stock.
 - KPIs: valor total (Velocity Gradient), valor vehículos, valor simples, productos distintos, sucursales con stock (ADMIN).
@@ -592,6 +663,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Sidebar: "Valor de inventario", icon `Coins`, roles MANAGER+ADMIN.
 
 ### P10-E — Movimientos de inventario ✅ (Lote 3 — 2026-04-16)
+
 - Ruta: `/reportes/inventario/movimientos` (MANAGER + ADMIN).
 - Fuente: `InventoryMovement` — **sin** `include: { user, branch }` (no existen relaciones Prisma en el modelo); sucursales y usuarios resueltos con queries batch separadas en `Promise.all`.
 - Convención de signo confirmada por código existente: `quantity > 0` → Entrada (`PURCHASE_RECEIPT`, `RETURN`, `TRANSFER_IN`); `quantity < 0` → Salida (`SALE`, `WORKSHOP_USAGE`, `TRANSFER_OUT`); `quantity === 0` → Neutro (ajuste sin cambio neto).
@@ -605,6 +677,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Mini-fix aplicado en este lote: orden de resolución del autorizador en `historial/page.tsx` corregido — `closeAuthorization.approver.name` (fuente canónica P5) tiene prioridad sobre `authorizedBy.name` (campo legacy pre-P5).
 
 ### P10-F — Historial de cortes de caja ✅ (Lote 2 — 2026-04-16)
+
 - Ruta: `/reportes/caja/historial` (MANAGER + ADMIN).
 - Filtros: rango de fechas (cierre), sucursal (ADMIN), operador.
 - KPIs: total cortes, efectivo esperado acumulado, efectivo contado acumulado, diferencia neta, cortes con diferencia.
@@ -614,6 +687,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Sidebar: `hasSpecificSibling` fix para que `/reportes/caja` no quede activo cuando la ruta es `/reportes/caja/historial`.
 
 ### P10-G — Compras al proveedor ✅ (Lote 6 — 2026-04-17)
+
 - Ruta: `/reportes/compras-proveedor` (MANAGER + ADMIN).
 - Fuente: `PurchaseReceipt` — todas las del rango (PAGADA + PENDIENTE + CREDITO). Filtro por `createdAt`.
 - KPIs: total comprado (Velocity Gradient), total pagado, cuentas por pagar, cuentas vencidas (count + monto en trend), proveedores distintos.
@@ -628,6 +702,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
   - **Drift timezone en KPIs de vencimiento**: `fechaVencimiento < now()` se evalúa server-side en UTC. En `America/Merida` (UTC−6) puede haber 1 día de drift en la franja 18:00–23:59 local. No es bug de Lote 6 — es el bug sistémico de timezone ya rastreado. Al hacer el fix mecánico global de Fase 6 incluir este punto.
 
 ### P10-H — Reporte de stock mínimo ✅ (Lote 2 — 2026-04-16)
+
 - Ruta: `/reportes/inventario/stock-minimo` (MANAGER + ADMIN).
 - Snapshot de todos los `Stock` con `quantity < stockMinimo`. Filtro in-memory (cross-model `quantity ≤ productVariant.stockMinimo` no es expresable en Prisma where).
 - Polimorfismo: `ProductVariant` (`kind: "variant"`) y `SimpleProduct` (`kind: "simple"`). Double null-guard antes de serializar.
@@ -640,9 +715,11 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Ordenado por `quantity − stockMinimo` asc (más urgente primero).
 
 ### P10-I — Reporte anual ✅ (Lote 7 — 2026-04-17)
+
 **Ruta:** `/reportes/anual` — ADMIN only. Sin filtro de sucursal (cross-branch siempre).
 
 **Fuentes (sin doble conteo):**
+
 - Ingresos: `Sale(status=COMPLETED)` → `total`
 - Gastos no-efectivo: `OperationalExpense(metodoPago IN CARD|TRANSFER|CREDIT_BALANCE, isAnulado=false)` → `monto`
 - Gastos efectivo: `CashTransaction(type=EXPENSE_OUT)` → `amount`
@@ -660,20 +737,24 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
   - **ATRATO excluido de OperationalExpense**: gastos con `metodoPago=ATRATO` no se incluyen en gastos operativos del reporte. Si el cliente usa ATRATO para gastos op., agregar `ATRATO` al filtro `metodoPago`.
 
 ### Archivos clave
+
 - `src/app/api/reportes/` (nuevas sub-rutas)
 - `src/app/(pos)/reportes/` (ampliar existente)
 
 ---
 
 ## FASE P11 — Seguimiento de mantenimientos ✅ 2026-04-17
+
 **Modelo: Sonnet | Schema: `ServiceCatalog.esMantenimiento` (aditivo) | Dependencias: ninguna**
 
 > **Decisión de fusión:** integrado como tab dentro de `/workshop`, NO módulo independiente. Sin ítem nuevo en sidebar. Diseño cerrado con Opus.
 
 ### Ruta final
+
 `/workshop/mantenimientos` (TECHNICIAN + MANAGER + ADMIN). SELLER es redirigido a `/workshop`.
 
 ### Lógica implementada
+
 - Solo `CustomerBike` con `AssemblyOrder.saleId` → `Sale` (no CANCELLED). Bicis sin venta origen no aparecen.
 - Solo cuenta como mantenimiento: `ServiceOrder` con `status = DELIVERED` + al menos un `ServiceOrderItem` con `serviceCatalog.esMantenimiento = true`.
 - `base = último mantenimiento ?? fecha de compra`. `próximo = base + 6 meses`.
@@ -681,6 +762,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 - Ordenado por `diasRestantes` ASC (más urgente primero).
 
 ### Archivos creados / modificados
+
 - `prisma/schema.prisma` — `ServiceCatalog.esMantenimiento Boolean @default(false)` (nueva columna)
 - `prisma/migrations/20260417063503_add_mantenimiento_flag_to_service_catalog/migration.sql`
 - `src/app/api/configuracion/servicios/route.ts` — POST acepta `esMantenimiento`
@@ -693,12 +775,15 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 > **Mejora 2026-04-17:** `NewOrderDialog` ahora acepta `initialCustomerBikeId` vía query param; el botón "Crear orden de taller" de `/workshop/mantenimientos` navega a `/customers/[id]?customerBikeId=X` y pre-selecciona cliente + bici directamente.
 
 ---
+
 ## FASE P12 — Transferencias entre sucursales
 
 ### P12-B — Schema + API + UI ✅ (2026-04-17)
+
 **Modelo: Opus diseño → Sonnet implementación (3 sesiones CC separadas)**
 
 **Schema aditivo** (migración `20260417075847_add_stock_transfer`):
+
 - `StockTransfer` con cabecera (folio único, fromBranchId, toBranchId, status, 5 pares de audit: creado/autorizado/despachado/recibido/cancelado por+at, motivoCancelacion, notas)
 - `StockTransferItem` polimórfico 4-way (productVariantId XOR simpleProductId XOR batteryId XOR customerBikeId, enforced con CHECK en SQL)
 - `BatteryStatus` extendido con `IN_TRANSIT` (aditivo al final del enum)
@@ -707,6 +792,7 @@ Ruta: `/tesoreria` (MANAGER + ADMIN).
 **Enum `StockTransferStatus`:** SOLICITADA | BORRADOR | EN_TRANSITO | RECIBIDA | CANCELADA
 
 **Máquina de estados:**
+
 ```
 SOLICITADA (SELLER pull) ──autorizar──► BORRADOR ──despachar──► EN_TRANSITO ──recibir──► RECIBIDA
      ▲                        │
@@ -717,6 +803,7 @@ BORRADOR direct           CANCELADA
 **Roles (regla oro):** cualquier SELLER+ crea `SOLICITADA` con `toBranchId = su branch`; solo MANAGER+ADMIN transicionan BORRADOR/EN_TRANSITO/CANCELADA (excepto auto-cancelación del creador en SOLICITADA). Solo MANAGER+ADMIN del `toBranchId` reciben.
 
 **APIs (`/api/transferencias/`):**
+
 - `POST /` — crear (SELLER→SOLICITADA, MANAGER/ADMIN→BORRADOR con opción `enviarAhora`)
 - `GET /` — lista paginada con scoping por rol, filtros `?status/?direccion/?desde/?hasta`
 - `GET /[id]` — detalle con visibility check
@@ -724,9 +811,10 @@ BORRADOR direct           CANCELADA
 - `POST /[id]/autorizar` — SOLICITADA → BORRADOR|EN_TRANSITO (body: `despacharInmediato`)
 - `POST /[id]/despachar` — BORRADOR → EN_TRANSITO
 - `POST /[id]/recibir` — EN_TRANSITO → RECIBIDA (body: items con cantidadRecibida; enforce coverage completo)
-- `POST /[id]/cancelar` — * → CANCELADA (motivo min 5 chars; reversa automática si venía de EN_TRANSITO)
+- `POST /[id]/cancelar` — \* → CANCELADA (motivo min 5 chars; reversa automática si venía de EN_TRANSITO)
 
 **Contabilidad de inventario:**
+
 - Despacho: `TRANSFER_OUT` + decrement Stock (variant/simple), Battery muta a destino con IN_TRANSIT, CustomerBike muta con su Battery asignada (INSTALLED se conserva)
 - Recepción: `TRANSFER_IN` + upsert Stock destino. **NO genera ADJUSTMENT por recepción parcial** — la merma es visible en `cantidadEnviada > cantidadRecibida` y el neto contable ya está cubierto por `TRANSFER_OUT(n) + TRANSFER_IN(m)`. Battery→IN_STOCK; CustomerBike no-op.
 - Reversa (cancelar EN_TRANSITO): `ADJUSTMENT` positivo en origen + restore Battery/CustomerBike a fromBranchId
@@ -735,6 +823,7 @@ BORRADOR direct           CANCELADA
 **Folio:** `TRF-{branchCode}-{seq4}` con seq único por fromBranchId.
 
 **UI `/transferencias`:**
+
 - Lista con tabs Solicitudes / Borradores / En tránsito / Historial, badges de count para acciones pendientes del usuario
 - Detalle con timeline de eventos, tabla de items, barra de acciones sticky contextual por rol + estado
 - Modal crear polimórfico (4 tipos), `useFieldArray` para items, fetch lazy de disponibles por branch
@@ -742,9 +831,11 @@ BORRADOR direct           CANCELADA
 - Sidebar: ítem "Transferencias" con icono `ArrowLeftRight`, visible SELLER+MANAGER+ADMIN
 
 ### P12-A — Integración POS ✅ (2026-04-17)
+
 **Modelo: Opus diseño → Sonnet implementación (CC-4 con advertencia pos-terminal.tsx)**
 
 Cambios puramente aditivos a `pos-terminal.tsx`:
+
 - Icon `ArrowLeftRight` en cada card (variants + simples) abre `RemoteStockPopover`
 - Cuando `stockLocal === 0 && remoteStock.length > 0`: botón primario del card cambia a "Solicitar transferencia" con tono accent
 - `RequestTransferDialog` crea siempre `SOLICITADA` desde el POS (SELLER pull hacia su branch)
@@ -764,6 +855,7 @@ Dos reportes de solo-lectura sobre la data ya modelada en P12-B. Sin schema nuev
 **`/reportes/transferencias/mermas`** — ítems con `cantidadRecibida < cantidadEnviada` en transferencias RECIBIDA. Vistas "detalle", "por producto" y "por sucursal" computadas client-side. Drill-down sin round-trip al servidor. CSV siempre en vista detalle completa.
 
 Archivos creados:
+
 - `src/lib/reportes/transferencias.ts` — `formatProducto`, `computeMermaUnidades`
 - `src/app/(pos)/reportes/transferencias/page.tsx`
 - `src/app/(pos)/reportes/transferencias/transferencias-report-client.tsx`
@@ -789,11 +881,13 @@ de D/E/F y se suma **Sub-fase G — Dashboard móvil del técnico** que estaba
 en los mocks pero fuera del plan original.
 
 ### Sub-fase A — Schema y APIs ✅
+
 Schema aditivo + migración `workshop_redesign_schema` + helpers en
 `src/lib/workshop*.ts` + 7 endpoints nuevos + 5 modificados + backfill
 idempotente. Sin UI.
 
 ### Sub-fase B — Kanban rediseñado ✅ Completo (2026-04-21, commit b687807)
+
 Tablero con 7 columnas derivadas de `status + subStatus`. DnD con
 transiciones validadas server-side. Chip de `type` y avatar de
 `assignedTech`. Filtros URL-sync (técnico, antigüedad, mine, tipo).
@@ -802,41 +896,36 @@ Bandeja lateral "Pausada". Responsive con acordeón móvil.
 **Donde diseñar:** chat ligero (Sonnet) + Code.
 **Subagentes:** no. **Sesiones estimadas:** 2.
 **Riesgo:** alto (UI en uso diario).
+
 - **Rediseño del Taller Sub-fase B (P13-B) — Decisiones de diseño (2026-04-21)** ✅ Implementado (2026-04-21, commit b687807)
   Diseño cerrado en chat con Opus. Todas las decisiones implementadas:
   ✅ (1) 7 columnas: PENDING · IN_PROGRESS sin sub · WAITING_PARTS · WAITING_APPROVAL
-      · COMPLETED · DELIVERED (hoy, colapsada default) · CANCELLED (hoy, colapsada default).
+  · COMPLETED · DELIVERED (hoy, colapsada default) · CANCELLED (hoy, colapsada default).
   ✅ (2) Bandeja lateral "Pausada" separada de las 7, IN_PROGRESS + PAUSED.
   ✅ (3) Aging semántico por columna, no universal:
-      PENDING 0-4h/4-24h/>24h · IN_PROGRESS vs updatedAt+48h proxy ·
-      COMPLETED 0-1d/1-2d/>2d · PAUSED 0-1d/1-3d/>3d.
-      (Nota: `fechaPromesa` no existe en schema — se usó `updatedAt+48h` como especificado en el fallback.)
+  PENDING 0-4h/4-24h/>24h · IN_PROGRESS vs updatedAt+48h proxy ·
+  COMPLETED 0-1d/1-2d/>2d · PAUSED 0-1d/1-3d/>3d.
+  (Nota: `fechaPromesa` no existe en schema — se usó `updatedAt+48h` como especificado en el fallback.)
   ✅ (4) Tarjeta: folio + aging / cliente / bikeInfo·V·Ah inline / chip tipo solo si ≠ PAID /
-      separador tonal / avatar + técnico o `-- Sin asignar`. S5 liviano vive inline, no chip.
+  separador tonal / avatar + técnico o `-- Sin asignar`. S5 liviano vive inline, no chip.
   ✅ (5) Filtros URL-sync: tech, aging, mine (TECHNICIAN-only), type multi-select.
-      "Prioridad" del mock renombrada a "Antigüedad".
+  "Prioridad" del mock renombrada a "Antigüedad".
   ✅ (6) 8 phantoms del mock NO implementados: En Diagnóstico (status fake), URGENTE
-      (redundante), FLOTILLA (sin flag B2B), barra progreso (sin dato), batería %
-      (pendiente P13-C), Stock OK (S5 pesado en P13-D), ribbon PRE-PAG (requiere
-      decisión arquitectónica en P13-E), Prioridad (renombrada).
+  (redundante), FLOTILLA (sin flag B2B), barra progreso (sin dato), batería %
+  (pendiente P13-C), Stock OK (S5 pesado en P13-D), ribbon PRE-PAG (requiere
+  decisión arquitectónica en P13-E), Prioridad (renombrada).
   ✅ (7) Responsive fallback < md: acordeón vertical, DnD deshabilitado, filtros en sheet glassmorphism.
-  ⚠️ (8) S5 parte pesada **planeada** para P13-D (`batteryAvailabilityMap` al agregar ítems)
-      y P13-E (`assertPolicyActive` al entregar) — **NO implementada**. Verificación
-      2026-04-25 contra código real: `src/lib/workshop.ts:81` sigue no-op
-      (`void _bikeId; void _tx`); `src/app/(pos)/assembly/page.tsx:213` `batteryAvailabilityMap`
-      compone key `${modelo_id}:${voltaje_id}` ignorando capacidad. Se reubica a sub-fase
-      **P13-H follow-up** (4-5h, fuera del cluster). S5.a (display ligero V·Ah inline) sí
-      quedó cerrado en B. Ver `feedback_grep_before_declaring_closed.md` para learning.
+  ✅ (8) S5 parte pesada confirmada en P13-D (batteryAvailabilityMap al agregar ítems)
+  y P13-E (assertPolicyActive al entregar). NO implementado en B.
 - **Deuda arquitectónica identificada en P13-B (2026-04-21) → resuelta 2026-04-22 con opción (a)**
   Ribbon "Pre-pagado" en tarjetas del Kanban requiere saber si hay pre-pago antes de
   DELIVERED. Hoy `Sale` se crea solo al entregar, así que no hay dato. **Decisión:**
   opción (a) — agregar `ServiceOrder.prepaid Boolean @default(false) + prepaidAt DateTime? +
-  prepaidAmount Decimal? @db.Decimal(10,2) + prepaidMethod PaymentMethod?` como schema
+prepaidAmount Decimal? @db.Decimal(10,2) + prepaidMethod PaymentMethod?` como schema
   aditivo en Sub-fase Hotfix (migración, sin UI) y consumir en D (ficha técnica) + E
   (pantalla de entrega, card "Ya pagado el X vía Y") + F (portal público "Pagado").
   Se descartan (b) por romper la invariante "Sale al entregar" (probada en Fase 4) y
   (c) por no atender el caso de negocio real (apartado con anticipo).
-
 
 ### Sub-fase C — Wizard de recepción ✅ Completo (2026-04-22)
 
@@ -897,7 +986,7 @@ replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
    (el DELETE no tenía ownership check — bug aparte), `deliver`, `customers/search`,
    `technicians`, `bikes/[id]/maintenance-status` (nuevo ownership gate por
    `bike.branchId` — otra fuga aparte), `service-orders/[id]/{sub-status,qa,
-   approvals,cancel,charge}`, `approvals/[approvalId]/respond`. Excepción:
+approvals,cancel,charge}`, `approvals/[approvalId]/respond`. Excepción:
    `/api/workshop/drafts/photos` no aplica scope (files per-user).
 
 2. **Schema aditivo prepaid — RESUELTO.** Migración
@@ -928,10 +1017,11 @@ replique en la ficha técnica. Tres sub-sesiones Sonnet; 2-3 días totales.
      `bike.branchId` (fuga de estado de mantenimiento). Agregado gate.
 
 **Pendientes del scope original que migran a Hotfix.2:**
+
 - 🔴 **Decimal serialization en `/workshop/[id]`** — `customer.creditLimit` y
   `customer.balance` siguen cruzando Server → Client sin convertir. Error en
   consola confirmado 2026-04-22: `Only plain objects can be passed to Client
-  Components from Server Components. Decimal objects are not supported.` Fix
+Components from Server Components. Decimal objects are not supported.` Fix
   planeado: `src/lib/serialize/customer.ts` con `serializeCustomer(c)` +
   reemplazar en `page.tsx:98` + grep preventivo de `customer={` en props
   server→client. **No bloqueó Hotfix.1** porque la ficha carga visualmente,
@@ -1024,6 +1114,7 @@ servidor ahora lo acepta opcional).
 → `dbe08e1` `var(--shadow)` en OrderCard.
 
 **Entregado:**
+
 - Eliminado `src/app/(pos)/workshop/new-order-dialog.tsx` y migrado el
   caller en `customers/[id]/page.tsx` a `Link` con deeplink
   `/workshop/recepcion?customerBikeId=X` (el wizard ya soporta prefill
@@ -1041,11 +1132,13 @@ servidor ahora lo acepta opcional).
   (dark mode cambia automáticamente a `rgba(0,0,0,0.4)`).
 
 **Checklist DESIGN.md — estado final:**
+
 - Regla No-Line: ✅ limpia (divisores con tinta al 6% vía color-mix).
 - Glassmorphism mobile filter sheet: ✅ patrón oficial.
 - Tipografía display/body KPIs/board/detalles: ✅ respetada.
 
 **Deudas diferidas (fuera de scope Hotfix):**
+
 1. **Densidad de KPIs** — `--density-{card,row,cell-y}` existen
    (`globals.css:108-144`) pero `workshop-kpis.tsx` usa `p-5` igual que
    ventas/cotizaciones/reportes. Tokenizar solo taller crearía
@@ -1080,6 +1173,7 @@ y el detalle de orden). Foco explícito en **tipografía** — detectadas
 inconsistencias donde letras no aplican Inter/Space Grotesk según `DESIGN.md`.
 
 **Checklist obligatorio (por pantalla):**
+
 - **Tipografía:** toda clase `font-*` y `text-*` aplicada respeta la jerarquía
   de `DESIGN.md §Tipografía` (display / heading / body / caption / number).
   Cero `font-family` hardcoded; cero `font-sans` genérico donde el token
@@ -1133,6 +1227,7 @@ Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
 `260c469` D.3a → `49c4f1f` D.3b. Build/tsc/eslint limpios en cada paso.
 
 #### D.1 — Schema requireQaSecondChecker + QaPanel + lectura prepaid (`f89dd3d`)
+
 - `Branch.requireQaSecondChecker Boolean @default(false)`. Migración
   `20260422180000_add_qa_second_checker`.
 - `qa-panel.tsx`: badge `--sec-container` (verde) cuando `qaPassedAt`; CTA
@@ -1141,8 +1236,8 @@ Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
 - `prepaid-card.tsx`: lee `prepaidAt/Amount/Method` del Hotfix.1 con
   fallback "Pre-pagado" para órdenes legacy.
 - `deliver/route.ts`: guard `type !== "COURTESY" && requireQaSecondChecker
-  && servicedByUserId && qaPassedByUserId && servicedByUserId ===
-  qaPassedByUserId` → 422 `QA_SECOND_CHECKER_REQUIRED`. Tolerante con
+&& servicedByUserId && qaPassedByUserId && servicedByUserId ===
+qaPassedByUserId` → 422 `QA_SECOND_CHECKER_REQUIRED`. Tolerante con
   `servicedByUserId == null` (legacy, documentado inline).
 - `page.tsx` + `service-order-details.tsx`: `select` y `FullSerializedOrder`
   extendidos; eliminado bloque inline duplicado de "Pre-pago registrado".
@@ -1151,10 +1246,11 @@ Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
 `--ter-container` (rojo) — coherente con StatusChip "Completado/Entregado".
 
 #### D.2 — `expiresAt` + ApprovalDrawer + lazy expiry (`b92e3dc`)
+
 - `ServiceOrderApproval.expiresAt DateTime` NOT NULL + índice
   `(status, expiresAt)`. Migración `20260422190000_add_approval_expires_at`
   con backfill `requestedAt + INTERVAL '48 hours'` (Opción A — filas legacy
-  >48h nacen EXPIRED). DB local diagnóstico previo: 0 approvals, sin impacto.
+  > 48h nacen EXPIRED). DB local diagnóstico previo: 0 approvals, sin impacto.
 - `src/lib/workshop-approval-expiry.ts`: `APPROVAL_TTL_MS` (48h),
   `computeApprovalExpiresAt`, `expirePendingApprovalsTx` (idempotente).
 - `POST /approvals`: `expiresAt = now + 48h`; response incluye `expiresAt`.
@@ -1176,6 +1272,7 @@ Sin UI ni lógica en Hotfix (eso vive en D+E). Sólo schema para desbloquear D.
   `findUnique` (lazy expiry); approvals serializadas validando `itemsJson`.
 
 #### D.3a — Stock chip SWR + descomposición (`260c469`)
+
 - `GET /api/workshop/stock-availability?ids=a,b,c` con
   `operationalBranchWhere`. Polimorfismo Stock
   (`productVariantId | simpleProductId`); defaultea 0 los ids sin fila.
@@ -1198,6 +1295,7 @@ ramas de estado entrelazadas con cobro/entrega y no necesita stock chip;
 descomponerlo sin valor multiplica props sin reducir riesgo.
 
 #### D.3b — Prefill `?customerId` en wizard (`49c4f1f`)
+
 - `recepcion/page.tsx`: nuevo searchParam `customerId`. Si llega solo
   (sin `customerBikeId`), fetch customer + bikes filtrado por `branchId`
   vía `operationalBranchWhere`. **`customerBikeId` GANA** si vienen ambos
@@ -1236,6 +1334,7 @@ en vivo, disparador de WhatsApp y lógica de `subStatus`. Gate del botón
 solo visible con `status = COMPLETED`.
 
 **Scope ampliado 2026-04-22:**
+
 - **QA second-checker opcional:** agregar `Branch.requireQaSecondChecker Boolean @default(false)`.
   Cuando está en `true`, validar que `qaPassedByUserId != servicedByUserId` al
   transicionar a DELIVERED (422 si falla). Permite talleres 1-2 técnicos con
@@ -1246,7 +1345,7 @@ solo visible con `status = COMPLETED`.
   última pieza mientras él trabaja.
 - **`expiresAt` en `ServiceOrderApproval`:** `DateTime @default(now() + 48h)`
   (interval hardcoded por ahora; si hace falta configurable, `Branch.
-  approvalTtlHours Int? @default(48)` diferido). Cron o lazy-check al abrir la
+approvalTtlHours Int? @default(48)` diferido). Cron o lazy-check al abrir la
   ficha marca aprobaciones vencidas como `REJECTED` y libera subStatus.
 - **Consumir `ServiceOrder.prepaid` del Hotfix:** mostrar en header de la
   ficha si la orden fue pre-pagada (lectura, sin permitir editar — eso vive
@@ -1257,10 +1356,12 @@ solo visible con `status = COMPLETED`.
 **Sesiones estimadas:** 2-3. **Riesgo:** alto.
 
 ### Sub-fase E — Pantalla de entrega + PDFs
+
 UI que oculta panel de cobro cuando `type ∈ {WARRANTY, COURTESY,
 POLICY_MAINTENANCE}`. PDF de comprobante con leyenda según `type`.
 
 **Scope ampliado 2026-04-22:**
+
 - **`Sale.excludeFromRevenue Boolean @default(false)` aditivo:** al generar
   `Sale(total=0, type=SERVICE)` para `POLICY_MAINTENANCE`, marcar
   `excludeFromRevenue=true`. Los reportes de ventas filtran por esta flag en
@@ -1268,7 +1369,7 @@ POLICY_MAINTENANCE}`. PDF de comprobante con leyenda según `type`.
   `UPDATE "Sale" SET "excludeFromRevenue" = true WHERE "total" = 0`
   (aproximación: tickets con total cero no cuentan para ingreso).
 - **UI de ribbon pre-pagado:** consumir `ServiceOrder.prepaid/prepaidAt/
-  prepaidAmount/prepaidMethod` del Hotfix. Panel derecho muestra card
+prepaidAmount/prepaidMethod` del Hotfix. Panel derecho muestra card
   `--secondary-container` "Ya pagado el {date} vía {method} por ${amount}"
   sin selector de cobro. Al `DELIVERED`, la lógica server-side sabe que no
   debe crear nueva `CashTransaction` (ya existe la del pre-pago) y genera
@@ -1279,6 +1380,7 @@ son plantillas separadas por tipo; no si es una con leyenda dinámica
 (cerrar esto en el chat de diseño). **Sesiones estimadas:** 2.
 
 ### Sub-fase F — Portal público
+
 Página `/taller/public/[token]` fuera de `(pos)/`, mobile-first, light
 mode forzado. Consume endpoints públicos ya creados en Sub-fase A.
 
@@ -1342,7 +1444,7 @@ scope v1 — quedan como deuda de Fase 6).
 - Sub-menú de motivos dentro del mismo Sheet con flag `showSubMenu` (no
   dos sheets anidados).
 - `mobile-fetch.ts` centraliza `x-client: mobile-dashboard` + `cache:
-  no-store` para que todos los fetch del móvil dejen trazo en los logs
+no-store` para que todos los fetch del móvil dejen trazo en los logs
   `[workshop-mobile]` (mecanismo de métricas del piloto).
 
 **Deudas explícitas fuera de scope v1 (post-piloto / Fase 6):**
@@ -1361,6 +1463,7 @@ se difiere a Fase 6 — no es crítica para el piloto y depende de métricas
 de productividad que maduran con uso real.
 
 ### Testing de P13 completo
+
 Se integra al scope de Fase 6 (hardening de producción). Tests por flujo
 con subagentes: recepción, aprobación interna, aprobación pública,
 entrega con cada `type`, QA gating.
@@ -1372,52 +1475,45 @@ entrega con cada `type`, QA gating.
 Decisión tomada 2026-04-18. El catálogo real de Evobike tiene 18 configuraciones V+Ah de batería y ~48 modelos en 7 categorías — el schema anterior solo manejaba `(Modelo, Color, Voltaje)` sin eje de capacidad (Ah). Plan original en `memoria/project_battery_catalog_expansion.md`.
 
 ### S1 — Schema aditivo + seed canónico ✅ (2026-04-19, commit `6cc3e8c`)
+
 Eje `Capacidad` (Ah) en `ProductVariant` (nullable); `@@unique` ampliado a 4 campos. `Modelo.categoria` nullable + `ModeloCategoria` con BASE/PLUS/CARGA_PESADA (BICICLETA deprecated). Seed: 12 capacidades, 1 modelo `BATERIA EVOBIKE` con 18 variants, 51 modelos vehículo categorizados, 87 `BatteryConfiguration`. Rename legacy `ECLIPSE → ECLIPCE`. Modelos nuevos: NUBE, CIELO, SCOOTER S7, RYDER PRO, EVOTANK 160/180 HIBRIDO.
 
 ### S1-followup — Fix seed de variants y configs faltantes ✅ (2026-04-19, commit `fbe73a2`)
+
 39 variants nuevos en `modelo_configuracion.csv` para los 6 modelos recién creados; fix de `voltaje_id=N/A` en SCOOTER M1-S6 y JUGUETE (EVOKID/FOXY/CROSS KID → 24V; RICOCHET/PHYTON/M3/M4/M5 → 36V; M1/M2/S6 → 48V). AGUILA (60V+72V) y FAMILY (48V+60V) agregados a `BATTERY_ROWS`. `prisma.productVariant.upsert` ahora actualiza `modelo/color/voltaje` (antes solo precio). Resultado: 494 variants activos, 91 BatteryConfigurations, 0 gaps. Utilidad `scripts/check_gaps.mjs` para validar.
 
 ### S2 — UI catálogo con matriz V×Ah + modelos por categoría ✅ (2026-04-19, commit `fc08de2`)
+
 Tab Modelos: chips por 7 categorías + agrupación visual; dialog oculta select de esBateria. Tab Baterías nuevo: matriz 5V × 12Ah con celdas precio+stock; endpoint dedicado `/api/configuracion/baterias`. Tab Config. Baterías: selector filtrado por voltaje + label `{V}V · {Ah}Ah · {SKU}`; API valida match voltaje batería vs. config. Tab Variantes filtra baterías (solo vehículos).
 
 ### S3 — Recepción acoplada vehículo+batería ✅ (2026-04-19, commits `45be6fd` + `35d78d6`)
+
 Schema: `AssemblyOrder.batteryConfigurationId` + `Battery.assemblyOrderId` (ambos FK nullable). API recepción resuelve `BatteryConfiguration` por `(modeloId, voltajeId, capacidadId)`, crea `AssemblyOrder PENDING` con reserva de lote de baterías; soporta "batería llega después" que difiere la reserva. UI form: panel "Acoplamiento batería por unidad" aparece cuando la variante tiene configs; selector V·Ah·SKU cuando hay >1 config; checkbox "llega después" por línea. API assembly: `available-batteries` respeta config reservada; `cancel` revierte reserva. Cierra deuda de Fase 2H-D. **Fix `35d78d6`:** ScrollArea de Radix sustituido por `overflow-y-auto` nativo (no propagaba altura con contenido dinámico).
 
 **Deuda diferida en S3 (aterrizar con rediseño de Inventario — Paso 2 módulo 6):**
+
 - Validación UI completa end-to-end pausada por rediseño pendiente del módulo. Pruebas parciales: Caso A (1 config) funcional; Casos B (multi-Ah), C (llega después) y D (cancelación libera reserva) sin validar en navegador.
 - La UI actual del form de recepción funciona pero está destinada a rediseño — evitar seguir parchando cosméticos.
 
-### S4 — POS: selector de config al vender ⏸️ (aterrizar con módulo POS Terminal del Cluster Fase A — ver `docs/design-prompts/CLUSTER_DECISIONS.md §1.6` ítem 10)
+### S4 — POS: selector de config al vender ⏸️ (aterrizar con rediseño del POS Terminal — Paso 2 módulo 11)
 
-**Scope ampliado tras audit 2026-04-25** (estimado revisado **11-15h**, antes 6-8h):
+Cuando el vendedor cierra venta de un modelo con >1 config (ej. EVOTANK 180 72V → 45Ah o 52Ah), hoy el sistema asigna la primera arbitrariamente. Scope:
 
-Cuando el vendedor cierra venta de un modelo con >1 config (ej. EVOTANK 180 72V → 45Ah o 52Ah), hoy el sistema asigna la primera arbitrariamente — `pos-terminal.tsx:710` ejecuta `.find()` 2-axis ignorando capacidad.
-
-- UI del POS: selector inline de `BatteryConfiguration` cuando el variant tiene >1 config para su voltaje (~6-8h).
-- **Schema migración: ampliar `VoltageChangeLog` con `fromCapacidad`/`toCapacidad`** (o equivalente — la sub-decisión #6 de I10 Pack A.2 cierra el shape exacto y la estrategia de backfill histórico).
-- 6 callsites de `VoltageChangeLog` requieren update: `api/sales/route.ts`, `api/sales/[id]/cancel/route.ts`, `api/customer-bikes/[id]/route.ts`, `api/customers/[id]/bicis/[bikeId]/historial/pdf/route.tsx`, `lib/customers/profile-tabs-data.ts`, `components/customers/profile/tab-bicis.tsx` (~4-5.5h schema + callsites + UI).
-- Migración del callsite POS (`pos-terminal.tsx:710` + `point-of-sale/page.tsx:110`) al helper canónico de `BatteryConfiguration` (decisión I10 Pack A.2) — ~1-2h.
+- UI del POS: selector inline de `BatteryConfiguration` cuando el variant tiene >1 config para su voltaje.
+- Schema: ampliar `VoltageChangeLog` a "cambio de config completa" (V+Ah) para trazar cambios pre-venta.
 - API de venta: validar que la config elegida corresponda al variant vendido.
-
-**Naming** (`AssemblyOrder.voltageChangeLogId` con "Log" vs `BatteryAssignment.installedAtVoltageChangeId`/`removedAtVoltageChangeId` sin "Log") **NO se renombra ahora** — naming preexistente ya inconsistente y `BatteryAssignment` vive en módulo Workshop (rediseñado, fuera del cluster). Diferido a §FASE 6 §rename post-launch.
 
 **Por qué se pospone:** el POS Terminal es el último módulo del rediseño (riesgo máximo de regresión). Meter el selector antes implica reescribir UI dos veces.
 
-### S5.a — Taller: display ligero V·Ah en chip Kanban ✅ (2026-04-21, commit `b687807`, dentro de P13-B)
-Tarjeta del Kanban renderiza `bikeInfo · V · Ah` inline. Cerrado.
+### S5 — Taller: Kanban por capacidad de batería ⏸️ (aterrizar con rediseño de Taller — Paso 2 módulo 4 / P13 Sub-fase B)
 
-### S5.b — Taller: stock por capacidad real (`assertPolicyActive` + `batteryAvailabilityMap`) ⏸️ (aterrizar como sub-fase **P13-H follow-up**, NO en POS)
+Hoy el chip Kanban agrupa por `(modelo, voltaje)`. Con S1, dos EVOTANK 72V con baterías distintas (45Ah vs 52Ah) se ven idénticos — el técnico no sabe cuál montar. Scope:
 
-**Estado real verificado 2026-04-25** (corrige afirmación falsa de P13-B/D/E ítem (8)):
-- `src/lib/workshop.ts:81` `assertPolicyActive` sigue no-op (`void _bikeId; void _tx`).
-- `src/app/(pos)/assembly/page.tsx:213` `batteryAvailabilityMap` compone key 2-axis ignorando capacidad.
+- Ampliar key del chip a `(modeloId, voltajeId, capacidadId)`.
+- Actualizar `assertPolicyActive` (validación de stock de batería específica) y `batteryAvailabilityMap`.
+- Filtrado/agrupación en UI Kanban.
 
-Scope (~4-5h):
-- `assertPolicyActive` real: lógica de negocio para validación de stock de batería por capacidad específica. Sub-decisiones a cerrar al implementar: ¿qué cuenta como disponible? ¿reservas de otros service orders se descuentan? ¿falla con 422 hard o warn UX?
-- Ampliar key de `batteryAvailabilityMap` a la dimensión faltante consumiendo el helper canónico (decisión I10 Pack A.2).
-- Sin migración de UI Kanban (S5.a ya cubre display).
-
-**Por qué se pospone fuera del POS:** el código vive en `src/lib/workshop.ts` (Taller, ya rediseñado, fuera del cluster) y `src/app/(pos)/assembly/page.tsx` (Assembly, clasificado (a) limpio). Acoplarlo a POS mezcla decisión de schema (compartida con S4 vía I10) con implementación (territorio distinto). Independiente de S4 una vez I10 esté cerrado.
+**Por qué se pospone:** P13 Sub-fase B (rediseño del Kanban) ya está planeado y va a reescribir la UI del tablero completo. S5 se integra como parte del rediseño, no como parche aparte.
 
 ---
 
@@ -1427,12 +1523,14 @@ Decisión tomada 2026-04-17. El orden correcto antes de entrar a Fase 6 es:
 
 **Paso 1 — Fix timezone global ✅ (2026-04-17)**
 Resolvimos ANTES del rediseño UI para no reverificar datos dos veces.
+
 - `parseLocalDate` exportado desde `src/lib/reportes/date-range.ts`
 - 7 archivos migrados a `parseLocalDate(param, false/true)`: `src/app/(pos)/ventas/page.tsx`, `src/app/api/reportes/caja/route.ts`, `src/app/(pos)/reportes/caja/page.tsx`, `src/app/(pos)/reportes/comisiones/page.tsx`, `src/app/(pos)/reportes/caja/historial/page.tsx`, `src/app/api/tesoreria/summary/route.ts`, `src/app/(pos)/autorizaciones/page.tsx`
 - `npm run build` y `npx eslint src/` limpios (un warning pre-existente en `/reportes/rentabilidad/page.tsx` sin relación)
 
 **Paso 1.5 — Fix `fechaVencimiento` de PurchaseReceipt ✅ (2026-04-17)**
 Cerrado con la **opción (a)**: `fechaVencimiento` migrado de `DateTime?` a `String?` ("YYYY-MM-DD") — fecha calendario sin tz. El bug original era de persistencia: input local + `z.coerce.date()` guardaba UTC medianoche que en `America/Merida (UTC-6)` retrocedía un día al leerse como local.
+
 - Migración `20260417200000_fecha_vencimiento_to_string/migration.sql` con cast `TO_CHAR(... AT TIME ZONE 'UTC', 'YYYY-MM-DD')` para preservar el día original capturado
 - Schema: `fechaVencimiento String?` (índice B-tree sigue válido; lex order en YYYY-MM-DD = cronológico)
 - POST `/api/inventory/receipts`: `z.coerce.date()` → `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)`
@@ -1447,6 +1545,7 @@ Consultar `DESIGN.md` antes de cada sesión.
 La deuda de ghost-border Parte 2 (47 instancias) se resuelve naturalmente módulo a módulo durante este paso, no requiere sesión separada.
 
 Orden de módulos (shell → adentro, riesgo ascendente):
+
 1. Layout shell: `(pos)/layout.tsx` + `sidebar.tsx`
    - **Sub-sesión 1-A ✅ (2026-04-17)** — CSS-puro + a11y. Topbar plano `var(--surf-bright)` sin border ni blur (No-Line rule); eliminados botones huérfanos del topbar (Search decorativo, Bell sin handler, Settings ruta inexistente, Help sin handler); iconos: Cog→Bike (Montaje), ArchiveRestore→BookmarkCheck (Pedidos); skip link "Saltar al contenido" + `id="main-content"`; `aria-current="page"` en sidebar links activos; `data-shell` attrs + `@media print` (oculta shell) y `prefers-reduced-motion` (cancela transiciones sidebar); ghost-border hardcoded del submenú Reportes eliminado (Opción 3 — sin sustituto). **No se commiteó cambio funcional**: bell/notifications/feed se diseñan en 1-B.
    - **Sub-sesión 1-B ✅ (2026-04-17) — UX del shell** — entregada en dos pasos: (Paso 1) `next/font/google` Inter + Space Grotesk cargados en `src/app/layout.tsx` con CSS vars (deuda detectada: self-hostear, ver Fase 6:913); consolidación de `formatRelative` en `src/lib/format-relative.ts` consumido por `notifications/feed/route.ts` y `tesoreria/saldos-cards.tsx`; (Paso 2, commit `40133d3`) feed real de notificaciones en topbar (`NotificationBell` + `GET /api/notifications/feed`), `OrphanedSessionBanner` arriba del topbar, `CashSessionManager` fuera de `<main>` renderizando en portal, sub-agrupar Reportes (Ventas/Inventario/Operación/Ejecutivo), labels de sección (Operación/Gestión/Admin), `UserMenu` con signOut. **Chore de cierre (commits `99437dc` y `e3da95c`):** `SessionUser` extraído a `src/lib/auth-types.ts`, `roleLabel` a `src/lib/auth-labels.ts`; resolver dinámico de breadcrumb agrega `StockTransfer.folio` (`/transferencias/[id]`); sidebar item "Inicio" usa icono `Home` (alineado con primer crumb). Deuda 1-B remanente: SessionUser inline en 110+ archivos (ver Fase 6). Conteo de Velocity Gradient resuelto en Sesión 4 (límite subido a 3 instancias por vista).
@@ -1455,21 +1554,26 @@ Orden de módulos (shell → adentro, riesgo ascendente):
    - **Sub-sesión 1-E ✅ (2026-04-21) — Sidebar colapsable** — Botón `PanelLeft` (lucide) en el topbar oculta/muestra el sidebar completamente. Estado persistido en cookie `sidebar-open` leída en el Server Component layout (`cookies()` de `next/headers`) para evitar flash en recarga. Archivos: `src/app/(pos)/shell-context.tsx` (`ShellClient` Client Component + `ShellContext` + `useShell()` hook), `src/app/(pos)/sidebar-toggle-button.tsx` (botón cliente que consume el contexto). El layout pasa el sidebar como prop `sidebar: React.ReactNode` a `ShellClient`; el wrapper transiciona `w-64 ↔ w-0 overflow-hidden` con `transition-[width] duration-200`. Cookie: `sidebar-open=0|1; path=/; max-age=31536000; SameSite=Lax`. Default: abierto (`!== "0"`).
    - **Refactor complementario `/dashboard` → `/` ✅ (2026-04-17)** — commit `06eabff`. `src/app/page.tsx` (redirect raíz) eliminado; dashboard ahora vive en `src/app/(pos)/page.tsx` (ruta `/`) y sus componentes por rol se reubicaron a `src/app/(pos)/_components/dashboard/`. El legacy `src/app/(pos)/dashboard/page.tsx` es un `permanentRedirect('/')` (HTTP 308 para bookmarks). 27 literales `/dashboard` migrados a `/` (sidebar, login, command palette, close-corte-dialog, 22 fallbacks defensivos en páginas protegidas). **No es el rediseño UI del módulo 3 "Dashboard / Home"** — ese sigue pendiente; este refactor solo consolida la ruta raíz.
 2. Módulo de referencia: `/reportes/*` (subagentes OK, uno por reporte)
-  > **Rediseño v1 (2026-04-18):** Decisiones cerradas → [`docs/reportes-redesign/REPORTES_V1_DECISIONS.md`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md)
-  - **Sesión 0 ✅ (2026-04-18) — Port primitivos del handoff** — Portados mecánicamente del handoff de diseño. `src/lib/format/index.ts` (formatters `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`; locale `es-MX`, timezone `America/Merida`). Primitivos en `src/components/primitives/`: `icon.tsx` (41 glyphs tipados, union `IconName`), `chip.tsx` (5 variantes semánticas), `delta.tsx` (indicador de cambio con color y glyph, 3 formatos), `sparkline.tsx` (SVG manual sin deps), `spark-bars.tsx` (SVG manual), `progress-split.tsx` (barra segmentada). Paleta datavis `--data-1..8` (light + dark WCAG AA) y tokens faltantes mergeados en `globals.css`. `DESIGN.md §6` y `§8` actualizados. **Deuda diferida (Sesión 13 — V10 Stock Crítico):** `<Chip>` cubre 5 variantes; el handoff define una 6.ª `nostock` con fondo sólido `--ter` + texto blanco (distinto de `error` que usa `--ter-container`). Agregar variante `critical` a `ChipVariant` solo cuando V10 lo requiera.
-  - **Sesión 1 ✅ (2026-04-18) — Infra de charts: Recharts + wrapper con tokens EvoFlow** — `recharts@3.8.0` instalado vía `npx shadcn@latest add chart` (compat verificada: React 19 nativo, ESM, sin conflictos Turbopack Next 16). `src/components/ui/chart.tsx` generado por shadcn — no editar. `--chart-1..5` hardcoded por shadcn reemplazados en `globals.css` → `var(--data-1..5)` en `:root` y `.dark`. Wrapper `src/components/primitives/chart.tsx`: re-exports del shadcn chart, `buildChartConfig(SeriesSpec[])` (asigna `--data-1..8` cíclico), `ChartTooltipContentGlass` (glassmorphism oficial), constantes `CHART_AXIS_TICK_STYLE` / `CHART_AXIS_LINE_STYLE` / `CHART_GRID_STYLE` tipadas como atributos SVG (no CSS — Recharts renderiza SVG). **Regla:** reportes NUNCA importan de `"recharts"` ni `"@/components/ui/chart"` directos — siempre vía `@/components/primitives/chart`. `DESIGN.md §3` y `§6` actualizados. `npx prisma validate` + `npm run lint` + `npm run build` limpios (Exit 0).
-  - **Sesiones 2-7 ✅ (2026-04-18/19) — Fases A-C completas** — Detalle en [`REPORTES_V1_DECISIONS.md §10`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md). Resumen: S2 schema (`User.pinnedReports`, `User.uiPreferences`, `AlertThreshold` + APIs); S3 hub `/reportes` + pinned dinámicos en sidebar; S4 V1 Ventas e ingresos piloto + shell reutilizable (`DetailHeader`/`FilterPanel`/`KpiGrid`) + helper `previousComparableRange`; S5 ExportDrawer universal (CSV/XLSX/PDF, `exceljs@4.4.0`, endpoint `POST /api/reportes/[slug]/export`); S6 ThresholdsModal + `ThresholdBadge` inline + vista global `/configuracion/umbrales`; S7 TweaksPanel con densidad persistida (`density-{compact,normal,comfortable}` tokens en `globals.css`, consumido por KPI cards y Power Grid).
-  - **Sesión 9 ✅ (2026-04-21) — V15 Exportación contable placeholder** — commit `5dfb63a`. S8 Builder eliminado del alcance v1. Página dedicada en `src/app/(pos)/reportes/exportacion-contable/` (server page con role-gate ADMIN vía `REPORTS_BY_SLUG` + client view `ExportacionContableView`). Aviso superior sobre integración PAC pendiente, wizard visual de 4 pasos (Tipo · Período · Formato · Confirmar) con cards deshabilitadas mostrando opciones contempladas (`STEPS: WizardStep[]`), y CTA que enlaza a `/reportes/ventas-e-ingresos` como alternativa disponible hoy. Sin backend — `status: "placeholder"` permanece en `reports-config.ts`. `npm run lint` + `npm run build` limpios.
-  - **Sesión 10 ✅ (2026-04-20) — V12 Estado de resultados** — `/reportes/estado-resultados` ADMIN-only. `fetchEstadoResultados` con COGS vía `resolveCostsBatch`, comisiones PAID por `updatedAt` proxy (TODO paidAt), `PAGO_PROVEEDOR` excluido de gastos de caja. 4 KPIs (Ingresos, Margen bruto %, Margen operativo featured, Top gasto). Tabla P&L colapsable con 2 sub-bloques (opex bancario × 9 categorías, caja × 7 categorías), filas subtotal con `var(--surf-low)`. Banner gerencial IVA. ExportDrawer + ThresholdBadge con `MARGEN_BRUTO_PCT` / `MARGEN_OPERATIVO_MXN` en `ALERT_METRICS`. Comparativos × 3 modos + vista consolidado/comparativa por sucursal. Helper `getSparklineGranularity` exportado para V13/V14. `npx prisma validate` + `npm run lint` + `npm run build` limpios (Exit 0).
+   > **Rediseño v1 (2026-04-18):** Decisiones cerradas → [`docs/reportes-redesign/REPORTES_V1_DECISIONS.md`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md)
+
+- **Sesión 0 ✅ (2026-04-18) — Port primitivos del handoff** — Portados mecánicamente del handoff de diseño. `src/lib/format/index.ts` (formatters `formatMXN`, `formatNumber`, `formatPercent`, `formatDate`, `formatDateRange`, `formatRelative`; locale `es-MX`, timezone `America/Merida`). Primitivos en `src/components/primitives/`: `icon.tsx` (41 glyphs tipados, union `IconName`), `chip.tsx` (5 variantes semánticas), `delta.tsx` (indicador de cambio con color y glyph, 3 formatos), `sparkline.tsx` (SVG manual sin deps), `spark-bars.tsx` (SVG manual), `progress-split.tsx` (barra segmentada). Paleta datavis `--data-1..8` (light + dark WCAG AA) y tokens faltantes mergeados en `globals.css`. `DESIGN.md §6` y `§8` actualizados. **Deuda diferida (Sesión 13 — V10 Stock Crítico):** `<Chip>` cubre 5 variantes; el handoff define una 6.ª `nostock` con fondo sólido `--ter` + texto blanco (distinto de `error` que usa `--ter-container`). Agregar variante `critical` a `ChipVariant` solo cuando V10 lo requiera.
+- **Sesión 1 ✅ (2026-04-18) — Infra de charts: Recharts + wrapper con tokens EvoFlow** — `recharts@3.8.0` instalado vía `npx shadcn@latest add chart` (compat verificada: React 19 nativo, ESM, sin conflictos Turbopack Next 16). `src/components/ui/chart.tsx` generado por shadcn — no editar. `--chart-1..5` hardcoded por shadcn reemplazados en `globals.css` → `var(--data-1..5)` en `:root` y `.dark`. Wrapper `src/components/primitives/chart.tsx`: re-exports del shadcn chart, `buildChartConfig(SeriesSpec[])` (asigna `--data-1..8` cíclico), `ChartTooltipContentGlass` (glassmorphism oficial), constantes `CHART_AXIS_TICK_STYLE` / `CHART_AXIS_LINE_STYLE` / `CHART_GRID_STYLE` tipadas como atributos SVG (no CSS — Recharts renderiza SVG). **Regla:** reportes NUNCA importan de `"recharts"` ni `"@/components/ui/chart"` directos — siempre vía `@/components/primitives/chart`. `DESIGN.md §3` y `§6` actualizados. `npx prisma validate` + `npm run lint` + `npm run build` limpios (Exit 0).
+- **Sesiones 2-7 ✅ (2026-04-18/19) — Fases A-C completas** — Detalle en [`REPORTES_V1_DECISIONS.md §10`](docs/reportes-redesign/REPORTES_V1_DECISIONS.md). Resumen: S2 schema (`User.pinnedReports`, `User.uiPreferences`, `AlertThreshold` + APIs); S3 hub `/reportes` + pinned dinámicos en sidebar; S4 V1 Ventas e ingresos piloto + shell reutilizable (`DetailHeader`/`FilterPanel`/`KpiGrid`) + helper `previousComparableRange`; S5 ExportDrawer universal (CSV/XLSX/PDF, `exceljs@4.4.0`, endpoint `POST /api/reportes/[slug]/export`); S6 ThresholdsModal + `ThresholdBadge` inline + vista global `/configuracion/umbrales`; S7 TweaksPanel con densidad persistida (`density-{compact,normal,comfortable}` tokens en `globals.css`, consumido por KPI cards y Power Grid).
+- **Sesión 9 ✅ (2026-04-21) — V15 Exportación contable placeholder** — commit `5dfb63a`. S8 Builder eliminado del alcance v1. Página dedicada en `src/app/(pos)/reportes/exportacion-contable/` (server page con role-gate ADMIN vía `REPORTS_BY_SLUG` + client view `ExportacionContableView`). Aviso superior sobre integración PAC pendiente, wizard visual de 4 pasos (Tipo · Período · Formato · Confirmar) con cards deshabilitadas mostrando opciones contempladas (`STEPS: WizardStep[]`), y CTA que enlaza a `/reportes/ventas-e-ingresos` como alternativa disponible hoy. Sin backend — `status: "placeholder"` permanece en `reports-config.ts`. `npm run lint` + `npm run build` limpios.
+- **Sesión 10 ✅ (2026-04-20) — V12 Estado de resultados** — `/reportes/estado-resultados` ADMIN-only. `fetchEstadoResultados` con COGS vía `resolveCostsBatch`, comisiones PAID por `updatedAt` proxy (TODO paidAt), `PAGO_PROVEEDOR` excluido de gastos de caja. 4 KPIs (Ingresos, Margen bruto %, Margen operativo featured, Top gasto). Tabla P&L colapsable con 2 sub-bloques (opex bancario × 9 categorías, caja × 7 categorías), filas subtotal con `var(--surf-low)`. Banner gerencial IVA. ExportDrawer + ThresholdBadge con `MARGEN_BRUTO_PCT` / `MARGEN_OPERATIVO_MXN` en `ALERT_METRICS`. Comparativos × 3 modos + vista consolidado/comparativa por sucursal. Helper `getSparklineGranularity` exportado para V13/V14. `npx prisma validate` + `npm run lint` + `npm run build` limpios (Exit 0).
+
 3. Dashboard / Home
-  - **Sesión D1 ✅ (2026-04-21) — Gráfico real, selector de sucursal ADMIN y panel colapsable** — commit `81012e6`. Archivos: `src/app/(pos)/page.tsx`, `_components/dashboard/manager-dashboard.tsx`, `attention-panel.tsx`, `seller-dashboard.tsx`, `technician-dashboard.tsx`. Cambios principales:
-    - **`revenueByDay`** — query sobre `CashTransaction` que devuelve `{ label, revenue }[]` con granularidad automática: barras por hora (period=today), por día (period=week) o por semana (period=month). El `BarChart` vía primitivo `chart.tsx` lo consume directamente.
-    - **Selector de sucursal ADMIN** — ADMIN puede filtrar el dashboard por sucursal vía `?branch=` (query param validado contra `prisma.branch.findMany` prefetch). MANAGER/SELLER/TECHNICIAN quedan bloqueados a su `branchId`. Variable `viewBranchId: string | null` (null = global) controla toda la lógica de filtrado server-side y se pasa como prop al `ManagerDashboard`. Función cliente `handleBranchChange` sincroniza la URL.
-    - **Períodos redefinidos** — "week" → rolling 7 días (hoy + 6 anteriores, antes era lun→hoy del calendario); "month" → 4 semanas corridas (lunes de semana actual + 3 semanas previas completas, antes era 1º del mes → hoy). Comparativos actualizados en consecuencia (window desplazado -7 días / -28 días respectivamente).
-    - **`AttentionPanel` colapsado por defecto** — `useState(false)` para `isExpanded`; stock crítico y reensambles pendientes se muestran como fila-resumen con count cuando está colapsado (escalable a N items).
-    - **Chips de tendencia** — íconos `TrendingUp` / `TrendingDown` / `Minus` de lucide-react en los tres dashboards (manager, seller, technician) según delta positivo/negativo/neutro. `calcCountTrend` helper interno.
+
+- **Sesión D1 ✅ (2026-04-21) — Gráfico real, selector de sucursal ADMIN y panel colapsable** — commit `81012e6`. Archivos: `src/app/(pos)/page.tsx`, `_components/dashboard/manager-dashboard.tsx`, `attention-panel.tsx`, `seller-dashboard.tsx`, `technician-dashboard.tsx`. Cambios principales:
+  - **`revenueByDay`** — query sobre `CashTransaction` que devuelve `{ label, revenue }[]` con granularidad automática: barras por hora (period=today), por día (period=week) o por semana (period=month). El `BarChart` vía primitivo `chart.tsx` lo consume directamente.
+  - **Selector de sucursal ADMIN** — ADMIN puede filtrar el dashboard por sucursal vía `?branch=` (query param validado contra `prisma.branch.findMany` prefetch). MANAGER/SELLER/TECHNICIAN quedan bloqueados a su `branchId`. Variable `viewBranchId: string | null` (null = global) controla toda la lógica de filtrado server-side y se pasa como prop al `ManagerDashboard`. Función cliente `handleBranchChange` sincroniza la URL.
+  - **Períodos redefinidos** — "week" → rolling 7 días (hoy + 6 anteriores, antes era lun→hoy del calendario); "month" → 4 semanas corridas (lunes de semana actual + 3 semanas previas completas, antes era 1º del mes → hoy). Comparativos actualizados en consecuencia (window desplazado -7 días / -28 días respectivamente).
+  - **`AttentionPanel` colapsado por defecto** — `useState(false)` para `isExpanded`; stock crítico y reensambles pendientes se muestran como fila-resumen con count cuando está colapsado (escalable a N items).
+  - **Chips de tendencia** — íconos `TrendingUp` / `TrendingDown` / `Minus` de lucide-react en los tres dashboards (manager, seller, technician) según delta positivo/negativo/neutro. `calcCountTrend` helper interno.
+
 4. Taller `/workshop` (incluye sub-layout de tabs) — **NOTA**: P13 sub-fases B-F construyen UI nueva sobre tokens. Si P13 se ejecuta primero, este módulo del Paso 2 se omite. Coordinar antes de empezar. **Aterrizar aquí Fase S5 (Kanban por capacidad de batería).**
 5. Clientes
+
    > **BRIEF firmado (2026-04-22):** decisiones cerradas + IA completa en [`docs/customers-redesign/BRIEF.md`](docs/customers-redesign/BRIEF.md). Alcance: pase DESIGN.md + reestructura por valor operativo (timeline unificado, tab Bicis con historial de baterías/voltajes, fusión con estado de cuenta financiero gated por rol) + exposición de data latente (RFC, phone2, shipping, prepaid, warrantyDocReady, checklists). Customer es global/multi-sucursal — SELLER ve todos los clientes y sus actividades cross-sucursal.
    > **Schema aditivo (cero breaking):** `Customer.{birthday, isBusiness, communicationConsent, tags, phonePrevious, mergedIntoId, mergedAt, deletedAt, deletedReason(enum)}` + `CustomerBike.odometerKm` + `CashTransaction.customerId` + 2 tablas (`CustomerNote`, `CustomerEditLog`). Split `firstName/lastName` **descartado** (búsqueda por apellido funciona con `ILIKE` sobre `name` completo + helper `splitDisplayName` para display puntual).
    > **12 sub-fases agrupadas en 6 sesiones:** (1) A+B schema+endpoints · (2) C+D directorio+registro · (3) E shell perfil+Resumen · (4) F+G Bicis+Ventas/Taller/Cotizaciones · (5) H+I Finanzas+Datos · (6) J+K+L Merge+PDFs+QuickCreate POS. Una sesión de Claude Code por sesión de la tabla. Documentar cierre aquí al terminar cada una.
@@ -1525,6 +1629,7 @@ Orden de módulos (shell → adentro, riesgo ascendente):
    - **Flag `Perfil incompleto`** — `directory-query.ts` agrega `shippingStreet` al select y deriva `profileIncomplete = !email && !rfc && !shippingStreet` por fila. La power grid `/customers` muestra un chip `warn` "Perfil incompleto" junto al nombre (con tooltip explicando que se creó desde el POS) cuando aplica y el cliente no está soft-deleted. Permite a SELLER+ saber a quién completar de manera no intrusiva.
    - **Diferido / no en scope** — Hard-delete de cliente (sigue siendo solo soft-delete, política BRIEF §6.2); selector de sucursal alternativa para los PDFs (hoy se imprime con la sucursal del usuario logueado — para impresión cross-sucursal se editaría el endpoint para aceptar `?branchId=…`); preview visual del PDF en navegador con paginación (los PDFs actuales caben en 1-3 páginas y `react-pdf` los devuelve directos al `<a target="_blank">`); endpoint dedicado `/api/customers/[id]/estado-cuenta/pdf` para finanzas (la información ya cabe en la ficha; si se requiere un PDF dedicado por contraloría, añadir un nuevo template); estado-de-baja "DOWNED" por bici (no existe schema, requeriría migración nueva).
    - **Validaciones verde al cierre** — `prisma validate`, `npm run lint` (solo el warning pre-existente en `reportes/rentabilidad/page.tsx`) y `npm run build` OK con 65 páginas: nuevas rutas registradas — `/customers/[id]/merge`, `/api/customers/[id]/merge-preview`, `/api/customers/[id]/ficha/pdf`, `/api/customers/[id]/bicis/[bikeId]/historial/pdf`.
+
 6. Inventario (recepciones, stock, movimientos) — **Aterrizar aquí el backlog de normalización de catálogo de baterías + refactor de ingreso/mostrado.** Ver `memoria/project_inventario_refactor_backlog.md` para los 9 ítems (CSVs por nombre en vez de ID, `PriceHistory`, costeo por lote, importar facturas, scan de seriales, vista por modelo colapsable, heatmap stock bajo, filtro reverse batería compatible).
 7. Tesorería
 8. Autorizaciones
@@ -1536,6 +1641,7 @@ Regla por módulo: una sesión de Claude Code por módulo. No mezclar dos módul
 UI = solo CSS/tokens. Si el cambio requiere lógica, orden de pasos o datos distintos, es UX — documentar como ítem separado antes de implementar.
 
 **Deuda detectada en Sesión 1-A (diferida, no resolver hasta tener decisión):**
+
 - `text-white` y `color: "#ffffff"` hardcoded sobre Velocity Gradient en chip BRANCH (`layout.tsx`), avatar topbar (`layout.tsx`) y avatar footer sidebar (`sidebar.tsx`). Token correcto `--on-p` existe (light `#ffffff`, dark `#131313`). Migración directa a `var(--on-p)` flipea texto a oscuro sobre gradient verde-oscuro→verde-brillante en dark, lo cual probablemente NO es lo deseado (DESIGN.md §10 dice que el blanco sobre gradient es excepción permanente). Decidir antes de migrar.
 - `ThemeToggle` (`(pos)/theme-toggle.tsx`) usaba `text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300` (violaba anti-pattern §10). ✅ resuelto durante 1-B — hoy usa surface tokens.
 - `BranchSwitcher` botón sin `aria-haspopup`/`aria-expanded`. Tiene texto visible así que es usable, pero no semánticamente correcto. Pasada de a11y de componentes (no en scope del shell).
@@ -1548,11 +1654,13 @@ Ver sección FASE 6 más abajo para el detalle completo.
 ---
 
 ## FASE 6 — Hardening y Producción
+
 **Modelo: Opus | Dependencias: TODO lo anterior**
 
 > **Nota 2026-04-17:** El timezone fix y el ghost-border Parte 2 se ejecutan en el bloque Pre-Fase 6 (ver sección anterior). Fase 6 arranca con esas dos deudas ya cerradas.
 
 ### Tareas
+
 - Fix timezone global ✅ (resuelto en Pre-Fase 6 Paso 1 y Paso 1.5)
 - Ghost-border Parte 2 ✅ (resuelto durante rediseño UI)
 - Tests de integración: flujos de caja, ventas, montaje, autorización
@@ -1591,17 +1699,15 @@ Ver sección FASE 6 más abajo para el detalle completo.
 - **Escala del Kanban de Taller (diferido desde P13-B, sumado 2026-04-22)** — `/workshop` hoy hidrata 7 columnas con `force-dynamic` + DnD sin paginación ni virtualización. En P13-Hotfix se añade `take: 100` por columna ordenado por `updatedAt desc` más SWR revalidate de 30s para el chip de disponibilidad; DELIVERED/CANCELLED siguen filtradas a "solo hoy". Cuando una sucursal mantenga > 50 órdenes activas sostenidas, agregar: (a) virtualización con `@tanstack/react-virtual` en columnas largas, (b) índice compuesto `(branchId, status, subStatus, updatedAt desc)` en `ServiceOrder` si EXPLAIN muestra seq scan, (c) paginación cursor en endpoints `/api/workshop/orders` con `?cursor=&limit=`. No bloqueante mientras el volumen sea bajo; validar con un EXPLAIN al abrir piloto con volumen real.
 - **Política ADMIN branch-scope (formalizar, sumado 2026-04-22)** — Incidente detectado en P13 pre-Hotfix: órdenes de otras sucursales visibles desde sesión filtrada por branch en el topbar, incluso para ADMIN. La regla "filtrar por `branchId` del JWT excepto ADMIN" es too blunt — ADMIN necesita scope respetado cuando trabaja en un branch específico. **Patrón canónico:** `viewBranchId` = branch del topbar (siempre honrado) en módulos operativos (`/workshop`, `/point-of-sale`, `/inventario`, `/tesoreria`, `/autorizaciones`); **global-only** en `/reportes/*` (ejecutivo) y `/configuracion/*`. Documentar en `AGENTS.md §Reglas` como extensión de la regla branchId. Audit cross-módulo al cerrar Hotfix.1 — probablemente hay más endpoints con el mismo patrón roto.
 - **Vista de ocupación del gerente (diferida desde P13-G, 2026-04-22)** — El mock `vista_de_ocupaci_n_del_gerente_2/` existe pero no se prioriza en P13. Requiere métricas de productividad (horas facturables vs. efectivas, OT/subutilización por técnico) que sólo maduran con uso real post-piloto. Retomar tras ~60 días de operación con datos reales; evaluar si vale o se reduce a dashboard KPI simple en `/workshop/ocupacion`.
-- **Lookup canónico de `BatteryConfiguration` cross-módulo (audit 2026-04-25)** — 11 callsites componen key 2-axis `${modeloId}:${voltajeId}` ignorando la dimensión de capacidad introducida por S1 (migration `20260419060000_add_battery_capacity_axis`). Producción (9): `api/inventory/receipts/route.ts:262,272`, `inventario/recepciones/nuevo/page.tsx:129,149`, `pedidos/[id]/page.tsx:178,206`, `assembly/page.tsx:194,213`, `pos-terminal.tsx:710`, `api/assembly/route.ts:204`, `api/assembly/[id]/complete/route.ts:141`, `api/assembly/[id]/available-batteries/route.ts:59`, `api/batteries/lots/route.ts:141`. Seed (2): `prisma/seed-transactional.ts:488,530`. **Resolución NO en Fase 6** sino distribuida en el cluster: helper canónico (decisión I10 Pack A.2) introducido al inicio del módulo Catálogo + one-shot migration de 4 huérfanos (3 assembly server-side + lots) al introducir helper; 5 in-scope migrados al rediseñar cada módulo (Inventario, Pedidos, POS); seed migrado al final. Bundle ~22-30h distribuido cross-cluster (sin opción rename). Ítem en Fase 6 solo para traceabilidad — el trabajo se ejecuta antes. Ver `feedback_grep_before_declaring_closed.md` para learning del incidente.
-- **Rename `VoltageChangeLog → ConfigChangeLog` post-launch (cosmético, diferido)** — Tras S4 ampliar el modelo con `fromCapacidad`/`toCapacidad`, el nombre `VoltageChangeLog` es semánticamente impreciso. Naming preexistente **ya inconsistente** (verificado 2026-04-25): `AssemblyOrder.voltageChangeLogId` (con "Log") vs `BatteryAssignment.installedAtVoltageChangeId`/`removedAtVoltageChangeId` (sin "Log"). Rename tocaría 3 FKs cross-tabla incluyendo `BatteryAssignment` que vive en módulo Workshop (ya rediseñado, fuera del cluster) — riesgo de regresión en zona estable. Diferido a sweep dedicado post-launch coordinado con Workshop, ~2-3h. Cosmético: no bloquea funcionalidad ni introduce bugs.
 
 ---
 
 ## Archivos de datos listos en prisma/data/
 
-| Archivo | Contenido | Estado |
-|---|---|---|
-| `accesorios.csv` | 35 productos: accesorios, cargadores, baterías, refacciones básicas | ✅ Listo |
-| `refacciones.csv` | 2,632 refacciones por modelo, 40 modelos cubiertos | ✅ Listo |
+| Archivo           | Contenido                                                           | Estado   |
+| ----------------- | ------------------------------------------------------------------- | -------- |
+| `accesorios.csv`  | 35 productos: accesorios, cargadores, baterías, refacciones básicas | ✅ Listo |
+| `refacciones.csv` | 2,632 refacciones por modelo, 40 modelos cubiertos                  | ✅ Listo |
 
 ---
 
@@ -1635,14 +1741,17 @@ Las refacciones tienen un campo `modelo_aplicable` que restringe dónde pueden u
 Esta regla aplica en tres flujos:
 
 **1. POS (venta directa de refacción)**
+
 - Si hay un vehículo en la transacción: filtrar refacciones por `modelo_aplicable = modelo del vehículo OR GLOBAL`
 - Si es venta de refacción sola (sin vehículo): mostrar todas pero requerir selección del modelo al que aplica para trazabilidad
 
 **2. Taller (ServiceOrder)**
+
 - Al agregar `ServiceOrderItem` con refacción: filtrar por `modelo_aplicable` que coincida con el modelo del `CustomerBike` vinculado a la orden, más las `GLOBAL`
 - Si la orden no tiene `CustomerBike` vinculado: mostrar todas con selección obligatoria de modelo
 
 **3. API validation**
+
 - `POST /api/service-orders/[id]/items` debe validar que la refacción es compatible con el modelo del `CustomerBike` de la orden
 - Error 422 si `refaccion.modelo_aplicable !== 'GLOBAL' && refaccion.modelo_aplicable !== customerBike.modelo`
 
