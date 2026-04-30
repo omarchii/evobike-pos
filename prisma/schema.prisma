@@ -366,6 +366,9 @@ enum PaymentMethod {
 enum CollectionStatus {
   COLLECTED // Dinero ya recibido (default)
   PENDING // Pago pendiente de liquidación por la financiera (ej. Atrato)
+  REJECTED // Atrato rechazó solicitud post-aprobación inicial (Pack C.1 Q5 INT-2)
+  DEFAULTED // Atrato no pudo cobrar al cliente final (Pack C.1 Q5 INT-2)
+  CANCELLED // Contrato Atrato cancelado (devolución vía Atrato — decision A.2 #5 2026-04-30)
 }
 
 enum CashTransactionType {
@@ -437,6 +440,8 @@ model CashTransaction {
   user     User?               @relation(fields: [userId], references: [id])
   customer Customer?           @relation(fields: [customerId], references: [id])
 
+  creditConsumptions CreditConsumption[] // Pack D.1 — consumos/re-acreditaciones de saldo a favor
+
   @@index([customerId])
 }
 
@@ -451,6 +456,7 @@ model Customer {
   phone2         String?
   email          String?
   creditLimit    Decimal @default(0) @db.Decimal(10, 2)
+  /// @deprecated Usar getCustomerCreditBalance(customerId, tx). Migrado a CustomerCredit en Pack D.1. Drop en D.6.
   balance        Decimal @default(0) @db.Decimal(10, 2)
 
   // Dirección para flete (todos opcionales)
@@ -505,6 +511,8 @@ model Customer {
 
   notes    CustomerNote[]
   editLogs CustomerEditLog[]
+
+  customerCredits CustomerCredit[] // Pack D.1 — saldo a favor granular (reemplaza Customer.balance)
 
   @@index([mergedIntoId])
   @@index([deletedAt])
@@ -587,6 +595,70 @@ model CustomerEditLog {
   @@index([customerBikeId, field])
 }
 
+// === CUSTOMER CREDIT (saldo a favor — Pack D.1) ===
+
+enum OrigenCredito {
+  CANCELACION
+  APARTADO_CANCELADO
+  DEVOLUCION
+  AJUSTE_MANAGER
+  MIGRACION_INICIAL // backfill de Customer.balance legacy en Pack D.1 Migration 2
+}
+
+enum JobStatus {
+  RUNNING
+  OK
+  FAILED
+  PARTIAL // algunos rows OK, otros fallaron — visible en reporte de salud
+}
+
+model CustomerCredit {
+  id          String        @id @default(uuid())
+  customerId  String
+  monto       Decimal       @db.Decimal(10, 2)
+  balance     Decimal       @db.Decimal(10, 2) // CHECK >= 0 AND <= monto (raw SQL post-migration)
+  origenTipo  OrigenCredito
+  origenId    String? // saleId | quotationId | returnId | adjustmentId | NULL
+  notes       String?
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime      @db.Timestamptz(3) // = createdAt + 365d (set por helper)
+  expiredAt   DateTime?     @db.Timestamptz(3) // llenado por cron P6 cuando now() > expiresAt
+  alertSentAt DateTime?     @db.Timestamptz(3) // llenado por cron alerta 90d (P6)
+
+  customer     Customer            @relation(fields: [customerId], references: [id])
+  consumptions CreditConsumption[]
+
+  @@index([customerId, expiredAt, balance]) // golden path "créditos activos del cliente" + banner POS FIFO
+}
+
+model CreditConsumption {
+  id                String   @id @default(uuid())
+  customerCreditId  String
+  cashTransactionId String
+  amount            Decimal  @db.Decimal(10, 2) // positivo = consumo, negativo = re-acreditación (Edge A/A.1)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  customerCredit  CustomerCredit  @relation(fields: [customerCreditId], references: [id])
+  cashTransaction CashTransaction @relation(fields: [cashTransactionId], references: [id])
+
+  @@index([customerCreditId])
+  @@index([cashTransactionId]) // reverso en cancel/return — buscar consumos a re-acreditar
+}
+
+model JobRun {
+  id             String    @id @default(uuid())
+  jobName        String
+  status         JobStatus
+  startedAt      DateTime  @default(now()) @db.Timestamptz(3)
+  finishedAt     DateTime? @db.Timestamptz(3)
+  durationMs     Int?
+  processedCount Int       @default(0) // # rows touched (alerta enviada, crédito vencido, etc.)
+  errorCount     Int       @default(0) // # rows que fallaron dentro del run
+  errorMessage   String? // última excepción (resumen)
+
+  @@index([jobName, startedAt(sort: Desc)]) // últimas N corridas por job
+}
+
 // === WORKSHOP (TALLER) ===
 enum ServiceOrderStatus {
   PENDING
@@ -657,9 +729,9 @@ model ServiceOrder {
   //   payments.length >  1  → prepaidMethod = null (split; enum PaymentMethod
   //                           no tiene MIXED y añadirlo contamina reportes de caja).
   // Implementación: src/lib/workshop-prepaid.ts::resolvePrepaidMethod.
-  prepaidAt      DateTime?
-  prepaidAmount  Decimal?          @db.Decimal(10, 2)
-  prepaidMethod  PaymentMethod?
+  prepaidAt     DateTime?
+  prepaidAmount Decimal?           @db.Decimal(10, 2)
+  prepaidMethod PaymentMethod?
 
   // Workshop redesign (Sub-fase A) — aditivo, todos nullable o con default
   assignedTechId     String?
