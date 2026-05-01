@@ -74,6 +74,15 @@ export const REPORTS: readonly ReportMeta[] = [
     status: "ready",
     allowedRoles: ["ADMIN", "MANAGER", "SELLER"],
   },
+  {
+    slug: "saldo-favor",
+    title: "Saldo a favor",
+    description: "Vencimientos próximos, sin uso y saldo perdido por mes",
+    group: "CLIENTES",
+    icon: "cash",
+    status: "ready",
+    allowedRoles: ["ADMIN", "MANAGER"],
+  },
 
   // === INVENTARIO ===
   {
