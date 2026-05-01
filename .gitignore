@@ -38,6 +38,12 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Pack D.bis — Supplier backfill CSVs.
+# Output del cliente con datos de producción reales (puede contener PII).
+# Regenerar con: npx tsx scripts/build-supplier-backfill.ts
+prisma/data/suppliers-suggested-merge.csv
+prisma/data/suppliers-manual-review.csv
 next-env.d.ts
 
 /src/generated/prisma

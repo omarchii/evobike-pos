@@ -427,7 +427,8 @@ model CashTransaction {
   method           PaymentMethod
   amount           Decimal              @db.Decimal(10, 2)
   reference        String? // WITHDRAWAL: número de sobre. PAYMENT_IN: referencia opcional de pago.
-  beneficiary      String? // EXPENSE_OUT: nombre/razón social del proveedor o destinatario del gasto
+  beneficiary      String? // EXPENSE_OUT: nombre/razón social del destinatario (cuando NO es Supplier registrado)
+  supplierId       String? // FK a Supplier — Pack D.bis. Cualquier expenseCategory puede linkear; refinement a PAGO_PROVEEDOR DROPADO (cliente listó CFE/Telmex/etc en categorías SERVICIOS_PUBLICOS/RENTA/MARKETING)
   notes            String? // Motivo o concepto libre (obligatorio en EXPENSE_OUT, opcional en otros)
   collectionStatus CollectionStatus     @default(COLLECTED)
   collectedAt      DateTime? // Fecha en que el dinero quedó efectivamente en caja; null mientras collectionStatus = PENDING
@@ -439,10 +440,12 @@ model CashTransaction {
   sale     Sale?               @relation(fields: [saleId], references: [id])
   user     User?               @relation(fields: [userId], references: [id])
   customer Customer?           @relation(fields: [customerId], references: [id])
+  supplier Supplier?           @relation(fields: [supplierId], references: [id])
 
   creditConsumptions CreditConsumption[] // Pack D.1 — consumos/re-acreditaciones de saldo a favor
 
   @@index([customerId])
+  @@index([supplierId]) // Pack D.bis — estado de cuenta GASTO por supplier
 }
 
 // === CRM ===
@@ -931,20 +934,24 @@ model BatteryLot {
   productVariantId  String?  @map("productId")
   simpleProductId   String?
   branchId          String
-  supplier          String?
+  supplier          String? // LEGACY string — Pack D.bis cutover dropea en C.7
+  supplierId        String? // FK a Supplier — Pack D.bis
   reference         String?
   receivedAt        DateTime @default(now())
   userId            String
   saleItemId        String?
   purchaseReceiptId String?
 
-  productVariant  ProductVariant?  @relation(fields: [productVariantId], references: [id])
-  simpleProduct   SimpleProduct?   @relation(fields: [simpleProductId], references: [id])
-  branch          Branch           @relation(fields: [branchId], references: [id])
-  user            User             @relation(fields: [userId], references: [id])
-  saleItem        SaleItem?        @relation(fields: [saleItemId], references: [id])
-  purchaseReceipt PurchaseReceipt? @relation(fields: [purchaseReceiptId], references: [id])
-  batteries       Battery[]
+  productVariant   ProductVariant?  @relation(fields: [productVariantId], references: [id])
+  simpleProduct    SimpleProduct?   @relation(fields: [simpleProductId], references: [id])
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  user             User             @relation(fields: [userId], references: [id])
+  saleItem         SaleItem?        @relation(fields: [saleItemId], references: [id])
+  purchaseReceipt  PurchaseReceipt? @relation(fields: [purchaseReceiptId], references: [id])
+  supplierRelation Supplier?        @relation(fields: [supplierId], references: [id])
+  batteries        Battery[]
+
+  @@index([supplierId])
 }
 
 model Battery {
@@ -1145,6 +1152,37 @@ model SimpleProduct {
   @@index([modeloAplicable])
 }
 
+// === SUPPLIERS (Pack D.bis) ===
+//
+// Consolidación de 3 strings dispersos:
+// - PurchaseReceipt.proveedor (LEGACY, drop en C.7)
+// - BatteryLot.supplier (LEGACY, drop en C.7)
+// - CashTransaction.beneficiary (KEEP — sirve para destinatarios no-supplier)
+//
+// Sin enum de tipo: naturaleza emergente (ej. CFE puede aparecer en
+// PurchaseReceipt para capacitación facturada). Filtrar por uso real
+// (EXISTS join) en queries.
+model Supplier {
+  id        String   @id @default(uuid())
+  nombre    String
+  rfc       String?
+  contacto  String?
+  telefono  String?
+  email     String?
+  direccion String?
+  notas     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseReceipts PurchaseReceipt[]
+  batteryLots      BatteryLot[]
+  cashTransactions CashTransaction[]
+
+  @@index([nombre])
+  @@index([isActive])
+}
+
 // === PURCHASE RECEIPTS (Fase P4) ===
 enum FormaPagoProveedor {
   CONTADO
@@ -1162,7 +1200,8 @@ model PurchaseReceipt {
   id                    String              @id @default(cuid())
   branchId              String
   userId                String
-  proveedor             String
+  proveedor             String // LEGACY string — Pack D.bis cutover dropea en C.7
+  supplierId            String? // FK a Supplier — Pack D.bis. Nullable hasta C.7 cutover (NOT NULL post-backfill).
   folioFacturaProveedor String?
   facturaUrl            String?
   formaPagoProveedor    FormaPagoProveedor
@@ -1176,12 +1215,14 @@ model PurchaseReceipt {
 
   branch             Branch              @relation(fields: [branchId], references: [id])
   user               User                @relation(fields: [userId], references: [id])
+  supplier           Supplier?           @relation(fields: [supplierId], references: [id])
   inventoryMovements InventoryMovement[]
   batteryLots        BatteryLot[]
 
   @@unique([branchId, proveedor, folioFacturaProveedor])
   @@index([branchId, estadoPago])
   @@index([fechaVencimiento])
+  @@index([supplierId])
 }
 
 // === AUTHORIZATIONS (Fase P5) ===

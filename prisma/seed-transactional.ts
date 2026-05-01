@@ -134,6 +134,7 @@ export async function seedTransactional(prisma: PrismaClient): Promise<void> {
   await seedMobileDashboardFixture(ctx);
   await seedQuotations(ctx);
   await seedPurchaseReceipts(ctx);
+  await seedSuppliers(ctx);
 
   console.log("✅ Seed transaccional completado.\n");
 }
@@ -1926,4 +1927,137 @@ async function seedPurchaseReceipts(ctx: SeedContext): Promise<void> {
     }
     console.log(`  ✅ PurchaseReceipts realistas ${branch.code}: ${createdExtras} creados.`);
   }
+}
+
+// ─── T13 Suppliers (Pack D.bis C.3) ───────────────────────────────────────────
+//
+// Crea Supplier rows para los nombres reales del seed (linkados via UPDATE
+// WHERE proveedor=name SET supplierId) + sintéticos extras sin link
+// (CFE/Telmex/etc) para que UI tenga variedad de autocomplete/testing.
+//
+// Idempotente: skip si ya hay Supplier con nombre "Distribuidora Evo MX".
+
+async function seedSuppliers(ctx: SeedContext): Promise<void> {
+  const sentinel = await ctx.prisma.supplier.findFirst({
+    where: { nombre: "Distribuidora Evo MX" },
+    select: { id: true },
+  });
+  if (sentinel) {
+    console.log("  ⏭️  Suppliers ya sembrados, skip.");
+    return;
+  }
+
+  type SupplierSeed = {
+    nombre: string;
+    rfc?: string;
+    contacto?: string;
+    telefono?: string;
+    email?: string;
+    direccion?: string;
+    notas?: string;
+    /** Si presente, se hace UPDATE en PurchaseReceipt + BatteryLot vinculando supplierId. */
+    matchProveedorString?: string;
+  };
+
+  // Suppliers reales (linkados con strings legacy ya seedados arriba)
+  const linked: SupplierSeed[] = [
+    {
+      nombre: "Distribuidora Evo MX",
+      rfc: "DEM240115ABC",
+      contacto: "Andrés Robles",
+      telefono: "9985551101",
+      email: "ventas@distribuidoraevomx.com",
+      direccion: "Av. Industria 123, Cancún",
+      matchProveedorString: "Distribuidora Evo MX",
+    },
+    {
+      nombre: "Baterías Power Plus",
+      rfc: "BPP180623XYZ",
+      contacto: "Mariana Solís",
+      telefono: "9985552202",
+      email: "pedidos@bateriaspowerplus.mx",
+      matchProveedorString: "Baterías Power Plus",
+    },
+    {
+      nombre: "Accesorios del Sureste",
+      rfc: "ASU200410QRT",
+      contacto: "Roberto Mora",
+      telefono: "9985553303",
+      email: "facturacion@accesoriossureste.com",
+      notas: "Crédito en gestión — pago pendiente.",
+      matchProveedorString: "Accesorios del Sureste",
+    },
+    {
+      nombre: "Importaciones Orión SA",
+      rfc: "IOR150820HJK",
+      contacto: "Sofía Vargas",
+      telefono: "5512347890",
+      email: "cuentas@importacionesorion.mx",
+      direccion: "Insurgentes Sur 1500, CDMX",
+      notas: "Crédito 30 días estándar.",
+      matchProveedorString: "Importaciones Orión SA",
+    },
+    {
+      nombre: "Proveedor Semilla SA",
+      rfc: "PSE100101AAA",
+      contacto: "Luis Pérez",
+      telefono: "9985554404",
+      notas: "Proveedor histórico de baterías.",
+      matchProveedorString: "Proveedor Semilla SA",
+    },
+    {
+      nombre: "Histórico previo a P4",
+      notas: "Cabecera agregadora de movimientos previos a Fase P4. NO usar para nuevas recepciones.",
+      matchProveedorString: "Histórico previo a P4",
+    },
+  ];
+
+  // Suppliers sintéticos NO linkados — categorías típicas que aparecen en
+  // CashTransaction (servicios, marketing, banca, etc.). Cliente confirma luego
+  // si los mantiene.
+  const unlinked: SupplierSeed[] = [
+    { nombre: "CFE — Comisión Federal de Electricidad", rfc: "CFE370814QI0", notas: "Servicio eléctrico." },
+    { nombre: "Telmex", rfc: "TME840315KT6", notas: "Telefonía e internet." },
+    { nombre: "Aguakan", notas: "Servicio agua potable." },
+    { nombre: "Telcel", rfc: "CFE370814S40", notas: "Líneas móviles equipo." },
+    { nombre: "Facebook Ads", notas: "Marketing digital." },
+  ];
+
+  let created = 0;
+  let linkedReceipts = 0;
+  let linkedLots = 0;
+
+  for (const s of [...linked, ...unlinked]) {
+    const supplier = await ctx.prisma.supplier.create({
+      data: {
+        nombre: s.nombre,
+        rfc: s.rfc ?? null,
+        contacto: s.contacto ?? null,
+        telefono: s.telefono ?? null,
+        email: s.email ?? null,
+        direccion: s.direccion ?? null,
+        notas: s.notas ?? null,
+      },
+    });
+    created++;
+
+    if (s.matchProveedorString) {
+      const [r1, r2] = await Promise.all([
+        ctx.prisma.purchaseReceipt.updateMany({
+          where: { proveedor: s.matchProveedorString, supplierId: null },
+          data: { supplierId: supplier.id },
+        }),
+        ctx.prisma.batteryLot.updateMany({
+          where: { supplier: s.matchProveedorString, supplierId: null },
+          data: { supplierId: supplier.id },
+        }),
+      ]);
+      linkedReceipts += r1.count;
+      linkedLots += r2.count;
+    }
+  }
+
+  console.log(
+    `  ✅ Suppliers: ${created} creados (${linkedReceipts} PurchaseReceipts + ${linkedLots} BatteryLots vinculados).`,
+  );
 }
