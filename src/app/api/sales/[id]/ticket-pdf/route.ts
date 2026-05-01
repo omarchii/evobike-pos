@@ -63,6 +63,15 @@ export async function GET(
       },
       payments: {
         where: { type: "PAYMENT_IN" },
+        include: {
+          // Pack D.4.d: si la venta usó CREDIT_BALANCE y se procesó vía
+          // applyCustomerCredit (D.5+), trae el desglose FIFO para el ticket.
+          creditConsumptions: {
+            include: {
+              customerCredit: { select: { expiresAt: true } },
+            },
+          },
+        },
       },
       authorizationRequests: {
         where: { tipo: "CANCELACION", status: "APPROVED" },
@@ -105,6 +114,28 @@ export async function GET(
       sale.payments.map((p) => PAYMENT_LABELS[p.method] ?? p.method),
     ),
   ];
+
+  // 5.bis. Breakdown FIFO de saldo a favor consumido (Pack D.4.d).
+  // Agrega CreditConsumption rows de TODOS los pagos CREDIT_BALANCE de la venta,
+  // ordenados por vencimiento ASC (FIFO). Vacío si no hubo o si la venta es
+  // pre-D.5 wire (legacy /api/sales decrementa Customer.balance sin consumption row).
+  const creditBalanceBreakdown = sale.payments
+    .filter((p) => p.method === "CREDIT_BALANCE")
+    .flatMap((p) =>
+      p.creditConsumptions.map((cc) => ({
+        amount: Number(cc.amount),
+        expiresAt: cc.customerCredit.expiresAt,
+      })),
+    )
+    .sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime())
+    .map((entry) => ({
+      amount: entry.amount,
+      expiresAt: entry.expiresAt.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+    }));
 
   // 6. Mapear items → PDFItem[]
   const items: PDFItem[] = sale.items.map((item) => {
@@ -182,6 +213,8 @@ export async function GET(
     totalEnLetra,
     descuento,
     metodosPago,
+    creditBalanceBreakdown:
+      creditBalanceBreakdown.length > 0 ? creditBalanceBreakdown : undefined,
     cancelada,
     canceladaPor,
     canceladaFecha,

@@ -27,6 +27,14 @@ export interface TicketPDFData {
   totalEnLetra: string;
   descuento: number;
   metodosPago: string[];
+  /**
+   * Pack D.4.d: detalle FIFO de saldo a favor consumido en esta venta.
+   * Cada entrada = una porción de un CustomerCredit aplicada via
+   * applyCustomerCredit. Se renderiza bajo "MÉTODOS DE PAGO" cuando presente.
+   * Vacío/undefined cuando la venta no usó CREDIT_BALANCE o cuando aún no
+   * se canalizan los writes via helper (transición D.4-D.5).
+   */
+  creditBalanceBreakdown?: { amount: number; expiresAt: string }[];
   cancelada: boolean;
   canceladaPor: string | null;
   canceladaFecha: string | null;
@@ -105,6 +113,12 @@ const s = StyleSheet.create({
     fontSize: 8,
     color: colors.text,
   },
+  creditBreakdownLine: {
+    fontFamily: FONT_FAMILY,
+    fontSize: 7,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
 });
 
 function LabelValue({
@@ -180,10 +194,20 @@ export function TicketPDF({
         descuento={data.descuento > 0 ? data.descuento : undefined}
       />
 
-      {/* Métodos de pago */}
+      {/* Métodos de pago + breakdown FIFO de saldo a favor (Pack D.4.d) */}
       <View style={s.metodosBlock}>
         <Text style={s.metodosLabel}>MÉTODOS DE PAGO</Text>
         <Text style={s.metodosValue}>{data.metodosPago.join(" · ")}</Text>
+        {data.creditBalanceBreakdown && data.creditBalanceBreakdown.length > 0 ? (
+          <View style={{ alignItems: "flex-end", marginTop: 3 }}>
+            <Text style={s.metodosLabel}>SALDO A FAVOR APLICADO</Text>
+            {data.creditBalanceBreakdown.map((entry, idx) => (
+              <Text key={idx} style={s.creditBreakdownLine}>
+                ${entry.amount.toFixed(2)} · vence {entry.expiresAt}
+              </Text>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <DocumentFooter
