@@ -21,6 +21,7 @@ import {
   getCustomerFinanzasData,
   getCustomerDatosData,
 } from "@/lib/customers/profile-finanzas-data";
+import { getCustomerSaldoData } from "@/lib/customers/profile-saldo-data";
 import { isManagerPlus } from "@/lib/customers/service";
 import { CustomerProfileShell } from "@/components/customers/profile/profile-shell";
 
@@ -47,7 +48,7 @@ export default async function CustomerProfilePage({
 
   const viewerIsManagerPlus = isManagerPlus(user.role);
 
-  const [bikes, sales, serviceOrders, quotations, finanzas, datos] = await Promise.all([
+  const [bikes, sales, serviceOrders, quotations, finanzas, saldo, datos] = await Promise.all([
     getCustomerBikesTabData(id),
     getCustomerSalesTabData(id),
     getCustomerServiceOrdersTabData(id),
@@ -55,6 +56,7 @@ export default async function CustomerProfilePage({
     viewerIsManagerPlus
       ? getCustomerFinanzasData(id)
       : Promise.resolve(null),
+    getCustomerSaldoData(id),
     getCustomerDatosData(id, user.id, viewerIsManagerPlus),
   ]);
 
@@ -67,6 +69,7 @@ export default async function CustomerProfilePage({
       serviceOrders={serviceOrders}
       quotations={quotations}
       finanzas={finanzas}
+      saldo={saldo}
       datos={datos}
     />
   );

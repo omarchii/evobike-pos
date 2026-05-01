@@ -18,6 +18,7 @@ import { TabVentas } from "./tab-ventas";
 import { TabTaller } from "./tab-taller";
 import { TabCotizaciones } from "./tab-cotizaciones";
 import { TabFinanzas } from "./tab-finanzas";
+import { TabSaldo } from "./tab-saldo";
 import { TabDatos } from "./tab-datos";
 import type { CustomerProfileData } from "@/lib/customers/profile-data";
 import type {
@@ -30,6 +31,7 @@ import type {
   DatosData,
   FinanzasData,
 } from "@/lib/customers/profile-finanzas-data";
+import type { SaldoData } from "@/lib/customers/profile-saldo-data";
 
 type TabKey =
   | "resumen"
@@ -38,6 +40,7 @@ type TabKey =
   | "bicis"
   | "cotizaciones"
   | "finanzas"
+  | "saldo"
   | "datos";
 
 interface TabDef {
@@ -59,6 +62,7 @@ const TABS: TabDef[] = [
     icon: "commission",
     managerOnly: true,
   },
+  { key: "saldo", label: "Saldo a favor", icon: "cash" },
   { key: "datos", label: "Datos", icon: "user" },
 ];
 
@@ -70,6 +74,7 @@ interface Props {
   serviceOrders: ServiceOrderRow[];
   quotations: QuotationRow[];
   finanzas: FinanzasData | null;
+  saldo: SaldoData;
   datos: DatosData | null;
 }
 
@@ -81,6 +86,7 @@ export function CustomerProfileShell({
   serviceOrders,
   quotations,
   finanzas,
+  saldo,
   datos,
 }: Props): React.JSX.Element {
   const router = useRouter();
@@ -202,6 +208,15 @@ export function CustomerProfileShell({
           customerId={data.base.id}
           customerName={data.base.name}
           data={finanzas}
+        />
+      )}
+
+      {active === "saldo" && (
+        <TabSaldo
+          customerId={data.base.id}
+          customerName={data.base.name}
+          data={saldo}
+          isManagerPlus={isManagerPlus}
         />
       )}
 
