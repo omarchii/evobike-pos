@@ -62,7 +62,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         tags: true,
         shippingCity: true,
         shippingState: true,
-        balance: true,
         creditLimit: true,
         deletedAt: true,
         _count: { select: { bikes: true, sales: true } },
@@ -71,11 +70,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     prisma.customer.count({ where }),
   ]);
 
+  // Saldo a favor por customer desde CustomerCredit (Pack D.5 — N+1 safe).
+  const customerIds = items.map((c) => c.id);
+  const creditAggregates =
+    customerIds.length > 0
+      ? await prisma.customerCredit.groupBy({
+          by: ["customerId"],
+          where: { customerId: { in: customerIds }, expiredAt: null, balance: { gt: 0 } },
+          _sum: { balance: true },
+        })
+      : [];
+  const creditTotalsByCustomer = new Map<string, number>();
+  for (const row of creditAggregates) {
+    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
+  }
+
   return NextResponse.json({
     success: true,
     data: items.map((c) => ({
       ...c,
-      balance: Number(c.balance),
+      balance: creditTotalsByCustomer.get(c.id) ?? 0,
       creditLimit: Number(c.creditLimit),
     })),
     pagination: { total, limit, offset },
@@ -140,17 +154,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         phone2: true,
         email: true,
         rfc: true,
-        balance: true,
         creditLimit: true,
         isBusiness: true,
       },
     });
 
+    // Saldo a favor de un customer recién creado siempre es 0 (no hay
+    // CustomerCredit asociados todavía).
     return NextResponse.json({
       success: true,
       data: {
         ...customer,
-        balance: Number(customer.balance),
+        balance: 0,
         creditLimit: Number(customer.creditLimit),
       },
     });

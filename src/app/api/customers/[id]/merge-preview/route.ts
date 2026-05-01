@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAuthedUser } from "@/lib/auth-helpers";
 import { isManagerPlus } from "@/lib/customers/service";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // GET /api/customers/[sourceId]/merge-preview?targetId=...
 // Devuelve los counts de FKs que se reasignarán + la versión normalizada
@@ -33,7 +34,7 @@ export async function GET(
     );
   }
 
-  const [source, target] = await Promise.all([
+  const [source, target, sourceCredit, targetCredit] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: sourceId },
       select: {
@@ -42,7 +43,6 @@ export async function GET(
         phone: true,
         email: true,
         rfc: true,
-        balance: true,
         creditLimit: true,
         isBusiness: true,
         razonSocial: true,
@@ -58,7 +58,6 @@ export async function GET(
         phone: true,
         email: true,
         rfc: true,
-        balance: true,
         creditLimit: true,
         isBusiness: true,
         razonSocial: true,
@@ -66,6 +65,8 @@ export async function GET(
         deletedAt: true,
       },
     }),
+    getCustomerCreditBalance(sourceId),
+    getCustomerCreditBalance(targetId),
   ]);
 
   if (!source || !target) {
@@ -103,12 +104,12 @@ export async function GET(
     data: {
       source: {
         ...source,
-        balance: Number(source.balance),
+        balance: sourceCredit.total,
         creditLimit: Number(source.creditLimit),
       },
       target: {
         ...target,
-        balance: Number(target.balance),
+        balance: targetCredit.total,
         creditLimit: Number(target.creditLimit),
       },
       blocker,

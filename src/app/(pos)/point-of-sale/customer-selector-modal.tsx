@@ -274,8 +274,8 @@ export default function CustomerSelectorModal({
                       </div>
 
                       {(() => {
-                        // Pack D.4.c: muestra CustomerCredit total cuando esté disponible.
-                        // Fallback a Customer.balance legacy durante D.4-D.5.
+                        // Pack D.5: ambas keys apuntan al saldo CustomerCredit.
+                        // Fallback a c.balance se mantiene por compatibilidad de tipos.
                         const saldo = c.creditBalanceTotal ?? c.balance;
                         if (saldo <= 0) return null;
                         return (

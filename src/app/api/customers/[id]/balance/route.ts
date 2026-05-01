@@ -10,6 +10,7 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
+import { rechargeCustomerCredit } from "@/lib/customer-credit";
 
 const balanceSchema = z.object({
   amount: z.number().positive("Monto inválido"),
@@ -49,7 +50,7 @@ export async function POST(
     assertSessionFreshOrThrow(activeSession);
 
     await prisma.$transaction(async (tx) => {
-      await tx.cashTransaction.create({
+      const cashTx = await tx.cashTransaction.create({
         data: {
           sessionId: activeSession.id,
           userId,
@@ -60,10 +61,12 @@ export async function POST(
         },
       });
 
-      await tx.customer.update({
-        where: { id: customerId },
-        data: { balance: { increment: amount } },
-      });
+      await rechargeCustomerCredit(
+        customerId,
+        amount,
+        { tipo: "RECARGA_CLIENTE", id: cashTx.id },
+        tx,
+      );
     });
 
     return NextResponse.json({ success: true });

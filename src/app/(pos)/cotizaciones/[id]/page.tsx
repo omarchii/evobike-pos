@@ -27,8 +27,9 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
 
   const { id } = await params;
 
-  // Preload managers + customers for the convert dialog
-  const [managers, rawCustomers] = await Promise.all([
+  // Preload managers + customers for the convert dialog. Saldo a favor desde
+  // CustomerCredit aggregate (Pack D.5 — N+1 safe via groupBy).
+  const [managers, rawCustomers, creditAggregates] = await Promise.all([
     prisma.user.findMany({
       where: { role: { in: ["MANAGER", "ADMIN"] } },
       select: { id: true, name: true },
@@ -36,16 +37,25 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
     }),
     prisma.customer.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true, phone2: true, email: true, balance: true, creditLimit: true },
+      select: { id: true, name: true, phone: true, phone2: true, email: true, creditLimit: true },
+    }),
+    prisma.customerCredit.groupBy({
+      by: ["customerId"],
+      where: { expiredAt: null, balance: { gt: 0 } },
+      _sum: { balance: true },
     }),
   ]);
+  const creditTotalsByCustomer = new Map<string, number>();
+  for (const row of creditAggregates) {
+    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
+  }
   const customers = rawCustomers.map((c) => ({
     id: c.id,
     name: c.name,
     phone: c.phone,
     phone2: c.phone2,
     email: c.email,
-    balance: Number(c.balance),
+    balance: creditTotalsByCustomer.get(c.id) ?? 0,
     creditLimit: Number(c.creditLimit),
   }));
 

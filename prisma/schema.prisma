@@ -602,6 +602,7 @@ enum OrigenCredito {
   APARTADO_CANCELADO
   DEVOLUCION
   AJUSTE_MANAGER
+  RECARGA_CLIENTE // depósito en efectivo/tarjeta/transferencia hecho por el propio cliente
   MIGRACION_INICIAL // backfill de Customer.balance legacy en Pack D.1 Migration 2
 }
 

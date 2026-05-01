@@ -15,6 +15,7 @@ import type {
   FichaActivityRow,
   FichaBikeRow,
 } from "@/lib/pdf/templates/customer-ficha-pdf";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // GET /api/customers/[id]/ficha/pdf — ficha de cliente (BRIEF §7.5).
 export async function GET(
@@ -63,7 +64,7 @@ export async function GET(
     throw e;
   }
 
-  const [completedAgg, layawaySales, recentSales, recentOrders] = await Promise.all([
+  const [completedAgg, layawaySales, recentSales, recentOrders, creditAgg] = await Promise.all([
     prisma.sale.aggregate({
       where: { customerId: id, status: "COMPLETED" },
       _sum: { total: true },
@@ -100,6 +101,7 @@ export async function GET(
         customerBike: { select: { serialNumber: true } },
       },
     }),
+    getCustomerCreditBalance(id),
   ]);
 
   const ltvTotal = Number(completedAgg._sum.total ?? 0);
@@ -216,7 +218,7 @@ export async function GET(
         },
         kpis: {
           ltvTotal: fmtMXN(ltvTotal),
-          saldoFavor: fmtMXN(Number(customer.balance)),
+          saldoFavor: fmtMXN(creditAgg.total),
           saldoPorCobrar: fmtMXN(saldoPorCobrar),
           bicis: customer.bikes.length,
         },

@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeMaintenanceStatus, type MaintenanceLevel } from "@/lib/workshop-maintenance";
 import { computeSegmentChips, type SegmentChip } from "./segmentation";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -95,7 +96,6 @@ export async function getCustomerProfileData(
       tags: true,
       shippingCity: true,
       shippingState: true,
-      balance: true,
       creditLimit: true,
       birthday: true,
       communicationConsent: true,
@@ -114,6 +114,9 @@ export async function getCustomerProfileData(
 
   if (!customer) return null;
 
+  // Saldo a favor desde CustomerCredit (Pack D.5 — sweep de Customer.balance).
+  const { total: creditBalance } = await getCustomerCreditBalance(customerId);
+
   const base: ProfileBase = {
     id: customer.id,
     name: customer.name,
@@ -126,7 +129,7 @@ export async function getCustomerProfileData(
     tags: customer.tags,
     shippingCity: customer.shippingCity,
     shippingState: customer.shippingState,
-    balance: Number(customer.balance),
+    balance: creditBalance,
     creditLimit: Number(customer.creditLimit),
     birthday: customer.birthday,
     communicationConsent: customer.communicationConsent,
@@ -328,7 +331,7 @@ export async function getCustomerProfileData(
     {
       isBusiness: customer.isBusiness,
       phone: customer.phone,
-      balance: Number(customer.balance),
+      balance: creditBalance,
       communicationConsent: customer.communicationConsent,
       salesCountLast12mo,
       lastActivityAt,
@@ -412,7 +415,7 @@ export async function getCustomerProfileData(
     alerts,
     segments,
     sidebar: {
-      balance: Number(customer.balance),
+      balance: creditBalance,
       creditLimit: Number(customer.creditLimit),
       arPending,
       pinnedNotes: pinnedNotes.map((n) => ({

@@ -2653,9 +2653,9 @@ export default function PosTerminal({
                     )}
                   </div>
 
-                  {/* Saldo a favor banner — Pack D.4.c. Opt-in (click para aplicar).
-                      Lee CustomerCredit total (creditBalanceTotal); fallback a Customer.balance
-                      legacy mientras D.5 sweep no cierra. Amber per spec C.1 Q2. */}
+                  {/* Saldo a favor banner — Pack D.4.c/D.5. Opt-in (click para aplicar).
+                      Ambas keys (creditBalanceTotal y balance) apuntan al saldo CustomerCredit
+                      post-D.5; fallback se mantiene por compatibilidad de tipos. */}
                   {selectedCustomer &&
                     (selectedCustomer.creditBalanceTotal ?? selectedCustomer.balance) > 0 &&
                     !isLayaway && (() => {

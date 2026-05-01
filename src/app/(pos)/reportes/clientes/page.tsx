@@ -122,7 +122,6 @@ export default async function ClientesReportPage({
         id: true,
         name: true,
         phone: true,
-        balance: true,
       },
       orderBy: { name: "asc" },
     }),
@@ -135,6 +134,20 @@ export default async function ClientesReportPage({
   ]);
 
   const customerIds = customers.map((c) => c.id);
+
+  // Saldo a favor desde CustomerCredit (Pack D.5 — N+1 safe via groupBy).
+  const creditAggregates =
+    customerIds.length > 0
+      ? await prisma.customerCredit.groupBy({
+          by: ["customerId"],
+          where: { customerId: { in: customerIds }, expiredAt: null, balance: { gt: 0 } },
+          _sum: { balance: true },
+        })
+      : [];
+  const creditTotalsByCustomer = new Map<string, number>();
+  for (const row of creditAggregates) {
+    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
+  }
 
   // ── 3. Agregados por cliente en batch (N+1 safe) ───────────────────────────
   const [completedAgg, layawaySales, lastSaleAgg] = await Promise.all([
@@ -211,7 +224,7 @@ export default async function ClientesReportPage({
   let rows: ClienteRow[] = customers.map((c) => {
     const completed = completedMap.get(c.id) ?? { count: 0, total: 0 };
     const apartados = apartadosMap.get(c.id) ?? { count: 0, pending: 0 };
-    const balance = serializeDecimal(c.balance);
+    const balance = creditTotalsByCustomer.get(c.id) ?? 0;
     const lastActivity = lastActivityMap.get(c.id) ?? null;
     return {
       id: c.id,

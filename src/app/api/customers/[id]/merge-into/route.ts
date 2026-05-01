@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAuthedUser } from "@/lib/auth-helpers";
 import { isManagerPlus } from "@/lib/customers/service";
+import { mergeCustomerCredit } from "@/lib/customer-credit";
 
 // POST /api/customers/[sourceId]/merge-into
 // Body: { targetId: string, overrides?: Record<string, unknown> }
@@ -99,14 +100,9 @@ export async function POST(
         data: { customerId: targetId },
       });
 
-      // Sumar saldos al target.
-      const sourceBalance = source.balance;
-      if (Number(sourceBalance) > 0) {
-        await tx.customer.update({
-          where: { id: targetId },
-          data: { balance: { increment: sourceBalance } },
-        });
-      }
+      // Re-point CustomerCredits source → target + sincronizar shadow-write
+      // de Customer.balance (Pack D.5).
+      await mergeCustomerCredit(sourceId, targetId, tx);
 
       // Marcar source como mergeado.
       await tx.customer.update({
@@ -114,8 +110,6 @@ export async function POST(
         data: {
           mergedIntoId: targetId,
           mergedAt: new Date(),
-          // Dejar balance en 0 para que no cuente doble en reportes agregados.
-          balance: 0,
         },
       });
 

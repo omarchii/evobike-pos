@@ -36,6 +36,7 @@ const ORIGEN_LABELS: Record<OrigenCredito, string> = {
   APARTADO_CANCELADO: "Apartado cancelado",
   DEVOLUCION: "Devolución",
   AJUSTE_MANAGER: "Ajuste MANAGER",
+  RECARGA_CLIENTE: "Recarga cliente",
   MIGRACION_INICIAL: "Migración inicial",
 };
 

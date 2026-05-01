@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkCronAuth } from "@/lib/auth-cron";
 import { prisma } from "@/lib/prisma";
 import { enviarAlertas90d, expirarCreditos, type JobResult } from "@/lib/jobs/saldo-favor";
+import { detectCustomerCreditDrift } from "@/lib/jobs/customer-credit-drift";
 
 // Cron hub diario (Pack D.1 P6).
 //
@@ -12,9 +13,8 @@ import { enviarAlertas90d, expirarCreditos, type JobResult } from "@/lib/jobs/sa
 //
 // ENV var requerida: `CRON_SECRET` — failsafe 503 si no está set (ver auth-cron.ts).
 //
-// Drift detector NO registrado aquí durante D.3 — esperado noise en ventana
-// D.2-D.5 (callsites legacy modifican Customer.balance sin tocar CustomerCredit).
-// Se agrega al hub en D.5 una vez wires completos.
+// Drift detector registrado en D.5 (post-sweep). Drift > 0 ahora indica bug real
+// — wires legacy ya canalizados a helpers, shadow-write airtight.
 
 type JobDef = {
   name: string;
@@ -24,6 +24,7 @@ type JobDef = {
 const JOBS: JobDef[] = [
   { name: "saldo-favor:expirar", fn: expirarCreditos },
   { name: "saldo-favor:alertar-90d", fn: enviarAlertas90d },
+  { name: "customer-credit:drift", fn: detectCustomerCreditDrift },
 ];
 
 type JobRunReport = {

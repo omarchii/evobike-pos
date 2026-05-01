@@ -14,6 +14,10 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
+import {
+  applyCustomerCredit,
+  getCustomerCreditBalance,
+} from "@/lib/customer-credit";
 
 const paymentMethodSchema = z.object({
   method: z.enum(["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"]),
@@ -216,18 +220,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // of the normal POS items. This path is additive; the existing path below
       // is untouched and runs when frozenItems is absent.
       if (input.frozenItems && input.frozenItems.length > 0) {
-        // Credit balance check (same as normal path)
+        // Credit balance pre-flight (same as normal path). El consumo FIFO real
+        // ocurre tras crear el CashTransaction CREDIT_BALANCE (Pack D.5).
         const creditPayment = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
         if (creditPayment) {
           if (!input.customerId) throw new Error("Se requiere un cliente para pagar con Saldo a Favor");
-          const customer = await tx.customer.findUnique({ where: { id: input.customerId } });
-          if (!customer || Number(customer.balance) < creditPayment.amount) {
-            throw new Error(`Saldo insuficiente. El cliente tiene $${customer?.balance ?? 0} a favor.`);
+          const { total: available } = await getCustomerCreditBalance(input.customerId, tx);
+          if (available < creditPayment.amount) {
+            throw new Error(`Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`);
           }
-          await tx.customer.update({
-            where: { id: input.customerId },
-            data: { balance: { decrement: creditPayment.amount } },
-          });
         }
 
         // Stock check + decrement for catalog items only (skip isFreeForm) — polimórfico
@@ -326,10 +327,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
         }
 
-        // Cash transactions
+        // Cash transactions. Si hay CREDIT_BALANCE, capturamos su ID para
+        // canalizar el consumo FIFO via applyCustomerCredit (Pack D.5).
         for (const pm of input.paymentMethods) {
           if (pm.amount <= 0) continue;
-          await tx.cashTransaction.create({
+          const cashTx = await tx.cashTransaction.create({
             data: {
               sessionId: activeSession.id,
               userId,
@@ -342,6 +344,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
             },
           });
+          if (pm.method === "CREDIT_BALANCE" && input.customerId) {
+            await applyCustomerCredit(input.customerId, pm.amount, cashTx.id, tx);
+          }
         }
 
         // G. Commission generation (frozen path)
@@ -360,20 +365,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       // ── NORMAL POS PATH (unchanged) ────────────────────────────────────────
 
-      // CREDIT_BALANCE pre-flight check
+      // CREDIT_BALANCE pre-flight check. Consumo FIFO real ocurre tras crear
+      // el CashTransaction CREDIT_BALANCE en sección E (Pack D.5).
       const creditPayment = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
       if (creditPayment) {
         if (!input.customerId) throw new Error("Se requiere un cliente para pagar con Saldo a Favor");
-        const customer = await tx.customer.findUnique({ where: { id: input.customerId } });
-        if (!customer || Number(customer.balance) < creditPayment.amount) {
+        const { total: available } = await getCustomerCreditBalance(input.customerId, tx);
+        if (available < creditPayment.amount) {
           throw new Error(
-            `Saldo insuficiente. El cliente tiene $${customer?.balance ?? 0} a favor.`
+            `Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`,
           );
         }
-        await tx.customer.update({
-          where: { id: input.customerId },
-          data: { balance: { decrement: creditPayment.amount } },
-        });
       }
 
       // Pre-flight: collect voltage change data (need sale.id, processed after sale creation)
@@ -557,7 +559,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       for (const pm of paymentsToRegister) {
         if (pm.amount <= 0) continue;
-        await tx.cashTransaction.create({
+        const cashTx = await tx.cashTransaction.create({
           data: {
             sessionId: activeSession.id,
             userId,
@@ -570,6 +572,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
           },
         });
+        if (pm.method === "CREDIT_BALANCE" && input.customerId) {
+          await applyCustomerCredit(input.customerId, pm.amount, cashTx.id, tx);
+        }
       }
 
       // H. Voltage changes (4-D) — post-sale, needs sale.id

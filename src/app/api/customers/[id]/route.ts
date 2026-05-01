@@ -13,6 +13,7 @@ import {
   writeCustomerEditLog,
 } from "@/lib/customers/service";
 import { normalizeForSearch } from "@/lib/customers/normalize";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // Campos que SELLER puede editar.
 const SELLER_WRITABLE: readonly string[] = [
@@ -88,11 +89,13 @@ export async function GET(
     );
   }
 
+  const { total: creditBalance } = await getCustomerCreditBalance(id);
+
   return NextResponse.json({
     success: true,
     data: {
       ...customer,
-      balance: Number(customer.balance),
+      balance: creditBalance,
       creditLimit: Number(customer.creditLimit),
     },
   });
@@ -189,11 +192,13 @@ export async function PUT(
       );
     }
 
+    const { total: creditBalance } = await getCustomerCreditBalance(id);
+
     return NextResponse.json({
       success: true,
       data: {
         ...result,
-        balance: Number(result.balance),
+        balance: creditBalance,
         creditLimit: Number(result.creditLimit),
       },
     });

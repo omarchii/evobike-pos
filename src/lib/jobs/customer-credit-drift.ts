@@ -8,13 +8,9 @@ import type { JobResult } from "./saldo-favor";
 // por cliente. Drift > 0 indica que shadow-write divergió o que un callsite legacy
 // no migró a helper.
 //
-// IMPORTANTE: durante la ventana D.2-D.5 los callsites legacy escriben a
-// `Customer.balance` sin tocar `CustomerCredit`. Drift es ESPERADO en esa ventana
-// — el detector funciona como tracker de progreso de la migración. Post-D.5 wires,
-// drift > 0 es bug real.
-//
-// Por eso este helper NO está registrado en `/api/cron/runs/daily` durante D.3 —
-// se agrega al hub en D.5 una vez wires completados (decisión revisor R3 G10).
+// Registrado en `/api/cron/runs/daily` desde D.5 (post-sweep). Drift > 0 ahora
+// es bug real: todos los wires legacy fueron canalizados a helpers
+// (rechargeCustomerCredit / applyCustomerCredit / mergeCustomerCredit).
 
 const DRIFT_EPSILON = 0.005;
 
@@ -49,7 +45,7 @@ export async function detectCustomerCreditDrift(
       (sum, r) => sum + Math.abs(r.balance - r.sumCredit),
       0,
     );
-    errorMessage = `Drift en ${drifts.length}/${rows.length} clientes. Total absoluto $${totalAbs.toFixed(2)}. Esperado durante D.2-D.5; bug post-D.5.`;
+    errorMessage = `Drift en ${drifts.length}/${rows.length} clientes. Total absoluto $${totalAbs.toFixed(2)}. Investigar shadow-write o callsite no migrado.`;
   }
 
   return {

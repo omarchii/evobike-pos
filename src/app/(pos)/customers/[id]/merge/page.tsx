@@ -9,6 +9,7 @@ import { getAuthedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { isManagerPlus } from "@/lib/customers/service";
 import { MergeWizard } from "@/components/customers/profile/merge-wizard";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,22 +28,24 @@ export default async function CustomerMergePage({
   }
 
   const { id } = await params;
-  const source = await prisma.customer.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      phone: true,
-      email: true,
-      rfc: true,
-      isBusiness: true,
-      razonSocial: true,
-      balance: true,
-      creditLimit: true,
-      mergedIntoId: true,
-      deletedAt: true,
-    },
-  });
+  const [source, sourceCredit] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        rfc: true,
+        isBusiness: true,
+        razonSocial: true,
+        creditLimit: true,
+        mergedIntoId: true,
+        deletedAt: true,
+      },
+    }),
+    getCustomerCreditBalance(id),
+  ]);
 
   if (!source) notFound();
 
@@ -60,7 +63,7 @@ export default async function CustomerMergePage({
         rfc: source.rfc,
         isBusiness: source.isBusiness,
         razonSocial: source.razonSocial,
-        balance: Number(source.balance),
+        balance: sourceCredit.total,
         creditLimit: Number(source.creditLimit),
       }}
     />

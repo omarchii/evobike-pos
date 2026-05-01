@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "OrigenCredito" ADD VALUE 'RECARGA_CLIENTE';

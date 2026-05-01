@@ -3,6 +3,7 @@
 // por `session.branchId`.
 
 import { prisma } from "@/lib/prisma";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // === TAB FINANZAS ==========================================================
 
@@ -61,10 +62,10 @@ export function methodLabel(method: string | null): string {
 export async function getCustomerFinanzasData(
   customerId: string,
 ): Promise<FinanzasData> {
-  const [customer, layawaySales, cashTxns] = await Promise.all([
+  const [customer, layawaySales, cashTxns, creditBalance] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: customerId },
-      select: { balance: true, creditLimit: true },
+      select: { creditLimit: true },
     }),
     prisma.sale.findMany({
       where: { customerId, status: "LAYAWAY" },
@@ -93,6 +94,7 @@ export async function getCustomerFinanzasData(
         session: { select: { branch: { select: { name: true } } } },
       },
     }),
+    getCustomerCreditBalance(customerId).then((r) => r.total),
   ]);
 
   const now = new Date();
@@ -184,7 +186,7 @@ export async function getCustomerFinanzasData(
   });
 
   return {
-    balance: customer ? Number(customer.balance) : 0,
+    balance: creditBalance,
     creditLimit: customer ? Number(customer.creditLimit) : 0,
     arPending,
     arOverdueDays: arOverdueDays != null && arOverdueDays > 0 ? arOverdueDays : null,

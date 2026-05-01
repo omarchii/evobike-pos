@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // GET /api/serial-search?q=123
 export async function GET(request: Request) {
@@ -31,17 +32,24 @@ export async function GET(request: Request) {
             take: 10
         });
 
-        // Serializar campos Decimal de Customer antes de retornar como JSON
-        const serialized = bikes.map((bike) => ({
-            ...bike,
-            customer: bike.customer
-                ? {
-                      ...bike.customer,
-                      creditLimit: Number(bike.customer.creditLimit),
-                      balance: Number(bike.customer.balance)
-                  }
-                : null
-        }));
+        // Saldo a favor desde CustomerCredit (Pack D.5). Hasta 10 bikes en el
+        // resultado — loop secuencial es suficiente.
+        const serialized = await Promise.all(
+            bikes.map(async (bike) => {
+                if (!bike.customer) return { ...bike, customer: null };
+                const { total: creditBalance } = await getCustomerCreditBalance(
+                    bike.customer.id,
+                );
+                return {
+                    ...bike,
+                    customer: {
+                        ...bike.customer,
+                        creditLimit: Number(bike.customer.creditLimit),
+                        balance: creditBalance,
+                    },
+                };
+            }),
+        );
 
         return NextResponse.json(serialized);
     } catch (error) {
