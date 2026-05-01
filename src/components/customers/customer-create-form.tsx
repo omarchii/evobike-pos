@@ -59,6 +59,13 @@ export interface CustomerOption {
   email: string | null;
   balance: number;
   creditLimit: number;
+  /**
+   * Saldo a favor activo según `CustomerCredit` (Pack D). Reemplaza `balance`
+   * como source of truth post-D.6 drop. Opcional durante D.4-D.5: callers
+   * que no cargan CustomerCredit pueden omitirlo y los consumers usan
+   * `creditBalanceTotal ?? balance` como fallback shadow.
+   */
+  creditBalanceTotal?: number;
 }
 
 // ── Form schema ──────────────────────────────────────────────────────────────

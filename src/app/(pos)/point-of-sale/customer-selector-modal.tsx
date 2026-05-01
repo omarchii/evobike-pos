@@ -273,22 +273,28 @@ export default function CustomerSelectorModal({
                         )}
                       </div>
 
-                      {c.balance > 0 && (
-                        <span
-                          className="shrink-0 px-2 py-0.5"
-                          style={{
-                            background: "var(--sec-container)",
-                            color: "var(--on-sec-container)",
-                            borderRadius: "var(--r-full)",
-                            fontFamily: "var(--font-display)",
-                            fontSize: 10,
-                            fontWeight: 600,
-                            letterSpacing: "0.02em",
-                          }}
-                        >
-                          ${c.balance.toFixed(2)}
-                        </span>
-                      )}
+                      {(() => {
+                        // Pack D.4.c: muestra CustomerCredit total cuando esté disponible.
+                        // Fallback a Customer.balance legacy durante D.4-D.5.
+                        const saldo = c.creditBalanceTotal ?? c.balance;
+                        if (saldo <= 0) return null;
+                        return (
+                          <span
+                            className="shrink-0 px-2 py-0.5"
+                            style={{
+                              background: "var(--sec-container)",
+                              color: "var(--on-sec-container)",
+                              borderRadius: "var(--r-full)",
+                              fontFamily: "var(--font-display)",
+                              fontSize: 10,
+                              fontWeight: 600,
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            ${saldo.toFixed(2)}
+                          </span>
+                        );
+                      })()}
                     </button>
                   ))}
                 </div>

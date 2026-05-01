@@ -2653,35 +2653,43 @@ export default function PosTerminal({
                     )}
                   </div>
 
-                  {/* Credit balance option */}
+                  {/* Saldo a favor banner — Pack D.4.c. Opt-in (click para aplicar).
+                      Lee CustomerCredit total (creditBalanceTotal); fallback a Customer.balance
+                      legacy mientras D.5 sweep no cierra. Amber per spec C.1 Q2. */}
                   {selectedCustomer &&
-                    selectedCustomer.balance > 0 &&
-                    !isLayaway && (
-                      <button
-                        onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
-                        className="w-full mb-2 transition-all"
-                        style={{
-                          padding: "8px",
-                          borderRadius: 10,
-                          border:
-                            primaryMethod === "CREDIT_BALANCE"
-                              ? "1px solid var(--p-bright)"
-                              : "1px solid var(--ghost-border-strong)",
-                          background:
-                            primaryMethod === "CREDIT_BALANCE"
-                              ? "var(--sec-container)"
-                              : "var(--surf-high)",
-                          color:
-                            primaryMethod === "CREDIT_BALANCE"
-                              ? "var(--p-bright)"
-                              : "var(--on-surf-var)",
-                          fontSize: 11,
-                          fontWeight: 500,
-                        }}
-                      >
-                        Saldo a favor (${selectedCustomer.balance.toFixed(2)})
-                      </button>
-                    )}
+                    (selectedCustomer.creditBalanceTotal ?? selectedCustomer.balance) > 0 &&
+                    !isLayaway && (() => {
+                      const saldo =
+                        selectedCustomer.creditBalanceTotal ?? selectedCustomer.balance;
+                      const isApplied = primaryMethod === "CREDIT_BALANCE";
+                      return (
+                        <button
+                          onClick={() => setPrimaryMethod("CREDIT_BALANCE")}
+                          className="w-full mb-2 flex items-center justify-between transition-all"
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 10,
+                            border: isApplied
+                              ? "1.5px solid #b45309"
+                              : "1.5px solid #fbbf24",
+                            background: isApplied ? "#fde68a" : "#fef3c7",
+                            color: "#78350f",
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span style={{ fontSize: 11, opacity: 0.8 }}>Saldo a favor</span>
+                            <span className="tabular-nums" style={{ fontSize: 13, fontWeight: 700 }}>
+                              ${saldo.toFixed(2)}
+                            </span>
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>
+                            {isApplied ? "✓ APLICADO" : "APLICAR"}
+                          </span>
+                        </button>
+                      );
+                    })()}
 
                   {/* Split payment toggle */}
                   <div

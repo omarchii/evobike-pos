@@ -94,8 +94,18 @@ export default async function PointOfSalePage() {
     totalStockInBranch: m.variants.reduce((a, v) => a + v.stockInBranch, 0),
   }));
 
-  // Customers
+  // Customers + saldo a favor activo (CustomerCredit por Pack D.4.c).
+  // Aggregate por customerId en una sola query — N+1 safe.
   const rawCustomers = await prisma.customer.findMany({ orderBy: { name: "asc" } });
+  const creditAggregates = await prisma.customerCredit.groupBy({
+    by: ["customerId"],
+    where: { expiredAt: null, balance: { gt: 0 } },
+    _sum: { balance: true },
+  });
+  const creditTotalsByCustomer = new Map<string, number>();
+  for (const row of creditAggregates) {
+    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
+  }
   const customers = rawCustomers.map((c) => ({
     id: c.id,
     name: c.name,
@@ -104,6 +114,7 @@ export default async function PointOfSalePage() {
     email: c.email,
     balance: Number(c.balance),
     creditLimit: Number(c.creditLimit),
+    creditBalanceTotal: creditTotalsByCustomer.get(c.id) ?? 0,
   }));
 
   // Battery configurations
