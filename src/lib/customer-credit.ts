@@ -1,14 +1,14 @@
 import { Prisma, type CustomerCredit, type OrigenCredito } from "@prisma/client";
 import { prisma } from "./prisma";
 
-// Helpers de saldo a favor (Pack D.1).
+// Helpers de saldo a favor (Pack D).
 //
 // G7: todos los helpers reciben tx mandatory (Prisma.TransactionClient).
 // El caller es responsable de la transaction boundary — esto fuerza
-// atomicidad shadow-write con Customer.balance legacy.
+// atomicidad de las escrituras a CustomerCredit + CreditConsumption.
 //
-// Customer.balance se mantiene en sync via shadow-write durante D.1-D.5.
-// Drop en D.6 cuando D.5 sweep cierra (decisión 9 — gating por grep).
+// Customer.balance fue dropeado en Pack D.6 — saldo a favor vive
+// 100% en CustomerCredit / CreditConsumption.
 
 const CREDIT_VALIDITY_DAYS = 365;
 
@@ -28,8 +28,8 @@ export type ActiveCreditBreakdown = {
 
 /**
  * Aplica saldo a favor a un pago. Consume créditos no-vencidos en FIFO
- * (expiresAt ASC), escribe CreditConsumption rows ligados al CashTransaction
- * dado, y shadow-write decrement de Customer.balance.
+ * (expiresAt ASC) y escribe CreditConsumption rows ligados al CashTransaction
+ * dado.
  *
  * @throws si saldo insuficiente o si algún UPDATE viola CHECK constraint.
  */
@@ -85,12 +85,6 @@ export async function applyCustomerCredit(
     );
   }
 
-  // Shadow-write Customer.balance legacy (Decisión 13 G7 — Pack D.1).
-  await tx.customer.update({
-    where: { id: customerId },
-    data: { balance: { decrement: amount } },
-  });
-
   return { consumed };
 }
 
@@ -137,7 +131,7 @@ export async function getCustomerCreditBalance(
 
 /**
  * Crea un nuevo CustomerCredit (recarga manual SELLER, devolución, ajuste
- * MANAGER, apartado cancelado, etc.) y shadow-write increment de Customer.balance.
+ * MANAGER, apartado cancelado, etc.).
  *
  * `MIGRACION_INICIAL` está reservado para Migration 2 SQL — el helper rechaza
  * ese origenTipo para evitar dobles backfills.
@@ -159,7 +153,7 @@ export async function rechargeCustomerCredit(
 
   const expiresAt = new Date(Date.now() + CREDIT_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
 
-  const credit = await tx.customerCredit.create({
+  return tx.customerCredit.create({
     data: {
       customerId,
       monto,
@@ -170,18 +164,10 @@ export async function rechargeCustomerCredit(
       expiresAt,
     },
   });
-
-  await tx.customer.update({
-    where: { id: customerId },
-    data: { balance: { increment: monto } },
-  });
-
-  return credit;
 }
 
 /**
  * Re-asigna los CustomerCredits del source al target (soft-merge de cliente).
- * Sincroniza Customer.balance: target += source, source = 0.
  *
  * Idempotente: re-ejecuciones con sourceId vacío de credits son no-op.
  */
@@ -204,24 +190,6 @@ export async function mergeCustomerCredit(
     where: { customerId: sourceId },
     data: { customerId: targetId },
   });
-
-  // Shadow-write Customer.balance — preserve invariant: target absorbe lo del source.
-  const source = await tx.customer.findUnique({
-    where: { id: sourceId },
-    select: { balance: true },
-  });
-  const sourceBalance = source ? Number(source.balance) : 0;
-
-  if (sourceBalance > 0) {
-    await tx.customer.update({
-      where: { id: targetId },
-      data: { balance: { increment: sourceBalance } },
-    });
-    await tx.customer.update({
-      where: { id: sourceId },
-      data: { balance: 0 },
-    });
-  }
 
   return { moved: updated.count, sumMoved };
 }

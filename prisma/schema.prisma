@@ -456,8 +456,6 @@ model Customer {
   phone2         String?
   email          String?
   creditLimit    Decimal @default(0) @db.Decimal(10, 2)
-  /// @deprecated Usar getCustomerCreditBalance(customerId, tx). Migrado a CustomerCredit en Pack D.1. Drop en D.6.
-  balance        Decimal @default(0) @db.Decimal(10, 2)
 
   // Dirección para flete (todos opcionales)
   shippingStreet  String?

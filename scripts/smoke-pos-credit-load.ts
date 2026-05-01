@@ -18,25 +18,11 @@ async function main(): Promise<void> {
     totalSum += sum;
     const customer = await prisma.customer.findUnique({
       where: { id: row.customerId },
-      select: { name: true, balance: true },
+      select: { name: true },
     });
-    const drift = Math.abs(Number(customer?.balance ?? 0) - sum);
-    console.log(
-      `  - ${customer?.name ?? "?"}: CC=$${sum.toFixed(2)} legacy=$${Number(customer?.balance ?? 0).toFixed(2)} drift=$${drift.toFixed(2)}`,
-    );
+    console.log(`  - ${customer?.name ?? "?"}: CC=$${sum.toFixed(2)}`);
   }
   console.log(`\n[OK] Suma total CustomerCredit activos: $${totalSum.toFixed(2)}`);
-
-  // Sanity: verifica match con D.1 invariante (5 customers / $14,331).
-  const expectedSum = 14331;
-  if (Math.abs(totalSum - expectedSum) > 0.01) {
-    console.warn(
-      `[WARN] Suma actual ($${totalSum.toFixed(2)}) != invariante D.1 ($${expectedSum}). ` +
-        `OK si hubo recargas/consumos posteriores.`,
-    );
-  } else {
-    console.log(`[OK] Match invariante D.1 ($${expectedSum})`);
-  }
 
   await prisma.$disconnect();
 }

@@ -1,11 +1,11 @@
-// Smoke tests para los helpers de Pack D.1 (lib/customer-credit.ts).
+// Smoke tests para los helpers de Pack D (lib/customer-credit.ts).
 // Ejecuta con: npx tsx scripts/smoke-customer-credit.ts
 //
 // Cubre:
-//   T1 — rechargeCustomerCredit (happy path + shadow-write Customer.balance)
+//   T1 — rechargeCustomerCredit (happy path)
 //   T2 — getCustomerCreditBalance (total + breakdown FIFO)
-//   T3 — applyCustomerCredit (FIFO consume + shadow-write decrement)
-//   T4 — mergeCustomerCredit (re-point + shadow-write sync)
+//   T3 — applyCustomerCredit (FIFO consume + CreditConsumption row)
+//   T4 — mergeCustomerCredit (re-point CustomerCredits)
 //   T5 — failure-mid-helper rollback (G7 atomicity)
 //
 // Limpia data al final (test prefix con timestamp, deleteMany por id).
@@ -62,10 +62,9 @@ async function main(): Promise<void> {
         tx,
       ),
     );
-    const a1 = await prisma.customer.findUniqueOrThrow({ where: { id: ctx.customerA.id } });
-    if (Number(a1.balance) !== 500) throw new Error(`T1: Customer.balance=${a1.balance} expected 500`);
     if (Number(c1.balance) !== 500) throw new Error(`T1: credit.balance=${c1.balance} expected 500`);
-    console.log("✅ T1 rechargeCustomerCredit: $500 + shadow-write");
+    if (c1.origenTipo !== "AJUSTE_MANAGER") throw new Error(`T1: wrong origenTipo`);
+    console.log("✅ T1 rechargeCustomerCredit: $500 + CustomerCredit creado");
 
     // T2 — getCustomerCreditBalance
     const b2 = await getCustomerCreditBalance(ctx.customerA.id);
@@ -90,34 +89,30 @@ async function main(): Promise<void> {
       if (r.consumed.length !== 1) throw new Error(`T3: consumed=${r.consumed.length} expected 1`);
       if (r.consumed[0].amount !== 200) throw new Error(`T3: amount=${r.consumed[0].amount}`);
     });
-    const a3 = await prisma.customer.findUniqueOrThrow({ where: { id: ctx.customerA.id } });
-    if (Number(a3.balance) !== 300) throw new Error(`T3: Customer.balance=${a3.balance} expected 300`);
     const cc3 = await prisma.customerCredit.findFirstOrThrow({ where: { customerId: ctx.customerA.id } });
     if (Number(cc3.balance) !== 300) throw new Error(`T3: credit.balance=${cc3.balance} expected 300`);
     const cons3 = await prisma.creditConsumption.findFirstOrThrow({ where: { customerCreditId: cc3.id } });
     if (Number(cons3.amount) !== 200) throw new Error(`T3: consumption.amount=${cons3.amount}`);
-    console.log("✅ T3 applyCustomerCredit: FIFO consume $200 + shadow-write + CreditConsumption");
+    console.log("✅ T3 applyCustomerCredit: FIFO consume $200 + CreditConsumption");
 
-    // T4 — mergeCustomerCredit (B → A, B has $100, A has $300; expect A=$400, B=$0)
+    // T4 — mergeCustomerCredit (B → A, B has $100, A has $300; expect 2 credits en A, 0 en B)
     await prisma.$transaction((tx) =>
       rechargeCustomerCredit(ctx.customerB.id, 100, { tipo: "DEVOLUCION" }, tx),
     );
     await prisma.$transaction((tx) =>
       mergeCustomerCredit(ctx.customerB.id, ctx.customerA.id, tx),
     );
-    const a4 = await prisma.customer.findUniqueOrThrow({ where: { id: ctx.customerA.id } });
-    const b4 = await prisma.customer.findUniqueOrThrow({ where: { id: ctx.customerB.id } });
-    if (Number(a4.balance) !== 400) throw new Error(`T4: A.balance=${a4.balance} expected 400`);
-    if (Number(b4.balance) !== 0) throw new Error(`T4: B.balance=${b4.balance} expected 0`);
+    const aTotal = await getCustomerCreditBalance(ctx.customerA.id);
+    if (aTotal.total !== 400) throw new Error(`T4: A total=${aTotal.total} expected 400`);
     const aCredits = await prisma.customerCredit.count({ where: { customerId: ctx.customerA.id } });
     if (aCredits !== 2) throw new Error(`T4: A credits=${aCredits} expected 2`);
     const bCredits = await prisma.customerCredit.count({ where: { customerId: ctx.customerB.id } });
     if (bCredits !== 0) throw new Error(`T4: B credits=${bCredits} expected 0`);
-    console.log("✅ T4 mergeCustomerCredit: re-point + shadow-write sync");
+    console.log("✅ T4 mergeCustomerCredit: re-point CustomerCredits B→A");
 
     // T5 — failure-mid-helper rollback (G7)
-    const beforeBalance = Number(a4.balance);
     const beforeCreditsCount = await prisma.customerCredit.count({ where: { customerId: ctx.customerA.id } });
+    const beforeBalanceTotal = (await getCustomerCreditBalance(ctx.customerA.id)).total;
     const beforeCashTxCount = await prisma.cashTransaction.count({ where: { customerId: ctx.customerA.id } });
     let threw = false;
     try {
@@ -141,13 +136,13 @@ async function main(): Promise<void> {
     }
     if (!threw) throw new Error("T5: expected SIMULATED_FAILURE but tx completed");
 
-    const a5 = await prisma.customer.findUniqueOrThrow({ where: { id: ctx.customerA.id } });
     const a5Credits = await prisma.customerCredit.count({ where: { customerId: ctx.customerA.id } });
+    const a5BalanceTotal = (await getCustomerCreditBalance(ctx.customerA.id)).total;
     const a5CashTx = await prisma.cashTransaction.count({ where: { customerId: ctx.customerA.id } });
-    if (Number(a5.balance) !== beforeBalance) throw new Error(`T5: balance changed (${beforeBalance} → ${a5.balance})`);
+    if (a5BalanceTotal !== beforeBalanceTotal) throw new Error(`T5: balance total changed (${beforeBalanceTotal} → ${a5BalanceTotal})`);
     if (a5Credits !== beforeCreditsCount) throw new Error(`T5: credits count changed (${beforeCreditsCount} → ${a5Credits})`);
     if (a5CashTx !== beforeCashTxCount) throw new Error(`T5: cashTx count changed (${beforeCashTxCount} → ${a5CashTx})`);
-    console.log("✅ T5 failure-mid-helper rollback (G7): Customer.balance + CustomerCredit + CashTransaction unchanged");
+    console.log("✅ T5 failure-mid-helper rollback (G7): CustomerCredit + CashTransaction unchanged");
 
     console.log("\n🎉 All smoke tests passed (5/5)");
   } finally {

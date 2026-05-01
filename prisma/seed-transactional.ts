@@ -190,27 +190,50 @@ async function seedCustomers(ctx: SeedContext): Promise<void> {
       email: `basico${i + 1}@example.com`,
     });
   }
-  // 5 con saldo a favor
-  for (let i = 0; i < 5; i++) {
+  // 5 sin balance directo — el saldo a favor se inyecta vía CustomerCredit abajo.
+  const saldoSeedCount = 5;
+  for (let i = 0; i < saldoSeedCount; i++) {
     customers.push({
       name: `${pickRandom(CUSTOMER_FIRST_NAMES)} ${pickRandom(CUSTOMER_LAST_NAMES)}`,
       phone: `998111${String(3000 + i).padStart(4, "0")}`,
       email: `saldo${i + 1}@example.com`,
-      balance: dec(randomBetween(500, 5000)),
     });
   }
 
   let created = 0;
+  const saldoCustomerIds: string[] = [];
   for (const data of customers) {
     try {
-      await ctx.prisma.customer.create({ data });
+      const c = await ctx.prisma.customer.create({ data });
       created++;
+      if (typeof data.email === "string" && data.email.startsWith("saldo")) {
+        saldoCustomerIds.push(c.id);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`  ❌ Customer ${data.phone}: ${msg}`);
     }
   }
   console.log(`  ✅ Customers creados: ${created}`);
+
+  // Saldo a favor para los 5 customers "saldo*" — vía CustomerCredit (Pack D).
+  const oneYearMs = 365 * 24 * 60 * 60 * 1000;
+  for (const customerId of saldoCustomerIds) {
+    const monto = dec(randomBetween(500, 5000));
+    await ctx.prisma.customerCredit.create({
+      data: {
+        customerId,
+        monto,
+        balance: monto,
+        origenTipo: "AJUSTE_MANAGER",
+        notes: "seed transactional",
+        expiresAt: new Date(Date.now() + oneYearMs),
+      },
+    });
+  }
+  if (saldoCustomerIds.length > 0) {
+    console.log(`  ✅ CustomerCredit seedados: ${saldoCustomerIds.length}`);
+  }
 }
 
 // ─── T2 Vehicle Stock ─────────────────────────────────────────────────────────

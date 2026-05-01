@@ -188,7 +188,6 @@ async function main() {
         phone: '9981234567',
         email: 'mostrador@evobike.mx',
         creditLimit: 0,
-        balance: 0,
       },
     });
   }

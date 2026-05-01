@@ -43,9 +43,7 @@ export function TabSaldo({
   data,
   isManagerPlus,
 }: Props): React.JSX.Element {
-  const { total, active, expired, consumptions, legacyBalance } = data;
-
-  const hasDrift = Math.abs(total - legacyBalance) > 0.01;
+  const { total, active, expired, consumptions } = data;
 
   return (
     <div className="flex flex-col gap-5">
@@ -87,23 +85,6 @@ export function TabSaldo({
           </div>
         )}
       </header>
-
-      {hasDrift && isManagerPlus && (
-        <div
-          className="flex items-start gap-2 rounded-[var(--r-md)] px-3 py-2 text-xs"
-          style={{
-            background: "color-mix(in srgb, var(--warn) 12%, transparent)",
-            color: "var(--warn)",
-          }}
-        >
-          <Icon name="alert" size={14} />
-          <span>
-            Drift detectado entre <code>CustomerCredit</code> ({formatMXN(total)}) y{" "}
-            <code>Customer.balance</code> legacy ({formatMXN(legacyBalance)}). Esperado durante
-            transición Pack D — debe converger a $0 post D.5 sweep.
-          </span>
-        </div>
-      )}
 
       <ActiveCreditsSection rows={active} />
       <ExpiredCreditsSection rows={expired} />

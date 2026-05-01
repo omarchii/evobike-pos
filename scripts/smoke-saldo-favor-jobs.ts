@@ -6,27 +6,22 @@
 //   T2 — expirarCreditos idempotente: re-run = 0 procesados
 //   T3 — enviarAlertas90d: marca alertSentAt para CC con createdAt < now-90d
 //   T4 — enviarAlertas90d idempotente: re-run = 0 procesados
-//   T5 — detectCustomerCreditDrift: detecta diff Customer.balance vs SUM(CustomerCredit)
 
 import { prisma } from "../src/lib/prisma";
-import { detectCustomerCreditDrift } from "../src/lib/jobs/customer-credit-drift";
 import { enviarAlertas90d, expirarCreditos } from "../src/lib/jobs/saldo-favor";
 
 const TEST_PREFIX = `smoke-d3-${Date.now()}`;
 
 async function main(): Promise<void> {
-  // Setup — 3 customers
+  // Setup — 2 customers
   const cExpired = await prisma.customer.create({
     data: { name: `${TEST_PREFIX}-expired` },
   });
   const cAlert = await prisma.customer.create({
     data: { name: `${TEST_PREFIX}-alert` },
   });
-  const cDrift = await prisma.customer.create({
-    data: { name: `${TEST_PREFIX}-drift` },
-  });
 
-  const customerIds = [cExpired.id, cAlert.id, cDrift.id];
+  const customerIds = [cExpired.id, cAlert.id];
 
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -94,39 +89,7 @@ async function main(): Promise<void> {
     }
     console.log(`✅ T4 enviarAlertas90d idempotente: alertSentAt no se re-escribe (system-wide processedCount=${r4.processedCount})`);
 
-    // T5 setup — recharge $200 (crea CC + Customer.balance = 200), luego romper invariante
-    await prisma.$transaction(async (tx) => {
-      await tx.customerCredit.create({
-        data: {
-          customerId: cDrift.id,
-          monto: 200,
-          balance: 200,
-          origenTipo: "AJUSTE_MANAGER",
-          notes: "smoke T5",
-          expiresAt: future,
-        },
-      });
-      await tx.customer.update({
-        where: { id: cDrift.id },
-        data: { balance: 200 },
-      });
-    });
-
-    // Romper invariante: subir balance directo (simular bug legacy)
-    await prisma.customer.update({
-      where: { id: cDrift.id },
-      data: { balance: 250 },
-    });
-
-    // T5 — detectCustomerCreditDrift
-    const r5 = await detectCustomerCreditDrift(prisma);
-    if (r5.errorCount < 1) throw new Error(`T5: errorCount=${r5.errorCount} expected >= 1`);
-    if (!r5.errorMessage || !r5.errorMessage.includes("Drift")) {
-      throw new Error(`T5: errorMessage no menciona drift: ${r5.errorMessage}`);
-    }
-    console.log(`✅ T5 detectCustomerCreditDrift: detectó ${r5.errorCount} cliente(s) con drift (esperado durante D.2-D.5 transition)`);
-
-    console.log("\n🎉 All smoke tests passed (5/5)");
+    console.log("\n🎉 All smoke tests passed (4/4)");
   } finally {
     // Cleanup
     await prisma.customerCredit.deleteMany({ where: { customerId: { in: customerIds } } });

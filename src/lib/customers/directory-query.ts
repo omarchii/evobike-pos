@@ -117,7 +117,6 @@ export async function listDirectoryCustomers(
         shippingCity: true,
         shippingState: true,
         shippingStreet: true,
-        balance: true,
         creditLimit: true,
         deletedAt: true,
         communicationConsent: true,
@@ -130,6 +129,17 @@ export async function listDirectoryCustomers(
   if (customers.length === 0) return { rows: [], total };
 
   const ids = customers.map((c) => c.id);
+
+  // Saldo a favor desde CustomerCredit aggregate (Pack D.5/D.6 — N+1 safe).
+  const creditAggregates = await prisma.customerCredit.groupBy({
+    by: ["customerId"],
+    where: { customerId: { in: ids }, expiredAt: null, balance: { gt: 0 } },
+    _sum: { balance: true },
+  });
+  const creditTotalsByCustomer = new Map<string, number>();
+  for (const row of creditAggregates) {
+    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
+  }
   const now = new Date();
   const twelveMonthsAgo = new Date(now.getTime() - 365 * DAY);
   const ninetyDaysAgo = new Date(now.getTime() - 90 * DAY);
@@ -208,7 +218,7 @@ export async function listDirectoryCustomers(
     const salesCountLast12mo = recentCountMap.get(c.id) ?? 0;
     const lastSaleAt = lastSaleMap.get(c.id) ?? null;
     const lastActivityAt = lastActivityMap.get(c.id) ?? null;
-    const balance = Number(c.balance);
+    const balance = creditTotalsByCustomer.get(c.id) ?? 0;
     const chips = computeSegmentChips(
       {
         isBusiness: c.isBusiness,

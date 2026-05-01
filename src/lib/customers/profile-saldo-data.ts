@@ -1,5 +1,5 @@
 // Datos server-side para el tab "Saldo a favor" del perfil de cliente
-// (Pack D.4.a). Lee CustomerCredit + CreditConsumption directo, NO Customer.balance.
+// (Pack D.4.a). Lee CustomerCredit + CreditConsumption directo.
 //
 // SELLER puede ver. MANAGER ajusta vía AJUSTE_MANAGER (rechargeCustomerCredit).
 
@@ -46,12 +46,10 @@ export interface SaldoData {
   active: ActiveCreditRow[];
   expired: ExpiredCreditRow[];
   consumptions: ConsumptionRow[];
-  /** Customer.balance legacy — para evidencia de drift mientras shadow-write activo (Pack D.1-D.5). */
-  legacyBalance: number;
 }
 
 export async function getCustomerSaldoData(customerId: string): Promise<SaldoData> {
-  const [activeRaw, expiredCredits, consumptions, customer] = await Promise.all([
+  const [activeRaw, expiredCredits, consumptions] = await Promise.all([
     prisma.customerCredit.findMany({
       where: {
         customerId,
@@ -98,10 +96,6 @@ export async function getCustomerSaldoData(customerId: string): Promise<SaldoDat
         },
       },
     }),
-    prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { balance: true },
-    }),
   ]);
 
   const active: ActiveCreditRow[] = activeRaw.map((c) => ({
@@ -145,6 +139,5 @@ export async function getCustomerSaldoData(customerId: string): Promise<SaldoDat
     active,
     expired,
     consumptions: consumptionRows,
-    legacyBalance: customer ? Number(customer.balance) : 0,
   };
 }

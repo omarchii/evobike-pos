@@ -26,8 +26,6 @@ async function main(): Promise<void> {
 
   console.log("\n=== Saldo data ===");
   console.log(`total=${data.total}`);
-  console.log(`legacyBalance=${data.legacyBalance}`);
-  console.log(`drift=${Math.abs(data.total - data.legacyBalance).toFixed(2)}`);
   console.log(`active=${data.active.length}`);
   console.log(`expired=${data.expired.length}`);
   console.log(`consumptions=${data.consumptions.length}`);
