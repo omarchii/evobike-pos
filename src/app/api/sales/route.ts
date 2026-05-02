@@ -18,12 +18,7 @@ import {
   applyCustomerCredit,
   getCustomerCreditBalance,
 } from "@/lib/customer-credit";
-
-const paymentMethodSchema = z.object({
-  method: z.enum(["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"]),
-  amount: z.number().nonnegative(),
-  reference: z.string().optional(),
-});
+import { paymentMethodsArraySchema } from "@/lib/validators/payment";
 
 const saleItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
@@ -60,7 +55,7 @@ const saleSchema = z.object({
   items: z.array(saleItemSchema).min(1, "El carrito está vacío"),
   total: z.number().nonnegative(),
   discount: z.number().nonnegative().optional(),
-  paymentMethods: z.array(paymentMethodSchema),
+  paymentMethods: paymentMethodsArraySchema,
   isLayaway: z.boolean().optional(),
   customerId: z.string().optional(),
   downPayment: z.number().nonnegative().optional(),
