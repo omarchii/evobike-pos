@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkCronAuth } from "@/lib/auth-cron";
 import { prisma } from "@/lib/prisma";
 import { enviarAlertas90d, expirarCreditos, type JobResult } from "@/lib/jobs/saldo-favor";
+import { alertar120d, alertar173d, expirarPolizas } from "@/lib/jobs/garantias";
+import { expirarMensajesPendientes } from "@/lib/jobs/whatsapp-housekeeping";
 
 // Cron hub diario (Pack D.1 P6).
 //
@@ -20,6 +22,10 @@ type JobDef = {
 const JOBS: JobDef[] = [
   { name: "saldo-favor:expirar", fn: expirarCreditos },
   { name: "saldo-favor:alertar-90d", fn: enviarAlertas90d },
+  { name: "garantias:alertar-120d", fn: alertar120d },
+  { name: "garantias:alertar-173d", fn: alertar173d },
+  { name: "garantias:expirar", fn: expirarPolizas },
+  { name: "whatsapp:housekeeping", fn: expirarMensajesPendientes },
 ];
 
 type JobRunReport = {
