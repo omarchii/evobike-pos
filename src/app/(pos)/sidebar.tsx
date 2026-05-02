@@ -18,6 +18,7 @@ import {
     ShieldCheck,
     Landmark,
     ArrowLeftRight,
+    MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -81,6 +82,12 @@ const SECTIONS: NavSection[] = [
                 label: "Autorizaciones",
                 icon: ShieldCheck,
                 href: "/autorizaciones",
+                roles: ["MANAGER", "ADMIN"],
+            },
+            {
+                label: "WhatsApp",
+                icon: MessageCircle,
+                href: "/whatsapp/outbox",
                 roles: ["MANAGER", "ADMIN"],
             },
             {

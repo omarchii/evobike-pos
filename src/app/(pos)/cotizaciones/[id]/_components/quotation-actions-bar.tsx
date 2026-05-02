@@ -287,6 +287,7 @@ export default function QuotationActionsBar({
               total: quotation.total,
               validUntil: quotation.validUntil,
               publicShareToken: quotation.publicShareToken,
+              customerId: quotation.customerId,
               customer:
                 quotation.customerId && quotation.customerName
                   ? { name: quotation.customerName, phone: quotation.customerPhone }

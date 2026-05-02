@@ -845,7 +845,65 @@ async function main() {
   );
   }
 
-  // ── 8. Datos transaccionales (Fase P2 Sesión 2) ─────────────────────────────
+  // ── 8a. WhatsApp templates ──────────────────────────────────────────────────
+  {
+    const templates = [
+      {
+        key: 'QUOTATION_SHARE',
+        description: 'Compartir cotización con cliente',
+        bodyTemplate: 'Hola {{nombreCliente}}, te comparto tu cotización *{{folio}}* por un total de *{{total}}*. Válida hasta el {{fechaValidez}}. Puedes verla aquí: {{linkCotizacion}}',
+        requiredVariables: ['nombreCliente', 'folio', 'total', 'fechaValidez', 'linkCotizacion'],
+      },
+      {
+        key: 'WARRANTY_ALERT_120D',
+        description: 'Alerta de garantía a 120 días',
+        bodyTemplate: 'Hola {{nombreCliente}}, te informamos que la garantía de tu {{modeloBici}} (serie {{serie}}) vence el {{fechaVencimiento}}. Si necesitas asistencia, acude a {{sucursalNombre}} antes de esa fecha.',
+        requiredVariables: ['nombreCliente', 'modeloBici', 'serie', 'fechaVencimiento', 'sucursalNombre'],
+      },
+      {
+        key: 'WARRANTY_ALERT_173D',
+        description: 'Alerta de garantía a 173 días (último aviso)',
+        bodyTemplate: 'Hola {{nombreCliente}}, último aviso: la garantía de tu {{modeloBici}} (serie {{serie}}) vence en 7 días ({{fechaVencimiento}}). Acude a {{sucursalNombre}} si necesitas servicio.',
+        requiredVariables: ['nombreCliente', 'modeloBici', 'serie', 'fechaVencimiento', 'sucursalNombre'],
+      },
+      {
+        key: 'CREDIT_BALANCE_90D',
+        description: 'Recordatorio de saldo a favor a 90 días',
+        bodyTemplate: 'Hola {{nombreCliente}}, tienes un saldo a favor de {{montoSaldo}} en {{sucursalNombre}} que vence el {{fechaVencimiento}}. Puedes usarlo en tu próxima compra.',
+        requiredVariables: ['nombreCliente', 'montoSaldo', 'sucursalNombre', 'fechaVencimiento'],
+      },
+      {
+        key: 'LAYAWAY_NO_PAYMENT_30D',
+        description: 'Apartado sin abono por 30 días',
+        bodyTemplate: 'Hola {{nombreCliente}}, tu apartado *{{folioPedido}}* no ha recibido abonos en 30 días. El saldo pendiente es {{saldoPendiente}}. Acude a {{sucursalNombre}} para ponerte al día.',
+        requiredVariables: ['nombreCliente', 'folioPedido', 'saldoPendiente', 'sucursalNombre'],
+      },
+      {
+        key: 'WORKSHOP_READY_PICKUP',
+        description: 'Taller: equipo listo para recoger',
+        bodyTemplate: 'Hola {{nombreCliente}}, tu {{equipoDescripcion}} (orden {{folioOrden}}) está listo para recoger en {{sucursalNombre}}.',
+        requiredVariables: ['nombreCliente', 'equipoDescripcion', 'folioOrden', 'sucursalNombre'],
+      },
+      {
+        key: 'WORKSHOP_AWAITING_FACTORY_PART_UPDATE',
+        description: 'Taller: actualización pieza de fábrica',
+        bodyTemplate: 'Hola {{nombreCliente}}, te informamos que la pieza para tu {{equipoDescripcion}} (orden {{folioOrden}}) sigue en espera de fábrica. Te avisaremos cuando llegue.',
+        requiredVariables: ['nombreCliente', 'equipoDescripcion', 'folioOrden'],
+      },
+    ];
+
+    let created = 0;
+    let skipped = 0;
+    for (const t of templates) {
+      const existing = await prisma.whatsAppTemplate.findUnique({ where: { key: t.key } });
+      if (existing) { skipped++; continue; }
+      await prisma.whatsAppTemplate.create({ data: t });
+      created++;
+    }
+    console.log(`✅ WhatsApp templates: ${created} creadas, ${skipped} preexistentes.`);
+  }
+
+  // ── 8b. Datos transaccionales (Fase P2 Sesión 2) ──────────────────────────
   if (FRESH) {
     console.log('\n⏭️  FRESH: se omiten datos transaccionales (ventas, pedidos, órdenes, etc.).');
   } else {

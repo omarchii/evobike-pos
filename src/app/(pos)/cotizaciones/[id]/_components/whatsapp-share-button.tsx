@@ -9,15 +9,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { formatMXN, formatDate } from "@/lib/quotations";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { normalizePhoneMX } from "@/lib/customers/phone";
 
 interface QuotationData {
   folio: string;
   total: number;
   validUntil: Date | string;
   publicShareToken: string;
+  customerId?: string | null;
   customer: { name: string; phone: string | null } | null;
   anonymousCustomerName: string | null;
   anonymousCustomerPhone: string | null;
@@ -27,37 +26,7 @@ interface WhatsAppShareButtonProps {
   quotation: QuotationData;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 const PHONE_REGEX = /^\d{10}$/;
-
-/** Normaliza un teléfono a formato wa.me: 52 + 10 dígitos. */
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("52")) return digits;
-  return `52${digits.slice(-10)}`;
-}
-
-/** Construye la URL de WhatsApp con mensaje pre-llenado. */
-function buildWhatsAppUrl(
-  phone: string,
-  recipientName: string | null,
-  folio: string,
-  total: number,
-  validUntil: Date | string,
-  publicShareToken: string,
-): string {
-  const normalized = normalizePhone(phone);
-  const link = `${window.location.origin}/cotizaciones/public/${publicShareToken}`;
-  const greeting = recipientName ? `Hola ${recipientName}` : "Hola";
-  const fecha = formatDate(validUntil);
-  const message =
-    `${greeting}, te comparto tu cotización *${folio}* por un total de *${formatMXN(total)}*. ` +
-    `Válida hasta el ${fecha}. Puedes verla aquí: ${link}`;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,7 +34,6 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
   const [phoneError, setPhoneError] = useState("");
   const [sending, setSending] = useState(false);
 
-  /** Teléfono disponible en la cotización (sin requerir input manual). */
   function getPhoneNumber(): string | null {
     return (
       quotation.customer?.phone ||
@@ -74,27 +42,60 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
     );
   }
 
-  /** Nombre del destinatario para el saludo. */
   function getRecipientName(): string | null {
     return quotation.customer?.name || quotation.anonymousCustomerName || null;
   }
 
-  function openWhatsApp(phone: string): void {
-    const url = buildWhatsAppUrl(
-      phone,
-      getRecipientName(),
-      quotation.folio,
-      quotation.total,
-      quotation.validUntil,
-      quotation.publicShareToken,
-    );
-    window.open(url, "_blank", "noopener,noreferrer");
+  async function sendViaDispatch(phone: string) {
+    const normalized = normalizePhoneMX(phone);
+    if (!normalized) return;
+
+    setSending(true);
+    try {
+      const link = `${window.location.origin}/cotizaciones/public/${quotation.publicShareToken}`;
+      const fecha = new Date(quotation.validUntil).toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+      const total = quotation.total.toLocaleString("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      });
+
+      const res = await fetch("/api/whatsapp/send-and-open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateKey: "QUOTATION_SHARE",
+          customerId: quotation.customerId ?? null,
+          recipientPhone: normalized,
+          variables: {
+            nombreCliente: getRecipientName() ?? "",
+            folio: quotation.folio,
+            total,
+            fechaValidez: fecha,
+            linkCotizacion: link,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.waUrl) {
+        window.open(data.waUrl, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setSending(false);
+      setModalOpen(false);
+      setManualPhone("");
+      setPhoneError("");
+    }
   }
 
   function handleClick(): void {
     const phone = getPhoneNumber();
     if (phone) {
-      openWhatsApp(phone);
+      sendViaDispatch(phone);
     } else {
       setManualPhone("");
       setPhoneError("");
@@ -107,12 +108,7 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
       setPhoneError("Ingresa exactamente 10 dígitos numéricos.");
       return;
     }
-    setSending(true);
-    openWhatsApp(manualPhone);
-    setSending(false);
-    setModalOpen(false);
-    setManualPhone("");
-    setPhoneError("");
+    sendViaDispatch(manualPhone);
   }
 
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>): void {
@@ -123,10 +119,10 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
 
   return (
     <>
-      {/* ── Floating bar button ── */}
       <button
         type="button"
         onClick={handleClick}
+        disabled={sending}
         className={cn(
           "group transition-colors hover:bg-[var(--surf-high)] rounded-xl",
         )}
@@ -136,15 +132,19 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
           borderRadius: "var(--r-lg)",
           cursor: "pointer",
           position: "relative",
+          opacity: sending ? 0.5 : 1,
         }}
       >
         <span className="flex flex-col items-center gap-1 px-3 py-2 min-w-[64px]">
-          <MessageCircle className="h-4 w-4" />
+          {sending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MessageCircle className="h-4 w-4" />
+          )}
           <span className="text-[0.625rem] font-medium">WhatsApp</span>
         </span>
       </button>
 
-      {/* ── Modal: pedir número manual ── */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent
           className="p-0 gap-0 overflow-hidden"
@@ -204,10 +204,7 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
                 }}
               />
               {phoneError && (
-                <p
-                  className="text-xs mt-1.5"
-                  style={{ color: "var(--ter)" }}
-                >
+                <p className="text-xs mt-1.5" style={{ color: "var(--ter)" }}>
                   {phoneError}
                 </p>
               )}

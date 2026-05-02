@@ -63,6 +63,10 @@ model User {
   // Customers redesign (Sub-fase A)
   customerNotes    CustomerNote[]
   customerEditLogs CustomerEditLog[]
+
+  // WhatsApp outbox
+  waMessagesOpened   OutboundMessage[]  @relation("WaMessageOpenedBy")
+  waTemplatesUpdated WhatsAppTemplate[] @relation("WaTemplateUpdatedBy")
 }
 
 model Branch {
@@ -514,6 +518,8 @@ model Customer {
   editLogs CustomerEditLog[]
 
   customerCredits CustomerCredit[] // Pack D.1 — saldo a favor granular (reemplaza Customer.balance)
+
+  outboundMessages OutboundMessage[]
 
   @@index([mergedIntoId])
   @@index([deletedAt])
@@ -1414,4 +1420,52 @@ model AlertThreshold {
   @@unique([metricKey, branchId])
   @@index([branchId])
   @@index([metricKey])
+}
+
+// === WHATSAPP OUTBOX ===
+
+enum OutboundMessageStatus {
+  PENDING
+  OPENED_IN_WAME
+  EXPIRED
+  CANCELLED
+  ERROR
+}
+
+model WhatsAppTemplate {
+  key               String   @id
+  description       String
+  bodyTemplate      String   @db.Text
+  requiredVariables Json
+  isActive          Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+  updatedByUserId   String?
+
+  updatedByUser    User?             @relation("WaTemplateUpdatedBy", fields: [updatedByUserId], references: [id])
+  outboundMessages OutboundMessage[]
+}
+
+model OutboundMessage {
+  id             String                @id @default(uuid())
+  templateKey    String
+  customerId     String?
+  recipientPhone String
+  variables      Json
+  renderedBody   String                @db.Text
+  status         OutboundMessageStatus @default(PENDING)
+  errorMessage   String?
+  cancelReason   String?
+  scheduledAt    DateTime              @default(now())
+  expiresAt      DateTime?
+  openedAt       DateTime?
+  openedByUserId String?
+  createdAt      DateTime              @default(now())
+
+  template     WhatsAppTemplate @relation(fields: [templateKey], references: [key])
+  customer     Customer?        @relation(fields: [customerId], references: [id])
+  openedByUser User?            @relation("WaMessageOpenedBy", fields: [openedByUserId], references: [id])
+
+  @@index([status, scheduledAt])
+  @@index([customerId, status])
+  @@index([status, expiresAt])
 }
