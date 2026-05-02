@@ -533,6 +533,21 @@ async function main() {
   }
   console.log(`  ✅ Categorías aplicadas: ${categorizados} modelos (${categoriaNotFound} faltantes).`);
 
+  // 5f-bis. warrantyDays por categoría
+  const WARRANTY_DAYS: Partial<Record<ModeloCategoria, number>> = {
+    BASE: 365, PLUS: 365, CARGA: 365, CARGA_PESADA: 365, TRICICLO: 365,
+    SCOOTER: 180, JUGUETE: 90,
+  };
+  let warrantySet = 0;
+  for (const [cat, days] of Object.entries(WARRANTY_DAYS)) {
+    const r = await prisma.modelo.updateMany({
+      where: { categoria: cat as ModeloCategoria, warrantyDays: null, requiere_vin: true },
+      data: { warrantyDays: days },
+    });
+    warrantySet += r.count;
+  }
+  if (warrantySet > 0) console.log(`  ✅ warrantyDays aplicados: ${warrantySet} modelos.`);
+
   // 5g. BatteryConfiguration: reset + recrear desde el PDF.
   // Cada fila representa una opción válida. Modelos con múltiples opciones a mismo V
   // (p. ej. S7 48V con 13Ah y 23.4Ah) generan múltiples filas. `quantity` = nº de

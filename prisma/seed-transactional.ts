@@ -28,6 +28,8 @@ import {
   QuotationStatus,
   FormaPagoProveedor,
   EstadoPagoProveedor,
+  WarrantyPolicyStatus,
+  ModeloCategoria,
 } from "@prisma/client";
 import { generatePublicToken } from "../src/lib/workshop";
 
@@ -135,6 +137,7 @@ export async function seedTransactional(prisma: PrismaClient): Promise<void> {
   await seedQuotations(ctx);
   await seedPurchaseReceipts(ctx);
   await seedSuppliers(ctx);
+  await seedWarrantyPolicies(ctx);
 
   console.log("✅ Seed transaccional completado.\n");
 }
@@ -2059,5 +2062,174 @@ async function seedSuppliers(ctx: SeedContext): Promise<void> {
 
   console.log(
     `  ✅ Suppliers: ${created} creados (${linkedReceipts} PurchaseReceipts + ${linkedLots} BatteryLots vinculados).`,
+  );
+}
+
+// ─── T14 Warranty Policies ───────────────────────────────────────────────────
+
+const WARRANTY_DAYS_BY_CATEGORY: Partial<Record<ModeloCategoria, number>> = {
+  BASE: 365,
+  PLUS: 365,
+  CARGA: 365,
+  CARGA_PESADA: 365,
+  TRICICLO: 365,
+  SCOOTER: 180,
+  JUGUETE: 90,
+};
+
+const WARRANTY_TERMS_SEED =
+  "Esta póliza ampara al comprador contra defectos de fabricación en el motor eléctrico, " +
+  "controlador, batería de litio y cuadro estructural, sujeto a uso normal y mantenimiento " +
+  "según manual. No cubre: daños por agua, modificaciones, accidentes, desgaste natural de " +
+  "frenos/llantas/vestidura. Para hacer válida la garantía, presentar esta póliza en cualquier " +
+  "sucursal Evobike con la unidad y número de serie legible.";
+
+async function seedWarrantyPolicies(ctx: SeedContext): Promise<void> {
+  const existing = await ctx.prisma.warrantyPolicy.count();
+  if (existing > 0) {
+    console.log(`  ⏭️  WarrantyPolicies: ya existen ${existing}, skip.`);
+    return;
+  }
+
+  // Step 1: backfill warrantyDays on modelos that have a category mapped above
+  const modelos = await ctx.prisma.modelo.findMany({
+    where: { requiere_vin: true, categoria: { not: null } },
+    select: { id: true, categoria: true, warrantyDays: true },
+  });
+
+  let backfilled = 0;
+  for (const m of modelos) {
+    if (m.warrantyDays !== null) continue;
+    const days = m.categoria ? WARRANTY_DAYS_BY_CATEGORY[m.categoria] : undefined;
+    if (!days) continue;
+    await ctx.prisma.modelo.update({
+      where: { id: m.id },
+      data: { warrantyDays: days },
+    });
+    backfilled++;
+  }
+
+  // Step 2: find assembled bikes (customerId=null) with warranty-eligible modelos
+  // and create deterministic sale+policy fixtures for them
+  const availableBikes = await ctx.prisma.customerBike.findMany({
+    where: {
+      customerId: null,
+      productVariant: { modelo: { warrantyDays: { not: null }, categoria: { not: null } } },
+    },
+    select: {
+      id: true,
+      branchId: true,
+      productVariantId: true,
+      productVariant: {
+        select: {
+          id: true,
+          precioPublico: true,
+          modelo: { select: { id: true, nombre: true, categoria: true, warrantyDays: true } },
+        },
+      },
+    },
+    take: 8,
+  });
+
+  const customers = await ctx.prisma.customer.findMany({
+    take: 8,
+    select: { id: true },
+  });
+  if (customers.length === 0 || availableBikes.length === 0) {
+    console.log("  ⏭️  WarrantyPolicies: no hay bikes/customers disponibles, skip.");
+    return;
+  }
+
+  // Age distribution: 2 expired (old sales), 1 about to expire (within 30d), rest active
+  const AGE_OFFSETS_DAYS = [400, 380, 350, 200, 90, 30, 10, 5];
+
+  let created = 0;
+  for (let i = 0; i < availableBikes.length; i++) {
+    const bike = availableBikes[i];
+    const pv = bike.productVariant;
+    if (!pv?.modelo.warrantyDays || !pv.modelo.categoria) continue;
+
+    const customer = customers[i % customers.length];
+    const ageDays = AGE_OFFSETS_DAYS[i % AGE_OFFSETS_DAYS.length];
+    const saleDate = new Date(Date.now() - ageDays * 86_400_000);
+    const warrantyDays = pv.modelo.warrantyDays;
+    const startedAt = saleDate;
+    const expiresAt = new Date(startedAt.getTime() + warrantyDays * 86_400_000);
+    const now = new Date();
+    const status = expiresAt < now
+      ? WarrantyPolicyStatus.EXPIRED
+      : WarrantyPolicyStatus.ACTIVE;
+
+    const session = await ctx.prisma.cashRegisterSession.findFirst({
+      where: { branchId: bike.branchId },
+      select: { id: true },
+    });
+
+    await ctx.prisma.$transaction(async (tx) => {
+      const folio = await nextSaleFolio(tx, bike.branchId, "V");
+      const sale = await tx.sale.create({
+        data: {
+          folio,
+          branchId: bike.branchId,
+          userId: ctx.adminUserId,
+          customerId: customer.id,
+          status: SaleStatus.COMPLETED,
+          subtotal: pv.precioPublico,
+          discount: dec(0),
+          total: pv.precioPublico,
+          createdAt: saleDate,
+        },
+      });
+      const saleItem = await tx.saleItem.create({
+        data: {
+          saleId: sale.id,
+          productVariantId: pv.id,
+          description: pv.modelo.nombre,
+          quantity: 1,
+          price: pv.precioPublico,
+          discount: dec(0),
+        },
+      });
+      await tx.customerBike.update({
+        where: { id: bike.id },
+        data: { customerId: customer.id },
+      });
+      if (session) {
+        await tx.cashTransaction.create({
+          data: {
+            sessionId: session.id,
+            saleId: sale.id,
+            type: "PAYMENT_IN",
+            method: PaymentMethod.CASH,
+            amount: pv.precioPublico,
+            collectionStatus: CollectionStatus.COLLECTED,
+            createdAt: saleDate,
+          },
+        });
+      }
+      await tx.warrantyPolicy.create({
+        data: {
+          saleId: sale.id,
+          saleItemId: saleItem.id,
+          customerBikeId: bike.id,
+          modeloId: pv.modelo.id,
+          modeloCategoria: pv.modelo.categoria!,
+          warrantyDaysSnapshot: warrantyDays,
+          startedAt,
+          expiresAt,
+          termsSnapshot: WARRANTY_TERMS_SEED,
+          status,
+          alertSentAt120: status === WarrantyPolicyStatus.EXPIRED
+            ? new Date("1970-01-01") : null,
+          alertSentAt173: status === WarrantyPolicyStatus.EXPIRED
+            ? new Date("1970-01-01") : null,
+        },
+      });
+    });
+    created++;
+  }
+
+  console.log(
+    `  ✅ WarrantyPolicies: ${backfilled} modelos con warrantyDays, ${created} pólizas creadas.`,
   );
 }
