@@ -14,10 +14,8 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
-import {
-  applyCustomerCredit,
-  getCustomerCreditBalance,
-} from "@/lib/customer-credit";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
+import { createPaymentInTransactions } from "@/lib/cash-transaction";
 import { paymentMethodsArraySchema } from "@/lib/validators/payment";
 
 const saleItemSchema = z.object({
@@ -322,27 +320,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
         }
 
-        // Cash transactions. Si hay CREDIT_BALANCE, capturamos su ID para
-        // canalizar el consumo FIFO via applyCustomerCredit (Pack D.5).
-        for (const pm of input.paymentMethods) {
-          if (pm.amount <= 0) continue;
-          const cashTx = await tx.cashTransaction.create({
-            data: {
-              sessionId: activeSession.id,
-              userId,
-              saleId: frozenSale.id,
-              customerId: input.customerId ?? null,
-              type: "PAYMENT_IN",
-              method: pm.method,
-              amount: pm.amount,
-              reference: pm.reference,
-              collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
-            },
-          });
-          if (pm.method === "CREDIT_BALANCE" && input.customerId) {
-            await applyCustomerCredit(input.customerId, pm.amount, cashTx.id, tx);
-          }
-        }
+        await createPaymentInTransactions(tx, {
+          saleId: frozenSale.id,
+          sessionId: activeSession.id,
+          userId,
+          customerId: input.customerId,
+          entries: input.paymentMethods,
+        });
 
         // G. Commission generation (frozen path)
         await generateCommissions(tx, frozenSale.id, userId, branchId,
@@ -549,27 +533,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       // E. Cash transactions (one per payment method)
       const paymentTotal = input.isLayaway ? (input.downPayment ?? 0) : input.total;
-      const paymentsToRegister =
-        paymentTotal > 0 && input.paymentMethods.length > 0 ? input.paymentMethods : [];
-
-      for (const pm of paymentsToRegister) {
-        if (pm.amount <= 0) continue;
-        const cashTx = await tx.cashTransaction.create({
-          data: {
-            sessionId: activeSession.id,
-            userId,
-            saleId: sale.id,
-            customerId: input.customerId ?? null,
-            type: "PAYMENT_IN",
-            method: pm.method,
-            amount: pm.amount,
-            reference: pm.reference,
-            collectionStatus: pm.method === "ATRATO" ? "PENDING" : "COLLECTED",
-          },
+      if (paymentTotal > 0 && input.paymentMethods.length > 0) {
+        await createPaymentInTransactions(tx, {
+          saleId: sale.id,
+          sessionId: activeSession.id,
+          userId,
+          customerId: input.customerId,
+          entries: input.paymentMethods,
         });
-        if (pm.method === "CREDIT_BALANCE" && input.customerId) {
-          await applyCustomerCredit(input.customerId, pm.amount, cashTx.id, tx);
-        }
       }
 
       // H. Voltage changes (4-D) — post-sale, needs sale.id
