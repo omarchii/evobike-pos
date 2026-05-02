@@ -157,6 +157,9 @@ model Modelo {
   commissionRules    CommissionRule[]
 
   batteryConfigurations BatteryConfiguration[]
+  warrantyDays          Int? // NULL = sin póliza. Solo aplica si requiere_vin = true (CHECK en migration.sql)
+
+  warrantyPolicies WarrantyPolicy[]
 }
 
 model Color {
@@ -340,6 +343,7 @@ model Sale {
   assemblyOrders        AssemblyOrder[]
   quotation             Quotation?             @relation("QuotationConvertedSale")
   authorizationRequests AuthorizationRequest[]
+  warrantyPolicies      WarrantyPolicy[]
 }
 
 model SaleItem {
@@ -356,6 +360,7 @@ model SaleItem {
   productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
   simpleProduct    SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
   batteryLots      BatteryLot[]
+  warrantyPolicies WarrantyPolicy[]
 }
 
 // === PAYMENTS & CASHIER ===
@@ -493,6 +498,11 @@ model Customer {
   // endpoints ya no escriben aquí; lectura fallback para registros antiguos.
   direccionFiscal String?
 
+  // === Identidad / INE ===
+  curp          String?
+  ineScanUrl    String? // URL en R2
+  ineCapturedAt DateTime?
+
   // === Customers redesign — Sub-fase A ===
   birthday             DateTime?
   isBusiness           Boolean               @default(false)
@@ -558,6 +568,7 @@ model CustomerBike {
   assemblyOrders     AssemblyOrder[]
   stockTransferItems StockTransferItem[]
   editLogs           CustomerEditLog[]
+  warrantyPolicies   WarrantyPolicy[]
 
   @@unique([serialNumber, branchId])
 }
@@ -752,6 +763,11 @@ model ServiceOrder {
   publicToken        String?                @unique
   publicTokenEnabled Boolean                @default(true)
   approvals          ServiceOrderApproval[]
+
+  // WARRANTY flow (Pack G.1 INT-4)
+  ineCustomerSnapshotJson Json? // { nombre, curp, fechaCaptura, ineScanHash } — solo type=WARRANTY al aceptar
+  partRequestedAt         DateTime? // set al transicionar a WAITING_PARTS (primer pedido; NULL-guard)
+  partReceivedAt          DateTime? // set al salir de WAITING_PARTS → IN_PROGRESS
 
   // Workshop redesign (Sub-fase C — Recepción)
   checklist            Json? // [{key, state: "OK"|"FAIL"|"NA", note?}]
@@ -1417,6 +1433,47 @@ model AlertThreshold {
   @@unique([metricKey, branchId])
   @@index([branchId])
   @@index([metricKey])
+}
+
+// === WARRANTY POLICIES (Pack G.1 INT-4) ===
+
+enum WarrantyPolicyStatus {
+  ACTIVE
+  EXPIRED
+  VOID
+}
+
+model WarrantyPolicy {
+  id                   String               @id @default(uuid())
+  saleId               String
+  saleItemId           String
+  customerBikeId       String
+  modeloId             String
+  modeloCategoria      ModeloCategoria // SNAPSHOT al momento de venta
+  warrantyDaysSnapshot Int // SNAPSHOT (Modelo.warrantyDays puede cambiar después)
+  startedAt            DateTime
+  expiresAt            DateTime // = startedAt + warrantyDaysSnapshot
+  termsSnapshot        Json // SNAPSHOT del texto legal vigente al momento
+  status               WarrantyPolicyStatus @default(ACTIVE)
+  claimCount           Int                  @default(0)
+  docPrintedAt         DateTime? // primera impresión
+  lastPrintedAt        DateTime? // última reimpresión
+  printCount           Int                  @default(0)
+  docUrl               String? // R2 URL, set post-commit
+  docSha256            String? // hash del PDF binary, set post-commit
+  pdfEngineVersion     String?              @db.VarChar(64)
+  alertSentAt120       DateTime? // centinela 1970-01-01 = silenciado backfill
+  alertSentAt173       DateTime? // idem
+  createdAt            DateTime             @default(now())
+
+  sale         Sale         @relation(fields: [saleId], references: [id])
+  saleItem     SaleItem     @relation(fields: [saleItemId], references: [id])
+  customerBike CustomerBike @relation(fields: [customerBikeId], references: [id])
+  modelo       Modelo       @relation(fields: [modeloId], references: [id])
+
+  @@index([status, expiresAt])
+  @@index([status, alertSentAt120])
+  @@index([status, alertSentAt173])
 }
 
 // === WHATSAPP OUTBOX ===
