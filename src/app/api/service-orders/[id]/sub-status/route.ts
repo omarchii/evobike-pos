@@ -57,7 +57,9 @@ export async function POST(
         branchId: true,
         status: true,
         subStatus: true,
+        type: true,
         assignedTechId: true,
+        partRequestedAt: true,
       },
     });
     if (!order) {
@@ -76,6 +78,24 @@ export async function POST(
         { status: 403 },
       );
     }
+
+    // WARRANTY orders: WAITING_PARTS transitions are MANAGER/ADMIN only
+    const touchesWaitingParts =
+      subStatus === "WAITING_PARTS" || order.subStatus === "WAITING_PARTS";
+    if (
+      order.type === "WARRANTY" &&
+      touchesWaitingParts &&
+      user.role === "TECHNICIAN"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "En órdenes de garantía, solo MANAGER puede gestionar Esperando Pieza",
+        },
+        { status: 403 },
+      );
+    }
+
     if (order.status !== "IN_PROGRESS") {
       return NextResponse.json(
         {
@@ -86,9 +106,22 @@ export async function POST(
       );
     }
 
+    // Auto-set partRequestedAt / partReceivedAt timestamps
+    const timestampData: Record<string, Date> = {};
+    const now = new Date();
+    if (subStatus === "WAITING_PARTS" && !order.partRequestedAt) {
+      timestampData.partRequestedAt = now;
+    }
+    if (
+      order.subStatus === "WAITING_PARTS" &&
+      subStatus === null
+    ) {
+      timestampData.partReceivedAt = now;
+    }
+
     const updated = await prisma.serviceOrder.update({
       where: { id: serviceOrderId },
-      data: { subStatus },
+      data: { subStatus, ...timestampData },
       select: { id: true, subStatus: true },
     });
 

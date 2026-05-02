@@ -61,6 +61,8 @@ export async function PATCH(
         servicedByUserId: true,
         subStatus: true,
         assignedTechId: true,
+        type: true,
+        customerId: true,
       },
     });
     if (!order) {
@@ -90,6 +92,27 @@ export async function PATCH(
     // Al salir de IN_PROGRESS el subStatus deja de aplicar.
     if (currentStatus === "IN_PROGRESS" && order.subStatus !== null) {
       data.subStatus = null;
+    }
+
+    // WARRANTY orders: snapshot INE data at acceptance (PENDING → IN_PROGRESS)
+    if (
+      currentStatus === "PENDING" &&
+      newStatus === "IN_PROGRESS" &&
+      order.type === "WARRANTY" &&
+      order.customerId
+    ) {
+      const customer = await prisma.customer.findUnique({
+        where: { id: order.customerId },
+        select: { name: true, curp: true, ineCapturedAt: true, ineScanHash: true },
+      });
+      if (customer) {
+        data.ineCustomerSnapshotJson = {
+          nombre: customer.name,
+          curp: customer.curp,
+          fechaCaptura: customer.ineCapturedAt?.toISOString() ?? null,
+          ineScanHash: customer.ineScanHash,
+        };
+      }
     }
 
     const updated = await prisma.serviceOrder.update({

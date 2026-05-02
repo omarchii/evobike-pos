@@ -42,7 +42,8 @@ function agingTierFor(
   subStatus: string | null,
   createdAtMs: number,
   updatedAtMs: number,
-  nowMs: number
+  nowMs: number,
+  type?: string,
 ): AgingTier | null {
   const HOUR = 3_600_000;
   const DAY = 86_400_000;
@@ -55,6 +56,17 @@ function agingTierFor(
       return "rojo";
     }
     case "IN_PROGRESS": {
+      if (subStatus === "WAITING_PARTS") {
+        const elapsed = nowMs - updatedAtMs;
+        if (type === "WARRANTY") {
+          if (elapsed < 30 * DAY) return "verde";
+          if (elapsed < 45 * DAY) return "ambar";
+          return "rojo";
+        }
+        if (elapsed < 3 * DAY) return "verde";
+        if (elapsed < 7 * DAY) return "ambar";
+        return "rojo";
+      }
       if (subStatus === "PAUSED") {
         const inPause = nowMs - updatedAtMs;
         if (inPause < DAY) return "verde";
@@ -255,7 +267,7 @@ interface OrderCardProps {
 }
 
 function OrderCard({ order, nowMs, canDrag, isDragging, onDragStart, onDragEnd }: OrderCardProps) {
-  const tier = agingTierFor(order.status, order.subStatus, order.createdAtMs, order.updatedAtMs, nowMs);
+  const tier = agingTierFor(order.status, order.subStatus, order.createdAtMs, order.updatedAtMs, nowMs, order.type);
 
   return (
     <article
@@ -438,7 +450,7 @@ export default function WorkshopBoard({
     if (mineFilter && o.assignedTech?.id !== currentUser.id) return false;
     if (typeFilter.size > 0 && !typeFilter.has(o.type)) return false;
     if (agingFilter) {
-      const tier = agingTierFor(o.status, o.subStatus, o.createdAtMs, o.updatedAtMs, nowMs);
+      const tier = agingTierFor(o.status, o.subStatus, o.createdAtMs, o.updatedAtMs, nowMs, o.type);
       if (tier !== agingFilter) return false;
     }
     return true;

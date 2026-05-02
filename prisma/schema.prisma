@@ -501,6 +501,7 @@ model Customer {
   // === Identidad / INE ===
   curp          String?
   ineScanUrl    String? // URL en R2
+  ineScanHash   String? // SHA256 del archivo en R2; set al subir
   ineCapturedAt DateTime?
 
   // === Customers redesign — Sub-fase A ===
