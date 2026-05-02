@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,45 +9,16 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Wifi, SplitSquareVertical } from "lucide-react";
-
-// ── Design tokens (AGENTS.md: inputs en modales SIEMPRE --surf-low) ──────────
-const INPUT_STYLE: React.CSSProperties = {
-  background: "var(--surf-low)",
-  border: "none",
-  borderRadius: "var(--r-lg)",
-  color: "var(--on-surf)",
-  fontFamily: "var(--font-body)",
-  fontWeight: 400,
-  fontSize: "0.875rem",
-  height: 44,
-  paddingLeft: "0.75rem",
-  paddingRight: "0.75rem",
-  width: "100%",
-  outline: "none",
-};
-
-const SELECT_STYLE: React.CSSProperties = {
-  ...INPUT_STYLE,
-  cursor: "pointer",
-  appearance: "none",
-  WebkitAppearance: "none",
-};
-
-type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "ATRATO";
-
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ElementType }[] = [
-  { value: "CASH", label: "Efectivo", icon: Banknote },
-  { value: "CARD", label: "Tarjeta", icon: CreditCard },
-  { value: "TRANSFER", label: "Transferencia", icon: Wifi },
-  { value: "ATRATO", label: "Atrato", icon: SplitSquareVertical },
-];
+import { Banknote } from "lucide-react";
+import { PaymentMethodList } from "@/components/pos/payment/payment-method-list";
+import type { PaymentMethodEntry } from "@/lib/validators/payment";
 
 interface ChargeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderId: string;
   total: number;
+  customerId?: string | null;
 }
 
 function formatMXN(n: number) {
@@ -58,25 +29,51 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
-export function ChargeModal({ open, onOpenChange, orderId, total }: ChargeModalProps) {
+export function ChargeModal({ open, onOpenChange, orderId, total, customerId }: ChargeModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [isSplit, setIsSplit] = useState(false);
-  const [method, setMethod] = useState<PaymentMethod>("CASH");
-  const [amount, setAmount] = useState(String(total.toFixed(2)));
-  const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethod>("CARD");
-  const [secondaryAmount, setSecondaryAmount] = useState("0.00");
+  const [entries, setEntries] = useState<PaymentMethodEntry[]>([
+    { method: "CASH", amount: total },
+  ]);
+  const [customerCreditBalance, setCustomerCreditBalance] = useState<number | null>(null);
 
-  const handleSubmit = async () => {
-    const primaryAmt = parseFloat(amount);
-    const secondaryAmt = isSplit ? parseFloat(secondaryAmount) : 0;
+  // Reset entries cuando cambia total (vuelve a abrir el modal)
+  useEffect(() => {
+    if (open) {
+      setEntries([{ method: "CASH", amount: total }]);
+    }
+  }, [open, total]);
 
-    if (isNaN(primaryAmt) || primaryAmt <= 0) {
-      toast.error("Ingresa un monto válido");
+  // Lazy fetch saldo a favor (Pack E.7)
+  useEffect(() => {
+    if (!customerId || !open) {
+      setCustomerCreditBalance(null);
       return;
     }
-    if (isSplit && (isNaN(secondaryAmt) || secondaryAmt < 0)) {
-      toast.error("Monto secundario inválido");
+    let cancelled = false;
+    fetch(`/api/customers/${customerId}/balance`)
+      .then((r) => r.json() as Promise<{ success: boolean; balance?: number }>)
+      .then((d) => {
+        if (cancelled) return;
+        setCustomerCreditBalance(typeof d.balance === "number" ? d.balance : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerCreditBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, open]);
+
+  const sumEntries = entries.reduce(
+    (s, e) => s + (Number.isFinite(e.amount) ? e.amount : 0),
+    0,
+  );
+  const balanced = Math.abs(sumEntries - total) < 0.005;
+
+  const handleSubmit = async () => {
+    if (!balanced) {
+      toast.error("Los montos no suman el total");
       return;
     }
 
@@ -88,11 +85,7 @@ export function ChargeModal({ open, onOpenChange, orderId, total }: ChargeModalP
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentMethod: method,
-          amount: primaryAmt,
-          ...(isSplit && secondaryAmt > 0
-            ? { secondaryPaymentMethod: secondaryMethod, secondaryAmount: secondaryAmt }
-            : {}),
+          paymentMethods: entries.filter((e) => e.amount > 0),
         }),
       });
 
@@ -176,97 +169,18 @@ export function ChargeModal({ open, onOpenChange, orderId, total }: ChargeModalP
           </span>
         </div>
 
-        {/* Payment form */}
+        {/* Payment list (Pack E.7) */}
         <div className="px-6 pb-6 space-y-4">
-          {/* Split toggle */}
-          <button
-            onClick={() => {
-              setIsSplit(!isSplit);
-              if (!isSplit) {
-                const half = (total / 2).toFixed(2);
-                setAmount(half);
-                setSecondaryAmount(half);
-              } else {
-                setAmount(total.toFixed(2));
-              }
-            }}
-            className="flex items-center gap-2 text-xs font-medium transition-colors w-full"
-            style={{ color: isSplit ? "var(--p)" : "var(--on-surf-var)" }}
-          >
-            <SplitSquareVertical className="h-3.5 w-3.5" />
-            {isSplit ? "Pago único" : "Dividir en dos métodos"}
-          </button>
+          <PaymentMethodList
+            value={entries}
+            onChange={setEntries}
+            total={total}
+            customerCreditBalance={customerCreditBalance}
+          />
 
-          {/* Primary method */}
-          <div className="space-y-2">
-            <label style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
-              {isSplit ? "Método principal" : "Método de pago"}
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <select
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                  style={{ ...SELECT_STYLE, paddingRight: "2rem" }}
-                >
-                  {METHOD_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {isSplit && (
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: 120 }}
-                  placeholder="0.00"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Secondary method (split) */}
-          {isSplit && (
-            <div className="space-y-2">
-              <label style={{ fontSize: "0.75rem", color: "var(--on-surf-var)", fontWeight: 500 }}>
-                Método secundario
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <select
-                    value={secondaryMethod}
-                    onChange={(e) => setSecondaryMethod(e.target.value as PaymentMethod)}
-                    style={{ ...SELECT_STYLE, paddingRight: "2rem" }}
-                  >
-                    {METHOD_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={secondaryAmount}
-                  onChange={(e) => setSecondaryAmount(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: 120 }}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Confirm button */}
           <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !balanced}
             className="w-full flex items-center justify-center gap-2 font-semibold text-sm transition-opacity disabled:opacity-50"
             style={{
               background: "var(--velocity-gradient)",

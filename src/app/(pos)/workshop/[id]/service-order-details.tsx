@@ -672,6 +672,7 @@ export function ServiceOrderDetailsView({
         onOpenChange={setChargeOpen}
         orderId={order.id}
         total={order.total}
+        customerId={order.customerId}
       />
       <DeliverModal
         open={deliverOpen}

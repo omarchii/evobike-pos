@@ -12,6 +12,7 @@ import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
 import { expirePendingApprovalsTx } from "@/lib/workshop-approval-expiry";
 import { approvalItemsJsonSchema } from "@/lib/workshop-approvals";
+import { derivePrepaidMethodFromPayments } from "@/lib/workshop-prepaid";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function WorkshopOrderPage(props: {
           folio: true,
           total: true,
           status: true,
+          payments: { select: { method: true } },
         },
       },
       approvals: {
@@ -110,7 +112,10 @@ export default async function WorkshopOrderPage(props: {
     prepaid: order.prepaid,
     prepaidAt: order.prepaidAt ? order.prepaidAt.toISOString() : null,
     prepaidAmount: order.prepaidAmount != null ? Number(order.prepaidAmount) : null,
-    prepaidMethod: order.prepaidMethod,
+    // Pack E.7: derivar desde Sale.payments[] (campo prepaidMethod dropeado).
+    prepaidMethod: order.sale
+      ? derivePrepaidMethodFromPayments(order.sale.payments)
+      : null,
     qaPassedAt: order.qaPassedAt ? order.qaPassedAt.toISOString() : null,
     qaPassedByName: order.qaPassedByUser?.name ?? null,
     qaNotes: order.qaNotes,

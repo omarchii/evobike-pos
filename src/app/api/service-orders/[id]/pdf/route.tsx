@@ -16,6 +16,7 @@ import {
 } from "@/lib/pdf/helpers";
 import { ComprobanteServiceOrderPDF } from "@/lib/pdf/templates/comprobante-service-order-pdf";
 import type { PDFItem } from "@/lib/pdf/types";
+import { derivePrepaidMethodFromPayments } from "@/lib/workshop-prepaid";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,7 +71,12 @@ export async function GET(
           },
         },
       },
-      sale: { select: { createdAt: true } },
+      sale: {
+        select: {
+          createdAt: true,
+          payments: { select: { method: true } },
+        },
+      },
     },
   });
 
@@ -196,7 +202,10 @@ export async function GET(
         prepaid: order.prepaid,
         prepaidAt: order.prepaidAt,
         prepaidAmount: order.prepaidAmount?.toNumber() ?? null,
-        prepaidMethod: order.prepaidMethod,
+        // Pack E.7: derivar desde Sale.payments[] (campo prepaidMethod dropeado).
+        prepaidMethod: order.sale
+          ? derivePrepaidMethodFromPayments(order.sale.payments)
+          : null,
         elaboradoPor: order.user.name ?? "—",
         sealImagePath: branch.sealImageUrl,
       }}

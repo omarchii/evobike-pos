@@ -10,14 +10,15 @@ import {
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
 import { getViewBranchId } from "@/lib/branch-filter";
-import { resolvePrepaidMethod } from "@/lib/workshop-prepaid";
 import type { SessionUser } from "@/lib/auth-types";
+import { paymentMethodsArraySchema } from "@/lib/validators/payment";
+import { createPaymentInTransactions } from "@/lib/cash-transaction";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
+// Pack E.7 — shape unificado: paymentMethods[] reemplaza paymentMethod /
+// secondaryPaymentMethod / secondaryAmount.
 const chargeSchema = z.object({
-  paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "ATRATO"]),
-  amount: z.number().positive("El monto debe ser mayor a cero"),
-  secondaryPaymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "ATRATO"]).optional(),
-  secondaryAmount: z.number().nonnegative().optional(),
+  paymentMethods: paymentMethodsArraySchema,
 });
 
 // POST /api/service-orders/[id]/charge
@@ -103,13 +104,34 @@ export async function POST(
       0
     );
 
-    // Validate payment amounts sum to total
-    const paymentTotal = input.amount + (input.secondaryAmount ?? 0);
+    // Validate payment amounts sum to total (Pack E.7)
+    const paymentTotal = input.paymentMethods.reduce((s, e) => s + e.amount, 0);
     if (Math.abs(paymentTotal - total) > 0.01) {
       return NextResponse.json(
         { success: false, error: "Los montos de pago no suman el total de la orden" },
         { status: 422 }
       );
+    }
+
+    // CREDIT_BALANCE pre-flight (necesita customerId del cliente del taller)
+    const creditEntry = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
+    if (creditEntry) {
+      if (!order.customerId) {
+        return NextResponse.json(
+          { success: false, error: "Saldo a favor requiere cliente asignado a la orden" },
+          { status: 422 },
+        );
+      }
+      const { total: available } = await getCustomerCreditBalance(order.customerId);
+      if (available < creditEntry.amount) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`,
+          },
+          { status: 422 },
+        );
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -141,48 +163,24 @@ export async function POST(
         },
       });
 
-      // Primary payment
-      await tx.cashTransaction.create({
-        data: {
-          sessionId: activeSession.id,
-          userId,
-          saleId: sale.id,
-          type: "PAYMENT_IN",
-          method: input.paymentMethod,
-          amount: input.amount,
-          collectionStatus: input.paymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
-        },
+      // CashTransactions (Pack E.7 helper centralizado)
+      await createPaymentInTransactions(tx, {
+        saleId: sale.id,
+        sessionId: activeSession.id,
+        userId,
+        customerId: order.customerId,
+        entries: input.paymentMethods,
       });
 
-      // Secondary payment (split)
-      if (input.secondaryPaymentMethod && (input.secondaryAmount ?? 0) > 0) {
-        await tx.cashTransaction.create({
-          data: {
-            sessionId: activeSession.id,
-            userId,
-            saleId: sale.id,
-            type: "PAYMENT_IN",
-            method: input.secondaryPaymentMethod,
-            amount: input.secondaryAmount!,
-            collectionStatus: input.secondaryPaymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
-          },
-        });
-      }
-
       // Mark service order as prepaid + populate audit trail (Hotfix.1 fields).
-      // prepaidMethod null si split (ver workshop-prepaid.ts::resolvePrepaidMethod).
-      const totalCharged = input.amount + (input.secondaryAmount ?? 0);
+      // Pack E.7: prepaidMethod dropeado del schema; consumers derivan ahora
+      // desde Sale.payments[] (ver derivePrepaidMethodFromPayments).
       await tx.serviceOrder.update({
         where: { id: serviceOrderId },
         data: {
           prepaid: true,
           prepaidAt: new Date(),
-          prepaidAmount: totalCharged,
-          prepaidMethod: resolvePrepaidMethod(
-            input.paymentMethod,
-            input.secondaryPaymentMethod,
-            input.secondaryAmount,
-          ),
+          prepaidAmount: paymentTotal,
         },
       });
 

@@ -1,29 +1,18 @@
 // scripts/backfill-prepaid-fields.mjs
-// One-shot backfill para poblar ServiceOrder.prepaidAt / prepaidAmount /
-// prepaidMethod en órdenes donde prepaid=true pero esos campos son null
-// (data legacy pre-Hotfix.1 y pre-E.2). Corre idempotente — si ya no
-// quedan candidatas, imprime el conteo y termina.
+// One-shot backfill para poblar ServiceOrder.prepaidAt / prepaidAmount
+// en órdenes donde prepaid=true pero esos campos son null (data legacy
+// pre-Hotfix.1 y pre-E.2). Corre idempotente — si ya no quedan
+// candidatas, imprime el conteo y termina.
+//
+// Pack E.7 (2026-05-02): el campo prepaidMethod fue dropeado del schema.
+// Los consumers derivan ahora desde Sale.payments[] vía
+// derivePrepaidMethodFromPayments. Este script ya no asigna prepaidMethod.
 //
 // Uso: node scripts/backfill-prepaid-fields.mjs
-//
-// Regla canónica de prepaidMethod (duplicada por ser .mjs sin imports TS;
-// fuente canónica: src/lib/workshop-prepaid.ts::resolvePrepaidMethod y
-// comment de schema.prisma sobre ServiceOrder.prepaidMethod):
-//   payments.length === 1 → prepaidMethod = payments[0].method
-//   payments.length  > 1  → prepaidMethod = null (split)
-//
-// El sum de prepaidAmount es la suma de todos los payments (split o no).
-// prepaidAt es el createdAt del payment más antiguo.
 
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-function resolveMethodFromPayments(payments) {
-  if (payments.length === 0) return null; // edge: sin payments
-  if (payments.length > 1) return null;
-  return payments[0].method;
-}
 
 async function main() {
   const orders = await prisma.serviceOrder.findMany({
@@ -55,14 +44,12 @@ async function main() {
     const firstAt = payments
       .map((p) => p.createdAt)
       .sort((a, b) => a.getTime() - b.getTime())[0];
-    const method = resolveMethodFromPayments(payments);
 
     await prisma.serviceOrder.update({
       where: { id: order.id },
       data: {
         prepaidAt: firstAt,
         prepaidAmount: sum,
-        prepaidMethod: method,
       },
     });
     updated++;
