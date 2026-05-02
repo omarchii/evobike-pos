@@ -107,6 +107,7 @@ export default async function CatalogoPage() {
             isActive: m.isActive,
             imageUrl: m.imageUrl,
             colorIds: m.coloresDisponibles.map((mc) => mc.color_id),
+            warrantyDays: m.warrantyDays,
           })),
           colores: colores.map((c) => ({
             id: c.id,

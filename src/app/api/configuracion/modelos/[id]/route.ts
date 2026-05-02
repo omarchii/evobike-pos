@@ -58,6 +58,7 @@ const patchSchema = z.object({
   esBateria: z.boolean().optional(),
   isActive: z.boolean().optional(),
   colorIds: z.array(z.string().uuid()).optional(),
+  warrantyDays: z.number().int().nonnegative().nullable().optional(),
 });
 
 export async function PATCH(

@@ -60,6 +60,7 @@ const createSchema = z.object({
   categoria: z.enum(CATEGORIAS).nullable().optional(), // null = modelo de batería
   esBateria: z.boolean().optional(),
   colorIds: z.array(z.string().uuid()).optional(),
+  warrantyDays: z.number().int().nonnegative().nullable().optional(),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

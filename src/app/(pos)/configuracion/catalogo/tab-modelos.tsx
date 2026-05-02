@@ -194,6 +194,7 @@ export function TabModelos({
                     <Th>Nombre</Th>
                     <Th>Colores</Th>
                     <Th>VIN</Th>
+                    <Th>Garantía</Th>
                     <Th>Estado</Th>
                     <Th align="right">Acciones</Th>
                   </tr>
@@ -235,6 +236,9 @@ export function TabModelos({
                       <td className="px-5 py-3 text-[var(--on-surf-var)]">{m.colorIds.length}</td>
                       <td className="px-5 py-3 text-[var(--on-surf-var)]">
                         {m.requiere_vin ? "Sí" : "No"}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--on-surf-var)]">
+                        {m.warrantyDays != null ? `${m.warrantyDays}d` : "—"}
                       </td>
                       <td className="px-5 py-3 text-[var(--on-surf-var)]">
                         {m.isActive ? "Activo" : "Inactivo"}
@@ -386,6 +390,9 @@ function ModeloDialog({
   const [esBateria, setEsBateria] = useState(modelo?.esBateria ?? false);
   const [colorIds, setColorIds] = useState<string[]>(modelo?.colorIds ?? []);
   const [imageUrl, setImageUrl] = useState<string | null>(modelo?.imageUrl ?? null);
+  const [warrantyDays, setWarrantyDays] = useState<string>(
+    modelo?.warrantyDays != null ? String(modelo.warrantyDays) : "",
+  );
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -432,6 +439,12 @@ function ModeloDialog({
     }
     setSaving(true);
     try {
+      const parsedWarrantyDays = warrantyDays.trim() ? parseInt(warrantyDays, 10) : null;
+      if (parsedWarrantyDays != null && !requiereVin) {
+        toast.error("Días de garantía solo aplica a modelos con VIN (requiere_vin)");
+        setSaving(false);
+        return;
+      }
       const payload = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || null,
@@ -439,6 +452,7 @@ function ModeloDialog({
         requiere_vin: requiereVin,
         esBateria,
         colorIds,
+        warrantyDays: parsedWarrantyDays,
       };
       const res = await fetch(
         isEdit ? `/api/configuracion/modelos/${modelo!.id}` : "/api/configuracion/modelos",
@@ -464,6 +478,7 @@ function ModeloDialog({
         isActive: m.isActive,
         imageUrl: m.imageUrl ?? imageUrl,
         colorIds: m.coloresDisponibles?.map((mc: { color_id: string }) => mc.color_id) ?? colorIds,
+        warrantyDays: m.warrantyDays ?? null,
       });
       toast.success(isEdit ? "Modelo actualizado" : "Modelo creado");
       onClose();
@@ -576,6 +591,18 @@ function ModeloDialog({
               Es modelo de batería
             </label>
           </div>
+          {requiereVin && (
+            <Field label="Días de garantía (vacío = sin póliza)">
+              <input
+                type="number"
+                min={0}
+                style={INPUT_STYLE}
+                value={warrantyDays}
+                onChange={(e) => setWarrantyDays(e.target.value)}
+                placeholder="ej. 180"
+              />
+            </Field>
+          )}
           <Field label="Colores disponibles">
             <div
               className="grid grid-cols-2 md:grid-cols-3 gap-1.5 p-3 rounded-xl"

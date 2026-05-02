@@ -79,6 +79,7 @@ export interface ModeloRow {
   isActive: boolean;
   imageUrl: string | null;
   colorIds: string[];
+  warrantyDays: number | null;
 }
 
 export interface ColorRow {
