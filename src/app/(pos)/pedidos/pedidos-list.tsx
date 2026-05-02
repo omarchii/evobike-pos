@@ -371,6 +371,7 @@ export default function PedidosList({ pedidos, customers, variants }: PedidosLis
           folio={abonoTarget.folio}
           total={abonoTarget.total}
           totalPaid={abonoTarget.totalPaid}
+          customerId={abonoTarget.customer?.id ?? null}
           onClose={() => setAbonoTarget(null)}
           onSuccess={handleAbonoSuccess}
         />

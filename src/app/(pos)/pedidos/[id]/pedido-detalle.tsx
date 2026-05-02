@@ -522,6 +522,7 @@ export default function PedidoDetalle({ pedido }: PedidoDetalleProps) {
           folio={pedido.folio}
           total={pedido.total}
           totalPaid={pedido.totalPaid}
+          customerId={pedido.customer?.id ?? null}
           onClose={() => setAbonoOpen(false)}
           onSuccess={handleAbonoSuccess}
         />

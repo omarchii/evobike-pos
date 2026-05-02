@@ -1,22 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Banknote, CreditCard, ArrowUpRight } from "lucide-react";
-
-export type PaymentMethodOption = "CASH" | "CARD" | "TRANSFER";
-
-const METHOD_LABELS: Record<PaymentMethodOption, string> = {
-  CASH: "Efectivo",
-  CARD: "Tarjeta",
-  TRANSFER: "Transferencia",
-};
-
-const METHOD_ICONS: Record<PaymentMethodOption, React.ReactNode> = {
-  CASH: <Banknote className="w-4 h-4" />,
-  CARD: <CreditCard className="w-4 h-4" />,
-  TRANSFER: <ArrowUpRight className="w-4 h-4" />,
-};
+import { PaymentMethodList } from "@/components/pos/payment/payment-method-list";
+import type { PaymentMethodEntry } from "@/lib/validators/payment";
 
 function formatMXN(value: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -31,6 +18,7 @@ export interface AbonoModalProps {
   folio: string;
   total: number;
   totalPaid: number;
+  customerId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -40,18 +28,52 @@ export function AbonoModal({
   folio,
   total,
   totalPaid,
+  customerId,
   onClose,
   onSuccess,
 }: AbonoModalProps) {
   const pending = total - totalPaid;
-  const [amount, setAmount] = useState(pending.toFixed(2));
-  const [method, setMethod] = useState<PaymentMethodOption>("CASH");
+  const [entries, setEntries] = useState<PaymentMethodEntry[]>([
+    { method: "CASH", amount: pending },
+  ]);
+  const [customerCreditBalance, setCustomerCreditBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Fetch saldo a favor del cliente (lazy) — Pack E.6
+  useEffect(() => {
+    if (!customerId) {
+      setCustomerCreditBalance(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/customers/${customerId}/balance`)
+      .then((r) => r.json() as Promise<{ success: boolean; balance?: number }>)
+      .then((d) => {
+        if (cancelled) return;
+        setCustomerCreditBalance(typeof d.balance === "number" ? d.balance : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerCreditBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  const submitTotal = entries.reduce(
+    (s, e) => s + (Number.isFinite(e.amount) ? e.amount : 0),
+    0,
+  );
+  const exceeds = submitTotal > pending + 0.005;
+  const valid = submitTotal > 0 && !exceeds;
+
   const handleSubmit = async () => {
-    const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0 || amt > pending) {
-      toast.error("Monto inválido. Verifica el abono.");
+    if (!valid) {
+      toast.error(
+        exceeds
+          ? `El monto excede el saldo pendiente (${formatMXN(pending)})`
+          : "Captura al menos un método con monto válido",
+      );
       return;
     }
 
@@ -62,7 +84,9 @@ export function AbonoModal({
       const res = await fetch(`/api/pedidos/${pedidoId}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amt, paymentMethod: method }),
+        body: JSON.stringify({
+          paymentMethods: entries.filter((e) => e.amount > 0),
+        }),
       });
       const json = (await res.json()) as { success: boolean; error?: string };
 
@@ -133,63 +157,14 @@ export function AbonoModal({
           </div>
         </div>
 
-        {/* Amount input */}
-        <div className="mb-4">
-          <label
-            className="block text-sm font-medium mb-1.5"
-            style={{ color: "var(--on-surf)" }}
-          >
-            Monto a abonar
-          </label>
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            max={pending}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full text-xl font-semibold px-4 py-3 rounded-[var(--r-lg)] outline-none transition-shadow focus:shadow-[0_0_0_2px_var(--p-bright)]"
-            style={{
-              fontFamily: "var(--font-display)",
-              background: "var(--surf-lowest)",
-              color: "var(--on-surf)",
-            }}
-          />
-        </div>
-
-        {/* Method selector */}
+        {/* Payment list (Pack E.6) */}
         <div className="mb-6">
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--on-surf)" }}
-          >
-            Método de pago
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {(["CASH", "CARD", "TRANSFER"] as PaymentMethodOption[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMethod(m)}
-                className="flex flex-col items-center gap-1 py-3 px-2 rounded-[var(--r-lg)] text-xs font-semibold transition-all"
-                style={
-                  method === m
-                    ? {
-                        background:
-                          "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",
-                        color: "var(--on-p)",
-                      }
-                    : {
-                        background: "var(--surf-high)",
-                        color: "var(--on-surf-var)",
-                      }
-                }
-              >
-                {METHOD_ICONS[m]}
-                {METHOD_LABELS[m]}
-              </button>
-            ))}
-          </div>
+          <PaymentMethodList
+            value={entries}
+            onChange={setEntries}
+            total={pending}
+            customerCreditBalance={customerCreditBalance}
+          />
         </div>
 
         {/* Actions */}
@@ -205,7 +180,7 @@ export function AbonoModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !valid}
             className="flex-1 py-3 rounded-full text-sm font-bold transition-opacity disabled:opacity-60"
             style={{
               background: "linear-gradient(135deg, var(--p-mid) 0%, var(--p-bright) 100%)",

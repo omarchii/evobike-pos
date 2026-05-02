@@ -23,6 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { CustomerOption, VariantOption } from "./page";
+import { PaymentMethodList } from "@/components/pos/payment/payment-method-list";
+import type { PaymentMethodEntry } from "@/lib/validators/payment";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -81,14 +83,7 @@ const TEXTAREA_STYLE: React.CSSProperties = {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type OrderType = "LAYAWAY" | "BACKORDER";
-type PaymentMethod = "CASH" | "CARD" | "TRANSFER";
 type CustomerMode = "search" | "new";
-
-const METHOD_LABELS: Record<PaymentMethod, string> = {
-  CASH: "Efectivo",
-  CARD: "Tarjeta",
-  TRANSFER: "Transferencia",
-};
 
 const REGIMEN_OPTIONS = [
   { value: "601", label: "601 – General de Ley Personas Morales" },
@@ -225,13 +220,10 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(0);
 
-  // ── Payment ────────────────────────────────────────────────────────────────
+  // ── Payment (Pack E.6 — array unificado) ───────────────────────────────────
   const [deposit, setDeposit] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [isSplitPayment, setIsSplitPayment] = useState(false);
-  const [primaryAmount, setPrimaryAmount] = useState(0);
-  const [primaryMethod, setPrimaryMethod] = useState<PaymentMethod>("CASH");
-  const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethod>("TRANSFER");
+  const [paymentEntries, setPaymentEntries] = useState<PaymentMethodEntry[]>([]);
+  const [customerCreditBalance, setCustomerCreditBalance] = useState<number | null>(null);
 
   // ── Other ──────────────────────────────────────────────────────────────────
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -286,7 +278,12 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
   // ── Derived payment values ─────────────────────────────────────────────────
   const total = unitPrice * quantity;
   const remaining = total - deposit;
-  const secondaryAmountNum = Math.max(0, deposit - primaryAmount);
+  const entriesSum = paymentEntries.reduce(
+    (s, e) => s + (Number.isFinite(e.amount) ? e.amount : 0),
+    0,
+  );
+  const entriesBalanced =
+    deposit === 0 ? entriesSum === 0 : Math.abs(entriesSum - deposit) < 0.005;
 
   // ── Customer search ────────────────────────────────────────────────────────
   const filteredCustomers = useMemo(() => {
@@ -298,6 +295,41 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
 
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : null;
   const effectiveCustomerId = customerMode === "search" ? customerId : createdCustomerId;
+
+  // Fetch saldo a favor cuando hay cliente confirmado (Pack E.6)
+  React.useEffect(() => {
+    if (!effectiveCustomerId) {
+      setCustomerCreditBalance(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/customers/${effectiveCustomerId}/balance`)
+      .then((r) => r.json() as Promise<{ success: boolean; balance?: number }>)
+      .then((d) => {
+        if (cancelled) return;
+        setCustomerCreditBalance(typeof d.balance === "number" ? d.balance : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerCreditBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveCustomerId]);
+
+  // Sincronizar paymentEntries con deposit cuando cambia (default 1 entry CASH)
+  React.useEffect(() => {
+    if (deposit === 0) {
+      setPaymentEntries([]);
+      return;
+    }
+    setPaymentEntries((prev) => {
+      if (prev.length === 0) {
+        return [{ method: "CASH", amount: deposit }];
+      }
+      return prev;
+    });
+  }, [deposit]);
 
   // ── Create new customer ────────────────────────────────────────────────────
   const handleCreateCustomer = async () => {
@@ -364,11 +396,8 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
     setQuantity(1);
     setUnitPrice(0);
     setDeposit(0);
-    setPaymentMethod("CASH");
-    setIsSplitPayment(false);
-    setPrimaryAmount(0);
-    setPrimaryMethod("CASH");
-    setSecondaryMethod("TRANSFER");
+    setPaymentEntries([]);
+    setCustomerCreditBalance(null);
     setDeliveryDate("");
     setNotes("");
   };
@@ -378,7 +407,6 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
   // ── Validation ─────────────────────────────────────────────────────────────
   const customerValid = customerMode === "search" ? customerId !== "" : createdCustomerId !== null;
   const productValid = resolvedVariant !== null && unitPrice > 0;
-  const splitCovered = !isSplitPayment || Math.abs(primaryAmount + secondaryAmountNum - deposit) < 0.01;
 
   const canSubmit =
     customerValid &&
@@ -386,7 +414,7 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
     quantity >= 1 &&
     deposit >= 0 &&
     deposit <= total &&
-    splitCovered &&
+    entriesBalanced &&
     (orderType === "LAYAWAY" || deliveryDate !== "") &&
     !submitting;
 
@@ -402,18 +430,13 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
         productVariantId: resolvedVariant.id,
         quantity,
         unitPrice,
-        depositAmount: isSplitPayment ? primaryAmount : deposit,
-        paymentMethod: isSplitPayment ? primaryMethod : paymentMethod,
+        depositAmount: deposit,
+        paymentMethods:
+          deposit > 0 ? paymentEntries.filter((e) => e.amount > 0) : undefined,
         orderType,
         expectedDeliveryDate: deliveryDate || undefined,
         notes: notes.trim() || undefined,
       };
-
-      if (isSplitPayment && deposit > 0) {
-        payload.isSplitPayment = true;
-        payload.secondaryPaymentMethod = secondaryMethod;
-        payload.secondaryDepositAmount = secondaryAmountNum;
-      }
 
       const res = await fetch("/api/pedidos", {
         method: "POST",
@@ -903,151 +926,44 @@ export function NuevoPedidoModal({ open, onOpenChange, customers, variants }: Pr
             </div>
           )}
 
-          {/* ── Anticipo / Pago ────────────────────────────────────────────── */}
+          {/* ── Anticipo / Pago (Pack E.6 — PaymentMethodList) ─────────────── */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: "var(--on-surf-var)",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Anticipo inicial
+            <span
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "var(--on-surf-var)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Anticipo inicial
+            </span>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs shrink-0 w-24" style={{ color: "var(--on-surf-var)" }}>
+                Total anticipo
               </span>
-              <button
-                type="button"
-                onClick={() => setIsSplitPayment((p) => !p)}
-                className="text-xs font-semibold px-3 py-1 rounded-full transition-all"
-                style={
-                  isSplitPayment
-                    ? {
-                        background: "color-mix(in srgb, var(--p-mid) 15%, transparent)",
-                        color: "var(--p-mid)",
-                      }
-                    : { background: "var(--surf-high)", color: "var(--on-surf-var)" }
-                }
-              >
-                Pago combinado
-              </button>
+              <Input
+                type="number"
+                min={0}
+                max={total}
+                step={0.01}
+                value={deposit}
+                onChange={(e) => setDeposit(Math.min(total, parseFloat(e.target.value) || 0))}
+                placeholder="$0.00"
+                className="flex-1"
+                style={INPUT_STYLE}
+              />
             </div>
 
-            {!isSplitPayment ? (
-              /* Simple payment */
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  type="number"
-                  min={0}
-                  max={total}
-                  step={0.01}
-                  value={deposit}
-                  onChange={(e) => setDeposit(Math.min(total, parseFloat(e.target.value) || 0))}
-                  placeholder="$0.00"
-                  style={INPUT_STYLE}
-                />
-                <div className="relative">
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    style={SELECT_STYLE}
-                  >
-                    {(["CASH", "CARD", "TRANSFER"] as PaymentMethod[]).map((m) => (
-                      <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                    style={{ color: "var(--on-surf-var)" }}
-                  />
-                </div>
-              </div>
-            ) : (
-              /* Split payment */
-              <div
-                className="rounded-[var(--r-lg)] p-4 flex flex-col gap-3"
-                style={{ background: "var(--surf-high)" }}
-              >
-                {/* Total anticipo */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs shrink-0" style={{ color: "var(--on-surf-var)" }}>
-                    Anticipo total
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={total}
-                    step={0.01}
-                    value={deposit}
-                    onChange={(e) => {
-                      const d = Math.min(total, parseFloat(e.target.value) || 0);
-                      setDeposit(d);
-                      setPrimaryAmount((p) => Math.min(p, d));
-                    }}
-                    placeholder="$0.00"
-                    className="flex-1"
-                    style={INPUT_STYLE}
-                  />
-                </div>
-
-                {/* Primary */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={deposit}
-                    step={0.01}
-                    value={primaryAmount}
-                    onChange={(e) => setPrimaryAmount(Math.min(deposit, parseFloat(e.target.value) || 0))}
-                    placeholder="Primer monto"
-                    style={INPUT_STYLE}
-                  />
-                  <div className="relative">
-                    <select
-                      value={primaryMethod}
-                      onChange={(e) => setPrimaryMethod(e.target.value as PaymentMethod)}
-                      style={SELECT_STYLE}
-                    >
-                      {(["CASH", "CARD", "TRANSFER"] as PaymentMethod[]).map((m) => (
-                        <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--on-surf-var)" }} />
-                  </div>
-                </div>
-
-                {/* Secondary (computed) */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div
-                    className="flex items-center px-3 rounded-[var(--r-lg)]"
-                    style={{ background: "var(--surf-lowest)", height: 44 }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: "0.9rem",
-                        fontWeight: 600,
-                        color: "var(--p-mid)",
-                      }}
-                    >
-                      {formatMXN(secondaryAmountNum)}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={secondaryMethod}
-                      onChange={(e) => setSecondaryMethod(e.target.value as PaymentMethod)}
-                      style={SELECT_STYLE}
-                    >
-                      {(["CASH", "CARD", "TRANSFER"] as PaymentMethod[]).map((m) => (
-                        <option key={m} value={m}>{METHOD_LABELS[m]}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--on-surf-var)" }} />
-                  </div>
-                </div>
-              </div>
+            {deposit > 0 && (
+              <PaymentMethodList
+                value={paymentEntries}
+                onChange={setPaymentEntries}
+                total={deposit}
+                customerCreditBalance={customerCreditBalance}
+              />
             )}
 
             {deposit > 0 && total > 0 && (

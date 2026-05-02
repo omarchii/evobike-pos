@@ -10,6 +10,9 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
+import { paymentMethodsArraySchema } from "@/lib/validators/payment";
+import { createPaymentInTransactions } from "@/lib/cash-transaction";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
 const pedidoFrozenItemSchema = z.object({
@@ -21,17 +24,18 @@ const pedidoFrozenItemSchema = z.object({
   unitPrice: z.number().nonnegative(),
 });
 
+// Pack E.6 — shape unificado: paymentMethods[] reemplaza paymentMethod /
+// secondaryPaymentMethod / secondaryDepositAmount / isSplitPayment.
+// depositAmount sigue presente como agregado (lo derivamos de paymentMethods
+// si es coherente; el cliente lo manda explícito por compat con flujos
+// existentes y validación clara contra el total).
 const pedidoSchema = z.object({
   customerId: z.string().uuid(),
   productVariantId: z.string().uuid(),
   quantity: z.number().int().positive(),
   unitPrice: z.number().positive(),
   depositAmount: z.number().nonnegative(),
-  paymentMethod: z.enum(["CASH", "CARD", "TRANSFER"]),
-  // Split payment (optional)
-  isSplitPayment: z.boolean().optional(),
-  secondaryPaymentMethod: z.enum(["CASH", "CARD", "TRANSFER"]).optional(),
-  secondaryDepositAmount: z.number().nonnegative().optional(),
+  paymentMethods: paymentMethodsArraySchema.optional(),
   orderType: z.enum(["LAYAWAY", "BACKORDER"]),
   expectedDeliveryDate: z.string().optional(),
   notes: z.string().optional(),
@@ -71,10 +75,7 @@ export async function POST(req: NextRequest) {
       quantity,
       unitPrice,
       depositAmount,
-      paymentMethod,
-      isSplitPayment,
-      secondaryPaymentMethod,
-      secondaryDepositAmount,
+      paymentMethods,
       orderType,
       expectedDeliveryDate,
       notes,
@@ -82,6 +83,23 @@ export async function POST(req: NextRequest) {
       frozenItems,
       total: parsedTotal,
     } = parsed.data;
+
+    // Validar coherencia entre depositAmount y paymentMethods (Pack E.6)
+    if (depositAmount > 0) {
+      if (!paymentMethods || paymentMethods.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Captura al menos un método de pago para el anticipo" },
+          { status: 422 },
+        );
+      }
+      const sumMethods = paymentMethods.reduce((s, e) => s + e.amount, 0);
+      if (Math.abs(sumMethods - depositAmount) > 0.005) {
+        return NextResponse.json(
+          { success: false, error: "La suma de métodos no coincide con el anticipo" },
+          { status: 422 },
+        );
+      }
+    }
 
     await requireActiveUser(session);
 
@@ -178,15 +196,23 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // CashTransactions
-        if (depositAmount > 0) {
-          await tx.cashTransaction.create({
-            data: { sessionId: activeSession.id, userId, saleId: frozenSale.id, type: "PAYMENT_IN", method: paymentMethod, amount: depositAmount },
-          });
-        }
-        if (isSplitPayment && secondaryDepositAmount && secondaryDepositAmount > 0 && secondaryPaymentMethod) {
-          await tx.cashTransaction.create({
-            data: { sessionId: activeSession.id, userId, saleId: frozenSale.id, type: "PAYMENT_IN", method: secondaryPaymentMethod, amount: secondaryDepositAmount },
+        // CashTransactions (Pack E.6 helper)
+        if (depositAmount > 0 && paymentMethods) {
+          const creditEntry = paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
+          if (creditEntry) {
+            const { total: available } = await getCustomerCreditBalance(customerId, tx);
+            if (available < creditEntry.amount) {
+              throw new Error(
+                `Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`,
+              );
+            }
+          }
+          await createPaymentInTransactions(tx, {
+            saleId: frozenSale.id,
+            sessionId: activeSession.id,
+            userId,
+            customerId,
+            entries: paymentMethods,
           });
         }
 
@@ -255,30 +281,23 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 5. Crear CashTransaction(s) con el depósito inicial
-      if (depositAmount > 0) {
-        await tx.cashTransaction.create({
-          data: {
-            sessionId: activeSession.id,
-            userId,
-            saleId: sale.id,
-            type: "PAYMENT_IN",
-            method: paymentMethod,
-            amount: depositAmount,
-          },
-        });
-      }
-      // Segundo pago en pago combinado
-      if (isSplitPayment && secondaryDepositAmount && secondaryDepositAmount > 0 && secondaryPaymentMethod) {
-        await tx.cashTransaction.create({
-          data: {
-            sessionId: activeSession.id,
-            userId,
-            saleId: sale.id,
-            type: "PAYMENT_IN",
-            method: secondaryPaymentMethod,
-            amount: secondaryDepositAmount,
-          },
+      // 5. CashTransaction(s) con el depósito inicial — Pack E.6 helper
+      if (depositAmount > 0 && paymentMethods) {
+        const creditEntry = paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
+        if (creditEntry) {
+          const { total: available } = await getCustomerCreditBalance(customerId, tx);
+          if (available < creditEntry.amount) {
+            throw new Error(
+              `Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`,
+            );
+          }
+        }
+        await createPaymentInTransactions(tx, {
+          saleId: sale.id,
+          sessionId: activeSession.id,
+          userId,
+          customerId,
+          entries: paymentMethods,
         });
       }
 
