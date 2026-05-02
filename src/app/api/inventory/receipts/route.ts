@@ -38,6 +38,7 @@ const receiptSchema = z
       .trim()
       .min(1, "Proveedor requerido")
       .transform((v) => v.replace(/\s+/g, " ")),
+    supplierId: z.string().uuid().optional(),
     folioFacturaProveedor: z.string().trim().min(1).optional(),
     formaPagoProveedor: z.enum(FORMA_PAGO),
     estadoPago: z.enum(ESTADO_PAGO),
@@ -407,6 +408,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           branchId,
           userId,
           proveedor: data.proveedor,
+          supplierId: data.supplierId ?? null,
           folioFacturaProveedor: data.folioFacturaProveedor ?? null,
           formaPagoProveedor: data.formaPagoProveedor,
           estadoPago: data.estadoPago,
@@ -470,6 +472,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                     branchId,
                     userId,
                     supplier: data.proveedor,
+                    supplierId: data.supplierId ?? null,
                     reference: data.folioFacturaProveedor ?? null,
                     purchaseReceiptId: receipt.id,
                   },

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { SupplierCombobox } from "@/components/supplier-combobox";
 import {
   ArrowLeft,
   Package,
@@ -279,7 +280,6 @@ type HeaderValues = z.infer<typeof headerSchema>;
 interface RecepcionFormProps {
   variants: VariantCatalogItem[];
   simples: SimpleCatalogItem[];
-  proveedores: string[];
   preselectedVariantId: string | null;
   preselectedSimpleId: string | null;
 }
@@ -365,11 +365,11 @@ function CatalogCard({
 export function RecepcionForm({
   variants,
   simples,
-  proveedores,
   preselectedVariantId,
   preselectedSimpleId,
 }: RecepcionFormProps) {
   const router = useRouter();
+  const [supplierId, setSupplierId] = useState<string | null>(null);
 
   // Build initial lines from preselected IDs
   function buildInitialLines(): Line[] {
@@ -423,6 +423,7 @@ export function RecepcionForm({
     register,
     handleSubmit,
     watch,
+    setValue,
     setError,
     formState: { errors },
   } = useForm<HeaderValues>({
@@ -559,6 +560,7 @@ export function RecepcionForm({
     // 4. Build payload
     const payload = {
       proveedor: header.proveedor,
+      ...(supplierId ? { supplierId } : {}),
       ...(header.folioFacturaProveedor?.trim()
         ? { folioFacturaProveedor: header.folioFacturaProveedor.trim() }
         : {}),
@@ -831,21 +833,17 @@ export function RecepcionForm({
             Datos de la recepción
           </p>
 
-          {/* Proveedor — datalist para autocompletar + entrada libre */}
+          {/* Proveedor — autocomplete desde catálogo de proveedores */}
           <div>
             <label style={LABEL_STYLE}>Proveedor *</label>
-            <input
-              {...register("proveedor")}
-              list="proveedores-list"
+            <SupplierCombobox
+              displayValue={watch("proveedor") ?? ""}
+              onChangeText={(text) => setValue("proveedor", text, { shouldValidate: true })}
+              onSelect={setSupplierId}
               placeholder="Nombre del proveedor"
-              style={INPUT_STYLE}
-              autoComplete="off"
+              inputStyle={INPUT_STYLE}
+              required
             />
-            <datalist id="proveedores-list">
-              {proveedores.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
             {errors.proveedor && (
               <p style={{ fontSize: "0.7rem", color: "var(--ter)", marginTop: "0.25rem" }}>
                 {errors.proveedor.message}

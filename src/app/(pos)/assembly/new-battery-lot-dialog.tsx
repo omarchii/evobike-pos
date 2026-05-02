@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { SupplierCombobox } from "@/components/supplier-combobox";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,7 @@ export function NewBatteryLotDialog({
   onSuccess,
 }: Props): React.JSX.Element {
   const [isPending, startTransition] = useTransition();
+  const [supplierId, setSupplierId] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     count: number;
     dupes: string[];
@@ -117,6 +119,7 @@ export function NewBatteryLotDialog({
           body: JSON.stringify({
             productVariantId: values.productVariantId,
             supplier: values.supplier || undefined,
+            supplierId: supplierId || undefined,
             reference: values.reference || undefined,
             serials,
           }),
@@ -135,6 +138,7 @@ export function NewBatteryLotDialog({
         );
         form.reset();
         setPreview(null);
+        setSupplierId(null);
         onOpenChange(false);
         onSuccess();
       } catch {
@@ -207,10 +211,12 @@ export function NewBatteryLotDialog({
                       Proveedor
                     </FormLabel>
                     <FormControl>
-                      <Input
+                      <SupplierCombobox
+                        displayValue={field.value ?? ""}
+                        onChangeText={(text) => field.onChange(text)}
+                        onSelect={setSupplierId}
                         placeholder="Ej: Shenzhen Co."
-                        {...field}
-                        style={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem" }}
+                        inputStyle={{ background: "var(--surf-lowest)", border: "none", borderRadius: "0.75rem", fontSize: "0.85rem", width: "100%", height: 36, padding: "0 0.75rem", fontFamily: "var(--font-body)", color: "var(--on-surf)", outline: "none" }}
                       />
                     </FormControl>
                     <FormMessage />

@@ -18,6 +18,7 @@ const expenseSchema = z.object({
     method: z.literal("CASH"),
     category: z.nativeEnum(CashExpenseCategory),
     beneficiary: z.string().trim().min(1).optional(),
+    supplierId: z.string().uuid().optional(),
     notes: z.string().trim().min(3, "El motivo debe tener al menos 3 caracteres."),
 });
 
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 method: "CASH",
                 amount: new Prisma.Decimal(parsed.data.amount.toFixed(2)),
                 beneficiary: parsed.data.beneficiary?.trim() ?? null,
+                supplierId: parsed.data.supplierId ?? null,
                 notes: parsed.data.notes.trim(),
                 collectionStatus: "COLLECTED",
                 collectedAt: now,

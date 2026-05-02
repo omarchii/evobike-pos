@@ -31,10 +31,10 @@ const createSchema = z.object({
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   const user = session?.user as unknown as SessionUser | undefined;
-  if (!user || !isManagerOrAdmin(user.role)) {
+  if (!user) {
     return NextResponse.json(
       { success: false, error: "No autorizado" },
-      { status: 403 },
+      { status: 401 },
     );
   }
 

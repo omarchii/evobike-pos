@@ -19,6 +19,7 @@ class LotError extends Error {
 const createLotSchema = z.object({
   productVariantId: z.string().min(1, "Tipo de batería requerido"),
   supplier: z.string().optional(),
+  supplierId: z.string().uuid().optional(),
   reference: z.string().optional(),
   serials: z
     .array(z.string().min(1, "Los seriales no pueden estar vacíos"))
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { productVariantId, supplier, reference, serials, saleItemId, purchaseReceiptId } = parsed.data;
+  const { productVariantId, supplier, supplierId, reference, serials, saleItemId, purchaseReceiptId } = parsed.data;
 
   // Normalizar seriales: trim + deduplicar dentro del input
   const normalizedSerials = serials.map((s) => s.trim()).filter(Boolean);
@@ -199,6 +200,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           branchId,
           userId,
           supplier: supplier ?? null,
+          supplierId: supplierId ?? null,
           reference: reference ?? null,
           saleItemId: saleItemId ?? null,
           purchaseReceiptId: purchaseReceiptId ?? null,

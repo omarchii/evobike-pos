@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { SupplierCombobox } from "@/components/supplier-combobox";
 import {
     Dialog,
     DialogContent,
@@ -177,6 +178,7 @@ interface Props {
 
 export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.ReactElement {
     const router = useRouter();
+    const [supplierId, setSupplierId] = useState<string | null>(null);
     const form = useForm<ExpenseFormValues>({
         resolver: zodResolver(expenseFormSchema),
         defaultValues: {
@@ -197,6 +199,7 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
                 beneficiary: "",
                 notes: "",
             });
+            setSupplierId(null);
         }
     }, [open, form]);
 
@@ -213,6 +216,7 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
                 method: "CASH",
                 category: values.category,
                 beneficiary: values.beneficiary?.trim() || undefined,
+                supplierId: supplierId || undefined,
                 notes: values.notes,
             }),
         });
@@ -349,12 +353,13 @@ export function ExpenseDialog({ open, onOpenChange, userRole }: Props): React.Re
                                     (opcional)
                                 </span>
                             </label>
-                            <input
+                            <SupplierCombobox
                                 id="exp-beneficiary"
-                                type="text"
+                                displayValue={form.watch("beneficiary") ?? ""}
+                                onChangeText={(text) => form.setValue("beneficiary", text)}
+                                onSelect={setSupplierId}
                                 placeholder="Nombre o razón social del proveedor"
-                                style={INPUT_STYLE}
-                                {...form.register("beneficiary")}
+                                inputStyle={INPUT_STYLE}
                             />
                         </div>
 

@@ -56,7 +56,7 @@ export default async function NuevaRecepcionPage({
   const preselectedVariantId = variantIdParam;
   const preselectedSimpleId = variantIdParam ? null : simpleIdParam;
 
-  const [rawVariants, rawSimples, distinctProveedores] = await Promise.all([
+  const [rawVariants, rawSimples] = await Promise.all([
     prisma.productVariant.findMany({
       where: { isActive: true },
       select: {
@@ -83,12 +83,6 @@ export default async function NuevaRecepcionPage({
         stocks: { where: { branchId }, select: { quantity: true } },
       },
       orderBy: { nombre: "asc" },
-    }),
-    prisma.purchaseReceipt.findMany({
-      where: { branchId },
-      select: { proveedor: true },
-      distinct: ["proveedor"],
-      orderBy: { proveedor: "asc" },
     }),
   ]);
 
@@ -154,8 +148,6 @@ export default async function NuevaRecepcionPage({
     currentStock: s.stocks[0]?.quantity ?? 0,
   }));
 
-  const proveedores = distinctProveedores.map((p) => p.proveedor);
-
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="mb-4 shrink-0 flex items-center justify-between">
@@ -186,7 +178,6 @@ export default async function NuevaRecepcionPage({
       <RecepcionForm
         variants={variants}
         simples={simples}
-        proveedores={proveedores}
         preselectedVariantId={preselectedVariantId}
         preselectedSimpleId={preselectedSimpleId}
       />
