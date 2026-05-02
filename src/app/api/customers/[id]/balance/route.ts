@@ -10,7 +10,26 @@ import {
   assertSessionFreshOrThrow,
   OrphanedCashSessionError,
 } from "@/lib/cash-register";
-import { rechargeCustomerCredit } from "@/lib/customer-credit";
+import { getCustomerCreditBalance, rechargeCustomerCredit } from "@/lib/customer-credit";
+
+// GET /api/customers/[id]/balance — saldo a favor activo (Pack E.4 — POS lee
+// para mostrar banner "Aplicar saldo" en captura multi-método).
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
+  const session = await getServerSession(authOptions);
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { id: customerId } = await params;
+  try {
+    const { total } = await getCustomerCreditBalance(customerId);
+    return NextResponse.json({ success: true, balance: total });
+  } catch (err: unknown) {
+    console.error("[api/customers/[id]/balance GET]", err);
+    return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
+  }
+}
 
 const balanceSchema = z.object({
   amount: z.number().positive("Monto inválido"),
