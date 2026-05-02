@@ -11,7 +11,6 @@ import {
   Loader2,
   User,
   Check,
-  SplitSquareVertical,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,38 +22,12 @@ import { formatMXN } from "@/lib/quotations";
 import PriceDriftAlert, { type DriftItem, type Manager } from "./price-drift-alert";
 import CustomerSelectorModal from "@/app/(pos)/point-of-sale/customer-selector-modal";
 import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
-
-// ── Design tokens ────────────────────────────────────────────────────────────
-
-const INPUT_STYLE: React.CSSProperties = {
-  background: "var(--surf-low)",
-  border: "none",
-  borderRadius: "var(--r-lg)",
-  color: "var(--on-surf)",
-  fontFamily: "var(--font-body)",
-  fontWeight: 400,
-  fontSize: "0.875rem",
-  height: 44,
-  paddingLeft: "0.75rem",
-  paddingRight: "0.75rem",
-  width: "100%",
-  outline: "none",
-};
+import { PaymentMethodList } from "@/components/pos/payment/payment-method-list";
+import type { PaymentMethodEntry } from "@/lib/validators/payment";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type TargetType = "SALE" | "LAYAWAY" | "BACKORDER";
-type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE" | "ATRATO";
-
-const PAYMENT_LABELS: Record<PaymentMethod, string> = {
-  CASH: "Efectivo",
-  CARD: "Tarjeta",
-  TRANSFER: "Transferencia",
-  CREDIT_BALANCE: "Crédito",
-  ATRATO: "ATRATO",
-};
-
-const ALL_METHODS: PaymentMethod[] = ["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"];
 
 interface QuotationSummary {
   id: string;
@@ -109,12 +82,9 @@ export default function ConvertQuotationDialog({
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [customerSelectorOpen, setCustomerSelectorOpen] = useState(false);
 
-  // Step 4 — payment
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const [isSplitPayment, setIsSplitPayment] = useState(false);
-  const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethod>("CARD");
-  const [secondaryAmount, setSecondaryAmount] = useState<string>("");
+  // Step 4 — payment (Pack E.5: array unificado)
+  const [paymentEntries, setPaymentEntries] = useState<PaymentMethodEntry[]>([]);
+  const [customerCreditBalance, setCustomerCreditBalance] = useState<number | null>(null);
 
   // Submit
   const [submitting, setSubmitting] = useState(false);
@@ -141,9 +111,7 @@ export default function ConvertQuotationDialog({
           }
         : null
     );
-    setPaymentAmount("");
-    setIsSplitPayment(false);
-    setSecondaryAmount("");
+    setPaymentEntries([]);
 
     fetch(`/api/cotizaciones/${quotation.id}/price-check`)
       .then((r) => r.json())
@@ -160,16 +128,36 @@ export default function ConvertQuotationDialog({
       .finally(() => setDriftsLoading(false));
   }, [open, quotation]);
 
-  // Pre-fill payment amount with quotation total when modality changes
+  // Pre-fill paymentEntries cuando cambia modalidad: SALE → CASH = total,
+  // LAYAWAY/BACKORDER → empty (cajero captura anticipo manual).
   useEffect(() => {
     if (targetType === "SALE") {
-      setPaymentAmount(String(quotation.total));
+      setPaymentEntries([{ method: "CASH", amount: quotation.total }]);
     } else {
-      setPaymentAmount("");
+      setPaymentEntries([{ method: "CASH", amount: 0 }]);
     }
-    setIsSplitPayment(false);
-    setSecondaryAmount("");
   }, [targetType, quotation.total]);
+
+  // Fetch saldo a favor del cliente (lazy)
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setCustomerCreditBalance(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/customers/${selectedCustomer.id}/balance`)
+      .then((r) => r.json() as Promise<{ success: boolean; balance?: number }>)
+      .then((d) => {
+        if (cancelled) return;
+        setCustomerCreditBalance(typeof d.balance === "number" ? d.balance : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerCreditBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCustomer]);
 
   // Cross-branch info
   const crossBranch = quotation.branchId !== currentUserBranchId;
@@ -181,9 +169,11 @@ export default function ConvertQuotationDialog({
   const step4Num = hasDrift ? 4 : 3;
 
   // Validation for footer
-  const paymentAmountNum = parseFloat(paymentAmount) || 0;
-  const secondaryAmountNum = parseFloat(secondaryAmount) || 0;
-  const totalAmount = isSplitPayment ? paymentAmountNum + secondaryAmountNum : paymentAmountNum;
+  const paymentTotal = paymentEntries.reduce(
+    (s, e) => s + (Number.isFinite(e.amount) ? e.amount : 0),
+    0,
+  );
+  const hasAtrato = paymentEntries.some((e) => e.method === "ATRATO");
 
   const needsAuth =
     useOriginalPrices && drifts.some((d) => d.drift === "higher");
@@ -193,8 +183,8 @@ export default function ConvertQuotationDialog({
     !driftsLoading &&
     targetType !== null &&
     selectedCustomer !== null &&
-    paymentAmountNum > 0 &&
-    (targetType === "SALE" ? totalAmount >= quotation.total : totalAmount > 0) &&
+    paymentTotal > 0 &&
+    (targetType === "SALE" ? Math.abs(paymentTotal - quotation.total) < 0.005 : paymentTotal > 0) &&
     (!needsAuth || !!priceOverrideAuthorizedById);
 
   async function handleSubmit() {
@@ -207,11 +197,7 @@ export default function ConvertQuotationDialog({
         body: JSON.stringify({
           targetType,
           customerId: selectedCustomer.id,
-          paymentMethod,
-          paymentAmount: paymentAmountNum,
-          isSplitPayment: isSplitPayment && secondaryAmountNum > 0,
-          secondaryPaymentMethod: isSplitPayment ? secondaryMethod : undefined,
-          secondaryPaymentAmount: isSplitPayment ? secondaryAmountNum : undefined,
+          paymentMethods: paymentEntries.filter((e) => e.amount > 0),
           useOriginalPrices,
           priceOverrideAuthorizedById: priceOverrideAuthorizedById ?? undefined,
         }),
@@ -398,146 +384,29 @@ export default function ConvertQuotationDialog({
               </div>
             )}
 
-            {/* STEP 4 — Payment */}
-            {!driftsLoading && (
+            {/* STEP 4 — Payment (Pack E.5: <PaymentMethodList> unificado) */}
+            {!driftsLoading && targetType && (
               <div className="space-y-4">
-                <StepHeader number={step4Num} title="Configuración de Pago" />
+                <StepHeader
+                  number={step4Num}
+                  title={targetType === "SALE" ? "Configuración de Pago" : "Anticipo inicial"}
+                />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left — payment inputs */}
-                  <div className="space-y-4">
-                    {/* Primary method pills */}
-                    <div>
-                      <label
-                        className="text-xs font-medium block mb-2"
-                        style={{ color: "var(--on-surf-var)" }}
-                      >
-                        Método de pago
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {ALL_METHODS.map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => setPaymentMethod(m)}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                            style={{
-                              background:
-                                paymentMethod === m ? "var(--primary)" : "var(--surf-low)",
-                              color:
-                                paymentMethod === m ? "var(--on-primary)" : "var(--on-surf-var)",
-                            }}
-                          >
-                            {PAYMENT_LABELS[m]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Primary amount */}
-                    <div>
-                      <label
-                        className="text-xs font-medium block mb-1.5"
-                        style={{ color: "var(--on-surf-var)" }}
-                      >
-                        {targetType === "SALE" ? "Monto a pagar" : "Anticipo inicial"}
-                      </label>
-                      <div className="relative">
-                        <span
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none"
-                          style={{ color: "var(--on-surf-var)", fontFamily: "var(--font-display)" }}
-                        >
-                          $
-                        </span>
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
-                          placeholder="0.00"
-                          style={{
-                            ...INPUT_STYLE,
-                            paddingLeft: "1.5rem",
-                            fontFamily: "var(--font-display)",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Split payment toggle */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSplitPayment(!isSplitPayment);
-                          if (isSplitPayment) setSecondaryAmount("");
-                        }}
-                        className="flex items-center gap-2 text-xs font-medium transition-colors"
-                        style={{ color: "var(--primary)" }}
-                      >
-                        <SplitSquareVertical className="h-4 w-4" />
-                        {isSplitPayment ? "Quitar pago combinado" : "Pago combinado"}
-                      </button>
-                    </div>
-
-                    {/* Secondary method + amount */}
-                    {isSplitPayment && (
-                      <div className="space-y-3 pl-4" style={{ borderLeft: "2px solid var(--surf-high)" }}>
-                        <div>
-                          <label
-                            className="text-xs font-medium block mb-2"
-                            style={{ color: "var(--on-surf-var)" }}
-                          >
-                            Segundo método
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {ALL_METHODS.filter((m) => m !== paymentMethod).map((m) => (
-                              <button
-                                key={m}
-                                type="button"
-                                onClick={() => setSecondaryMethod(m)}
-                                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                                style={{
-                                  background:
-                                    secondaryMethod === m ? "var(--primary)" : "var(--surf-low)",
-                                  color:
-                                    secondaryMethod === m
-                                      ? "var(--on-primary)"
-                                      : "var(--on-surf-var)",
-                                }}
-                              >
-                                {PAYMENT_LABELS[m]}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="relative">
-                          <span
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none"
-                            style={{
-                              color: "var(--on-surf-var)",
-                              fontFamily: "var(--font-display)",
-                            }}
-                          >
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={secondaryAmount}
-                            onChange={(e) => setSecondaryAmount(e.target.value)}
-                            placeholder="0.00"
-                            style={{
-                              ...INPUT_STYLE,
-                              paddingLeft: "1.5rem",
-                              fontFamily: "var(--font-display)",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
+                  {/* Left — PaymentMethodList */}
+                  <div>
+                    <PaymentMethodList
+                      value={paymentEntries}
+                      onChange={setPaymentEntries}
+                      total={
+                        targetType === "SALE"
+                          ? quotation.total
+                          : paymentTotal > 0
+                            ? paymentTotal
+                            : 0
+                      }
+                      customerCreditBalance={customerCreditBalance}
+                    />
                   </div>
 
                   {/* Right — order summary */}
@@ -564,39 +433,43 @@ export default function ConvertQuotationDialog({
                         className="flex justify-between items-center pt-2"
                         style={{ borderTop: "1px solid var(--ghost-border-strong)" }}
                       >
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: "var(--on-surf)" }}
-                        >
+                        <span className="text-sm font-semibold" style={{ color: "var(--on-surf)" }}>
                           Total
                         </span>
                         <span
                           className="text-2xl font-bold"
-                          style={{
-                            fontFamily: "var(--font-display)",
-                            color: "var(--on-surf)",
-                          }}
+                          style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                         >
                           {formatMXN(quotation.total)}
                         </span>
                       </div>
                     </div>
 
-                    {targetType && targetType !== "SALE" && paymentAmountNum > 0 && (
+                    {targetType !== "SALE" && paymentTotal > 0 && (
                       <div
                         className="rounded-xl px-3 py-2 space-y-1"
                         style={{ background: "var(--surf-highest)" }}
                       >
                         <SummaryRow
                           label="Anticipo"
-                          value={formatMXN(isSplitPayment ? totalAmount : paymentAmountNum)}
+                          value={formatMXN(paymentTotal)}
                           valueColor="var(--primary)"
                         />
                         <SummaryRow
                           label="Pendiente"
-                          value={formatMXN(Math.max(0, quotation.total - totalAmount))}
+                          value={formatMXN(Math.max(0, quotation.total - paymentTotal))}
                           valueColor="var(--on-surf-var)"
                         />
+                      </div>
+                    )}
+
+                    {hasAtrato && (
+                      <div
+                        className="rounded-xl px-3 py-2 text-xs"
+                        style={{ background: "var(--warn-container)", color: "var(--warn)" }}
+                      >
+                        Atrato transferirá su porción posteriormente. Quedará en estado PENDING en
+                        caja.
                       </div>
                     )}
                   </div>

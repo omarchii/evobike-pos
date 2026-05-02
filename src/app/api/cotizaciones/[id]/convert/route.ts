@@ -7,21 +7,20 @@ import { z } from "zod";
 import { getEffectiveStatus } from "@/lib/quotations";
 import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
 import { assertSessionFreshOrThrow, OrphanedCashSessionError } from "@/lib/cash-register";
+import { paymentMethodsArraySchema } from "@/lib/validators/payment";
+import { createPaymentInTransactions } from "@/lib/cash-transaction";
+import { getCustomerCreditBalance } from "@/lib/customer-credit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Pack E.5 — shape unificado: paymentMethods[] reemplaza paymentMethod /
+// secondaryPaymentMethod / secondaryPaymentAmount / isSplitPayment.
 const convertSchema = z.object({
   targetType: z.enum(["SALE", "LAYAWAY", "BACKORDER"]),
   customerId: z.string().min(1, "Se requiere un cliente para convertir"),
-  paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"]),
-  paymentAmount: z.number().positive("El monto de pago debe ser mayor a 0"),
-  secondaryPaymentMethod: z
-    .enum(["CASH", "CARD", "TRANSFER", "CREDIT_BALANCE", "ATRATO"])
-    .optional(),
-  secondaryPaymentAmount: z.number().nonnegative().optional(),
-  isSplitPayment: z.boolean().optional(),
+  paymentMethods: paymentMethodsArraySchema,
   useOriginalPrices: z.boolean().default(false),
   priceOverrideAuthorizedById: z.string().optional(),
   branchOverride: z.string().optional(),
@@ -297,37 +296,30 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
         }
       }
 
-      // ── l) CashTransaction(s) ─────────────────────────────────────────────
-      await tx.cashTransaction.create({
-        data: {
-          sessionId: activeSession.id,
-          userId,
-          saleId: sale.id,
-          type: "PAYMENT_IN",
-          method: input.paymentMethod,
-          amount: input.paymentAmount,
-          collectionStatus: input.paymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
-        },
-      });
-
-      if (
-        input.isSplitPayment &&
-        input.secondaryPaymentMethod &&
-        input.secondaryPaymentAmount &&
-        input.secondaryPaymentAmount > 0
-      ) {
-        await tx.cashTransaction.create({
-          data: {
-            sessionId: activeSession.id,
-            userId,
-            saleId: sale.id,
-            type: "PAYMENT_IN",
-            method: input.secondaryPaymentMethod,
-            amount: input.secondaryPaymentAmount,
-            collectionStatus: input.secondaryPaymentMethod === "ATRATO" ? "PENDING" : "COLLECTED",
-          },
-        });
+      // ── l) CashTransaction(s) — Pack E.5 helper centralizado ──────────────
+      // CREDIT_BALANCE pre-flight (Pack D.5 invariante: helper exige saldo
+      // suficiente y customerId presente; el endpoint valida antes para dar
+      // mensaje claro al cajero).
+      const creditEntry = input.paymentMethods.find((p) => p.method === "CREDIT_BALANCE");
+      if (creditEntry) {
+        const { total: available } = await getCustomerCreditBalance(input.customerId, tx);
+        if (available < creditEntry.amount) {
+          throw Object.assign(
+            new Error(
+              `Saldo insuficiente. El cliente tiene $${available.toFixed(2)} a favor.`,
+            ),
+            { status: 422 },
+          );
+        }
       }
+
+      await createPaymentInTransactions(tx, {
+        saleId: sale.id,
+        sessionId: activeSession.id,
+        userId,
+        customerId: input.customerId,
+        entries: input.paymentMethods,
+      });
 
       // ── m) Marcar cotización como FINALIZADA ──────────────────────────────
       await tx.quotation.update({
