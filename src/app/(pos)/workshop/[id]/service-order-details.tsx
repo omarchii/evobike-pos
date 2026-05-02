@@ -71,6 +71,7 @@ export type FullSerializedOrder = {
   qaNotes: string | null;
   createdAt: Date;
   customer: { name: string; phone: string | null };
+  customerHasIne: boolean;
   user: { name: string };
   customerBike: {
     serialNumber: string;
@@ -374,6 +375,27 @@ export function ServiceOrderDetailsView({
             >
               Estado de pago
             </h2>
+
+            {/* WARRANTY INE warning */}
+            {order.status === "PENDING" && order.type === "WARRANTY" && !order.customerHasIne && (
+              <div
+                className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
+                style={{ background: "var(--warn-container)", color: "var(--warn)" }}
+              >
+                <span className="font-semibold shrink-0">INE faltante:</span>
+                <span>
+                  Antes de iniciar una orden de garantía, el cliente debe tener INE escaneada.{" "}
+                  <a
+                    href={`/customers/${order.customerId}/editar`}
+                    className="underline font-medium"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Completar perfil
+                  </a>
+                </span>
+              </div>
+            )}
 
             {/* PENDING | IN_PROGRESS: advance status button */}
             {(order.status === "PENDING" || order.status === "IN_PROGRESS") && (

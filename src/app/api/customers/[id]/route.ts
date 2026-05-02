@@ -20,6 +20,7 @@ const SELLER_WRITABLE: readonly string[] = [
   "name",
   "phone",
   "phone2",
+  "curp",
   "email",
   "birthday",
   "isBusiness",

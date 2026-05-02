@@ -69,6 +69,23 @@ export const customerCreateSchema = z.object({
   communicationConsent: z.boolean().default(false),
   tags: tagsField.optional(),
 
+  curp: z.preprocess(
+    (v) => {
+      if (v == null) return null;
+      if (typeof v !== "string") return v;
+      const trimmed = v.trim().toUpperCase();
+      return trimmed === "" ? null : trimmed;
+    },
+    z
+      .string()
+      .regex(
+        /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/,
+        "CURP inválida (18 caracteres alfanuméricos)",
+      )
+      .nullable()
+      .optional(),
+  ),
+
   shippingStreet: optionalString(),
   shippingExtNum: optionalString(),
   shippingIntNum: optionalString(),

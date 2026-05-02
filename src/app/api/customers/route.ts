@@ -121,6 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         nameNormalized: normalizeForSearch(data.name),
         phone: data.phone ?? null,
         phone2: data.phone2 ?? null,
+        curp: data.curp ?? null,
         email: data.email ?? null,
         birthday: data.birthday ?? null,
         isBusiness: data.isBusiness ?? false,

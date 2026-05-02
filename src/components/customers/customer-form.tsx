@@ -61,6 +61,16 @@ const formSchema = z.object({
   email: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
   phone: z.string().trim().regex(/^\d{10}$/, "El teléfono debe tener 10 dígitos").optional().or(z.literal("")),
   phone2: z.string().trim().optional(),
+  curp: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(
+      /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/,
+      "CURP inválida (18 caracteres alfanuméricos)",
+    )
+    .optional()
+    .or(z.literal("")),
   communicationConsent: z.boolean(),
 
   rfc: z
@@ -104,10 +114,12 @@ export interface CustomerFormInitial {
   name: string;
   phone: string | null;
   phone2: string | null;
+  curp: string | null;
   email: string | null;
   birthday: string | null;
   isBusiness: boolean;
   communicationConsent: boolean;
+  ineScanUrl: string | null;
   rfc: string | null;
   razonSocial: string | null;
   regimenFiscal: string | null;
@@ -146,6 +158,68 @@ interface DuplicateMatch {
 
 type DuplicateField = "phone" | "email" | "rfc";
 
+function IneUploadSection({ customerId, hasIne }: { customerId: string; hasIne: boolean }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(hasIne);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/customers/${customerId}/ine`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error ?? "Error al subir INE");
+        return;
+      }
+      setUploaded(true);
+      toast.success("INE cargada correctamente");
+    } catch {
+      toast.error("Error al subir INE");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
+      style={{ background: "var(--surf-low)" }}
+    >
+      <div className="flex items-center gap-2">
+        <Icon name="user" size={18} />
+        <span className="text-xs font-medium" style={{ color: "var(--on-surf-var)" }}>
+          INE escaneada
+        </span>
+        {uploaded && (
+          <Chip variant="success" label="Cargada" />
+        )}
+      </div>
+      <label
+        className="cursor-pointer rounded-md px-3 py-1 text-xs font-semibold transition-colors"
+        style={{
+          background: "var(--primary)",
+          color: "var(--on-primary)",
+          opacity: uploading ? 0.5 : 1,
+        }}
+      >
+        {uploading ? "Subiendo..." : uploaded ? "Reemplazar" : "Subir"}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          className="hidden"
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+      </label>
+    </div>
+  );
+}
+
 function splitInitialName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
   if (!trimmed) return { firstName: "", lastName: "" };
@@ -175,6 +249,7 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
         email: "",
         phone: "",
         phone2: "",
+        curp: "",
         communicationConsent: false,
         rfc: "",
         razonSocial: "",
@@ -210,6 +285,7 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
       email: initial.email ?? "",
       phone: initial.phone ?? "",
       phone2: initial.phone2 ?? "",
+      curp: initial.curp ?? "",
       communicationConsent: initial.communicationConsent,
       rfc: initial.rfc ?? "",
       razonSocial: initial.razonSocial ?? "",
@@ -324,6 +400,7 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
       name,
       phone: values.phone ? normalizePhoneMX(values.phone) ?? values.phone : null,
       phone2: values.phone2 ? normalizePhoneMX(values.phone2) : null,
+      curp: values.curp || null,
       email: values.email || null,
       birthday: values.birthday || null,
       isBusiness: values.isBusiness,
@@ -515,6 +592,20 @@ export function CustomerForm({ mode, initial, role }: CustomerFormProps): React.
                 <FormField label="Teléfono secundario" error={errors.phone2?.message}>
                   <input type="tel" {...register("phone2")} className={INPUT_CLASS} style={INPUT_STYLE} />
                 </FormField>
+                <FormField label="CURP" error={errors.curp?.message} className="col-span-2">
+                  <input
+                    {...register("curp")}
+                    placeholder="ABCD123456HDFXXX01"
+                    maxLength={18}
+                    className={INPUT_CLASS}
+                    style={{ ...INPUT_STYLE, textTransform: "uppercase", letterSpacing: "0.5px" }}
+                  />
+                </FormField>
+                {isEdit && initial?.id && (
+                  <div className="col-span-2">
+                    <IneUploadSection customerId={initial.id} hasIne={!!initial.ineScanUrl} />
+                  </div>
+                )}
                 <FormField label="Consentimiento" className="col-span-2">
                   <label
                     className="flex items-start gap-2 p-3"

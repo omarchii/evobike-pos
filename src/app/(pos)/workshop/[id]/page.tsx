@@ -38,7 +38,7 @@ export default async function WorkshopOrderPage(props: {
   const order = await prisma.serviceOrder.findUnique({
     where: { id: params.id },
     include: {
-      customer: { select: { name: true, phone: true } },
+      customer: { select: { name: true, phone: true, ineScanUrl: true } },
       customerBike: {
         select: {
           serialNumber: true,
@@ -120,7 +120,8 @@ export default async function WorkshopOrderPage(props: {
     qaPassedByName: order.qaPassedByUser?.name ?? null,
     qaNotes: order.qaNotes,
     createdAt: order.createdAt,
-    customer: order.customer,
+    customer: { name: order.customer.name, phone: order.customer.phone },
+    customerHasIne: !!order.customer.ineScanUrl,
     user: order.user,
     customerBike: order.customerBike ?? null,
     items: order.items.map((i): SerializedOrderItem => ({
