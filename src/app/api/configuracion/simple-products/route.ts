@@ -46,7 +46,7 @@ const createSchema = z.object({
   categoria: z.enum(CATEGORIAS),
   modeloAplicable: z.string().nullable().optional(),
   precioPublico: z.number().nonnegative(),
-  precioMayorista: z.number().nonnegative(),
+  costoInterno: z.number().nonnegative(),
   stockMinimo: z.number().int().nonnegative().optional(),
   stockMaximo: z.number().int().nonnegative().optional(),
 });

@@ -25,7 +25,7 @@ Decisión arquitectónica crítica. Define el schema que todo lo demás usa.
 - Diseñar modelo `SimpleProduct` en `prisma/schema.prisma`:
   - `id`, `nombre`, `descripcion?`, `categoria` (enum), `modeloAplicable?`
   - `precioPublico` Decimal — precio que ve y paga el cliente
-  - `precioMayorista` Decimal — costo interno, solo reportes
+  - `costoInterno` Decimal — costo interno, solo reportes
   - `stockMinimo Int` — alerta roja cuando stock actual ≤ este valor
   - `stockMaximo Int` — referencia para órdenes de reposición
   - `imageUrl?` — imagen del producto
@@ -219,13 +219,13 @@ Enriquecer `inventory/receipts` existente. No crear módulo nuevo.
   - `BatteryLot.purchaseReceiptId` — misma factura puede traer bicis + baterías.
 - Migración `20260412100000_enrich_inventory_receipt` aplicada vía `migrate diff --from-url --to-schema-datamodel` + `migrate resolve --applied` (una migración previa había sido editada post-aplicación → se siguió el procedimiento documentado en AGENTS.md, sin reset).
 - Seed (`prisma/seed-transactional.ts` → `seedPurchaseReceipts`):
-  - Crea 1 cabecera sintética por sucursal con `proveedor: "Histórico previo a P4"`, `CONTADO/PAGADA`. `updateMany` vincula los `InventoryMovement(PURCHASE_RECEIPT)` y `BatteryLot` existentes (sin cabecera). `totalPagado` se recalcula sumando `costo × qty` (ProductVariant) o `precioMayorista × qty` (SimpleProduct).
+  - Crea 1 cabecera sintética por sucursal con `proveedor: "Histórico previo a P4"`, `CONTADO/PAGADA`. `updateMany` vincula los `InventoryMovement(PURCHASE_RECEIPT)` y `BatteryLot` existentes (sin cabecera). `totalPagado` se recalcula sumando `costo × qty` (ProductVariant) o `costoInterno × qty` (SimpleProduct).
   - 4 recepciones realistas adicionales por sucursal: PAGADA/CONTADO, PAGADA/TRANSFERENCIA, PENDIENTE/CONTADO, CREDITO con vencimiento (LEO vencida, AV135 próxima).
   - Idempotente por `findFirst({ proveedor: "Histórico previo a P4", branchId })`.
 
 ### P4-B — API Routes ✅ (2026-04-12)
 
-- `POST /api/inventory/receipts` reescrito: Zod con `discriminatedUnion("kind", [variant, simple])`, `totalPagado` calculado server-side (ignora cliente), `superRefine` para reglas cruzadas (CREDITO ⇒ fechaVencimiento; CONTADO+CREDITO inconsistente; PAGADA rechaza fechaVencimiento). `fechaPago` server-side cuando estadoPago=PAGADA. `ProductVariant.costo` y `SimpleProduct.precioMayorista` **no se tocan** (separa costo catálogo del costo histórico en `InventoryMovement.precioUnitarioPagado` — fundamental para rentabilidad en P10-C). P2002 ⇒ 409 español. Guard MANAGER+ADMIN.
+- `POST /api/inventory/receipts` reescrito: Zod con `discriminatedUnion("kind", [variant, simple])`, `totalPagado` calculado server-side (ignora cliente), `superRefine` para reglas cruzadas (CREDITO ⇒ fechaVencimiento; CONTADO+CREDITO inconsistente; PAGADA rechaza fechaVencimiento). `fechaPago` server-side cuando estadoPago=PAGADA. `ProductVariant.costo` y `SimpleProduct.costoInterno` **no se tocan** (separa costo catálogo del costo histórico en `InventoryMovement.precioUnitarioPagado` — fundamental para rentabilidad en P10-C). P2002 ⇒ 409 español. Guard MANAGER+ADMIN.
 - `POST /api/batteries/lots` acepta `purchaseReceiptId?` opcional. Validación de cabecera (existencia + mismo branch) **dentro** del `$transaction` para evitar TOCTOU.
 - `GET /api/inventory/receipts` — listado paginado con filtros `estadoPago`, `vencimientoDesde`, `vencimientoHasta`, `branchId` (ADMIN). Scoping automático por branch para no-ADMIN. Resuelve cuentas por pagar (P10-F).
 - `GET /api/inventory/receipts/[id]` — detalle con líneas agrupadas: `variantLines`, `simpleLines`, `batteryLots` (filtra nulos respetando AGENTS.md:158).

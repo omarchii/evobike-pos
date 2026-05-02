@@ -1153,7 +1153,7 @@ model SimpleProduct {
   categoria       SimpleProductCategoria
   modeloAplicable String? // null = GLOBAL. Helper de normalización pendiente en P3.
   precioPublico   Decimal                @db.Decimal(10, 2)
-  precioMayorista Decimal                @db.Decimal(10, 2)
+  costoInterno    Decimal                @db.Decimal(10, 2)
   stockMinimo     Int                    @default(0)
   stockMaximo     Int                    @default(0)
   imageUrl        String?

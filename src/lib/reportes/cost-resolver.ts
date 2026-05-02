@@ -13,7 +13,7 @@ export type ResolvedCost = {
  *
  * Prioridad:
  *   1. Último InventoryMovement(PURCHASE_RECEIPT).precioUnitarioPagado — global (sin filtro de sucursal).
- *   2. Fallback a ProductVariant.costo / SimpleProduct.precioMayorista del catálogo.
+ *   2. Fallback a ProductVariant.costo / SimpleProduct.costoInterno del catálogo.
  *   3. Si ninguno existe → { cost: 0, source: "NONE" }.
  *
  * Keys del Map: "v:{variantId}" para variants, "s:{simpleId}" para simples.
@@ -80,10 +80,10 @@ export async function resolveCostsBatch(
     missingSimples.length > 0
       ? prisma.simpleProduct.findMany({
           where: { id: { in: missingSimples } },
-          select: { id: true, precioMayorista: true },
+          select: { id: true, costoInterno: true },
         })
       : Promise.resolve(
-          [] as { id: string; precioMayorista: { toNumber(): number } }[],
+          [] as { id: string; costoInterno: { toNumber(): number } }[],
         ),
   ]);
 
@@ -96,7 +96,7 @@ export async function resolveCostsBatch(
   }
   for (const s of simples) {
     costMap.set(`s:${s.id}`, {
-      cost: Number(s.precioMayorista),
+      cost: Number(s.costoInterno),
       source: "CATALOG",
       currency: "MXN",
     });

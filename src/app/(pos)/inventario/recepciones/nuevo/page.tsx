@@ -30,7 +30,7 @@ export interface SimpleCatalogItem {
   codigo: string;
   nombre: string;
   categoria: string;
-  precioMayorista: number;
+  costoInterno: number;
   currentStock: number;
 }
 
@@ -79,7 +79,7 @@ export default async function NuevaRecepcionPage({
         codigo: true,
         nombre: true,
         categoria: true,
-        precioMayorista: true,
+        costoInterno: true,
         stocks: { where: { branchId }, select: { quantity: true } },
       },
       orderBy: { nombre: "asc" },
@@ -144,7 +144,7 @@ export default async function NuevaRecepcionPage({
     codigo: s.codigo,
     nombre: s.nombre,
     categoria: s.categoria,
-    precioMayorista: Number(s.precioMayorista),
+    costoInterno: Number(s.costoInterno),
     currentStock: s.stocks[0]?.quantity ?? 0,
   }));
 

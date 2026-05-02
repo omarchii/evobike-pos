@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Banknote, Wallet, X } from "lucide-react";
+import { Banknote, LogOut, Wallet, X } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 // ── Design tokens (canonical modal pattern — ver DESIGN.md §9 + AGENTS.md "Reglas de UI para modales") ──
 
@@ -122,6 +123,7 @@ export function CashSessionManager() {
     const [submitting, setSubmitting] = useState(false);
     const [amount, setAmount] = useState<string>("");
     const [, setHasActiveSession] = useState(false);
+    const [authError, setAuthError] = useState(false);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -154,11 +156,12 @@ export function CashSessionManager() {
 
         setSubmitting(true);
         toast.loading("Abriendo caja...", { id: "cash-action" });
-        const { success, error } = await fetch("/api/cash-register/session", {
+        const res = await fetch("/api/cash-register/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ openingAmt: amt }),
-        }).then((r) => r.json() as Promise<{ success: boolean; error?: string }>);
+        });
+        const { success, error } = await res.json() as { success: boolean; error?: string };
         setSubmitting(false);
 
         if (success) {
@@ -170,8 +173,13 @@ export function CashSessionManager() {
             return;
         }
 
+        if (res.status === 401) {
+            toast.error("Sesión inválida. Inicia sesión de nuevo.", { id: "cash-action" });
+            setAuthError(true);
+            return;
+        }
+
         if (error && error.includes("Ya hay una caja abierta")) {
-            // Otro usuario la abrió primero — cerramos y seguimos
             toast.info("Otro usuario ya abrió la caja.", { id: "cash-action" });
             setHasActiveSession(true);
             setIsOpen(false);
@@ -272,20 +280,30 @@ export function CashSessionManager() {
                         </div>
                     </div>
 
-                    <div className="px-6 pt-4 pb-6">
+                    <div className="px-6 pt-4 pb-6 space-y-3">
                         <button
                             type="button"
                             onClick={handleOpenShift}
-                            disabled={submitting}
+                            disabled={submitting || authError}
                             style={{
                                 ...PRIMARY_BUTTON_STYLE,
-                                opacity: submitting ? 0.6 : 1,
-                                cursor: submitting ? "not-allowed" : "pointer",
+                                opacity: submitting || authError ? 0.6 : 1,
+                                cursor: submitting || authError ? "not-allowed" : "pointer",
                             }}
                         >
                             <Banknote className="h-5 w-5" />
                             Abrir caja
                         </button>
+                        {authError && (
+                            <button
+                                type="button"
+                                onClick={() => signOut({ callbackUrl: "/login" })}
+                                style={SECONDARY_BUTTON_STYLE}
+                            >
+                                <LogOut className="h-4 w-4 inline mr-2" />
+                                Cerrar sesión e iniciar de nuevo
+                            </button>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>

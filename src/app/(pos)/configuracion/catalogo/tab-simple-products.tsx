@@ -126,7 +126,7 @@ export function TabSimpleProducts({
                 <Th>Categoría</Th>
                 <Th>Aplica a</Th>
                 <Th align="right">Precio</Th>
-                <Th align="right">Mayorista</Th>
+                <Th align="right">Costo int.</Th>
                 <Th>Estado</Th>
                 <Th align="right">Acciones</Th>
               </tr>
@@ -181,7 +181,7 @@ export function TabSimpleProducts({
                   </td>
                   <td className="px-5 py-3 text-right">${sp.precioPublico.toLocaleString("es-MX")}</td>
                   <td className="px-5 py-3 text-right text-[var(--on-surf-var)]">
-                    ${sp.precioMayorista.toLocaleString("es-MX")}
+                    ${sp.costoInterno.toLocaleString("es-MX")}
                   </td>
                   <td className="px-5 py-3 text-[var(--on-surf-var)]">
                     {sp.isActive ? "Activo" : "Inactivo"}
@@ -279,7 +279,7 @@ function SimpleProductDialog({
   const [categoria, setCategoria] = useState(item?.categoria ?? "ACCESORIO");
   const [modeloAplicable, setModeloAplicable] = useState(item?.modeloAplicable ?? "");
   const [precioPublico, setPrecioPublico] = useState(item ? String(item.precioPublico) : "");
-  const [precioMayorista, setPrecioMayorista] = useState(item ? String(item.precioMayorista) : "");
+  const [costoInterno, setCostoInterno] = useState(item ? String(item.costoInterno) : "");
   const [stockMinimo, setStockMinimo] = useState(item ? String(item.stockMinimo) : "0");
   const [stockMaximo, setStockMaximo] = useState(item ? String(item.stockMaximo) : "0");
   const [imageUrl, setImageUrl] = useState<string | null>(item?.imageUrl ?? null);
@@ -329,7 +329,7 @@ function SimpleProductDialog({
       categoria,
       modeloAplicable: modeloAplicable.trim() || null,
       precioPublico: Number.parseFloat(precioPublico),
-      precioMayorista: Number.parseFloat(precioMayorista),
+      costoInterno: Number.parseFloat(costoInterno),
       stockMinimo: Number.parseInt(stockMinimo, 10) || 0,
       stockMaximo: Number.parseInt(stockMaximo, 10) || 0,
     };
@@ -359,7 +359,7 @@ function SimpleProductDialog({
         categoria: sp.categoria,
         modeloAplicable: sp.modeloAplicable,
         precioPublico: Number(sp.precioPublico),
-        precioMayorista: Number(sp.precioMayorista),
+        costoInterno: Number(sp.costoInterno),
         stockMinimo: sp.stockMinimo,
         stockMaximo: sp.stockMaximo,
         imageUrl: sp.imageUrl ?? imageUrl,
@@ -482,13 +482,13 @@ function SimpleProductDialog({
                 onChange={(e) => setPrecioPublico(e.target.value)}
               />
             </Field>
-            <Field label="Precio mayorista">
+            <Field label="Costo interno">
               <input
                 style={INPUT_STYLE}
                 type="number"
                 step="0.01"
-                value={precioMayorista}
-                onChange={(e) => setPrecioMayorista(e.target.value)}
+                value={costoInterno}
+                onChange={(e) => setCostoInterno(e.target.value)}
               />
             </Field>
             <Field label="Stock mínimo">

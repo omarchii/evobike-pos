@@ -758,7 +758,7 @@ async function main() {
           categoria,
           modeloAplicable,
           precioPublico: toDecimal(row.precio_publico),
-          precioMayorista: toDecimal(row.precio_distribuidor),
+          costoInterno: toDecimal(row.precio_distribuidor),
           stockMinimo: toInt(row.stock_minimo),
           stockMaximo: toInt(row.stock_maximo),
         };

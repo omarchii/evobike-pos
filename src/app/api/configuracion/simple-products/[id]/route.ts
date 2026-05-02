@@ -45,7 +45,7 @@ const patchSchema = z.object({
   categoria: z.enum(CATEGORIAS).optional(),
   modeloAplicable: z.string().nullable().optional(),
   precioPublico: z.number().nonnegative().optional(),
-  precioMayorista: z.number().nonnegative().optional(),
+  costoInterno: z.number().nonnegative().optional(),
   stockMinimo: z.number().int().nonnegative().optional(),
   stockMaximo: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),

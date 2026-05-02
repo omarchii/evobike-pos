@@ -1836,18 +1836,18 @@ async function seedPurchaseReceipts(ctx: SeedContext): Promise<void> {
     ]);
 
     // 3) Recalcular totalPagado desde las líneas vinculadas, usando costo
-    //    (ProductVariant) o precioMayorista (SimpleProduct) como valor unitario.
+    //    (ProductVariant) o costoInterno (SimpleProduct) como valor unitario.
     const linkedMovs = await ctx.prisma.inventoryMovement.findMany({
       where: { purchaseReceiptId: historic.id },
       select: {
         quantity: true,
         productVariant: { select: { costo: true } },
-        simpleProduct: { select: { precioMayorista: true } },
+        simpleProduct: { select: { costoInterno: true } },
       },
     });
     let total = new Prisma.Decimal(0);
     for (const m of linkedMovs) {
-      const unit = m.productVariant?.costo ?? m.simpleProduct?.precioMayorista ?? null;
+      const unit = m.productVariant?.costo ?? m.simpleProduct?.costoInterno ?? null;
       if (!unit) continue;
       total = total.plus(unit.mul(m.quantity));
     }

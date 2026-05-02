@@ -403,7 +403,7 @@ export function RecepcionForm({
             subLabel: s.codigo,
             quantity: 1,
             precioUnitarioPagado:
-              s.precioMayorista > 0 ? s.precioMayorista.toFixed(2) : "",
+              s.costoInterno > 0 ? s.costoInterno.toFixed(2) : "",
             configs: [],
             plan: [],
           },
@@ -754,7 +754,7 @@ export function RecepcionForm({
                         entityId: s.id,
                         label: s.nombre,
                         subLabel: s.codigo,
-                        suggestedPrice: s.precioMayorista,
+                        suggestedPrice: s.costoInterno,
                         configs: [],
                       })
                     }

@@ -163,7 +163,7 @@ export interface SimpleProductRow {
   categoria: string;
   modeloAplicable: string | null;
   precioPublico: number;
-  precioMayorista: number;
+  costoInterno: number;
   stockMinimo: number;
   stockMaximo: number;
   imageUrl: string | null;

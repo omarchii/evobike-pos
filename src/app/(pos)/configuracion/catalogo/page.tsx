@@ -186,7 +186,7 @@ export default async function CatalogoPage() {
             categoria: sp.categoria,
             modeloAplicable: sp.modeloAplicable,
             precioPublico: Number(sp.precioPublico),
-            precioMayorista: Number(sp.precioMayorista),
+            costoInterno: Number(sp.costoInterno),
             stockMinimo: sp.stockMinimo,
             stockMaximo: sp.stockMaximo,
             imageUrl: sp.imageUrl,
