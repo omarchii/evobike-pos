@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { redirect } from "next/navigation";
 import { RecepcionForm } from "./recepcion-form";
 
@@ -40,8 +40,7 @@ export default async function NuevaRecepcionPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = requireBranchedUserOrRedirect(session);
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const params = await searchParams;

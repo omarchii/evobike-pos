@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ReceiptStatusBadge, daysUntil } from "@/components/inventario/receipt-status-badge";
+import { formatMXN } from "@/lib/format";
 import { parseLocalDate } from "@/lib/reportes/date-range";
 
 // ── Types (exported so page.tsx can use them) ─────────────────────────────────
@@ -89,13 +90,7 @@ export interface SerializedReceiptDetail {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatMXN(value: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
+const fmtMXN = (v: number) => formatMXN(v, { decimals: 2 });
 
 function formatDate(value: string): string {
   const d = parseLocalDate(value, false) ?? new Date(value);
@@ -113,7 +108,12 @@ const FORMA_LABELS: Record<string, string> = {
 };
 
 function isPdf(url: string): boolean {
-  return url.toLowerCase().endsWith(".pdf");
+  try {
+    const { pathname } = new URL(url);
+    return pathname.toLowerCase().endsWith(".pdf");
+  } catch {
+    return url.toLowerCase().endsWith(".pdf");
+  }
 }
 
 // ── Section card wrapper ──────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ function LinesTable({
                 paddingTop: "0.6rem",
               }}
             >
-              {formatMXN(subtotal)}
+              {fmtMXN(subtotal)}
             </td>
           </tr>
         </tbody>
@@ -511,13 +511,6 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
   const [paying, setPaying] = useState(false);
 
   const handleMarcarPagada = async (): Promise<void> => {
-    if (
-      !window.confirm(
-        "¿Confirmas que esta recepción fue pagada? Esta acción registra la fecha de pago como hoy.",
-      )
-    )
-      return;
-
     setPaying(true);
     toast.loading("Registrando pago…", { id: "mark-paid" });
     try {
@@ -633,7 +626,7 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
 
           {/* Right: amounts + dates */}
           <div className="space-y-2">
-            <DataRow label="Total pagado" value={formatMXN(data.totalPagado)} bold />
+            <DataRow label="Total pagado" value={fmtMXN(data.totalPagado)} bold />
             <DataRow
               label="Fecha de recepción"
               value={formatDate(data.createdAt)}
@@ -704,8 +697,8 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
                       {l.sku}
                     </span>,
                     l.quantity,
-                    p !== null ? formatMXN(p) : "—",
-                    p !== null ? formatMXN(p * l.quantity) : "—",
+                    p !== null ? fmtMXN(p) : "—",
+                    p !== null ? fmtMXN(p * l.quantity) : "—",
                   ];
                 })}
                 subtotal={variantSubtotal}
@@ -740,8 +733,8 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
                     `${l.nombre} (${l.codigo})`,
                     l.categoria,
                     l.quantity,
-                    p !== null ? formatMXN(p) : "—",
-                    p !== null ? formatMXN(p * l.quantity) : "—",
+                    p !== null ? fmtMXN(p) : "—",
+                    p !== null ? fmtMXN(p * l.quantity) : "—",
                   ];
                 })}
                 subtotal={simpleSubtotal}
@@ -806,7 +799,7 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
                 fontFamily: "var(--font-display)",
               }}
             >
-              {formatMXN(data.totalPagado)}
+              {fmtMXN(data.totalPagado)}
             </span>
           </div>
         </SectionCard>
@@ -915,25 +908,53 @@ export function RecepcionDetail({ data }: { data: SerializedReceiptDetail }) {
         </Link>
 
         {data.estadoPago !== "PAGADA" && (
-          <button
-            type="button"
-            disabled={paying}
-            onClick={handleMarcarPagada}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold"
-            style={{
-              background: paying
-                ? "var(--surf-high)"
-                : "var(--velocity-gradient)",
-              color: paying ? "var(--on-surf-var)" : "#ffffff",
-              border: "none",
-              cursor: paying ? "not-allowed" : "pointer",
-              fontFamily: "var(--font-body)",
-              opacity: paying ? 0.7 : 1,
-            }}
-          >
-            <FileText className="h-4 w-4" />
-            {paying ? "Registrando…" : "Marcar como pagada"}
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                disabled={paying}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold"
+                style={{
+                  background: paying
+                    ? "var(--surf-high)"
+                    : "var(--velocity-gradient)",
+                  color: paying ? "var(--on-surf-var)" : "#ffffff",
+                  border: "none",
+                  cursor: paying ? "not-allowed" : "pointer",
+                  fontFamily: "var(--font-body)",
+                  opacity: paying ? 0.7 : 1,
+                }}
+              >
+                <FileText className="h-4 w-4" />
+                {paying ? "Registrando…" : "Marcar como pagada"}
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent
+              style={{
+                background:
+                  "color-mix(in srgb, var(--surf-bright) 88%, transparent)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                boxShadow: "var(--shadow)",
+                borderRadius: "var(--r-xl)",
+                border: "none",
+              }}
+            >
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Marcar como pagada?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción registra la fecha de pago como hoy. No se puede
+                  deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleMarcarPagada}>
+                  Confirmar pago
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
 

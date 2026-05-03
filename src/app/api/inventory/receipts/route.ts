@@ -1,8 +1,8 @@
-import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { upsertStockVariant, upsertStockSimple } from "@/lib/stock-ops";
@@ -78,21 +78,14 @@ const ESTADO_PAGO_VALUES: readonly string[] = ESTADO_PAGO;
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-  const { role, branchId } = session.user as unknown as SessionUser;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { role, branchId } = guard.user;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(
       { success: false, error: "Solo MANAGER o ADMIN pueden consultar compras al proveedor" },
       { status: 403 },
-    );
-  }
-  if (role !== "ADMIN" && !branchId) {
-    return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
-      { status: 400 },
     );
   }
 
@@ -176,21 +169,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-  const { id: userId, role, branchId } = session.user as unknown as SessionUser;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { id: userId, role, branchId } = guard.user;
 
   if (role !== "ADMIN" && role !== "MANAGER") {
     return NextResponse.json(
       { success: false, error: "Solo MANAGER o ADMIN pueden registrar compras al proveedor" },
       { status: 403 },
-    );
-  }
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
-      { status: 400 },
     );
   }
 

@@ -1,47 +1,31 @@
-import type { SessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import sharp from "sharp";
-import { promises as fs } from "fs";
-import path from "path";
+import { put, del } from "@/lib/storage/blob";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 const PDF_MIME = "application/pdf";
-const FACTURAS_DIR = path.join(process.cwd(), "public", "facturas");
-
-function requireManagerOrAdmin(user: SessionUser | undefined): NextResponse | null {
-  if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) {
-    return NextResponse.json(
-      { success: false, error: "Solo MANAGER o ADMIN pueden gestionar facturas de compra" },
-      { status: 403 },
-    );
-  }
-  return null;
-}
-
-async function tryDeleteLocalFactura(url: string | null): Promise<void> {
-  if (!url || !url.startsWith("/facturas/")) return;
-  const filename = url.slice("/facturas/".length);
-  if (!filename) return;
-  try {
-    await fs.unlink(path.join(FACTURAS_DIR, filename));
-  } catch {
-    // ignore missing file
-  }
-}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as SessionUser | undefined;
-  const denied = requireManagerOrAdmin(user);
-  if (denied) return denied;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
+
+  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
+    return NextResponse.json(
+      { success: false, error: "Solo MANAGER o ADMIN pueden gestionar facturas de compra" },
+      { status: 403 },
+    );
+  }
 
   const { id } = await params;
 
@@ -55,7 +39,7 @@ export async function POST(
       { status: 404 },
     );
   }
-  if (user!.role !== "ADMIN" && receipt.branchId !== user!.branchId) {
+  if (user.role !== "ADMIN" && receipt.branchId !== user.branchId) {
     return NextResponse.json(
       { success: false, error: "Recepción de otra sucursal" },
       { status: 403 },
@@ -102,14 +86,15 @@ export async function POST(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.mkdir(FACTURAS_DIR, { recursive: true });
 
   let outputBuffer: Buffer;
   let extension: string;
+  let contentType: string;
 
   if (isPdf) {
     outputBuffer = buffer;
     extension = "pdf";
+    contentType = PDF_MIME;
   } else {
     try {
       outputBuffer = await sharp(buffer)
@@ -128,25 +113,26 @@ export async function POST(
       );
     }
     extension = "webp";
+    contentType = "image/webp";
   }
 
-  const filename = `${receipt.branchId}-${receipt.id}-${Date.now()}.${extension}`;
-  await fs.writeFile(path.join(FACTURAS_DIR, filename), outputBuffer);
+  const key = `invoices/${receipt.branchId}/${receipt.id}-${Date.now()}.${extension}`;
+  await put(key, outputBuffer, contentType);
 
-  const previousUrl = receipt.facturaUrl;
-  const facturaUrl = `/facturas/${filename}`;
+  const previousKey = receipt.facturaUrl;
 
-  const updated = await prisma.purchaseReceipt.update({
+  await prisma.purchaseReceipt.update({
     where: { id },
-    data: { facturaUrl },
-    select: { facturaUrl: true },
+    data: { facturaUrl: key },
   });
 
-  await tryDeleteLocalFactura(previousUrl);
+  if (previousKey) {
+    try { await del(previousKey); } catch { /* best-effort */ }
+  }
 
   return NextResponse.json({
     success: true,
-    data: { facturaUrl: updated.facturaUrl },
+    data: { facturaUrl: key },
   });
 }
 
@@ -155,9 +141,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  const user = session?.user as unknown as SessionUser | undefined;
-  const denied = requireManagerOrAdmin(user);
-  if (denied) return denied;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
+
+  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
+    return NextResponse.json(
+      { success: false, error: "Solo MANAGER o ADMIN pueden gestionar facturas de compra" },
+      { status: 403 },
+    );
+  }
 
   const { id } = await params;
 
@@ -171,21 +164,23 @@ export async function DELETE(
       { status: 404 },
     );
   }
-  if (user!.role !== "ADMIN" && receipt.branchId !== user!.branchId) {
+  if (user.role !== "ADMIN" && receipt.branchId !== user.branchId) {
     return NextResponse.json(
       { success: false, error: "Recepción de otra sucursal" },
       { status: 403 },
     );
   }
 
-  const previousUrl = receipt.facturaUrl;
+  const previousKey = receipt.facturaUrl;
 
   await prisma.purchaseReceipt.update({
     where: { id },
     data: { facturaUrl: null },
   });
 
-  await tryDeleteLocalFactura(previousUrl);
+  if (previousKey) {
+    try { await del(previousKey); } catch { /* best-effort */ }
+  }
 
   return NextResponse.json({ success: true, data: { facturaUrl: null } });
 }

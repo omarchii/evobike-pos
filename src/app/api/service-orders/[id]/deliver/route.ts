@@ -80,6 +80,7 @@ export async function POST(
             productVariant: {
               include: { modelo: true, color: true },
             },
+            simpleProduct: { select: { nombre: true } },
           },
         },
         sale: true,
@@ -143,24 +144,44 @@ export async function POST(
     }
 
     // ── Pre-validate stock (outside transaction for clear error messages) ──
-    // Aggregate total quantities needed per productVariantId (D3/T4 spec).
-    // Only process items without inventoryMovementId — those are pending stock deduction.
     const neededByVariant = new Map<string, { quantity: number; name: string }>();
+    const neededBySimple = new Map<string, { quantity: number; name: string }>();
     for (const item of order.items) {
-      if (!item.productVariantId || item.inventoryMovementId !== null) continue;
-      const current = neededByVariant.get(item.productVariantId);
-      const name = item.productVariant
-        ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre}`
-        : item.description;
-      neededByVariant.set(item.productVariantId, {
-        quantity: (current?.quantity ?? 0) + item.quantity,
-        name: current?.name ?? name,
-      });
+      if (item.inventoryMovementId !== null) continue;
+      if (item.productVariantId) {
+        const current = neededByVariant.get(item.productVariantId);
+        const name = item.productVariant
+          ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre}`
+          : item.description;
+        neededByVariant.set(item.productVariantId, {
+          quantity: (current?.quantity ?? 0) + item.quantity,
+          name: current?.name ?? name,
+        });
+      } else if (item.simpleProductId) {
+        const current = neededBySimple.get(item.simpleProductId);
+        const name = item.simpleProduct?.nombre ?? item.description;
+        neededBySimple.set(item.simpleProductId, {
+          quantity: (current?.quantity ?? 0) + item.quantity,
+          name: current?.name ?? name,
+        });
+      }
     }
 
     for (const [variantId, { quantity, name }] of neededByVariant.entries()) {
       const stock = await prisma.stock.findUnique({
         where: { productVariantId_branchId: { productVariantId: variantId, branchId } },
+      });
+      if (!stock || stock.quantity < quantity) {
+        return NextResponse.json(
+          { success: false, error: `Stock insuficiente para: ${name}` },
+          { status: 422 }
+        );
+      }
+    }
+
+    for (const [simpleId, { quantity, name }] of neededBySimple.entries()) {
+      const stock = await prisma.stock.findUnique({
+        where: { simpleProductId_branchId: { simpleProductId: simpleId, branchId } },
       });
       if (!stock || stock.quantity < quantity) {
         return NextResponse.json(
@@ -334,34 +355,63 @@ export async function POST(
 
       // Common: descuento de stock + InventoryMovement por cada item sin movement
       for (const item of order.items) {
-        if (!item.productVariantId || item.inventoryMovementId !== null) continue;
+        if (item.inventoryMovementId !== null) continue;
 
-        const stock = await tx.stock.findUniqueOrThrow({
-          where: {
-            productVariantId_branchId: {
+        if (item.productVariantId) {
+          const stock = await tx.stock.findUniqueOrThrow({
+            where: {
+              productVariantId_branchId: {
+                productVariantId: item.productVariantId,
+                branchId,
+              },
+            },
+            select: { id: true, version: true },
+          });
+          await adjustStock(tx, stock.id, -item.quantity, stock.version);
+
+          const movement = await tx.inventoryMovement.create({
+            data: {
               productVariantId: item.productVariantId,
               branchId,
+              userId,
+              type: "WORKSHOP_USAGE",
+              quantity: -item.quantity,
+              referenceId: serviceOrderId,
             },
-          },
-          select: { id: true, version: true },
-        });
-        await adjustStock(tx, stock.id, -item.quantity, stock.version);
+          });
 
-        const movement = await tx.inventoryMovement.create({
-          data: {
-            productVariantId: item.productVariantId,
-            branchId,
-            userId,
-            type: "WORKSHOP_USAGE",
-            quantity: -item.quantity,
-            referenceId: serviceOrderId,
-          },
-        });
+          await tx.serviceOrderItem.update({
+            where: { id: item.id },
+            data: { inventoryMovementId: movement.id },
+          });
+        } else if (item.simpleProductId) {
+          const stock = await tx.stock.findUniqueOrThrow({
+            where: {
+              simpleProductId_branchId: {
+                simpleProductId: item.simpleProductId,
+                branchId,
+              },
+            },
+            select: { id: true, version: true },
+          });
+          await adjustStock(tx, stock.id, -item.quantity, stock.version);
 
-        await tx.serviceOrderItem.update({
-          where: { id: item.id },
-          data: { inventoryMovementId: movement.id },
-        });
+          const movement = await tx.inventoryMovement.create({
+            data: {
+              simpleProductId: item.simpleProductId,
+              branchId,
+              userId,
+              type: "WORKSHOP_USAGE",
+              quantity: -item.quantity,
+              referenceId: serviceOrderId,
+            },
+          });
+
+          await tx.serviceOrderItem.update({
+            where: { id: item.id },
+            data: { inventoryMovementId: movement.id },
+          });
+        }
       }
 
       // Mark delivered

@@ -19,6 +19,7 @@ export interface SerializedReceiptListItem {
 }
 
 export interface ReceiptFilters {
+  search: string;
   estadoPago: string;
   proveedor: string;
   vencimientoDesde: string;

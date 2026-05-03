@@ -10,20 +10,16 @@ import {
   PackageSearch,
   Plus,
   RotateCcw,
+  Search,
 } from "lucide-react";
 import { ReceiptStatusBadge, daysUntil } from "@/components/inventario/receipt-status-badge";
+import { formatMXN } from "@/lib/format";
 import { parseLocalDate } from "@/lib/reportes/date-range";
 import type { SerializedReceiptListItem, ReceiptFilters } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatMXN(value: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
+const fmtMXN = (v: number) => formatMXN(v, { decimals: 2 });
 
 function formatDate(value: string): string {
   const d = parseLocalDate(value, false) ?? new Date(value);
@@ -118,7 +114,6 @@ export function RecepcionesList({
   function pushFilters(overrides: Partial<ReceiptFilters>): void {
     const next: ReceiptFilters = { ...currentFilters, ...overrides, page: 1 };
 
-    // Clearing vencimiento dates when leaving CREDITO filter
     if (overrides.estadoPago !== undefined && overrides.estadoPago !== "CREDITO") {
       next.vencimientoDesde = "";
       next.vencimientoHasta = "";
@@ -130,11 +125,12 @@ export function RecepcionesList({
       else params.delete(key);
     };
 
+    setOrDelete("search", next.search);
     setOrDelete("estadoPago", next.estadoPago);
     setOrDelete("proveedor", next.proveedor);
     setOrDelete("vencimientoDesde", next.vencimientoDesde);
     setOrDelete("vencimientoHasta", next.vencimientoHasta);
-    params.delete("page"); // reset to first page on any filter change
+    params.delete("page");
 
     startTransition(() => {
       router.replace(`/inventario/recepciones?${params.toString()}`);
@@ -195,11 +191,34 @@ export function RecepcionesList({
         </Link>
       </div>
 
-      {/* Filter card */}
+      {/* Search + Filter card */}
       <div
         className="mb-5 p-5"
         style={{ background: "var(--surf-lowest)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow)" }}
       >
+        <div className="relative mb-4">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+            style={{ color: "var(--on-surf-var)" }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por folio o proveedor…"
+            defaultValue={currentFilters.search}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                pushFilters({ search: (e.target as HTMLInputElement).value });
+              }
+            }}
+            onBlur={(e) => {
+              if (e.target.value !== currentFilters.search) {
+                pushFilters({ search: e.target.value });
+              }
+            }}
+            style={{ ...INPUT_STYLE, paddingLeft: "2.25rem" }}
+          />
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {/* Estado */}
           <div>
@@ -456,7 +475,7 @@ function ReceiptRow({ row }: { row: SerializedReceiptListItem }) {
           fontFamily: "var(--font-display)",
         }}
       >
-        {formatMXN(row.totalPagado)}
+        {fmtMXN(row.totalPagado)}
       </td>
       <td style={{ padding: "0.5625rem 0.75rem" }}>
         <ReceiptStatusBadge

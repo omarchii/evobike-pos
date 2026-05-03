@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatMXN } from "@/lib/format";
 import type { SimpleCatalogItem, VariantCatalogItem } from "./page";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -70,13 +71,7 @@ const LABEL_STYLE: React.CSSProperties = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatMXN(value: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
+const fmtMXN = (v: number) => formatMXN(v, { decimals: 2 });
 
 const PRECIO_REGEX = /^\d+(\.\d{1,2})?$/;
 
@@ -1099,7 +1094,7 @@ export function RecepcionForm({
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {formatMXN(subtotal)}
+                          {fmtMXN(subtotal)}
                         </td>
                         <td style={{ padding: "0.5rem", width: 32 }}>
                           <button
@@ -1325,7 +1320,7 @@ export function RecepcionForm({
                       lineHeight: 1.1,
                     }}
                   >
-                    {formatMXN(totalDisplay)}
+                    {fmtMXN(totalDisplay)}
                   </p>
                   <p style={{ fontSize: "0.6rem", color: "var(--on-surf-var)", fontFamily: "var(--font-body)" }}>
                     El total se recalcula server-side

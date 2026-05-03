@@ -1,7 +1,8 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
+import { sign } from "@/lib/storage/blob";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -16,8 +17,7 @@ export default async function RecepcionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = requireBranchedUserOrRedirect(session);
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const { id } = await params;
@@ -186,12 +186,16 @@ export default async function RecepcionDetailPage({
       totalBaterias: l._count.batteries,
     }));
 
+  const facturaSignedUrl = receipt.facturaUrl
+    ? await sign(receipt.facturaUrl)
+    : null;
+
   const data: SerializedReceiptDetail = {
     id: receipt.id,
     branch: receipt.branch,
     proveedor: receipt.proveedor,
     folioFacturaProveedor: receipt.folioFacturaProveedor,
-    facturaUrl: receipt.facturaUrl,
+    facturaUrl: facturaSignedUrl,
     formaPagoProveedor: receipt.formaPagoProveedor,
     estadoPago: receipt.estadoPago,
     fechaVencimiento: receipt.fechaVencimiento,

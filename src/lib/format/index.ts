@@ -1,6 +1,9 @@
 export { formatRelative } from "@/lib/format-relative";
 
-export function formatMXN(value: number, opts?: { compact?: boolean }): string {
+export function formatMXN(
+  value: number,
+  opts?: { compact?: boolean; decimals?: number },
+): string {
   if (opts?.compact) {
     return new Intl.NumberFormat("es-MX", {
       style: "currency",
@@ -9,10 +12,12 @@ export function formatMXN(value: number, opts?: { compact?: boolean }): string {
       maximumFractionDigits: 1,
     }).format(value);
   }
+  const d = opts?.decimals ?? 0;
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
   }).format(value);
 }
 

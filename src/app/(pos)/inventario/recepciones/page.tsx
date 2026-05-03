@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { RecepcionesList } from "./recepciones-list";
@@ -19,12 +19,13 @@ export default async function RecepcionesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const { role, branchId } = session.user as unknown as BranchedSessionUser;
+  const { role, branchId } = requireBranchedUserOrRedirect(session);
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/");
 
   const params = await searchParams;
 
+  const searchParam =
+    typeof params.search === "string" ? params.search.trim() : "";
   const estadoPagoParam =
     typeof params.estadoPago === "string" ? params.estadoPago : "";
   const proveedorParam =
@@ -55,6 +56,14 @@ export default async function RecepcionesPage({
             ...(vencDesdeParam ? { gte: vencDesdeParam } : {}),
             ...(vencHastaParam ? { lte: vencHastaParam } : {}),
           },
+        }
+      : {}),
+    ...(searchParam
+      ? {
+          OR: [
+            { folioFacturaProveedor: { contains: searchParam, mode: "insensitive" } },
+            { proveedor: { contains: searchParam, mode: "insensitive" } },
+          ],
         }
       : {}),
   };
@@ -111,6 +120,7 @@ export default async function RecepcionesPage({
   }));
 
   const filters: ReceiptFilters = {
+    search: searchParam,
     estadoPago: estadoPagoParam,
     proveedor: proveedorParam,
     vencimientoDesde: vencDesdeParam,
