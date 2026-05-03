@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   ChevronLeft,
@@ -26,6 +27,9 @@ export interface VariantRow {
   cost: number;
   stock: number;
   stockMinimo: number;
+  workshopPending: number;
+  assemblyPending: number;
+  enCamino: number;
   precioDistribuidorConfirmado: boolean;
 }
 
@@ -38,6 +42,8 @@ export interface SimpleRow {
   cost: number;
   stock: number;
   stockMinimo: number;
+  workshopPending: number;
+  enCamino: number;
 }
 
 export interface BranchOption {
@@ -367,11 +373,36 @@ export function KardexClient({
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
-function StockBadge({ stock, stockMinimo }: { stock: number; stockMinimo: number }) {
+function StockBadge({
+  stock,
+  stockMinimo,
+  workshopPending,
+  assemblyPending,
+  enCamino,
+}: {
+  stock: number;
+  stockMinimo: number;
+  workshopPending: number;
+  assemblyPending?: number;
+  enCamino: number;
+}) {
+  const disponible = stock - workshopPending - (assemblyPending ?? 0);
+  const hasBreakdown = workshopPending > 0 || (assemblyPending ?? 0) > 0 || enCamino > 0;
+  const [showTip, setShowTip] = useState(false);
+  const badgeRef = useRef<HTMLSpanElement>(null);
+  const [tipPos, setTipPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (showTip && badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      setTipPos({ top: rect.top - 8, left: rect.left + rect.width / 2 });
+    }
+  }, [showTip]);
+
   const severity: "ok" | "warning" | "critical" =
-    stock === 0
+    disponible <= 0
       ? "critical"
-      : stockMinimo > 0 && stock <= stockMinimo
+      : stockMinimo > 0 && disponible <= stockMinimo
         ? "warning"
         : "ok";
 
@@ -390,12 +421,57 @@ function StockBadge({ stock, stockMinimo }: { stock: number; stockMinimo: number
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+      ref={badgeRef}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-default"
       style={{ background: bg, color: fg }}
+      onMouseEnter={() => setShowTip(true)}
+      onMouseLeave={() => setShowTip(false)}
+      onClick={() => setShowTip((v) => !v)}
     >
       {severity === "critical" && <AlertTriangle size={10} />}
       {severity === "warning" && <AlertTriangle size={10} />}
-      {stock} pzas
+      {disponible} disp.
+      {enCamino > 0 && (
+        <span
+          className="ml-1 px-1.5 py-px rounded-full text-[0.6rem] font-bold"
+          style={{ background: "var(--p-container)", color: "var(--on-p-container)" }}
+        >
+          +{enCamino}
+        </span>
+      )}
+      {hasBreakdown && showTip &&
+        createPortal(
+          <span
+            className="fixed z-[9999] w-max max-w-[200px] rounded-lg px-3 py-2 text-[0.6875rem] leading-relaxed shadow-lg pointer-events-none"
+            style={{
+              top: tipPos.top,
+              left: tipPos.left,
+              transform: "translate(-50%, -100%)",
+              background: "var(--surf-highest)",
+              color: "var(--on-surf)",
+              border: "1px solid var(--ghost-border)",
+            }}
+          >
+            <span className="block">Físico: {stock}</span>
+            {workshopPending > 0 && (
+              <span className="block" style={{ color: "var(--warn)" }}>
+                Taller: −{workshopPending}
+              </span>
+            )}
+            {(assemblyPending ?? 0) > 0 && (
+              <span className="block" style={{ color: "var(--warn)" }}>
+                Ensamble: −{assemblyPending}
+              </span>
+            )}
+            <span className="block font-semibold">Disponible: {disponible}</span>
+            {enCamino > 0 && (
+              <span className="block" style={{ color: "var(--p)" }}>
+                En camino: +{enCamino}
+              </span>
+            )}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
@@ -483,7 +559,7 @@ function VariantTable({ rows }: { rows: VariantRow[] }) {
           <Th>SKU</Th>
           <Th align="right">Precio Venta</Th>
           <Th align="right">Costo</Th>
-          <Th align="center">En Existencia</Th>
+          <Th align="center">Disponible</Th>
         </tr>
       </thead>
       <tbody>
@@ -519,7 +595,13 @@ function VariantTable({ rows }: { rows: VariantRow[] }) {
                 </span>
               </Td>
               <Td align="center">
-                <StockBadge stock={r.stock} stockMinimo={r.stockMinimo} />
+                <StockBadge
+                  stock={r.stock}
+                  stockMinimo={r.stockMinimo}
+                  workshopPending={r.workshopPending}
+                  assemblyPending={r.assemblyPending}
+                  enCamino={r.enCamino}
+                />
               </Td>
             </tr>
           ))
@@ -539,7 +621,7 @@ function SimpleTable({ rows }: { rows: SimpleRow[] }) {
           <Th>Categoría</Th>
           <Th align="right">Precio Venta</Th>
           <Th align="right">Costo</Th>
-          <Th align="center">En Existencia</Th>
+          <Th align="center">Disponible</Th>
         </tr>
       </thead>
       <tbody>
@@ -586,7 +668,12 @@ function SimpleTable({ rows }: { rows: SimpleRow[] }) {
                 </span>
               </Td>
               <Td align="center">
-                <StockBadge stock={r.stock} stockMinimo={r.stockMinimo} />
+                <StockBadge
+                  stock={r.stock}
+                  stockMinimo={r.stockMinimo}
+                  workshopPending={r.workshopPending}
+                  enCamino={r.enCamino}
+                />
               </Td>
             </tr>
           ))

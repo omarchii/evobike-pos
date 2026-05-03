@@ -6,6 +6,100 @@ import { KardexClient } from "./kardex-client";
 import type { VariantRow, SimpleRow, BranchOption } from "./kardex-client";
 import type { Prisma } from "@prisma/client";
 
+async function getVariantAvailability(variantIds: string[], branchId: string) {
+  if (variantIds.length === 0) return { workshop: {}, assembly: {}, transit: {} };
+
+  const [workshopRows, batteryRows, transitRows] = await Promise.all([
+    prisma.serviceOrderItem.groupBy({
+      by: ["productVariantId"],
+      where: {
+        productVariantId: { in: variantIds },
+        inventoryMovementId: null,
+        serviceOrder: {
+          status: { notIn: ["DELIVERED", "CANCELLED"] },
+          branchId,
+        },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.battery.findMany({
+      where: {
+        status: "IN_STOCK",
+        assemblyOrderId: { not: null },
+        assemblyOrder: { status: "PENDING" },
+        branchId,
+        lot: { productVariantId: { in: variantIds } },
+      },
+      select: { lot: { select: { productVariantId: true } } },
+    }),
+    prisma.stockTransferItem.groupBy({
+      by: ["productVariantId"],
+      where: {
+        productVariantId: { in: variantIds },
+        transfer: { status: "EN_TRANSITO", toBranchId: branchId },
+      },
+      _sum: { cantidadEnviada: true },
+    }),
+  ]);
+
+  const workshop: Record<string, number> = {};
+  for (const r of workshopRows) {
+    if (r.productVariantId) workshop[r.productVariantId] = r._sum.quantity ?? 0;
+  }
+
+  const assembly: Record<string, number> = {};
+  for (const r of batteryRows) {
+    const vid = r.lot.productVariantId;
+    if (vid) assembly[vid] = (assembly[vid] ?? 0) + 1;
+  }
+
+  const transit: Record<string, number> = {};
+  for (const r of transitRows) {
+    if (r.productVariantId) transit[r.productVariantId] = r._sum.cantidadEnviada ?? 0;
+  }
+
+  return { workshop, assembly, transit };
+}
+
+async function getSimpleAvailability(simpleIds: string[], branchId: string) {
+  if (simpleIds.length === 0) return { workshop: {}, transit: {} };
+
+  const [workshopRows, transitRows] = await Promise.all([
+    prisma.serviceOrderItem.groupBy({
+      by: ["simpleProductId"],
+      where: {
+        simpleProductId: { in: simpleIds },
+        inventoryMovementId: null,
+        serviceOrder: {
+          status: { notIn: ["DELIVERED", "CANCELLED"] },
+          branchId,
+        },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.stockTransferItem.groupBy({
+      by: ["simpleProductId"],
+      where: {
+        simpleProductId: { in: simpleIds },
+        transfer: { status: "EN_TRANSITO", toBranchId: branchId },
+      },
+      _sum: { cantidadEnviada: true },
+    }),
+  ]);
+
+  const workshop: Record<string, number> = {};
+  for (const r of workshopRows) {
+    if (r.simpleProductId) workshop[r.simpleProductId] = r._sum.quantity ?? 0;
+  }
+
+  const transit: Record<string, number> = {};
+  for (const r of transitRows) {
+    if (r.simpleProductId) transit[r.simpleProductId] = r._sum.cantidadEnviada ?? 0;
+  }
+
+  return { workshop, transit };
+}
+
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
@@ -83,6 +177,9 @@ export default async function InventoryPage({
       }),
     ]);
 
+    const variantIds = rawVariants.map((v) => v.id);
+    const avail = await getVariantAvailability(variantIds, activeBranchId);
+
     const variantRows: VariantRow[] = rawVariants.map((v) => {
       const ahSuffix = v.capacidad ? ` · ${v.capacidad.nombre}` : "";
       return {
@@ -93,6 +190,9 @@ export default async function InventoryPage({
         cost: Number(v.costo),
         stock: v.stocks[0]?.quantity ?? 0,
         stockMinimo: v.stockMinimo,
+        workshopPending: avail.workshop[v.id] ?? 0,
+        assemblyPending: avail.assembly[v.id] ?? 0,
+        enCamino: avail.transit[v.id] ?? 0,
         precioDistribuidorConfirmado: v.precioDistribuidorConfirmado,
       };
     });
@@ -145,6 +245,9 @@ export default async function InventoryPage({
     prisma.productVariant.count({ where: { isActive: true } }),
   ]);
 
+  const simpleIds = rawSimples.map((s) => s.id);
+  const availSimple = await getSimpleAvailability(simpleIds, activeBranchId);
+
   const simpleRows: SimpleRow[] = rawSimples.map((s) => ({
     id: s.id,
     codigo: s.codigo,
@@ -154,6 +257,8 @@ export default async function InventoryPage({
     cost: Number(s.costoInterno),
     stock: s.stocks[0]?.quantity ?? 0,
     stockMinimo: s.stockMinimo,
+    workshopPending: availSimple.workshop[s.id] ?? 0,
+    enCamino: availSimple.transit[s.id] ?? 0,
   }));
 
   return (
