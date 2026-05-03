@@ -80,6 +80,15 @@ export function CompleteAssemblyDialog({
   const [selectedLotId, setSelectedLotId] = useState<string>("");
   const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
 
+  // Cantidad real requerida según la config resuelta server-side. La prop
+  // `requiredQuantity` puede divergir cuando hay multi-config (Evotank 45/52Ah,
+  // I10 deferred): el board hace `find()` arbitrario y el API usa el
+  // `batteryConfigurationId` pre-asignado a la orden. Usar la del API como
+  // fuente de verdad evita que el botón quede deshabilitado por un length
+  // mismatch.
+  const [apiRequiredQuantity, setApiRequiredQuantity] = useState<number | null>(null);
+  const effectiveRequiredQuantity = apiRequiredQuantity ?? requiredQuantity;
+
   // Modo manual
   const [batteryInputs, setBatteryInputs] = useState<BatteryInput[]>([]);
   const [lotReference, setLotReference] = useState("");
@@ -103,7 +112,15 @@ export function CompleteAssemblyDialog({
         .then((r) => r.json() as Promise<{ success: boolean; data?: { requiredQuantity: number; lots: AvailableLot[] } }>)
         .then((res) => {
           if (res.success && res.data) {
+            const apiQty = res.data.requiredQuantity;
             setLots(res.data.lots);
+            setApiRequiredQuantity(apiQty);
+            // Re-sincronizar inputs manuales al count real del API
+            if (apiQty !== requiredQuantity) {
+              setBatteryInputs(
+                Array.from({ length: apiQty }, () => ({ serial: "", isDuplicate: false }))
+              );
+            }
             // Si solo hay un lote disponible, pre-seleccionarlo
             if (res.data.lots.length === 1) {
               const l = res.data.lots[0];
@@ -119,6 +136,7 @@ export function CompleteAssemblyDialog({
         .finally(() => setLotsLoading(false));
     } else {
       setLots([]);
+      setApiRequiredQuantity(null);
     }
   }, [open, orderId, requiredQuantity]);
 
@@ -145,10 +163,11 @@ export function CompleteAssemblyDialog({
   const lotModeReady =
     mode === "lot" &&
     selectedLotId !== "" &&
-    selectedSerials.length === requiredQuantity;
+    selectedSerials.length === effectiveRequiredQuantity;
 
   const manualModeReady =
     mode === "manual" &&
+    batteryInputs.length === effectiveRequiredQuantity &&
     lotReference.trim().length >= 1 &&
     batteryInputs.every((b) => b.serial.trim().length >= 1) &&
     !batteryInputs.some((b) => b.isDuplicate);
@@ -261,7 +280,7 @@ export function CompleteAssemblyDialog({
           >
             <Zap className="h-4 w-4 shrink-0" style={{ color: "var(--p-bright)" }} />
             <span style={{ fontSize: "0.78rem", color: "var(--on-surf)" }}>
-              {requiredQuantity} bater{requiredQuantity === 1 ? "ía requerida" : "ías requeridas"}
+              {effectiveRequiredQuantity} bater{effectiveRequiredQuantity === 1 ? "ía requerida" : "ías requeridas"}
             </span>
           </div>
 

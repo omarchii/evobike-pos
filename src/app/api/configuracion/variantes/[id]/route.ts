@@ -32,6 +32,7 @@ export async function GET(
       modelo: { select: { id: true, nombre: true } },
       color: { select: { id: true, nombre: true } },
       voltaje: { select: { id: true, valor: true, label: true } },
+      capacidad: { select: { nombre: true } },
     },
   });
   if (!variant) {

@@ -527,10 +527,9 @@ export default async function DashboardPage({
             polizasDetenidasPrisma,
             backordersVencidosPrisma,
             cotizacionesPorVencerPrisma,
-            stockCriticoPrisma,
+            stockCriticoRaw,
             reensamblesPendientesPrisma,
             managerComparisonAgg,
-            stockCriticoCount,
             reensamblesPendientesCount,
         ] = await Promise.all([
             prisma.sale.findMany({
@@ -573,9 +572,11 @@ export default async function DashboardPage({
             prisma.stock.findMany({
                 where: {
                     ...branchWhere(viewBranchId),
-                    quantity: { lte: 2 },
+                    OR: [
+                        { productVariant: { isActive: true, stockMinimo: { gt: 0 } } },
+                        { simpleProduct: { isActive: true, stockMinimo: { gt: 0 } } },
+                    ],
                 },
-                take: 8,
                 orderBy: { quantity: "asc" },
                 select: {
                     productVariantId: true,
@@ -583,10 +584,14 @@ export default async function DashboardPage({
                     productVariant: {
                         select: {
                             sku: true,
+                            stockMinimo: true,
                             modelo: { select: { nombre: true } },
                             color: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
                         },
+                    },
+                    simpleProduct: {
+                        select: { stockMinimo: true },
                     },
                 },
             }),
@@ -618,12 +623,6 @@ export default async function DashboardPage({
                 _sum: { total: true },
                 _count: { id: true },
             }),
-            prisma.stock.count({
-                where: {
-                    ...branchWhere(viewBranchId),
-                    quantity: { lte: 2 },
-                },
-            }),
             prisma.assemblyOrder.count({
                 where: {
                     ...branchWhere(viewBranchId),
@@ -631,6 +630,12 @@ export default async function DashboardPage({
                 },
             }),
         ]);
+
+        const stockCriticoPrisma = stockCriticoRaw.filter((s) => {
+            const min = s.productVariant?.stockMinimo ?? s.simpleProduct?.stockMinimo ?? 0;
+            return s.quantity <= min;
+        });
+        const stockCriticoCount = stockCriticoPrisma.length;
 
         const managerAttentionAlerts = {
             polizasDetenidas: polizasDetenidasPrisma.map((s) => ({
@@ -652,6 +657,7 @@ export default async function DashboardPage({
             })),
             stockCritico: stockCriticoPrisma
                 .filter((s) => s.productVariantId !== null && s.productVariant !== null)
+                .slice(0, 8)
                 .map((s) => ({
                     productVariantId: s.productVariantId!,
                     productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,
@@ -1097,9 +1103,11 @@ export default async function DashboardPage({
             prisma.stock.findMany({
                 where: {
                     ...(branchId ? { branchId } : {}),
-                    quantity: { lte: 2 },
+                    OR: [
+                        { productVariant: { isActive: true, stockMinimo: { gt: 0 } } },
+                        { simpleProduct: { isActive: true, stockMinimo: { gt: 0 } } },
+                    ],
                 },
-                take: 8,
                 orderBy: { quantity: "asc" },
                 select: {
                     productVariantId: true,
@@ -1107,10 +1115,14 @@ export default async function DashboardPage({
                     productVariant: {
                         select: {
                             sku: true,
+                            stockMinimo: true,
                             modelo: { select: { nombre: true } },
                             color: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
                         },
+                    },
+                    simpleProduct: {
+                        select: { stockMinimo: true },
                     },
                 },
             }),
@@ -1173,7 +1185,11 @@ export default async function DashboardPage({
                 customerName: s.customer?.name ?? null,
             })),
             stockCritico: techStockPrisma
-                .filter((s) => s.productVariantId !== null && s.productVariant !== null)
+                .filter((s) => {
+                    if (!s.productVariantId || !s.productVariant) return false;
+                    return s.quantity <= (s.productVariant.stockMinimo ?? 0);
+                })
+                .slice(0, 8)
                 .map((s) => ({
                     productVariantId: s.productVariantId!,
                     productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,

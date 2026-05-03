@@ -176,7 +176,12 @@ export function TabVariantes({
                   <td className="px-5 py-3 font-mono text-xs text-[var(--on-surf)]">{v.sku}</td>
                   <td className="px-5 py-3 text-[var(--on-surf)]">{v.modelo_nombre}</td>
                   <td className="px-5 py-3 text-[var(--on-surf-var)]">{v.color_nombre}</td>
-                  <td className="px-5 py-3 text-[var(--on-surf-var)]">{v.voltaje_label}</td>
+                  <td className="px-5 py-3 text-[var(--on-surf-var)]">
+                    {v.voltaje_label}
+                    {v.capacidad_nombre && (
+                      <span className="ml-1 text-xs opacity-70">· {v.capacidad_nombre}</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-right text-[var(--on-surf)]">
                     ${v.precioPublico.toLocaleString("es-MX")}
                   </td>
@@ -411,6 +416,7 @@ function VariantDialog({
         color_nombre: v.color.nombre,
         voltaje_id: v.voltaje_id,
         voltaje_label: v.voltaje.label,
+        capacidad_nombre: v.capacidad?.nombre ?? null,
         precioPublico: Number(v.precioPublico),
         costo: Number(v.costo),
         precioDistribuidor: v.precioDistribuidor !== null ? Number(v.precioDistribuidor) : null,

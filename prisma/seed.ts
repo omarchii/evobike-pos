@@ -24,16 +24,16 @@ function parseCSV(filePath: string): Record<string, string>[] {
   const rows: Record<string, string>[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const rawValues = lines[i].match(/(?:"([^"]*(?:""[^"]*)*)")|([^,]+)/g);
-    if (!rawValues) continue;
-
-    const values = rawValues.map((v) => {
-      let val = v.trim();
-      if (val.startsWith('"') && val.endsWith('"')) {
-        val = val.substring(1, val.length - 1).replace(/""/g, '"');
-      }
-      return val;
-    });
+    const values: string[] = [];
+    let cur = '';
+    let inQ = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (ch === ',' && !inQ) { values.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    values.push(cur.trim());
+    if (values.length === 0) continue;
 
     const row: Record<string, string> = {};
     headers.forEach((header, index) => {
@@ -285,6 +285,8 @@ async function main() {
   const configuracionesCSV = parseCSV(path.join(dataDir, 'modelo_configuracion.csv'));
   let configsCreated = 0;
 
+  const capacidadCache = new Map<number, string>();
+
   for (const row of configuracionesCSV) {
     if (!row.sku || !row.modelo_id || !row.color_id || !row.voltaje_id) continue;
 
@@ -297,6 +299,23 @@ async function main() {
       continue;
     }
 
+    let capacidadId: string | undefined;
+    const ahStr = row.capacidad_ah?.trim();
+    if (ahStr) {
+      const ah = parseFloat(ahStr);
+      if (!isNaN(ah)) {
+        if (!capacidadCache.has(ah)) {
+          const cap = await prisma.capacidad.upsert({
+            where: { valorAh: ah },
+            update: {},
+            create: { valorAh: ah, nombre: `${ah}Ah` },
+          });
+          capacidadCache.set(ah, cap.id);
+        }
+        capacidadId = capacidadCache.get(ah)!;
+      }
+    }
+
     try {
       const variant = await prisma.productVariant.upsert({
         where: { sku: row.sku },
@@ -306,6 +325,7 @@ async function main() {
           modelo_id: modeloId,
           color_id: colorId,
           voltaje_id: voltajeId,
+          ...(capacidadId ? { capacidad_id: capacidadId } : {}),
         },
         create: {
           sku: row.sku,
@@ -314,6 +334,7 @@ async function main() {
           modelo_id: modeloId,
           color_id: colorId,
           voltaje_id: voltajeId,
+          ...(capacidadId ? { capacidad_id: capacidadId } : {}),
         },
       });
 
@@ -344,6 +365,24 @@ async function main() {
   }
 
   console.log(`✅ Variantes de producto cargadas: ${configsCreated}`);
+
+  // 4f. Deactivate legacy SKUs replaced by Ah-exploded variants
+  const legacySkus = [
+    'EVOTANK-160-60V-ROJO', 'EVOTANK-160-60V-AZUL', 'EVOTANK-160-60V-AZUL-CELESTE',
+    'EVOTANK-180-72V-AZUL-CELESTE', 'EVOTANK-180-72V-ROJO', 'EVOTANK-180-72V-AZUL',
+    'EVOTANK-160-HIBRIDO-60V-AZUL-CELESTE', 'EVOTANK-160-HIBRIDO-60V-AZUL', 'EVOTANK-160-HIBRIDO-60V-ROJO',
+    'EVOTANK-160-HIBRIDO-72V-AZUL-CELESTE', 'EVOTANK-160-HIBRIDO-72V-AZUL', 'EVOTANK-160-HIBRIDO-72V-ROJO',
+    'EVOTANK-180-HIBRIDO-60V-AZUL-CELESTE', 'EVOTANK-180-HIBRIDO-60V-AZUL', 'EVOTANK-180-HIBRIDO-60V-ROJO',
+    'EVOTANK-180-HIBRIDO-72V-AZUL-CELESTE', 'EVOTANK-180-HIBRIDO-72V-AZUL', 'EVOTANK-180-HIBRIDO-72V-ROJO',
+    'VMPS6-48V-ROJO', 'VMPS6-48V-GRIS', 'VMPS6-48V-MORADO', 'VMPS6-48V-AZUL-PASTEL', 'VMPS6-48V-ROSA',
+    'SCOOTER-S7-NARANJA',
+  ];
+  const { count: deactivated } = await prisma.productVariant.updateMany({
+    where: { sku: { in: legacySkus }, isActive: true },
+    data: { isActive: false },
+  });
+  if (deactivated > 0) console.log(`  ♻️  ${deactivated} variantes legacy desactivadas (reemplazadas con Ah explícito).`);
+
   // ── 5. Baterías y Configuraciones ───────────────────────────────────────────
   // Catálogo canónico Evobike (abril 2026, PDFs de referencia):
   //   - 12 capacidades distintas (Ah)

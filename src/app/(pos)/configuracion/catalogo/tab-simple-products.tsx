@@ -31,14 +31,17 @@ export function TabSimpleProducts({
   const [editing, setEditing] = useState<SimpleProductRow | null>(null);
   const [filterCategoria, setFilterCategoria] = useState<string>("");
   const [showInactive, setShowInactive] = useState(false);
+  const [search, setSearch] = useState("");
 
   const visible = useMemo(() => {
+    const q = search.toLowerCase().trim();
     return items.filter((x) => {
       if (!showInactive && !x.isActive) return false;
       if (filterCategoria && x.categoria !== filterCategoria) return false;
+      if (q && !x.codigo.toLowerCase().includes(q) && !x.nombre.toLowerCase().includes(q) && !(x.descripcion ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, filterCategoria, showInactive]);
+  }, [items, filterCategoria, showInactive, search]);
 
   const modeloAplicableSuggestions = useMemo(() => {
     const s = new Set<string>();
@@ -80,7 +83,13 @@ export function TabSimpleProducts({
   return (
     <div className="space-y-4 mt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            style={{ ...INPUT_STYLE, width: 220 }}
+            placeholder="Buscar código, nombre…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <select
             value={filterCategoria}
             onChange={(e) => setFilterCategoria(e.target.value)}
@@ -172,7 +181,12 @@ export function TabSimpleProducts({
                     )}
                   </td>
                   <td className="px-5 py-3 font-mono text-xs text-[var(--on-surf)]">{sp.codigo}</td>
-                  <td className="px-5 py-3 text-[var(--on-surf)]">{sp.nombre}</td>
+                  <td className="px-5 py-3 text-[var(--on-surf)]" title={sp.descripcion ?? undefined}>
+                    {sp.nombre}
+                    {sp.descripcion && (
+                      <div className="text-xs text-[var(--on-surf-var)] truncate max-w-[260px]">{sp.descripcion}</div>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-[var(--on-surf-var)]">
                     {SIMPLE_CATEGORIA_LABELS[sp.categoria] ?? sp.categoria}
                   </td>
@@ -439,8 +453,10 @@ function SimpleProductDialog({
             </Field>
           </div>
           <Field label="Descripción">
-            <input
-              style={INPUT_STYLE}
+            <textarea
+              style={{ ...INPUT_STYLE, minHeight: 38, resize: "vertical" }}
+              className="[field-sizing:content]"
+              rows={1}
               value={descripcion ?? ""}
               onChange={(e) => setDescripcion(e.target.value)}
             />

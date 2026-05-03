@@ -106,6 +106,7 @@ export interface VarianteRow {
   color_nombre: string;
   voltaje_id: string;
   voltaje_label: string;
+  capacidad_nombre: string | null;
   precioPublico: number;
   costo: number;
   precioDistribuidor: number | null;

@@ -35,6 +35,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       modelo: { select: { id: true, nombre: true, esBateria: true, isActive: true } },
       color: { select: { id: true, nombre: true, isActive: true } },
       voltaje: { select: { id: true, valor: true, label: true, isActive: true } },
+      capacidad: { select: { nombre: true } },
     },
     orderBy: [{ isActive: "desc" }, { sku: "asc" }],
   });
@@ -135,6 +136,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           modelo: { select: { id: true, nombre: true } },
           color: { select: { id: true, nombre: true } },
           voltaje: { select: { id: true, valor: true, label: true } },
+          capacidad: { select: { nombre: true } },
         },
       });
     });
