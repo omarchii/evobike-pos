@@ -1,7 +1,6 @@
-import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { TransferenciasClient } from "./transferencias-client";
@@ -23,14 +22,8 @@ export default async function TransferenciasPage({
   searchParams: Promise<SearchParams>;
 }): Promise<React.ReactElement> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-
-  const user = session.user as unknown as SessionUser;
+  const user = requireBranchedUserOrRedirect(session);
   const role = user.role;
-
-  if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
-    redirect("/");
-  }
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1"));

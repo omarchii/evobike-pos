@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireActiveUser, UserInactiveError } from "@/lib/auth-helpers";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { autorizarTransferSchema } from "@/lib/validators/transferencias";
 import {
   TransferStateError,
@@ -24,15 +24,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  let user;
-  try {
-    user = await requireActiveUser(session);
-  } catch (err) {
-    if (err instanceof UserInactiveError) {
-      return NextResponse.json({ success: false, error: err.message }, { status: 401 });
-    }
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
 
   if (user.role !== "ADMIN" && user.role !== "MANAGER") {
     return NextResponse.json(

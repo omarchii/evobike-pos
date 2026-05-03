@@ -1,7 +1,7 @@
-import type { SessionUser } from "@/lib/auth-types";
 import { getServerSession } from "next-auth";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { canUserSeeTransfer } from "@/lib/transferencias";
 import { TransferenciaDetalleClient } from "./transferencia-detalle-client";
@@ -16,14 +16,8 @@ export default async function TransferenciaDetallePage({
   searchParams: Promise<{ modal?: string }>;
 }): Promise<React.ReactElement> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-
-  const user = session.user as unknown as SessionUser;
+  const user = requireBranchedUserOrRedirect(session);
   const role = user.role;
-
-  if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
-    redirect("/");
-  }
 
   const { id } = await params;
   const sp = await searchParams;
@@ -40,6 +34,7 @@ export default async function TransferenciaDetallePage({
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { valor: true, label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
           simpleProduct: { select: { id: true, nombre: true } },
