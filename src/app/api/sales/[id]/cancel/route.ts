@@ -129,7 +129,7 @@ export async function POST(
             productVariantId: item.productVariantId,
             branchId: sale.branchId,
           },
-          data: { quantity: { increment: item.quantity } },
+          data: { quantity: { increment: item.quantity }, version: { increment: 1 } },
         });
       }
 

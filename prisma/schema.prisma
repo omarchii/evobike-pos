@@ -247,6 +247,7 @@ model Stock {
   simpleProductId  String?
   branchId         String
   quantity         Int             @default(0)
+  version          Int             @default(0)
   productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
   simpleProduct    SimpleProduct?  @relation(fields: [simpleProductId], references: [id])
   branch           Branch          @relation(fields: [branchId], references: [id])

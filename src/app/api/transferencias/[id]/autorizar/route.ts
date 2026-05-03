@@ -17,6 +17,7 @@ import {
   mapTransferError,
   handlePrismaError,
 } from "@/lib/transferencias";
+import { StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 export async function POST(
   req: NextRequest,
@@ -58,7 +59,7 @@ export async function POST(
   const { despacharInmediato = false } = parsed.data;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       const transfer = await loadTransferWithItems(tx, id);
       if (!transfer) throw Object.assign(new Error("Transferencia no encontrada"), { httpStatus: 404 });
 
@@ -97,10 +98,13 @@ export async function POST(
         },
         select: { id: true, folio: true, status: true, autorizadoAt: true },
       });
-    });
+    }));
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if ((error as { httpStatus?: number }).httpStatus === 404) {
       return NextResponse.json({ success: false, error: (error as Error).message }, { status: 404 });
     }

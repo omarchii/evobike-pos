@@ -10,6 +10,7 @@ import { assertSessionFreshOrThrow, OrphanedCashSessionError } from "@/lib/cash-
 import { paymentMethodsArraySchema } from "@/lib/validators/payment";
 import { createPaymentInTransactions } from "@/lib/cash-transaction";
 import { getCustomerCreditBalance } from "@/lib/customer-credit";
+import { adjustStock, StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
   try {
     await requireActiveUser(session);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       // ── a) Lock + lectura de la cotización ──────────────────────────────────
       const quotation = await tx.quotation.findUnique({
         where: { id: quotationId },
@@ -187,6 +188,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       const finalTotal = finalSubtotal - discountAmount;
 
       // ── i) Validar stock en targetBranchId (SALE y LAYAWAY solamente) ─────
+      const stockVersions = new Map<string, { id: string; version: number }>();
       if (input.targetType === "SALE" || input.targetType === "LAYAWAY") {
         for (const item of finalItems) {
           if (item.isFreeForm || !item.productVariantId) continue;
@@ -197,6 +199,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
                 branchId: targetBranchId,
               },
             },
+            select: { id: true, quantity: true, version: true },
           });
           if (!stock || stock.quantity < item.quantity) {
             throw Object.assign(
@@ -204,6 +207,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
               { status: 422 }
             );
           }
+          stockVersions.set(item.productVariantId, { id: stock.id, version: stock.version });
         }
       }
 
@@ -274,15 +278,8 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       if (input.targetType === "SALE" || input.targetType === "LAYAWAY") {
         for (const item of finalItems) {
           if (item.isFreeForm || !item.productVariantId) continue;
-          await tx.stock.update({
-            where: {
-              productVariantId_branchId: {
-                productVariantId: item.productVariantId,
-                branchId: targetBranchId,
-              },
-            },
-            data: { quantity: { decrement: item.quantity } },
-          });
+          const sv = stockVersions.get(item.productVariantId)!;
+          await adjustStock(tx, sv.id, -item.quantity, sv.version);
           await tx.inventoryMovement.create({
             data: {
               productVariantId: item.productVariantId,
@@ -334,10 +331,13 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       });
 
       return { saleId: sale.id, saleFolio: sale.folio, targetType: input.targetType };
-    });
+    }));
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if (error instanceof UserInactiveError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }

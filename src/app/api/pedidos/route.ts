@@ -13,6 +13,7 @@ import {
 import { paymentMethodsArraySchema } from "@/lib/validators/payment";
 import { createPaymentInTransactions } from "@/lib/cash-transaction";
 import { getCustomerCreditBalance } from "@/lib/customer-credit";
+import { adjustStock, StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 // Frozen items from quotation conversion (nullable productVariantId for free-form lines)
 const pedidoFrozenItemSchema = z.object({
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
       ? (parsedTotal ?? unitPrice * quantity)
       : unitPrice * quantity;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       // ── QUOTATION CONVERSION PATH ──────────────────────────────────────────
       // When frozenItems is present, create multiple SaleItems from the quotation.
       if (frozenItems && frozenItems.length > 0) {
@@ -127,19 +128,21 @@ export async function POST(req: NextRequest) {
             if (item.productVariantId) {
               const stock = await tx.stock.findUnique({
                 where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+                select: { id: true, quantity: true, version: true },
               });
               if (!stock || stock.quantity < item.quantity) {
                 throw new Error(`Stock insuficiente para: ${item.description}`);
               }
-              await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+              await adjustStock(tx, stock.id, -item.quantity, stock.version);
             } else if (item.simpleProductId) {
               const stock = await tx.stock.findUnique({
                 where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+                select: { id: true, quantity: true, version: true },
               });
               if (!stock || stock.quantity < item.quantity) {
                 throw new Error(`Stock insuficiente para: ${item.description}`);
               }
-              await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+              await adjustStock(tx, stock.id, -item.quantity, stock.version);
             }
           }
         }
@@ -227,14 +230,12 @@ export async function POST(req: NextRequest) {
           where: {
             productVariantId_branchId: { productVariantId, branchId },
           },
+          select: { id: true, quantity: true, version: true },
         });
         if (!stock || stock.quantity < quantity) {
           throw new Error("Stock insuficiente para apartar este producto");
         }
-        await tx.stock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: quantity } },
-        });
+        await adjustStock(tx, stock.id, -quantity, stock.version);
       }
 
       // 2. Folio secuencial
@@ -302,10 +303,13 @@ export async function POST(req: NextRequest) {
       }
 
       return { saleId: sale.id, folio: sale.folio };
-    });
+    }));
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if (error instanceof UserInactiveError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }

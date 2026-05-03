@@ -17,6 +17,7 @@ import {
 import { getCustomerCreditBalance } from "@/lib/customer-credit";
 import { createPaymentInTransactions } from "@/lib/cash-transaction";
 import { paymentMethodsArraySchema } from "@/lib/validators/payment";
+import { adjustStock, StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 const saleItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
@@ -207,7 +208,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       // ── QUOTATION CONVERSION PATH ──────────────────────────────────────────
       // When frozenItems is present, we use those items (from quotation) instead
       // of the normal POS items. This path is additive; the existing path below
@@ -230,19 +231,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (item.productVariantId) {
             const stock = await tx.stock.findUnique({
               where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId } },
+              select: { id: true, quantity: true, version: true },
             });
             if (!stock || stock.quantity < item.quantity) {
               throw new Error(`Stock insuficiente para: ${item.description}`);
             }
-            await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+            await adjustStock(tx, stock.id, -item.quantity, stock.version);
           } else if (item.simpleProductId) {
             const stock = await tx.stock.findUnique({
               where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+              select: { id: true, quantity: true, version: true },
             });
             if (!stock || stock.quantity < item.quantity) {
               throw new Error(`Stock insuficiente para: ${item.description}`);
             }
-            await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+            await adjustStock(tx, stock.id, -item.quantity, stock.version);
           }
         }
 
@@ -374,11 +377,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (item.simpleProductId) {
           const stock = await tx.stock.findUnique({
             where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId } },
+            select: { id: true, quantity: true, version: true },
           });
           if (!stock || stock.quantity < item.quantity) {
             throw new Error(`Stock insuficiente para: ${item.name}`);
           }
-          await tx.stock.update({ where: { id: stock.id }, data: { quantity: { decrement: item.quantity } } });
+          await adjustStock(tx, stock.id, -item.quantity, stock.version);
           continue;
         }
 
@@ -388,15 +392,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           where: {
             productVariantId_branchId: { productVariantId: item.productVariantId, branchId },
           },
+          select: { id: true, quantity: true, version: true },
         });
 
         if (!stock || stock.quantity < item.quantity) {
           throw new Error(`Stock insuficiente para: ${item.name}`);
         }
-        await tx.stock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: item.quantity } },
-        });
+        await adjustStock(tx, stock.id, -item.quantity, stock.version);
 
         // VIN assignment — 4-C: link existing assembled CustomerBike to customer
         if (item.customerBikeId) {
@@ -673,10 +675,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       return sale;
-    });
+    }));
 
     return NextResponse.json({ success: true, data: { saleId: result.id, folio: result.folio } });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if (error instanceof UserInactiveError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 import { z } from "zod";
+import { upsertStockVariant } from "@/lib/stock-ops";
 
 class LotError extends Error {
   status: number;
@@ -217,13 +218,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
 
       // Fix crítico: registrar movimiento contable de inventario
-      await tx.stock.upsert({
-        where: {
-          productVariantId_branchId: { productVariantId, branchId },
-        },
-        update: { quantity: { increment: uniqueSerials.length } },
-        create: { productVariantId, branchId, quantity: uniqueSerials.length },
-      });
+      await upsertStockVariant(tx, productVariantId, branchId, uniqueSerials.length);
 
       await tx.inventoryMovement.create({
         data: {

@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { upsertStockVariant, upsertStockSimple } from "@/lib/stock-ops";
 
 const FORMA_PAGO = ["CONTADO", "CREDITO", "TRANSFERENCIA"] as const;
 const ESTADO_PAGO = ["PAGADA", "PENDIENTE", "CREDITO"] as const;
@@ -422,20 +423,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       for (const item of data.items) {
         if (item.kind === "variant") {
-          await tx.stock.upsert({
-            where: {
-              productVariantId_branchId: {
-                productVariantId: item.productVariantId,
-                branchId,
-              },
-            },
-            update: { quantity: { increment: item.quantity } },
-            create: {
-              productVariantId: item.productVariantId,
-              branchId,
-              quantity: item.quantity,
-            },
-          });
+          await upsertStockVariant(tx, item.productVariantId, branchId, item.quantity);
 
           await tx.inventoryMovement.create({
             data: {
@@ -489,20 +477,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                   })),
                 });
 
-                await tx.stock.upsert({
-                  where: {
-                    productVariantId_branchId: {
-                      productVariantId: unit.batteryVariantId,
-                      branchId,
-                    },
-                  },
-                  update: { quantity: { increment: unit.serials.length } },
-                  create: {
-                    productVariantId: unit.batteryVariantId,
-                    branchId,
-                    quantity: unit.serials.length,
-                  },
-                });
+                await upsertStockVariant(tx, unit.batteryVariantId, branchId, unit.serials.length);
 
                 await tx.inventoryMovement.create({
                   data: {
@@ -519,20 +494,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             }
           }
         } else {
-          await tx.stock.upsert({
-            where: {
-              simpleProductId_branchId: {
-                simpleProductId: item.simpleProductId,
-                branchId,
-              },
-            },
-            update: { quantity: { increment: item.quantity } },
-            create: {
-              simpleProductId: item.simpleProductId,
-              branchId,
-              quantity: item.quantity,
-            },
-          });
+          await upsertStockSimple(tx, item.simpleProductId, branchId, item.quantity);
 
           await tx.inventoryMovement.create({
             data: {

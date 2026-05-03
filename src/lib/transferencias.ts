@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { adjustStock, upsertStockVariant, upsertStockSimple } from "@/lib/stock-ops";
 
 export class TransferStateError extends Error {
   constructor(message: string) {
@@ -192,17 +193,14 @@ export async function ejecutarDespachoItems(
     if (item.productVariantId) {
       const stock = await tx.stock.findUnique({
         where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId: transfer.fromBranchId } },
-        select: { quantity: true },
+        select: { id: true, quantity: true, version: true },
       });
       if (!stock || stock.quantity < item.cantidadEnviada) {
         throw new TransferStockError(
           `Stock insuficiente para el producto (ID: ${item.productVariantId}) en la sucursal de origen`,
         );
       }
-      await tx.stock.update({
-        where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId: transfer.fromBranchId } },
-        data: { quantity: { decrement: item.cantidadEnviada } },
-      });
+      await adjustStock(tx, stock.id, -item.cantidadEnviada, stock.version);
       await tx.inventoryMovement.create({
         data: {
           productVariantId: item.productVariantId,
@@ -216,17 +214,14 @@ export async function ejecutarDespachoItems(
     } else if (item.simpleProductId) {
       const stock = await tx.stock.findUnique({
         where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId: transfer.fromBranchId } },
-        select: { quantity: true },
+        select: { id: true, quantity: true, version: true },
       });
       if (!stock || stock.quantity < item.cantidadEnviada) {
         throw new TransferStockError(
           `Stock insuficiente para el producto simple (ID: ${item.simpleProductId}) en la sucursal de origen`,
         );
       }
-      await tx.stock.update({
-        where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId: transfer.fromBranchId } },
-        data: { quantity: { decrement: item.cantidadEnviada } },
-      });
+      await adjustStock(tx, stock.id, -item.cantidadEnviada, stock.version);
       await tx.inventoryMovement.create({
         data: {
           simpleProductId: item.simpleProductId,
@@ -303,11 +298,7 @@ export async function ejecutarReversaItems(
 ): Promise<void> {
   for (const item of items) {
     if (item.productVariantId) {
-      await tx.stock.upsert({
-        where: { productVariantId_branchId: { productVariantId: item.productVariantId, branchId: transfer.fromBranchId } },
-        update: { quantity: { increment: item.cantidadEnviada } },
-        create: { productVariantId: item.productVariantId, branchId: transfer.fromBranchId, quantity: item.cantidadEnviada },
-      });
+      await upsertStockVariant(tx, item.productVariantId, transfer.fromBranchId, item.cantidadEnviada);
       await tx.inventoryMovement.create({
         data: {
           productVariantId: item.productVariantId,
@@ -319,11 +310,7 @@ export async function ejecutarReversaItems(
         },
       });
     } else if (item.simpleProductId) {
-      await tx.stock.upsert({
-        where: { simpleProductId_branchId: { simpleProductId: item.simpleProductId, branchId: transfer.fromBranchId } },
-        update: { quantity: { increment: item.cantidadEnviada } },
-        create: { simpleProductId: item.simpleProductId, branchId: transfer.fromBranchId, quantity: item.cantidadEnviada },
-      });
+      await upsertStockSimple(tx, item.simpleProductId, transfer.fromBranchId, item.cantidadEnviada);
       await tx.inventoryMovement.create({
         data: {
           simpleProductId: item.simpleProductId,

@@ -17,6 +17,7 @@ import {
 } from "@/lib/workshop";
 import { getViewBranchId } from "@/lib/branch-filter";
 import type { SessionUser } from "@/lib/auth-types";
+import { adjustStock, StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 const deliverSchema = z.object({
   // Payment fields: solo aplican cuando type = PAID y !prepaid.
@@ -225,7 +226,7 @@ export async function POST(
     }
 
     // ── Single transaction ──
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       let saleId: string;
       let folio: string;
 
@@ -335,15 +336,16 @@ export async function POST(
       for (const item of order.items) {
         if (!item.productVariantId || item.inventoryMovementId !== null) continue;
 
-        await tx.stock.update({
+        const stock = await tx.stock.findUniqueOrThrow({
           where: {
             productVariantId_branchId: {
               productVariantId: item.productVariantId,
               branchId,
             },
           },
-          data: { quantity: { decrement: item.quantity } },
+          select: { id: true, version: true },
         });
+        await adjustStock(tx, stock.id, -item.quantity, stock.version);
 
         const movement = await tx.inventoryMovement.create({
           data: {
@@ -369,10 +371,13 @@ export async function POST(
       });
 
       return { saleId, folio };
-    });
+    }));
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if (error instanceof UserInactiveError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }

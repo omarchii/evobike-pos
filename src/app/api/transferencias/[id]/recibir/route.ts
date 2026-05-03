@@ -13,6 +13,7 @@ import {
   mapTransferError,
   handlePrismaError,
 } from "@/lib/transferencias";
+import { upsertStockVariant, upsertStockSimple } from "@/lib/stock-ops";
 
 export async function POST(
   req: NextRequest,
@@ -101,20 +102,7 @@ export async function POST(
         });
 
         if (transferItem.productVariantId) {
-          await tx.stock.upsert({
-            where: {
-              productVariantId_branchId: {
-                productVariantId: transferItem.productVariantId,
-                branchId: transfer.toBranchId,
-              },
-            },
-            update: { quantity: { increment: bodyItem.cantidadRecibida } },
-            create: {
-              productVariantId: transferItem.productVariantId,
-              branchId: transfer.toBranchId,
-              quantity: bodyItem.cantidadRecibida,
-            },
-          });
+          await upsertStockVariant(tx, transferItem.productVariantId, transfer.toBranchId, bodyItem.cantidadRecibida);
           await tx.inventoryMovement.create({
             data: {
               productVariantId: transferItem.productVariantId,
@@ -126,20 +114,7 @@ export async function POST(
             },
           });
         } else if (transferItem.simpleProductId) {
-          await tx.stock.upsert({
-            where: {
-              simpleProductId_branchId: {
-                simpleProductId: transferItem.simpleProductId,
-                branchId: transfer.toBranchId,
-              },
-            },
-            update: { quantity: { increment: bodyItem.cantidadRecibida } },
-            create: {
-              simpleProductId: transferItem.simpleProductId,
-              branchId: transfer.toBranchId,
-              quantity: bodyItem.cantidadRecibida,
-            },
-          });
+          await upsertStockSimple(tx, transferItem.simpleProductId, transfer.toBranchId, bodyItem.cantidadRecibida);
           await tx.inventoryMovement.create({
             data: {
               simpleProductId: transferItem.simpleProductId,

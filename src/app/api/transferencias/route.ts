@@ -22,6 +22,7 @@ import {
   mapTransferError,
   handlePrismaError,
 } from "@/lib/transferencias";
+import { StockConflictError, withStockRetry } from "@/lib/stock-ops";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const enviarAhora = user.role !== "SELLER" && input.enviarAhora === true;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withStockRetry(() => prisma.$transaction(async (tx) => {
       // Validate branches exist
       const [fromBranch, toBranch] = await Promise.all([
         tx.branch.findUnique({ where: { id: input.fromBranchId }, select: { id: true } }),
@@ -223,10 +224,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       return transfer;
-    });
+    }));
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error: unknown) {
+    if (error instanceof StockConflictError) {
+      return NextResponse.json({ success: false, error: "Conflicto de concurrencia en stock. Intenta de nuevo." }, { status: 409 });
+    }
     if (
       error instanceof TransferStateError ||
       error instanceof TransferPermissionError ||
