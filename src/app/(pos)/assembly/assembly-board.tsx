@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Wrench, Plus, AlertTriangle, Package } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { Wrench, Plus, AlertTriangle, Package, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -79,7 +80,14 @@ interface AssemblyConfigData {
 }
 
 interface Props {
-  initialOrders: AssemblyOrderRow[];
+  pendingOrders: AssemblyOrderRow[];
+  completedOrders: AssemblyOrderRow[];
+  completedTotal: number;
+  completedPage: number;
+  completedPageSize: number;
+  search: string;
+  dateFrom: string | null;
+  dateTo: string | null;
   canComplete: boolean;
   userRole: string;
   batteryVariants: BatteryVariantOption[];
@@ -89,13 +97,20 @@ interface Props {
 // ── Board ──────────────────────────────────────────────────────────────────────
 
 export function AssemblyBoard({
-  initialOrders,
+  pendingOrders,
+  completedOrders,
+  completedTotal,
+  completedPage,
+  completedPageSize,
+  search,
+  dateFrom,
+  dateTo,
   canComplete,
   batteryAvailabilityMap,
 }: Props): React.JSX.Element {
-  const [orders, setOrders] = useState<AssemblyOrderRow[]>(initialOrders);
+  const router = useRouter();
+  const pathname = usePathname();
   const [config, setConfig] = useState<AssemblyConfigData | null>(null);
-  // Fijo en el render para evitar re-renders por Date.now impuro
   const [now] = useState(() => Date.now());
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [completeTarget, setCompleteTarget] = useState<AssemblyOrderRow | null>(null);
@@ -103,13 +118,32 @@ export function AssemblyBoard({
   const [uninstallTarget, setUninstallTarget] = useState<AssemblyOrderRow | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [uninstallLoading, setUninstallLoading] = useState(false);
+  const [searchInput, setSearchInput] = useState(search);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Separar pendientes con VIN (creadas manualmente) y sin VIN (de recepción)
-  const pendingWithVin = orders.filter((o) => o.status === "PENDING" && o.customerBike !== null);
-  const pendingWithoutVin = orders.filter((o) => o.status === "PENDING" && o.customerBike === null);
-  const completed = orders.filter((o) => o.status === "COMPLETED");
+  const pendingWithVin = pendingOrders.filter((o) => o.customerBike !== null);
+  const pendingWithoutVin = pendingOrders.filter((o) => o.customerBike === null);
 
-  // Agrupar pendientes sin VIN por productVariantId
+  const totalCompletedPages = Math.ceil(completedTotal / completedPageSize);
+
+  // ── URL param helpers ──────────────────────────────────────────────────────
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams();
+    const current = { search, from: dateFrom, to: dateTo, page: completedPage > 1 ? String(completedPage) : null };
+    for (const [key, val] of Object.entries(current)) {
+      if (val) params.set(key, String(val));
+    }
+    for (const [key, val] of Object.entries(updates)) {
+      if (val) params.set(key, val);
+      else params.delete(key);
+    }
+    if (updates.search !== undefined || updates.from !== undefined || updates.to !== undefined) {
+      params.delete("page");
+    }
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }, [search, dateFrom, dateTo, completedPage, pathname, router]);
+
   const pendingGroups = pendingWithoutVin.reduce<PendingGroup[]>((groups, order) => {
     if (!order.productVariant) return groups;
     const existing = groups.find((g) => g.productVariantId === order.productVariant!.id);
@@ -145,17 +179,10 @@ export function AssemblyBoard({
       });
   }, []);
 
-  // ── Re-fetch orders ────────────────────────────────────────────────────────
-  const refetch = useCallback(async () => {
-    try {
-      const res = await fetch("/api/assembly").then(
-        (r) => r.json() as Promise<{ success: boolean; data?: AssemblyOrderRow[] }>
-      );
-      if (res.success && res.data) setOrders(res.data);
-    } catch {
-      toast.error("Error al actualizar la lista");
-    }
-  }, []);
+  // ── Re-fetch via server component refresh ──────────────────────────────────
+  const refetch = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   // ── Required batteries for an order ───────────────────────────────────────
   const getRequiredQuantity = useCallback(
@@ -347,31 +374,119 @@ export function AssemblyBoard({
                 color: "var(--on-surf-var)",
               }}
             >
-              Completadas ({completed.length})
+              Completadas ({completedTotal})
             </span>
           </div>
 
-          {completed.length === 0 ? (
+          {/* Search + date filters */}
+          <div className="space-y-2">
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--on-surf-var)" }} />
+              <input
+                type="text"
+                placeholder="Buscar VIN, modelo, cliente..."
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  clearTimeout(searchTimeout.current);
+                  searchTimeout.current = setTimeout(() => {
+                    updateParams({ search: e.target.value || null });
+                  }, 400);
+                }}
+                style={{
+                  fontSize: "0.78rem",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "var(--on-surf)",
+                  width: "100%",
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFrom ?? ""}
+                onChange={(e) => updateParams({ from: e.target.value || null })}
+                style={{
+                  fontSize: "0.72rem",
+                  padding: "0.3rem 0.5rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid var(--outline-variant)",
+                  background: "var(--surf-lowest)",
+                  color: "var(--on-surf)",
+                  flex: 1,
+                }}
+              />
+              <span style={{ fontSize: "0.72rem", color: "var(--on-surf-var)" }}>—</span>
+              <input
+                type="date"
+                value={dateTo ?? ""}
+                onChange={(e) => updateParams({ to: e.target.value || null })}
+                style={{
+                  fontSize: "0.72rem",
+                  padding: "0.3rem 0.5rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid var(--outline-variant)",
+                  background: "var(--surf-lowest)",
+                  color: "var(--on-surf)",
+                  flex: 1,
+                }}
+              />
+            </div>
+          </div>
+
+          {completedOrders.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-10 rounded-2xl"
               style={{ background: "var(--surf-lowest)", boxShadow: "var(--shadow)" }}
             >
               <p style={{ fontSize: "0.8rem", color: "var(--on-surf-var)" }}>
-                Sin ensambles completados
+                {search || dateFrom || dateTo ? "Sin resultados" : "Sin ensambles completados"}
               </p>
             </div>
           ) : (
-            completed.slice(0, 20).map((order) => (
-              <AssemblyCard
-                key={order.id}
-                order={order}
-                canComplete={canComplete}
-                onComplete={() => setCompleteTarget(order)}
-                onCancel={() => setCancelTarget(order)}
-                onUninstall={() => setUninstallTarget(order)}
-                now={now}
-              />
-            ))
+            <>
+              {completedOrders.map((order) => (
+                <AssemblyCard
+                  key={order.id}
+                  order={order}
+                  canComplete={canComplete}
+                  onComplete={() => setCompleteTarget(order)}
+                  onCancel={() => setCancelTarget(order)}
+                  onUninstall={() => setUninstallTarget(order)}
+                  now={now}
+                />
+              ))}
+
+              {/* Pagination */}
+              {totalCompletedPages > 1 && (
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    disabled={completedPage <= 1}
+                    onClick={() => updateParams({ page: String(completedPage - 1) })}
+                    className="p-1.5 rounded-lg disabled:opacity-30"
+                    style={{ background: "var(--surf-lowest)" }}
+                  >
+                    <ChevronLeft className="h-4 w-4" style={{ color: "var(--on-surf)" }} />
+                  </button>
+                  <span style={{ fontSize: "0.72rem", color: "var(--on-surf-var)" }}>
+                    {completedPage} / {totalCompletedPages}
+                  </span>
+                  <button
+                    disabled={completedPage >= totalCompletedPages}
+                    onClick={() => updateParams({ page: String(completedPage + 1) })}
+                    className="p-1.5 rounded-lg disabled:opacity-30"
+                    style={{ background: "var(--surf-lowest)" }}
+                  >
+                    <ChevronRight className="h-4 w-4" style={{ color: "var(--on-surf)" }} />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

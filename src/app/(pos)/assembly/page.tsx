@@ -10,6 +10,55 @@ import { Zap } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+const COMPLETED_PAGE_SIZE = 20;
+
+function assemblyOrderSelect() {
+  return {
+    id: true,
+    status: true,
+    notes: true,
+    createdAt: true,
+    completedAt: true,
+    saleId: true,
+    voltageChangeLogId: true,
+    customerBike: {
+      select: {
+        id: true,
+        serialNumber: true,
+        model: true,
+        color: true,
+        voltaje: true,
+        customer: { select: { id: true, name: true } },
+        batteryAssignments: {
+          where: { isCurrent: true },
+          select: {
+            battery: {
+              select: {
+                serialNumber: true,
+                status: true,
+                lot: { select: { reference: true } },
+              },
+            },
+          },
+        },
+      },
+    },
+    productVariant: {
+      select: {
+        id: true,
+        sku: true,
+        modelo_id: true,
+        voltaje_id: true,
+        modelo: { select: { nombre: true } },
+        color: { select: { nombre: true } },
+        voltaje: { select: { label: true } },
+        capacidad: { select: { nombre: true } },
+      },
+    },
+    assembledBy: { select: { id: true, name: true } },
+  } as const;
+}
+
 export default async function AssemblyPage({
   searchParams: searchParamsPromise,
 }: {
@@ -22,6 +71,12 @@ export default async function AssemblyPage({
   const searchParams = await searchParamsPromise;
   const viewBranchId = await getViewBranchId(searchParams);
   const branchFilter = branchWhere(viewBranchId);
+
+  // ── Search params for completed section ─────────────────────────────────────
+  const completedPage = Math.max(1, parseInt(String(searchParams.page ?? "1")));
+  const search = String(searchParams.search ?? "").trim();
+  const dateFrom = searchParams.from ? String(searchParams.from) : null;
+  const dateTo = searchParams.to ? String(searchParams.to) : null;
 
   const [rawLots, batteryVariants, allBatteryConfigs, assemblyOrders] = await Promise.all([
     // ── Lotes de baterías ──────────────────────────────────────────────────────
@@ -52,9 +107,7 @@ export default async function AssemblyPage({
 
     // ── ProductVariants tipo batería ───────────────────────────────────────────
     prisma.productVariant.findMany({
-      where: {
-        modelo: { nombre: { contains: "Bat", mode: "insensitive" } },
-      },
+      where: { modelo: { esBateria: true } },
       select: {
         id: true,
         sku: true,
@@ -68,61 +121,43 @@ export default async function AssemblyPage({
       select: { modeloId: true, voltajeId: true, batteryVariantId: true, quantity: true },
     }),
 
-    // ── Órdenes de montaje ─────────────────────────────────────────────────────
+    // ── Órdenes PENDING (siempre todas) ─────────────────────────────────────────
     prisma.assemblyOrder.findMany({
-      where: {
-        ...branchFilter,
-        status: { in: ["PENDING", "COMPLETED"] },
-      },
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 100,
-      select: {
-        id: true,
-        status: true,
-        notes: true,
-        createdAt: true,
-        completedAt: true,
-        saleId: true,
-        voltageChangeLogId: true,
-        // customerBike es nullable (órdenes de recepción sin VIN todavía)
-        customerBike: {
-          select: {
-            id: true,
-            serialNumber: true,
-            model: true,
-            color: true,
-            voltaje: true,
-            customer: { select: { id: true, name: true } },
-            batteryAssignments: {
-              where: { isCurrent: true },
-              select: {
-                battery: {
-                  select: {
-                    serialNumber: true,
-                    status: true,
-                    lot: { select: { reference: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-        // productVariant presente en órdenes generadas por recepción
-        productVariant: {
-          select: {
-            id: true,
-            sku: true,
-            modelo_id: true,
-            voltaje_id: true,
-            modelo: { select: { nombre: true } },
-            color: { select: { nombre: true } },
-            voltaje: { select: { label: true } },
-            capacidad: { select: { nombre: true } },
-          },
-        },
-        assembledBy: { select: { id: true, name: true } },
-      },
+      where: { ...branchFilter, status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      select: assemblyOrderSelect(),
     }),
+  ]);
+
+  // ── Completed orders (paginated + filtered) ──────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const completedWhere: any = { ...branchFilter, status: "COMPLETED" };
+
+  if (search) {
+    completedWhere.OR = [
+      { customerBike: { serialNumber: { contains: search, mode: "insensitive" } } },
+      { customerBike: { model: { contains: search, mode: "insensitive" } } },
+      { customerBike: { customer: { name: { contains: search, mode: "insensitive" } } } },
+      { productVariant: { sku: { contains: search, mode: "insensitive" } } },
+      { productVariant: { modelo: { nombre: { contains: search, mode: "insensitive" } } } },
+    ];
+  }
+
+  if (dateFrom || dateTo) {
+    completedWhere.completedAt = {};
+    if (dateFrom) completedWhere.completedAt.gte = new Date(dateFrom);
+    if (dateTo) completedWhere.completedAt.lte = new Date(`${dateTo}T23:59:59.999Z`);
+  }
+
+  const [completedOrders, completedTotal] = await Promise.all([
+    prisma.assemblyOrder.findMany({
+      where: completedWhere,
+      orderBy: { completedAt: "desc" },
+      skip: (completedPage - 1) * COMPLETED_PAGE_SIZE,
+      take: COMPLETED_PAGE_SIZE,
+      select: assemblyOrderSelect(),
+    }),
+    prisma.assemblyOrder.count({ where: completedWhere }),
   ]);
 
   // ── Serializar ─────────────────────────────────────────────────────────────
@@ -148,51 +183,55 @@ export default async function AssemblyPage({
     nombre: v.modelo.nombre,
   }));
 
-  const orders: AssemblyOrderRow[] = assemblyOrders.map((o) => ({
-    id: o.id,
-    status: o.status as "PENDING" | "COMPLETED" | "CANCELLED",
-    notes: o.notes,
-    createdAt: o.createdAt.toISOString(),
-    completedAt: o.completedAt?.toISOString() ?? null,
-    saleId: o.saleId ?? null,
-    voltageChangeLogId: o.voltageChangeLogId ?? null,
-    customerBike: o.customerBike
-      ? {
-        id: o.customerBike.id,
-        serialNumber: o.customerBike.serialNumber,
-        model: o.customerBike.model,
-        color: o.customerBike.color,
-        voltaje: o.customerBike.voltaje,
-        customer: o.customerBike.customer
-          ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
-          : null,
-      }
-      : null,
-    productVariant: o.productVariant
-      ? {
-        id: o.productVariant.id,
-        sku: o.productVariant.sku,
-        modeloId: o.productVariant.modelo_id,
-        voltajeId: o.productVariant.voltaje_id,
-        modeloNombre: o.productVariant.modelo.nombre,
-        colorNombre: o.productVariant.color.nombre,
-        voltajeLabel: o.productVariant.capacidad
-          ? `${o.productVariant.voltaje.label} · ${o.productVariant.capacidad.nombre}`
-          : o.productVariant.voltaje.label,
-      }
-      : null,
-    assembledBy: o.assembledBy
-      ? { id: o.assembledBy.id, name: o.assembledBy.name }
-      : null,
-    batteryAssignments: (o.customerBike?.batteryAssignments ?? []).map((ba) => ({
-      serialNumber: ba.battery.serialNumber,
-      status: ba.battery.status,
-      lotReference: ba.battery.lot.reference,
-    })),
-  }));
+  function serializeOrder(o: (typeof assemblyOrders)[number]): AssemblyOrderRow {
+    return {
+      id: o.id,
+      status: o.status as "PENDING" | "COMPLETED" | "CANCELLED",
+      notes: o.notes,
+      createdAt: o.createdAt.toISOString(),
+      completedAt: o.completedAt?.toISOString() ?? null,
+      saleId: o.saleId ?? null,
+      voltageChangeLogId: o.voltageChangeLogId ?? null,
+      customerBike: o.customerBike
+        ? {
+          id: o.customerBike.id,
+          serialNumber: o.customerBike.serialNumber,
+          model: o.customerBike.model,
+          color: o.customerBike.color,
+          voltaje: o.customerBike.voltaje,
+          customer: o.customerBike.customer
+            ? { id: o.customerBike.customer.id, name: o.customerBike.customer.name }
+            : null,
+        }
+        : null,
+      productVariant: o.productVariant
+        ? {
+          id: o.productVariant.id,
+          sku: o.productVariant.sku,
+          modeloId: o.productVariant.modelo_id,
+          voltajeId: o.productVariant.voltaje_id,
+          modeloNombre: o.productVariant.modelo.nombre,
+          colorNombre: o.productVariant.color.nombre,
+          voltajeLabel: o.productVariant.capacidad
+            ? `${o.productVariant.voltaje.label} · ${o.productVariant.capacidad.nombre}`
+            : o.productVariant.voltaje.label,
+        }
+        : null,
+      assembledBy: o.assembledBy
+        ? { id: o.assembledBy.id, name: o.assembledBy.name }
+        : null,
+      batteryAssignments: (o.customerBike?.batteryAssignments ?? []).map((ba) => ({
+        serialNumber: ba.battery.serialNumber,
+        status: ba.battery.status,
+        lotReference: ba.battery.lot.reference,
+      })),
+    };
+  }
+
+  const pendingOrders = assemblyOrders.map(serializeOrder);
+  const completedOrdersSerialized = completedOrders.map(serializeOrder);
 
   // ── Mapa de disponibilidad de baterías por vehicleProductVariantId ───────────
-  // "modeloId:voltajeId" → { batteryVariantId, quantity }
   const configMap = new Map(
     allBatteryConfigs.map((c) => [
       `${c.modeloId}:${c.voltajeId}`,
@@ -200,7 +239,6 @@ export default async function AssemblyPage({
     ])
   );
 
-  // batteryVariantId → count of IN_STOCK batteries (from rawLots, already filtrado por branch)
   const batteryStockMap = new Map<string, number>();
   for (const lot of rawLots) {
     if (!lot.productVariantId) continue;
@@ -208,7 +246,6 @@ export default async function AssemblyPage({
     batteryStockMap.set(lot.productVariantId, cur + lot.batteries.length);
   }
 
-  // vehicleProductVariantId → { available, perUnit }
   const batteryAvailabilityMap: Record<string, { available: number; perUnit: number }> = {};
   for (const order of assemblyOrders) {
     if (!order.productVariant) continue;
@@ -282,7 +319,14 @@ export default async function AssemblyPage({
       <AssemblyTabsClient
         lots={lots}
         variants={variants}
-        orders={orders}
+        pendingOrders={pendingOrders}
+        completedOrders={completedOrdersSerialized}
+        completedTotal={completedTotal}
+        completedPage={completedPage}
+        completedPageSize={COMPLETED_PAGE_SIZE}
+        search={search}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
         canComplete={canComplete}
         batteryAvailabilityMap={batteryAvailabilityMap}
         userRole={role}

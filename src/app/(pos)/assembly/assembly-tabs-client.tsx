@@ -10,7 +10,14 @@ import type { BatteryVariantOption } from "./new-battery-lot-dialog";
 interface Props {
   lots: BatteryLotRow[];
   variants: BatteryVariantOption[];
-  orders: AssemblyOrderRow[];
+  pendingOrders: AssemblyOrderRow[];
+  completedOrders: AssemblyOrderRow[];
+  completedTotal: number;
+  completedPage: number;
+  completedPageSize: number;
+  search: string;
+  dateFrom: string | null;
+  dateTo: string | null;
   canComplete: boolean;
   userRole: string;
   batteryAvailabilityMap: Record<string, { available: number; perUnit: number }>;
@@ -21,7 +28,14 @@ type Tab = "montaje" | "baterias";
 export function AssemblyTabsClient({
   lots,
   variants,
-  orders,
+  pendingOrders,
+  completedOrders,
+  completedTotal,
+  completedPage,
+  completedPageSize,
+  search,
+  dateFrom,
+  dateTo,
   canComplete,
   userRole,
   batteryAvailabilityMap,
@@ -69,7 +83,14 @@ export function AssemblyTabsClient({
       {/* Tab content */}
       {activeTab === "montaje" && (
         <AssemblyBoard
-          initialOrders={orders}
+          pendingOrders={pendingOrders}
+          completedOrders={completedOrders}
+          completedTotal={completedTotal}
+          completedPage={completedPage}
+          completedPageSize={completedPageSize}
+          search={search}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           canComplete={canComplete}
           userRole={userRole}
           batteryVariants={variants}
