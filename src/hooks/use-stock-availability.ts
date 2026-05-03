@@ -1,27 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { AvailabilityEntry } from "@/lib/stock-availability";
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 60_000;
 
-export type StockMap = Record<string, { available: number }>;
+export type StockMap = Record<string, AvailabilityEntry>;
 
 const EMPTY: StockMap = Object.freeze({}) as StockMap;
 
-/**
- * Polling cliente del stock disponible para una lista de ids
- * (productVariantId | simpleProductId). Refresca cada 30s mientras el
- * componente esté montado.
- *
- * Patrón: hook custom (no SWR) — único consumo de polling en el proyecto
- * por ahora. Si Fase 6 agrega un segundo caso (contadores caja, métricas
- * dashboard live) reabrir la decisión y migrar a `swr` o `@tanstack/react-query`.
- *
- * NO reserva stock — es lectura para señal visual al técnico.
- */
-export function useStockAvailability(ids: string[]): StockMap {
+export function useStockAvailability(
+  ids: string[],
+  kind: "variant" | "simple" = "variant",
+): StockMap {
   const [data, setData] = useState<StockMap>(EMPTY);
-  // Key estable: misma lista de ids = mismo polling, sin reset al rerender.
   const key = useMemo(() => [...ids].sort().join(","), [ids]);
 
   useEffect(() => {
@@ -32,7 +24,7 @@ export function useStockAvailability(ids: string[]): StockMap {
     const fetchOnce = async () => {
       try {
         const res = await fetch(
-          `/api/workshop/stock-availability?ids=${key}`,
+          `/api/workshop/stock-availability?ids=${key}&kind=${kind}`,
           { signal: ctrl.signal, cache: "no-store" },
         );
         if (!res.ok) return;
@@ -44,7 +36,7 @@ export function useStockAvailability(ids: string[]): StockMap {
           setData(json.data);
         }
       } catch {
-        // AbortError o fallo de red — silencio (siguiente tick reintenta).
+        // AbortError or network failure — next tick retries.
       }
     };
 
@@ -55,8 +47,7 @@ export function useStockAvailability(ids: string[]): StockMap {
       ctrl.abort();
       clearInterval(id);
     };
-  }, [key]);
+  }, [key, kind]);
 
-  // Sin ids: devuelve EMPTY (no leakear datos viejos al borrar el último item).
   return key ? data : EMPTY;
 }

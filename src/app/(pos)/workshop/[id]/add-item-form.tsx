@@ -51,7 +51,7 @@ export function AddItemForm({ orderId, catalogProducts, stockMap }: Props) {
     : null;
   const requestedQty = Math.max(1, parseInt(productQty) || 1);
   const availableForSelected = selectedProduct
-    ? (stockMap[selectedProduct.id]?.available ?? null)
+    ? (stockMap[selectedProduct.id]?.disponible ?? null)
     : null;
 
   const handleAddManualService = async () => {

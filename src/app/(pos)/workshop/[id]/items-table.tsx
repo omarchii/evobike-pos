@@ -86,7 +86,7 @@ export function ItemsTable({
         items.map((item) => {
           const variantId = item.productVariantId;
           const available = variantId
-            ? (stockMap[variantId]?.available ?? null)
+            ? (stockMap[variantId]?.disponible ?? null)
             : null;
           return (
             <div

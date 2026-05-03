@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { enviarAlertas90d, expirarCreditos, type JobResult } from "@/lib/jobs/saldo-favor";
 import { alertar120d, alertar173d, expirarPolizas } from "@/lib/jobs/garantias";
 import { expirarMensajesPendientes } from "@/lib/jobs/whatsapp-housekeeping";
+import { reportarGhostReservations } from "@/lib/jobs/ghost-reservations";
 
 // Cron hub diario (Pack D.1 P6).
 //
@@ -26,6 +27,7 @@ const JOBS: JobDef[] = [
   { name: "garantias:alertar-173d", fn: alertar173d },
   { name: "garantias:expirar", fn: expirarPolizas },
   { name: "whatsapp:housekeeping", fn: expirarMensajesPendientes },
+  { name: "stock:ghost-reservations", fn: reportarGhostReservations },
 ];
 
 type JobRunReport = {

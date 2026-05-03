@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getViewBranchId } from "@/lib/branch-filter";
-import type { SessionUser } from "@/lib/auth-types";
+import { getAvailability, type AvailabilityEntry } from "@/lib/stock-availability";
 
 const MAX_IDS = 50;
 
-// GET /api/workshop/stock-availability?ids=a,b,c
-//
-// Devuelve el stock disponible por id (productVariantId o simpleProductId)
-// en la sucursal operativa del usuario (cookie admin_branch_id para ADMIN,
-// JWT para el resto). Polimorfismo: el mismo id puede corresponder a una
-// variante o a un producto simple — `Stock` los almacena en filas separadas
-// con uno de los dos FK seteado.
-//
-// Consumido por el chip semáforo del taller (ficha técnica) con polling
-// cliente cada 30s. NO reserva stock — es una lectura pura para mostrar
-// señal al técnico que el inventario disponible cambió en otro flujo.
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -29,7 +17,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const user = session.user as unknown as SessionUser;
   const branchId = await getViewBranchId();
   if (!branchId) {
     return NextResponse.json(
@@ -62,32 +49,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Busca por ambos polimorfismos en una query. El id que matchee uno solo
-  // de los dos campos quedará en el response; el otro tipo no devolverá fila.
-  const rows = await prisma.stock.findMany({
-    where: {
-      branchId,
-      OR: [
-        { productVariantId: { in: ids } },
-        { simpleProductId: { in: ids } },
-      ],
-    },
-    select: {
-      productVariantId: true,
-      simpleProductId: true,
-      quantity: true,
-    },
-  });
+  const kind =
+    (req.nextUrl.searchParams.get("kind") as "variant" | "simple") || "variant";
 
-  const data: Record<string, { available: number }> = {};
-  for (const r of rows) {
-    const id = r.productVariantId ?? r.simpleProductId;
-    if (!id) continue;
-    data[id] = { available: r.quantity };
-  }
-  // Defaultea a 0 los ids sin fila (sin stock registrado en la sucursal).
+  const avail = await getAvailability(ids, branchId, kind);
+
+  const data: Record<string, AvailabilityEntry> = {};
   for (const id of ids) {
-    if (!(id in data)) data[id] = { available: 0 };
+    data[id] = avail.get(id) ?? {
+      stock: 0,
+      workshopPending: 0,
+      assemblyPending: 0,
+      enCamino: 0,
+      disponible: 0,
+    };
   }
 
   return NextResponse.json({ success: true, data });
