@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import Link from "next/link";
 import { Suspense } from "react";
 import { QuotationStatus } from "@prisma/client";
@@ -28,9 +28,7 @@ export default async function CotizacionesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as BranchedSessionUser | undefined;
-  if (!user?.branchId) return <div>No tienes sucursal asignada</div>;
-
+  const user = requireBranchedUserOrRedirect(session, "/");
   const { branchId, role } = user;
   const isAdmin = role === "ADMIN";
 

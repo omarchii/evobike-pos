@@ -1,8 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import QuotationForm from "./quotation-form";
@@ -12,9 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NuevaCotizacionPage() {
   const session = await getServerSession(authOptions);
-  const user = session?.user as BranchedSessionUser | undefined;
-  if (!user?.branchId) redirect("/");
-
+  const user = requireBranchedUserOrRedirect(session, "/");
   const { branchId } = user;
 
   const [rawVariants, rawCustomers, rawManagers] = await Promise.all([

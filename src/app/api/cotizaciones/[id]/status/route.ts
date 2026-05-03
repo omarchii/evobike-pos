@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveStatus } from "@/lib/quotations";
 import { QuotationStatus } from "@prisma/client";
@@ -27,21 +27,12 @@ const TARGET_STATUS: Record<Action, QuotationStatus> = {
 // POST /api/cotizaciones/[id]/status
 export async function POST(req: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-
-  const { branchId, role } = session.user as unknown as BranchedSessionUser;
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { branchId, role } = guard.user;
 
   if (!["SELLER", "MANAGER", "ADMIN"].includes(role)) {
     return NextResponse.json({ success: false, error: "Sin permisos" }, { status: 403 });
-  }
-
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
-      { status: 400 }
-    );
   }
 
   const { id } = await params;

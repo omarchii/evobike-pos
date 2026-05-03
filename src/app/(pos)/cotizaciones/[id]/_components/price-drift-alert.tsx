@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ChevronDown } from "lucide-react";
-import { formatMXN } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 
 export interface DriftItem {
   itemId: string;
@@ -133,10 +133,10 @@ export default function PriceDriftAlert({
                 {item.description}
               </span>
               <span className="text-xs" style={{ color: "var(--on-surf-var)" }}>
-                {formatMXN(item.frozenPrice)}
+                {formatMXN(item.frozenPrice, { decimals: 2 })}
               </span>
               <span className="text-xs" style={{ color: "var(--on-surf)" }}>
-                {formatMXN(item.currentPrice)}
+                {formatMXN(item.currentPrice, { decimals: 2 })}
               </span>
               <span
                 className="text-xs font-semibold"
@@ -145,8 +145,8 @@ export default function PriceDriftAlert({
                 }}
               >
                 {item.drift === "higher"
-                  ? `+${formatMXN(item.difference)}`
-                  : `−${formatMXN(Math.abs(item.difference))}`}
+                  ? `+${formatMXN(item.difference, { decimals: 2 })}`
+                  : `−${formatMXN(Math.abs(item.difference), { decimals: 2 })}`}
               </span>
             </div>
           ))}

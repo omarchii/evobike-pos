@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatMXN } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 import PriceDriftAlert, { type DriftItem, type Manager } from "./price-drift-alert";
 import CustomerSelectorModal from "@/app/(pos)/point-of-sale/customer-selector-modal";
 import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
@@ -421,11 +421,11 @@ export default function ConvertQuotationDialog({
                       Resumen
                     </p>
                     <div className="space-y-2">
-                      <SummaryRow label="Subtotal" value={formatMXN(quotation.subtotal)} />
+                      <SummaryRow label="Subtotal" value={formatMXN(quotation.subtotal, { decimals: 2 })} />
                       {quotation.discountAmount > 0 && (
                         <SummaryRow
                           label="Descuento"
-                          value={`−${formatMXN(quotation.discountAmount)}`}
+                          value={`−${formatMXN(quotation.discountAmount, { decimals: 2 })}`}
                           valueColor="var(--ter)"
                         />
                       )}
@@ -440,7 +440,7 @@ export default function ConvertQuotationDialog({
                           className="text-2xl font-bold"
                           style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                         >
-                          {formatMXN(quotation.total)}
+                          {formatMXN(quotation.total, { decimals: 2 })}
                         </span>
                       </div>
                     </div>
@@ -452,12 +452,12 @@ export default function ConvertQuotationDialog({
                       >
                         <SummaryRow
                           label="Anticipo"
-                          value={formatMXN(paymentTotal)}
+                          value={formatMXN(paymentTotal, { decimals: 2 })}
                           valueColor="var(--primary)"
                         />
                         <SummaryRow
                           label="Pendiente"
-                          value={formatMXN(Math.max(0, quotation.total - paymentTotal))}
+                          value={formatMXN(Math.max(0, quotation.total - paymentTotal), { decimals: 2 })}
                           valueColor="var(--on-surf-var)"
                         />
                       </div>
@@ -496,7 +496,7 @@ export default function ConvertQuotationDialog({
             <div className="flex items-center gap-4">
               <span className="text-xs hidden sm:block" style={{ color: "var(--on-surf-var)" }}>
                 {quotation.itemCount} producto{quotation.itemCount !== 1 ? "s" : ""} · Total:{" "}
-                <strong style={{ color: "var(--on-surf)" }}>{formatMXN(quotation.total)}</strong>
+                <strong style={{ color: "var(--on-surf)" }}>{formatMXN(quotation.total, { decimals: 2 })}</strong>
               </span>
               <button
                 type="button"

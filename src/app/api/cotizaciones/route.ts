@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -47,17 +47,9 @@ const createQuotationSchema = z.object({
 // POST /api/cotizaciones — crear cotización en DRAFT
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-
-  const { id: userId, branchId } = session.user as unknown as BranchedSessionUser;
-  if (!branchId) {
-    return NextResponse.json(
-      { success: false, error: "Usuario sin sucursal asignada" },
-      { status: 400 }
-    );
-  }
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { id: userId, branchId } = guard.user;
 
   const body: unknown = await req.json();
   const parsed = createQuotationSchema.safeParse(body);

@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { formatMXN } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -288,7 +288,7 @@ function ItemCard({ index, modelos, onRemove }: ItemCardProps) {
                   +
                 </button>
                 <span className="ml-auto text-base font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}>
-                  {formatMXN(lineTotal)}
+                  {formatMXN(lineTotal, { decimals: 2 })}
                 </span>
               </div>
             </div>
@@ -430,7 +430,7 @@ function ItemCard({ index, modelos, onRemove }: ItemCardProps) {
                     +
                   </button>
                   <span className="ml-auto text-base font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}>
-                    {formatMXN(lineTotal)}
+                    {formatMXN(lineTotal, { decimals: 2 })}
                   </span>
                 </div>
               </div>
@@ -952,7 +952,7 @@ export default function QuotationForm({
                   Subtotal
                 </span>
                 <span className="text-sm font-medium" style={{ color: "var(--on-surf)" }}>
-                  {formatMXN(subtotal)}
+                  {formatMXN(subtotal, { decimals: 2 })}
                 </span>
               </div>
 
@@ -962,7 +962,7 @@ export default function QuotationForm({
                     Descuento
                   </span>
                   <span className="text-sm font-medium" style={{ color: "var(--ter)" }}>
-                    −{formatMXN(discount)}
+                    −{formatMXN(discount, { decimals: 2 })}
                   </span>
                 </div>
               )}
@@ -979,7 +979,7 @@ export default function QuotationForm({
                     className="text-2xl font-bold"
                     style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
                   >
-                    {formatMXN(total)}
+                    {formatMXN(total, { decimals: 2 })}
                   </span>
                 </div>
               </div>

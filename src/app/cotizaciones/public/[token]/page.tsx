@@ -4,10 +4,20 @@ import { notFound } from "next/navigation";
 import {
   getEffectiveStatus,
   getDaysRemaining,
-  formatMXN,
   formatDate,
 } from "@/lib/quotations";
 import PrintButton from "./_components/print-button";
+
+// Comprobante público: usa precisión financiera local (centavos obligatorios).
+// NO reemplazar por @/lib/format/formatMXN — el global por defecto redondea a
+// entero. Ver feedback_financial_formatters.
+function formatMXN(value: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2,
+  }).format(value);
+}
 
 export const dynamic = "force-dynamic";
 

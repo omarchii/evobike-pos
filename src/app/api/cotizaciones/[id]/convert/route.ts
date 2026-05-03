@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getEffectiveStatus } from "@/lib/quotations";
@@ -31,14 +31,9 @@ const convertSchema = z.object({
 // Coordinador de conversión one-shot: valida, crea venta/pedido, marca la cotización.
 export async function POST(req: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 });
-  }
-
-  const { id: userId, branchId, role } = session.user as unknown as BranchedSessionUser;
-  if (!branchId) {
-    return NextResponse.json({ success: false, error: "Usuario sin sucursal asignada" }, { status: 400 });
-  }
+  const guard = requireBranchedUser(session);
+  if (!guard.ok) return guard.response;
+  const { id: userId, branchId, role } = guard.user;
 
   const { id: quotationId } = await params;
 

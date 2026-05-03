@@ -4,10 +4,10 @@ import QuotationStatusBadge from "@/components/quotation-status-badge";
 import {
   getEffectiveStatus,
   getDaysRemaining,
-  formatMXN,
   formatDate,
 } from "@/lib/quotations";
 import type { EffectiveStatus } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface QuotationRow {
@@ -163,7 +163,7 @@ export default function QuotationsTable({ quotations, page, totalPages, searchPa
                 className="text-xs font-semibold"
                 style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
               >
-                {formatMXN(q.total)}
+                {formatMXN(q.total, { decimals: 2 })}
               </span>
 
               <span>

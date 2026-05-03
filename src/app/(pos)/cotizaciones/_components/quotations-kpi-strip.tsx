@@ -1,4 +1,4 @@
-import { formatMXN } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 
 interface Props {
   active: number;
@@ -28,7 +28,7 @@ export default function QuotationsKpiStrip({
     },
     {
       label: "Valor pendiente",
-      value: formatMXN(pendingValue),
+      value: formatMXN(pendingValue, { decimals: 2 }),
       sub: "Suma de activas vigentes",
       gradient: false,
     },

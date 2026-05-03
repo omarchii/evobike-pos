@@ -1,7 +1,7 @@
 "use client";
 
 import { Wrench, CreditCard, PackageCheck, DollarSign, Timer } from "lucide-react";
-import { formatMXN } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 
 export interface WorkshopKpiData {
     activeOrders: number;
@@ -43,7 +43,7 @@ export default function WorkshopKpis({ data }: { data: WorkshopKpiData }) {
         },
         {
             label: "Ingreso taller hoy",
-            value: formatMXN(data.revenueToday),
+            value: formatMXN(data.revenueToday, { decimals: 2 }),
             icon: DollarSign,
         },
         {

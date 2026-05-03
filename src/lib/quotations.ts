@@ -39,13 +39,10 @@ export function getDaysRemaining(validUntil: Date | string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-export function formatMXN(value: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
+// formatMXN ya no vive aquí — la app interna usa `formatMXN(v, { decimals: 2 })` de
+// `@/lib/format`. Comprobantes financieros (portal público, PDFs) definen un
+// helper local con `minimumFractionDigits: 2` y comentario in-file (decisión
+// "Opción C", ver feedback_financial_formatters).
 
 export function formatDate(date: Date | string): string {
   const d = date instanceof Date ? date : new Date(date);

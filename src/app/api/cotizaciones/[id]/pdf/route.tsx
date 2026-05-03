@@ -1,8 +1,8 @@
-import type { SessionUser } from "@/lib/auth-types";
 import React from "react";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import {
@@ -25,14 +25,12 @@ export async function GET(
   _req: NextRequest,
   { params }: RouteParams,
 ): Promise<Response> {
-  // 1. Auth guard
+  // 1. Auth guard — ADMIN puede generar PDF cross-branch sin sucursal asignada;
+  // SELLER/MANAGER se restringen abajo (3. Scoping por rol).
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const { id: userId, role, branchId: sessionBranchId } =
-    session.user as unknown as SessionUser;
+  const guard = requireSessionUser(session);
+  if (!guard.ok) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id: userId, role, branchId: sessionBranchId } = guard.user;
 
   const { id } = await params;
 

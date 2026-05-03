@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, FileText } from "lucide-react";
@@ -10,9 +10,9 @@ import QuotationActionsBar from "./_components/quotation-actions-bar";
 import {
   getEffectiveStatus,
   getDaysRemaining,
-  formatMXN,
   formatDate,
 } from "@/lib/quotations";
+import { formatMXN } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,7 @@ interface RouteParams {
 
 export default async function CotizacionDetallePage({ params }: RouteParams) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as BranchedSessionUser | undefined;
-  if (!user?.branchId) notFound();
+  const user = requireBranchedUserOrRedirect(session, "/");
 
   const { id } = await params;
 
@@ -199,7 +198,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
             className="text-2xl font-bold"
             style={{ fontFamily: "var(--font-display)", color: "#ffffff" }}
           >
-            {formatMXN(total)}
+            {formatMXN(total, { decimals: 2 })}
           </p>
         </div>
       </div>
@@ -300,13 +299,13 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
                 {item.quantity}
               </span>
               <span className="text-xs" style={{ color: "var(--on-surf)" }}>
-                {formatMXN(Number(item.unitPrice))}
+                {formatMXN(Number(item.unitPrice), { decimals: 2 })}
               </span>
               <span
                 className="text-sm font-semibold"
                 style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
               >
-                {formatMXN(Number(item.lineTotal))}
+                {formatMXN(Number(item.lineTotal), { decimals: 2 })}
               </span>
             </div>
           );
@@ -322,7 +321,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
               Subtotal
             </span>
             <span className="text-sm font-medium" style={{ color: "var(--on-surf)" }}>
-              {formatMXN(subtotal)}
+              {formatMXN(subtotal, { decimals: 2 })}
             </span>
           </div>
           {discount > 0 && (
@@ -338,7 +337,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
                 )}
               </div>
               <span className="text-sm font-medium" style={{ color: "var(--ter)" }}>
-                −{formatMXN(discount)}
+                −{formatMXN(discount, { decimals: 2 })}
               </span>
             </div>
           )}
@@ -350,7 +349,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
               className="text-2xl font-bold"
               style={{ fontFamily: "var(--font-display)", color: "var(--on-surf)" }}
             >
-              {formatMXN(total)}
+              {formatMXN(total, { decimals: 2 })}
             </span>
           </div>
         </div>

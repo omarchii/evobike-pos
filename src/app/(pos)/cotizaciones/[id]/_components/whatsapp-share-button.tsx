@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { normalizePhoneMX } from "@/lib/customers/phone";
+import { formatMXN } from "@/lib/format";
 
 interface QuotationData {
   folio: string;
@@ -58,10 +59,7 @@ export default function WhatsAppShareButton({ quotation }: WhatsAppShareButtonPr
         month: "long",
         year: "numeric",
       });
-      const total = quotation.total.toLocaleString("es-MX", {
-        style: "currency",
-        currency: "MXN",
-      });
+      const total = formatMXN(quotation.total, { decimals: 2 });
 
       const res = await fetch("/api/whatsapp/send-and-open", {
         method: "POST",

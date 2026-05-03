@@ -1,7 +1,7 @@
-import type { BranchedSessionUser } from "@/lib/auth-types";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -17,8 +17,7 @@ interface RouteParams {
 
 export default async function EditarCotizacionPage({ params }: RouteParams) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as BranchedSessionUser | undefined;
-  if (!user?.branchId) notFound();
+  const user = requireBranchedUserOrRedirect(session, "/");
 
   const { id } = await params;
   const { branchId, role } = user;
