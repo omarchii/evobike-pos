@@ -46,11 +46,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Sin acceso" }, { status: 403 });
     }
 
-    // 2. Resolver config: si la orden tiene una pre-asignada (recepción acoplada S3),
-    // usar esa. Si no, fallback al helper canónico — sigue picksolo arbitrario para
-    // multi-config Evotank, pero ahora con visibilidad explícita vía console.warn.
-    // TODO I10 deferred (Pack A.2 §1.3.6): migrar a resolveConfigForBike(BatteryConfigKey)
-    // cuando S4 incluya batteryCapacidadId en la firma del endpoint o pre-asigne config.
+    // 2. Resolver config: órdenes post-I10 traen batteryConfigurationId pre-asignado.
+    // Fallback para legacy PENDING orders sin config pre-asignada.
     let batteryConfig: { batteryVariantId: string; quantity: number } | null =
       order.batteryConfiguration;
 
@@ -61,7 +58,7 @@ export async function GET(
       );
       if (candidates.length > 1) {
         console.warn(
-          `[I10-deferred] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en /api/assembly/[id]/available-batteries fallback, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4.`
+          `[I10-legacy] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en available-batteries legacy order ${id}, picking arbitrary.`
         );
       }
       batteryConfig = candidates[0] ?? null;

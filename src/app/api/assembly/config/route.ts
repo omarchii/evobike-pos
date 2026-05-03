@@ -24,9 +24,13 @@ export async function GET(): Promise<NextResponse> {
     // 1. Todas las BatteryConfigurations con sus relaciones
     const batteryConfigs = await prisma.batteryConfiguration.findMany({
       select: {
+        id: true,
         modeloId: true,
         voltajeId: true,
         quantity: true,
+        batteryVariant: {
+          select: { capacidad: { select: { id: true, nombre: true } } },
+        },
         modelo: {
           select: {
             id: true,
@@ -85,9 +89,12 @@ export async function GET(): Promise<NextResponse> {
     );
 
     const configurations = batteryConfigs.map((cfg) => ({
+      configId: cfg.id,
       modeloId: cfg.modeloId,
       voltajeId: cfg.voltajeId,
       quantity: cfg.quantity,
+      batteryCapacidadId: cfg.batteryVariant.capacidad?.id ?? null,
+      batteryCapacidadNombre: cfg.batteryVariant.capacidad?.nombre ?? null,
     }));
 
     // 3. Pasar branchId al cliente para validaciones de /api/batteries/check

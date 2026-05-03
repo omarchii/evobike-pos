@@ -41,9 +41,12 @@ interface ConfigModelo {
 }
 
 interface BatteryConfig {
+  configId: string;
   modeloId: string;
   voltajeId: string;
   quantity: number;
+  batteryCapacidadId: string | null;
+  batteryCapacidadNombre: string | null;
 }
 
 interface AssemblyConfig {
@@ -74,6 +77,7 @@ interface BatteryInput {
 const step1Schema = z.object({
   modeloId: z.string().min(1, "Selecciona un modelo"),
   voltajeId: z.string().min(1, "Selecciona el voltaje"),
+  batteryCapacidadId: z.string().optional(),
   colorId: z.string().min(1, "Selecciona el color"),
   vin: z
     .string()
@@ -102,11 +106,12 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
 
   const form = useForm<Step1Values>({
     resolver: zodResolver(step1Schema),
-    defaultValues: { modeloId: "", voltajeId: "", colorId: "", vin: "" },
+    defaultValues: { modeloId: "", voltajeId: "", batteryCapacidadId: "", colorId: "", vin: "" },
   });
 
   const selectedModeloId = form.watch("modeloId");
   const selectedVoltajeId = form.watch("voltajeId");
+  const selectedCapacidadId = form.watch("batteryCapacidadId");
   const selectedVin = form.watch("vin");
 
   // ── Load config on open ────────────────────────────────────────────────────
@@ -138,11 +143,17 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
   const availableVoltajes = selectedModelo?.voltajes ?? [];
   const availableColores = selectedModelo?.colores ?? [];
 
-  // ── Required batteries from config ────────────────────────────────────────
-  const requiredBatteries =
-    config?.configurations.find(
-      (c) => c.modeloId === selectedModeloId && c.voltajeId === selectedVoltajeId
-    )?.quantity ?? null;
+  // ── Multi-config detection + required batteries ────────────────────────────
+  const matchingConfigs = (config?.configurations ?? []).filter(
+    (c) => c.modeloId === selectedModeloId && c.voltajeId === selectedVoltajeId
+  );
+  const isMultiConfig = matchingConfigs.length > 1;
+
+  const selectedConfig = isMultiConfig
+    ? matchingConfigs.find((c) => c.batteryCapacidadId === selectedCapacidadId)
+    : matchingConfigs[0] ?? null;
+
+  const requiredBatteries = selectedConfig?.quantity ?? null;
 
   // ── VIN real-time validation ───────────────────────────────────────────────
   const checkVin = useCallback(
@@ -244,6 +255,10 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
       return;
     }
     if (vinValidState === "checking") return;
+    if (isMultiConfig && !form.getValues("batteryCapacidadId")) {
+      form.setError("batteryCapacidadId", { message: "Selecciona la capacidad de batería" });
+      return;
+    }
     if (requiredBatteries === null) {
       toast.error("No hay configuración de baterías para este modelo y voltaje");
       return;
@@ -293,6 +308,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
           modeloId: values.modeloId,
           voltajeId: values.voltajeId,
           colorId: values.colorId,
+          batteryCapacidadId: values.batteryCapacidadId || undefined,
           vin: values.vin,
           batterySerials,
           completeNow,
@@ -411,6 +427,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                       onValueChange={(v) => {
                         field.onChange(v);
                         form.setValue("voltajeId", "");
+                        form.setValue("batteryCapacidadId", "");
                         form.setValue("colorId", "");
                       }}
                     >
@@ -449,7 +466,10 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                     </FormLabel>
                     <Select
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        form.setValue("batteryCapacidadId", "");
+                      }}
                       disabled={!selectedModeloId}
                     >
                       <FormControl>
@@ -476,8 +496,49 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                 )}
               />
 
+              {/* Capacidad — solo cuando hay multi-config */}
+              {isMultiConfig && selectedVoltajeId && (
+                <FormField
+                  control={form.control}
+                  name="batteryCapacidadId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: "0.8rem", color: "var(--on-surf-var)" }}>
+                        Capacidad de batería
+                      </FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            style={{
+                              background: "var(--surf-lowest)",
+                              border: "none",
+                              borderRadius: "0.75rem",
+                            }}
+                          >
+                            <SelectValue placeholder="Selecciona capacidad" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {matchingConfigs
+                            .filter((c) => c.batteryCapacidadId)
+                            .map((c) => (
+                              <SelectItem key={c.batteryCapacidadId!} value={c.batteryCapacidadId!}>
+                                {c.batteryCapacidadNombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {/* Indicador de baterías requeridas */}
-              {selectedModeloId && selectedVoltajeId && (
+              {selectedModeloId && selectedVoltajeId && (!isMultiConfig || selectedCapacidadId) && (
                 <div
                   className="flex items-center gap-2 px-3 py-2 rounded-xl"
                   style={{
@@ -596,7 +657,7 @@ export function NewAssemblyDialog({ open, onOpenChange, onSuccess }: Props): Rea
                 </Button>
                 <Button
                   type="submit"
-                  disabled={vinValidState === "checking" || vinValidState === "taken" || !requiredBatteries}
+                  disabled={vinValidState === "checking" || vinValidState === "taken" || !requiredBatteries || (isMultiConfig && !selectedCapacidadId)}
                   style={{
                     background: "var(--velocity-gradient)",
                     color: "#fff",

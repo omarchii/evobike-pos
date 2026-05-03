@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
+import { findConfigsByModelVoltage, resolveConfigForBike } from "@/lib/battery-configurations";
 import { z } from "zod";
 
 // ── GET /api/assembly — Listar órdenes de montaje ─────────────────────────────
@@ -21,7 +23,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       { status: 400 }
     );
   }
-  const branchFilter = role === "ADMIN" ? {} : { branchId: branchId! };
+  const viewBranchId = await getViewBranchId();
+  const branchFilter = branchWhere(viewBranchId);
 
   const { searchParams } = new URL(req.url);
   const statusParam = searchParams.get("status");
@@ -137,6 +140,7 @@ const createAssemblySchema = z.object({
   modeloId: z.string().min(1, "Modelo requerido"),
   voltajeId: z.string().min(1, "Voltaje requerido"),
   colorId: z.string().min(1, "Color requerido"),
+  batteryCapacidadId: z.string().min(1).optional(),
   vin: z
     .string()
     .min(3, "El VIN debe tener al menos 3 caracteres")
@@ -159,7 +163,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: firstError }, { status: 400 });
   }
 
-  const { modeloId, voltajeId, colorId, vin, batterySerials, completeNow, notes } = parsed.data;
+  const { modeloId, voltajeId, colorId, batteryCapacidadId, vin, batterySerials, completeNow, notes } = parsed.data;
 
   // Si va a completar, necesita los seriales
   if (completeNow && (!batterySerials || batterySerials.length === 0)) {
@@ -197,26 +201,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         );
       }
 
-      // 3. Buscar BatteryConfiguration → requiredQuantity
-      // TODO I10 deferred (Pack A.2 §1.3.6 I10.5): este endpoint todavía picksolo arbitrario
-      // si hay multi-config para (modelo, voltaje) — bug ACTIVO Evotank 45/52Ah desde 2026-04-19.
-      // Migrar a resolveConfigForBike(BatteryConfigKey) cuando S4 conecte el selector V·Ah POS
-      // y este endpoint reciba batteryCapacidadId del cliente.
-      const batteryCandidates = await tx.batteryConfiguration.findMany({
-        where: { modeloId, voltajeId },
-        select: { quantity: true },
-      });
-      if (batteryCandidates.length === 0) {
-        throw new Error(
-          `No hay configuración de baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}. Configúrala en el catálogo primero.`
+      // 3. Resolver BatteryConfiguration → requiredQuantity
+      let batteryConfig: { id: string; quantity: number };
+
+      if (batteryCapacidadId) {
+        const resolved = await resolveConfigForBike(
+          { modeloId, voltajeId, batteryCapacidadId },
+          tx,
         );
+        if (!resolved) {
+          throw new Error(
+            `No hay configuración de baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label} con la capacidad seleccionada.`
+          );
+        }
+        batteryConfig = resolved;
+      } else {
+        const candidates = await findConfigsByModelVoltage(modeloId, voltajeId, tx);
+        if (candidates.length === 0) {
+          throw new Error(
+            `No hay configuración de baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}. Configúrala en el catálogo primero.`
+          );
+        }
+        if (candidates.length > 1) {
+          throw new Error(
+            `Hay ${candidates.length} configuraciones de baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}. Selecciona la capacidad de batería.`
+          );
+        }
+        batteryConfig = candidates[0];
       }
-      if (batteryCandidates.length > 1) {
-        console.warn(
-          `[I10-deferred] ${batteryCandidates.length} configs para (${modeloId}, ${voltajeId}) en /api/assembly POST, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4.`
-        );
-      }
-      const batteryConfig = batteryCandidates[0];
 
       const requiredQuantity = batteryConfig.quantity;
 
@@ -279,6 +291,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           data: {
             customerBikeId: customerBike.id,
             productVariantId: productVariant.id,
+            batteryConfigurationId: batteryConfig.id,
             branchId,
             status: "COMPLETED",
             assembledByUserId: userId,
@@ -313,6 +326,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           data: {
             customerBikeId: customerBike.id,
             productVariantId: productVariant.id,
+            batteryConfigurationId: batteryConfig.id,
             branchId,
             status: "PENDING",
             notes: notes ?? null,
@@ -339,6 +353,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         message.includes("sucursal") ||
         message.includes("variante") ||
         message.includes("configuración") ||
+        message.includes("configuraciones") ||
+        message.includes("capacidad") ||
         message.includes("duplicados") ||
         message.includes("registrados"));
     return NextResponse.json(

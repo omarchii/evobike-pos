@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 import { z } from "zod";
 
 const ALLOWED_ROLES = ["TECHNICIAN", "MANAGER", "ADMIN"];
@@ -71,6 +72,9 @@ export async function PATCH(
           customerBikeId: true,
           productVariantId: true,
           saleId: true,
+          batteryConfiguration: {
+            select: { quantity: true, batteryVariantId: true },
+          },
           productVariant: {
             select: {
               id: true,
@@ -135,21 +139,19 @@ export async function PATCH(
       let requiredQuantity: number | null = null;
       let batteryVariantId: string | null = null;
 
-      if (order.productVariant) {
-        // TODO I10 deferred (Pack A.2 §1.3.6 I10.5): este endpoint todavía picksolo arbitrario
-        // si hay multi-config para (modelo, voltaje) — bug ACTIVO Evotank 45/52Ah desde 2026-04-19.
-        // Migrar a resolveConfigForBike(BatteryConfigKey) cuando S4 conecte el selector V·Ah POS
-        // y `assemblyOrder` reciba batteryCapacidadId del flujo de creación.
-        const candidates = await tx.batteryConfiguration.findMany({
-          where: {
-            modeloId: order.productVariant.modelo_id,
-            voltajeId: order.productVariant.voltaje_id,
-          },
-          select: { quantity: true, batteryVariantId: true },
-        });
+      if (order.batteryConfiguration) {
+        requiredQuantity = order.batteryConfiguration.quantity;
+        batteryVariantId = order.batteryConfiguration.batteryVariantId;
+      } else if (order.productVariant) {
+        // Legacy PENDING orders created before I10 fix — no batteryConfigurationId stored
+        const candidates = await findConfigsByModelVoltage(
+          order.productVariant.modelo_id,
+          order.productVariant.voltaje_id,
+          tx,
+        );
         if (candidates.length > 1) {
           console.warn(
-            `[I10-deferred] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en /api/assembly/[id]/complete, picking arbitrary. Bug S1 ACTIVO. Migrar a resolveConfigForBike post-S4.`
+            `[I10-legacy] ${candidates.length} configs para (${order.productVariant.modelo_id}, ${order.productVariant.voltaje_id}) en PENDING legacy order ${order.id}, picking arbitrary.`
           );
         }
         const batteryConfig = candidates[0] ?? null;

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { branchWhere, getViewBranchId } from "@/lib/branch-filter";
 import { findConfigsByModelVoltage } from "@/lib/battery-configurations";
 import { z } from "zod";
 import { upsertStockVariant } from "@/lib/stock-ops";
@@ -273,8 +274,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? "20")));
   const skip = (page - 1) * limit;
 
-  // ADMIN ve todos los lotes; el resto solo los de su sucursal
-  const branchFilter = role === "ADMIN" ? {} : { branchId: branchId! };
+  const viewBranchId = await getViewBranchId();
+  const branchFilter = branchWhere(viewBranchId);
 
   try {
     const [lots, total] = await Promise.all([
