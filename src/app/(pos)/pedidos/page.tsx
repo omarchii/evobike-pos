@@ -85,7 +85,7 @@ export default async function PedidosPage() {
         items: {
           include: {
             productVariant: {
-              include: { modelo: true, color: true, voltaje: true },
+              include: { modelo: true, color: true, voltaje: true, capacidad: true },
             },
           },
         },
@@ -112,6 +112,7 @@ export default async function PedidosPage() {
         modelo: { select: { nombre: true } },
         color: { select: { nombre: true } },
         voltaje: { select: { label: true } },
+        capacidad: { select: { nombre: true } },
       },
       orderBy: [{ modelo: { nombre: "asc" } }, { sku: "asc" }],
     }),
@@ -141,15 +142,19 @@ export default async function PedidosPage() {
         method: pay.method,
         createdAt: pay.createdAt,
       })),
-      items: p.items.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        price: Number(item.price),
-        discount: Number(item.discount),
-        productName: item.productVariant
-          ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre} ${item.productVariant.voltaje.label}`
-          : "Producto",
-      })),
+      items: p.items.map((item) => {
+        const pv = item.productVariant;
+        const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+        return {
+          id: item.id,
+          quantity: item.quantity,
+          price: Number(item.price),
+          discount: Number(item.discount),
+          productName: pv
+            ? `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}${ahSuffix}`
+            : "Producto",
+        };
+      }),
     };
   });
 
@@ -159,18 +164,21 @@ export default async function PedidosPage() {
     phone: c.phone ?? null,
   }));
 
-  const variantOptions: VariantOption[] = variants.map((v) => ({
-    id: v.id,
-    sku: v.sku,
-    label: `${v.modelo.nombre} ${v.color.nombre} ${v.voltaje.label}`,
-    precio: Number(v.precioPublico),
-    modeloId: v.modelo_id,
-    modeloNombre: v.modelo.nombre,
-    voltajeId: v.voltaje_id,
-    voltajeLabel: v.voltaje.label,
-    colorId: v.color_id,
-    colorNombre: v.color.nombre,
-  }));
+  const variantOptions: VariantOption[] = variants.map((v) => {
+    const ahSuffix = v.capacidad ? ` · ${v.capacidad.nombre}` : "";
+    return {
+      id: v.id,
+      sku: v.sku,
+      label: `${v.modelo.nombre} ${v.color.nombre} ${v.voltaje.label}${ahSuffix}`,
+      precio: Number(v.precioPublico),
+      modeloId: v.modelo_id,
+      modeloNombre: v.modelo.nombre,
+      voltajeId: v.voltaje_id,
+      voltajeLabel: v.voltaje.label,
+      colorId: v.color_id,
+      colorNombre: v.color.nombre,
+    };
+  });
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">

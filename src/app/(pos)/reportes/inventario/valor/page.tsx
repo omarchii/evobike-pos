@@ -86,7 +86,7 @@ export default async function ValorInventarioPage({
     },
     include: {
       productVariant: {
-        include: { modelo: true, color: true, voltaje: true },
+        include: { modelo: true, color: true, voltaje: true, capacidad: true },
       },
       simpleProduct: true,
       branch: { select: { id: true, code: true, name: true } },
@@ -127,6 +127,7 @@ export default async function ValorInventarioPage({
 
       if (isVariant) {
         const v = s.productVariant!;
+        const ahSuffix = v.capacidad ? ` · ${v.capacidad.nombre}` : "";
         return {
           stockId: s.id,
           kind: "variant",
@@ -137,7 +138,7 @@ export default async function ValorInventarioPage({
           sku: v.sku,
           modelo: v.modelo.nombre,
           color: v.color.nombre,
-          voltaje: v.voltaje.label,
+          voltaje: v.voltaje.label + ahSuffix,
           simpleId: null,
           codigo: null,
           nombre: null,

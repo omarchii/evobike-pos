@@ -93,6 +93,7 @@ export default async function VentaDetallePage({ params }: PageProps): Promise<R
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
         },
@@ -141,7 +142,7 @@ export default async function VentaDetallePage({ params }: PageProps): Promise<R
         ? {
             modeloNombre: item.productVariant.modelo.nombre,
             colorNombre: item.productVariant.color.nombre,
-            voltajeLabel: item.productVariant.voltaje.label,
+            voltajeLabel: item.productVariant.voltaje.label + (item.productVariant.capacidad ? ` · ${item.productVariant.capacidad.nombre}` : ""),
           }
         : null,
     })),

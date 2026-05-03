@@ -98,6 +98,7 @@ export default async function StockMinimoPage({
           modelo: { select: { nombre: true } },
           color: { select: { nombre: true } },
           voltaje: { select: { label: true } },
+          capacidad: { select: { nombre: true } },
         },
       },
       simpleProduct: {
@@ -144,7 +145,7 @@ export default async function StockMinimoPage({
           sku: v.sku,
           modelo: v.modelo.nombre,
           color: v.color.nombre,
-          voltaje: v.voltaje.label,
+          voltaje: v.voltaje.label + (v.capacidad ? ` · ${v.capacidad.nombre}` : ""),
           simpleId: null,
           codigo: null,
           nombre: null,

@@ -54,6 +54,7 @@ type SaleWithDetails = Prisma.SaleGetPayload<{
           select: {
             modelo: { select: { nombre: true } };
             voltaje: { select: { label: true } };
+            capacidad: { select: { nombre: true } };
           };
         };
       };
@@ -83,7 +84,7 @@ function getModeloVoltaje(items: SaleWithDetails["items"]): {
     const pv = variantItems[0].productVariant;
     return {
       modelo: pv.modelo.nombre,
-      voltaje: pv.voltaje.label,
+      voltaje: pv.voltaje.label + (pv.capacidad ? ` · ${pv.capacidad.nombre}` : ""),
     };
   }
   return { modelo: "Mixto", voltaje: "—" };
@@ -224,6 +225,7 @@ export default async function VentasVendedorPage({
               select: {
                 modelo: { select: { nombre: true } },
                 voltaje: { select: { label: true } },
+                capacidad: { select: { nombre: true } },
               },
             },
           },

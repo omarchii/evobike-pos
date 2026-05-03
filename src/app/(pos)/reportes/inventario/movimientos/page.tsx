@@ -11,6 +11,8 @@ import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 50;
+
 // ── Tipos locales (no importar enums Prisma en el cliente) ────────────────────
 
 export type MovementTypeFilter =
@@ -53,6 +55,7 @@ export interface MovimientoRow {
   userName: string;
   referenceLabel: string;
   referenceId: string | null;
+  referenceUrl: string | null;
   precioUnitarioPagado: number | null;
 }
 
@@ -62,7 +65,6 @@ export interface MovimientosKpis {
   salidasTotal: number;
   ajustesCount: number;
   ajustesNeto: number;
-  productosDistintos: number;
 }
 
 export interface BranchOption {
@@ -78,6 +80,9 @@ export interface CurrentFilters {
   kind: KindFilter;
   sign: SignFilter;
   q: string;
+  page: number;
+  total: number;
+  pageSize: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -134,6 +139,7 @@ export default async function MovimientosInventarioPage({
   const filterKind = parseKind(getString(params.kind));
   const filterSign = parseSign(getString(params.sign));
   const filterQ = getString(params.q).trim();
+  const page = Math.max(1, parseInt(getString(params.page) || "1") || 1);
 
   // ── Scope de sucursal ────────────────────────────────────────────────────
   const scope = branchWhere(
@@ -195,28 +201,34 @@ export default async function MovimientosInventarioPage({
     ...productFilter,
   };
 
-  // ── Query principal ──────────────────────────────────────────────────────
-  const movements = await prisma.inventoryMovement.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      productVariant: {
-        select: {
-          id: true,
-          sku: true,
-          modelo: { select: { nombre: true } },
-          color: { select: { nombre: true } },
-          voltaje: { select: { label: true } },
+  // ── Query principal (paginada) ────────────────────────────────────────
+  const [movements, totalCount] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        productVariant: {
+          select: {
+            id: true,
+            sku: true,
+            modelo: { select: { nombre: true } },
+            color: { select: { nombre: true } },
+            voltaje: { select: { label: true } },
+            capacidad: { select: { nombre: true } },
+          },
+        },
+        simpleProduct: {
+          select: { id: true, nombre: true, codigo: true },
+        },
+        purchaseReceipt: {
+          select: { id: true, proveedor: true, folioFacturaProveedor: true },
         },
       },
-      simpleProduct: {
-        select: { id: true, nombre: true, codigo: true },
-      },
-      purchaseReceipt: {
-        select: { proveedor: true, folioFacturaProveedor: true },
-      },
-    },
-  });
+    }),
+    prisma.inventoryMovement.count({ where }),
+  ]);
 
   // ── Recolectar IDs para queries batch ────────────────────────────────────
   const branchIds = new Set(movements.map((m) => m.branchId));
@@ -289,9 +301,10 @@ export default async function MovimientosInventarioPage({
     if (m.productVariantId !== null && m.productVariant !== null) {
       kind = "variant";
       const pv = m.productVariant;
+      const ahSuffix = pv.capacidad ? ` · ${pv.capacidad.nombre}` : "";
       productName = [pv.modelo.nombre, pv.color.nombre, pv.voltaje.label]
         .filter(Boolean)
-        .join(" ");
+        .join(" ") + ahSuffix;
       productCode = pv.sku;
     } else if (m.simpleProductId !== null && m.simpleProduct !== null) {
       kind = "simple";
@@ -307,31 +320,33 @@ export default async function MovimientosInventarioPage({
     const sign: "in" | "out" | "neutral" =
       m.quantity > 0 ? "in" : m.quantity < 0 ? "out" : "neutral";
 
-    // Referencia amigable por tipo
     let referenceLabel = "—";
+    let referenceUrl: string | null = null;
     if (m.type === "PURCHASE_RECEIPT" && m.purchaseReceipt !== null) {
       const folio = m.purchaseReceipt.folioFacturaProveedor;
       referenceLabel = folio
         ? `${m.purchaseReceipt.proveedor} · ${folio}`
         : m.purchaseReceipt.proveedor;
+      referenceUrl = `/inventario/recepciones/${m.purchaseReceipt.id}`;
     } else if (
       (m.type === "SALE" || m.type === "RETURN") &&
       m.referenceId !== null
     ) {
       const folio = saleMap.get(m.referenceId);
       referenceLabel = folio ? `Venta ${folio}` : `#${m.referenceId.slice(0, 8)}`;
+      referenceUrl = `/ventas/${m.referenceId}`;
     } else if (m.type === "WORKSHOP_USAGE" && m.referenceId !== null) {
       const folio = serviceOrderMap.get(m.referenceId);
       referenceLabel = folio
         ? `Orden ${folio}`
         : `#${m.referenceId.slice(0, 8)}`;
+      referenceUrl = `/workshop/${m.referenceId}`;
     } else if (
       (m.type === "TRANSFER_OUT" || m.type === "TRANSFER_IN") &&
       m.referenceId !== null
     ) {
-      // El patrón de referenceId para transferencias no está documentado en el
-      // codebase v1 — se muestra id corto con prefijo. Pendiente en v2.
       referenceLabel = `Transf. #${m.referenceId.slice(0, 8)}`;
+      referenceUrl = `/transferencias/${m.referenceId}`;
     } else if (m.type === "ADJUSTMENT" && m.referenceId !== null) {
       referenceLabel = m.referenceId;
     }
@@ -351,6 +366,7 @@ export default async function MovimientosInventarioPage({
       userName: userMap.get(m.userId) ?? "—",
       referenceLabel,
       referenceId: m.referenceId,
+      referenceUrl,
       precioUnitarioPagado:
         m.precioUnitarioPagado !== null
           ? serializeDecimal(m.precioUnitarioPagado)
@@ -358,31 +374,31 @@ export default async function MovimientosInventarioPage({
     };
   });
 
-  // ── KPIs ──────────────────────────────────────────────────────────────────
-  let entradasTotal = 0;
-  let salidasAbsTotal = 0;
-  let ajustesCount = 0;
-  let ajustesNeto = 0;
-  const productIds = new Set<string>();
-
-  for (const m of movements) {
-    if (m.quantity > 0) entradasTotal += m.quantity;
-    if (m.quantity < 0) salidasAbsTotal += Math.abs(m.quantity);
-    if (m.type === "ADJUSTMENT") {
-      ajustesCount++;
-      ajustesNeto += m.quantity;
-    }
-    if (m.productVariantId !== null) productIds.add(`v:${m.productVariantId}`);
-    if (m.simpleProductId !== null) productIds.add(`s:${m.simpleProductId}`);
-  }
+  // ── KPIs (sobre el total filtrado, no la página) ──────────────────────
+  const [kpiEntradas, kpiSalidas, kpiAjustes] = await Promise.all([
+    prisma.inventoryMovement.aggregate({
+      where: { ...where, quantity: { gt: 0 } },
+      _sum: { quantity: true },
+      _count: true,
+    }),
+    prisma.inventoryMovement.aggregate({
+      where: { ...where, quantity: { lt: 0 } },
+      _sum: { quantity: true },
+      _count: true,
+    }),
+    prisma.inventoryMovement.aggregate({
+      where: { ...where, type: "ADJUSTMENT" },
+      _sum: { quantity: true },
+      _count: true,
+    }),
+  ]);
 
   const kpis: MovimientosKpis = {
-    totalMovimientos: movements.length,
-    entradasTotal,
-    salidasTotal: salidasAbsTotal,
-    ajustesCount,
-    ajustesNeto,
-    productosDistintos: productIds.size,
+    totalMovimientos: totalCount,
+    entradasTotal: kpiEntradas._sum.quantity ?? 0,
+    salidasTotal: Math.abs(kpiSalidas._sum.quantity ?? 0),
+    ajustesCount: kpiAjustes._count,
+    ajustesNeto: kpiAjustes._sum.quantity ?? 0,
   };
 
   const currentFilters: CurrentFilters = {
@@ -393,6 +409,9 @@ export default async function MovimientosInventarioPage({
     kind: filterKind,
     sign: filterSign,
     q: filterQ,
+    page,
+    total: totalCount,
+    pageSize: PAGE_SIZE,
   };
 
   return (

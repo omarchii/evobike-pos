@@ -76,6 +76,7 @@ type SaleForRentabilidad = Prisma.SaleGetPayload<{
             modelo: { select: { nombre: true } };
             color: { select: { nombre: true } };
             voltaje: { select: { label: true } };
+            capacidad: { select: { nombre: true } };
           };
         };
         simpleProduct: {
@@ -157,6 +158,7 @@ export default async function RentabilidadPage({
                 modelo: { select: { nombre: true } },
                 color: { select: { nombre: true } },
                 voltaje: { select: { label: true } },
+                capacidad: { select: { nombre: true } },
               },
             },
             simpleProduct: {
@@ -231,7 +233,7 @@ export default async function RentabilidadPage({
         } else {
           const pv = item.productVariant;
           const nombre = pv
-            ? `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}`.trim()
+            ? `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}${pv.capacidad ? ` · ${pv.capacidad.nombre}` : ""}`.trim()
             : "Producto desconocido";
           accum = {
             kind: "variant",

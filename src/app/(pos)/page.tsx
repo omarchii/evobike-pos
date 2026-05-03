@@ -233,6 +233,7 @@ export default async function DashboardPage({
                             select: {
                                 modelo: { select: { nombre: true } },
                                 voltaje: { select: { label: true } },
+                                capacidad: { select: { nombre: true } },
                             },
                         },
                     },
@@ -305,7 +306,11 @@ export default async function DashboardPage({
             total: Number(s.total),
             createdAt: s.createdAt,
             mainProduct: s.items[0]?.productVariant?.modelo.nombre ?? null,
-            mainProductVoltaje: s.items[0]?.productVariant?.voltaje.label ?? null,
+            mainProductVoltaje: (() => {
+                const pv = s.items[0]?.productVariant;
+                if (!pv) return null;
+                return pv.capacidad ? `${pv.voltaje.label} · ${pv.capacidad.nombre}` : pv.voltaje.label;
+            })(),
             vendedor: s.user.name,
             paymentMethod: s.payments[0]?.method ?? null,
         }));
@@ -588,6 +593,7 @@ export default async function DashboardPage({
                             modelo: { select: { nombre: true } },
                             color: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
+                            capacidad: { select: { nombre: true } },
                         },
                     },
                     simpleProduct: {
@@ -609,6 +615,7 @@ export default async function DashboardPage({
                         select: {
                             modelo: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
+                            capacidad: { select: { nombre: true } },
                         },
                     },
                 },
@@ -658,19 +665,27 @@ export default async function DashboardPage({
             stockCritico: stockCriticoPrisma
                 .filter((s) => s.productVariantId !== null && s.productVariant !== null)
                 .slice(0, 8)
-                .map((s) => ({
-                    productVariantId: s.productVariantId!,
-                    productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,
-                    sku: s.productVariant!.sku,
-                    quantity: s.quantity,
-                })),
-            reensamblesPendientes: reensamblesPendientesPrisma.map((a) => ({
-                id: a.id,
-                productName: a.productVariant
-                    ? `${a.productVariant.modelo.nombre} ${a.productVariant.voltaje.label}`
-                    : null,
-                folio: a.sale?.folio ?? null,
-            })),
+                .map((s) => {
+                    const pv = s.productVariant!;
+                    const ahSuffix = pv.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+                    return {
+                        productVariantId: s.productVariantId!,
+                        productName: `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}${ahSuffix}`,
+                        sku: pv.sku,
+                        quantity: s.quantity,
+                    };
+                }),
+            reensamblesPendientes: reensamblesPendientesPrisma.map((a) => {
+                const pv = a.productVariant;
+                const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+                return {
+                    id: a.id,
+                    productName: pv
+                        ? `${pv.modelo.nombre} ${pv.voltaje.label}${ahSuffix}`
+                        : null,
+                    folio: a.sale?.folio ?? null,
+                };
+            }),
             stockCriticoCount,
             reensamblesPendientesCount,
         };
@@ -1119,6 +1134,7 @@ export default async function DashboardPage({
                             modelo: { select: { nombre: true } },
                             color: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
+                            capacidad: { select: { nombre: true } },
                         },
                     },
                     simpleProduct: {
@@ -1144,6 +1160,7 @@ export default async function DashboardPage({
                             modelo: { select: { nombre: true } },
                             color: { select: { nombre: true } },
                             voltaje: { select: { label: true } },
+                            capacidad: { select: { nombre: true } },
                         },
                     },
                 },
@@ -1163,18 +1180,22 @@ export default async function DashboardPage({
             }),
         ]);
 
-        const assemblyPending = techReensamblesPrisma.map((a) => ({
-            id: a.id,
-            productName: a.productVariant
-                ? `${a.productVariant.modelo.nombre} ${a.productVariant.voltaje.label}`
-                : null,
-            imageUrl: a.productVariant?.imageUrl ?? null,
-            sku: a.productVariant?.sku ?? null,
-            color: a.productVariant?.color.nombre ?? null,
-            saleId: a.sale?.id ?? null,
-            folio: a.sale?.folio ?? null,
-            minutesPending: Math.floor((now.getTime() - a.createdAt.getTime()) / 60000),
-        }));
+        const assemblyPending = techReensamblesPrisma.map((a) => {
+            const pv = a.productVariant;
+            const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+            return {
+                id: a.id,
+                productName: pv
+                    ? `${pv.modelo.nombre} ${pv.voltaje.label}${ahSuffix}`
+                    : null,
+                imageUrl: pv?.imageUrl ?? null,
+                sku: pv?.sku ?? null,
+                color: pv?.color.nombre ?? null,
+                saleId: a.sale?.id ?? null,
+                folio: a.sale?.folio ?? null,
+                minutesPending: Math.floor((now.getTime() - a.createdAt.getTime()) / 60000),
+            };
+        });
 
         const techAttentionAlerts = {
             backordersVencidos: [],
@@ -1190,19 +1211,27 @@ export default async function DashboardPage({
                     return s.quantity <= (s.productVariant.stockMinimo ?? 0);
                 })
                 .slice(0, 8)
-                .map((s) => ({
-                    productVariantId: s.productVariantId!,
-                    productName: `${s.productVariant!.modelo.nombre} ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}`,
-                    sku: s.productVariant!.sku,
-                    quantity: s.quantity,
-                })),
-            reensamblesPendientes: techReensamblesPrisma.map((a) => ({
-                id: a.id,
-                productName: a.productVariant
-                    ? `${a.productVariant.modelo.nombre} ${a.productVariant.voltaje.label}`
-                    : null,
-                folio: a.sale?.folio ?? null,
-            })),
+                .map((s) => {
+                    const pv = s.productVariant!;
+                    const ahSuffix = pv.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+                    return {
+                        productVariantId: s.productVariantId!,
+                        productName: `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}${ahSuffix}`,
+                        sku: pv.sku,
+                        quantity: s.quantity,
+                    };
+                }),
+            reensamblesPendientes: techReensamblesPrisma.map((a) => {
+                const pv = a.productVariant;
+                const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+                return {
+                    id: a.id,
+                    productName: pv
+                        ? `${pv.modelo.nombre} ${pv.voltaje.label}${ahSuffix}`
+                        : null,
+                    folio: a.sale?.folio ?? null,
+                };
+            }),
         };
 
         return (

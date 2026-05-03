@@ -443,7 +443,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
           const variant = await tx.productVariant.findUnique({
             where: { id: item.productVariantId },
-            include: { voltaje: true },
+            include: { voltaje: true, capacidad: true },
           });
           await tx.customerBike.create({
             data: {
@@ -452,7 +452,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               serialNumber: item.serialNumber,
               brand: "EVOBIKE",
               model: item.name,
-              voltaje: variant?.voltaje.label ?? null,
+              voltaje: variant ? (variant.voltaje.label + (variant.capacidad ? ` · ${variant.capacidad.nombre}` : "")) : null,
               notes: "Venta original",
             },
           });

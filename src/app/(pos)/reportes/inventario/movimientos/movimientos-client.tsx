@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Download } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import type { CSSProperties } from "react";
 import { ReportHeader } from "@/app/(pos)/reportes/_components/report-header";
 import { ReportKpiCards } from "@/app/(pos)/reportes/_components/report-kpi-cards";
@@ -317,22 +318,32 @@ const columns: TableColumn<MovimientoRow>[] = [
   {
     key: "referencia",
     header: "Referencia",
-    render: (row) => (
-      <span
-        style={{
-          color: "var(--on-surf-var)",
-          fontSize: "0.75rem",
-          maxWidth: 180,
-          display: "block",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={row.referenceLabel}
-      >
-        {row.referenceLabel}
-      </span>
-    ),
+    render: (row) => {
+      const style = {
+        fontSize: "0.75rem",
+        maxWidth: 180,
+        display: "block",
+        overflow: "hidden" as const,
+        textOverflow: "ellipsis" as const,
+        whiteSpace: "nowrap" as const,
+      };
+      if (row.referenceUrl) {
+        return (
+          <Link
+            href={row.referenceUrl}
+            style={{ ...style, color: "var(--p)", textDecoration: "none" }}
+            title={row.referenceLabel}
+          >
+            {row.referenceLabel}
+          </Link>
+        );
+      }
+      return (
+        <span style={{ ...style, color: "var(--on-surf-var)" }} title={row.referenceLabel}>
+          {row.referenceLabel}
+        </span>
+      );
+    },
   },
   {
     key: "costo",
@@ -377,6 +388,7 @@ export function MovimientosClient({
     } else {
       params.delete(key);
     }
+    params.delete("page");
     router.replace(`?${params.toString()}`);
   }
 
@@ -387,8 +399,21 @@ export function MovimientosClient({
     } else {
       params.delete("q");
     }
+    params.delete("page");
     router.replace(`?${params.toString()}`);
   }
+
+  function goToPage(p: number): void {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p <= 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(p));
+    }
+    router.replace(`?${params.toString()}`);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(currentFilters.total / currentFilters.pageSize));
 
   // KPI cards
   const kpiCards: ReportKPI[] = [
@@ -417,12 +442,6 @@ export function MovimientosClient({
         kpis.ajustesCount > 0
           ? `${kpis.ajustesNeto >= 0 ? "+" : ""}${kpis.ajustesNeto} u. netas`
           : undefined,
-    },
-    {
-      label: "Productos distintos",
-      value: kpis.productosDistintos,
-      format: "number",
-      trend: "afectados en el período",
     },
   ];
 
@@ -533,7 +552,7 @@ export function MovimientosClient({
     <div className="space-y-6 p-6">
       <ReportHeader
         title="Movimientos de inventario"
-        subtitle={`${rows.length.toLocaleString("es-MX")} movimientos en el período seleccionado`}
+        subtitle={`${currentFilters.total.toLocaleString("es-MX")} movimientos en el período seleccionado`}
         icon={ArrowUpDown}
         filters={filters}
         actions={actions}
@@ -568,6 +587,76 @@ export function MovimientosClient({
             keyExtractor={(row) => row.id}
             emptyMessage="Sin movimientos en el período seleccionado"
           />
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: "1rem",
+                borderTop: "1px solid var(--surf-high)",
+                marginTop: "1rem",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: "0.75rem",
+                  color: "var(--on-surf-var)",
+                }}
+              >
+                Página {currentFilters.page} de {totalPages}
+              </span>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => goToPage(currentFilters.page - 1)}
+                  disabled={currentFilters.page <= 1}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    background: "var(--surf-high)",
+                    border: "none",
+                    borderRadius: "var(--r-md)",
+                    color: currentFilters.page <= 1 ? "var(--on-surf-var)" : "var(--on-surf)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "0.75rem",
+                    fontWeight: 500,
+                    height: 28,
+                    paddingInline: "0.625rem",
+                    cursor: currentFilters.page <= 1 ? "default" : "pointer",
+                    opacity: currentFilters.page <= 1 ? 0.5 : 1,
+                  }}
+                >
+                  <ChevronLeft className="h-3 w-3" /> Anterior
+                </button>
+                <button
+                  onClick={() => goToPage(currentFilters.page + 1)}
+                  disabled={currentFilters.page >= totalPages}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    background: "var(--surf-high)",
+                    border: "none",
+                    borderRadius: "var(--r-md)",
+                    color: currentFilters.page >= totalPages ? "var(--on-surf-var)" : "var(--on-surf)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "0.75rem",
+                    fontWeight: 500,
+                    height: 28,
+                    paddingInline: "0.625rem",
+                    cursor: currentFilters.page >= totalPages ? "default" : "pointer",
+                    opacity: currentFilters.page >= totalPages ? 0.5 : 1,
+                  }}
+                >
+                  Siguiente <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

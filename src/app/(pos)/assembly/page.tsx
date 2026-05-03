@@ -110,6 +110,7 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
             modelo: { select: { nombre: true } },
             color: { select: { nombre: true } },
             voltaje: { select: { label: true } },
+            capacidad: { select: { nombre: true } },
           },
         },
         assembledBy: { select: { id: true, name: true } },
@@ -168,7 +169,9 @@ export default async function AssemblyPage(): Promise<React.JSX.Element> {
         voltajeId: o.productVariant.voltaje_id,
         modeloNombre: o.productVariant.modelo.nombre,
         colorNombre: o.productVariant.color.nombre,
-        voltajeLabel: o.productVariant.voltaje.label,
+        voltajeLabel: o.productVariant.capacidad
+          ? `${o.productVariant.voltaje.label} · ${o.productVariant.capacidad.nombre}`
+          : o.productVariant.voltaje.label,
       }
       : null,
     assembledBy: o.assembledBy

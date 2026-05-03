@@ -28,6 +28,7 @@ export default async function PointOfSalePage() {
       modelo: true,
       color: true,
       voltaje: true,
+      capacidad: true,
       stocks: true,
     },
     orderBy: { sku: "asc" },
@@ -84,7 +85,7 @@ export default async function PointOfSalePage() {
       colorNombre: v.color.nombre,
       voltajeId: v.voltaje_id,
       voltajeValor: v.voltaje.valor,
-      voltajeLabel: v.voltaje.label,
+      voltajeLabel: v.capacidad ? `${v.voltaje.label} · ${v.capacidad.nombre}` : v.voltaje.label,
     });
   }
 

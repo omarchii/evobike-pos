@@ -116,15 +116,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         modelo: { select: { nombre: true } },
         color: { select: { nombre: true } },
         voltaje: { select: { label: true } },
+        capacidad: { select: { nombre: true } },
       },
     });
 
     for (const v of variants) {
+      const ahSuffix = v.capacidad ? ` · ${v.capacidad.nombre}` : "";
       variantMap.set(v.id, {
         id: v.id,
         nombre: v.modelo.nombre,
         colorNombre: v.color.nombre,
-        voltajeLabel: v.voltaje.label,
+        voltajeLabel: v.voltaje.label + ahSuffix,
       });
     }
 

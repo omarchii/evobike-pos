@@ -48,6 +48,7 @@ export default async function MantenimientosPage({
           modelo: { select: { nombre: true } },
           color: { select: { nombre: true } },
           voltaje: { select: { label: true } },
+          capacidad: { select: { nombre: true } },
         },
       },
       assemblyOrders: {
@@ -97,7 +98,7 @@ export default async function MantenimientosPage({
       ? [
           bike.productVariant.modelo.nombre,
           bike.productVariant.color.nombre,
-          bike.productVariant.voltaje.label,
+          bike.productVariant.voltaje.label + (bike.productVariant.capacidad ? ` · ${bike.productVariant.capacidad.nombre}` : ""),
         ]
           .filter(Boolean)
           .join(" ")

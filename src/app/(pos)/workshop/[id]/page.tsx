@@ -55,6 +55,7 @@ export default async function WorkshopOrderPage(props: {
               modelo: true,
               color: true,
               voltaje: true,
+              capacidad: true,
             },
           },
         },
@@ -94,6 +95,7 @@ export default async function WorkshopOrderPage(props: {
       modelo: true,
       color: true,
       voltaje: true,
+      capacidad: true,
     },
     orderBy: { sku: "asc" },
   });
@@ -136,7 +138,7 @@ export default async function WorkshopOrderPage(props: {
         ? {
             id: i.productVariant.id,
             sku: i.productVariant.sku,
-            name: `${i.productVariant.modelo.nombre} ${i.productVariant.color.nombre} ${i.productVariant.voltaje.label}`,
+            name: `${i.productVariant.modelo.nombre} ${i.productVariant.color.nombre} ${i.productVariant.voltaje.label}${i.productVariant.capacidad ? ` · ${i.productVariant.capacidad.nombre}` : ""}`,
             price: Number(i.productVariant.precioPublico),
           }
         : null,
@@ -151,12 +153,15 @@ export default async function WorkshopOrderPage(props: {
       : null,
   };
 
-  const serializedProducts: SerializedProduct[] = products.map((p) => ({
-    id: p.id,
-    sku: p.sku,
-    name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}`,
-    price: Number(p.precioPublico),
-  }));
+  const serializedProducts: SerializedProduct[] = products.map((p) => {
+    const ahSuffix = p.capacidad ? ` · ${p.capacidad.nombre}` : "";
+    return {
+      id: p.id,
+      sku: p.sku,
+      name: `${p.modelo.nombre} ${p.color.nombre} ${p.voltaje.label}${ahSuffix}`,
+      price: Number(p.precioPublico),
+    };
+  });
 
   const serializedApprovals: SerializedApproval[] = order.approvals.map((a) => {
     const parsed = approvalItemsJsonSchema.safeParse(a.itemsJson);

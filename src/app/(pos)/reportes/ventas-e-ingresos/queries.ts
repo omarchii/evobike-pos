@@ -340,6 +340,7 @@ export async function getSaleDetail(saleId: string): Promise<SaleDetail | null> 
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
           simpleProduct: { select: { nombre: true } },
@@ -368,7 +369,7 @@ export async function getSaleDetail(saleId: string): Promise<SaleDetail | null> 
     lineItems: sale.items.map((item) => {
       const name = item.description
         ?? (item.productVariant
-          ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre} ${item.productVariant.voltaje.label}`
+          ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre} ${item.productVariant.voltaje.label}${item.productVariant.capacidad ? ` · ${item.productVariant.capacidad.nombre}` : ""}`
           : item.simpleProduct?.nombre ?? "Producto desconocido");
       const unitPrice = serializeDecimal(item.price);
       const disc = serializeDecimal(item.discount);

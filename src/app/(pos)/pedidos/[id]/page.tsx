@@ -88,6 +88,7 @@ export default async function PedidoDetallePage({ params }: PageProps) {
               modelo: true,
               color: true,
               voltaje: true,
+              capacidad: true,
             },
           },
         },
@@ -232,18 +233,22 @@ export default async function PedidoDetallePage({ params }: PageProps) {
           phone: sale.customer.phone ?? null,
         }
       : null,
-    items: sale.items.map((item) => ({
-      id: item.id,
-      quantity: item.quantity,
-      price: Number(item.price),
-      discount: Number(item.discount),
-      productName: item.productVariant
-        ? `${item.productVariant.modelo.nombre} ${item.productVariant.color.nombre} ${item.productVariant.voltaje.label}`
-        : "Producto",
-      reception: receptionByItem.has(item.id)
-        ? { vehiclesExpected: item.quantity, ...receptionByItem.get(item.id)! }
-        : undefined,
-    })),
+    items: sale.items.map((item) => {
+      const pv = item.productVariant;
+      const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+      return {
+        id: item.id,
+        quantity: item.quantity,
+        price: Number(item.price),
+        discount: Number(item.discount),
+        productName: pv
+          ? `${pv.modelo.nombre} ${pv.color.nombre} ${pv.voltaje.label}${ahSuffix}`
+          : "Producto",
+        reception: receptionByItem.has(item.id)
+          ? { vehiclesExpected: item.quantity, ...receptionByItem.get(item.id)! }
+          : undefined,
+      };
+    }),
     payments: paymentsWithRemaining.map(({ p, remainingAfter }) => ({
       id: p.id,
       amount: Number(p.amount),

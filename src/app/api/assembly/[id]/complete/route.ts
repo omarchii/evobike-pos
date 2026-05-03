@@ -78,6 +78,7 @@ export async function PATCH(
               voltaje_id: true,
               modelo: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
               color: { select: { nombre: true } },
             },
           },
@@ -114,7 +115,9 @@ export async function PATCH(
             serialNumber: vin,
             brand: "EVOBIKE",
             model: order.productVariant.modelo.nombre,
-            voltaje: order.productVariant.voltaje.label,
+            voltaje: order.productVariant.capacidad
+              ? `${order.productVariant.voltaje.label} · ${order.productVariant.capacidad.nombre}`
+              : order.productVariant.voltaje.label,
             color: order.productVariant.color.nombre,
           },
         });

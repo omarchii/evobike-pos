@@ -55,6 +55,7 @@ export default async function EditarCotizacionPage({ params }: RouteParams) {
         modelo: { select: { id: true, nombre: true } },
         color: { select: { id: true, nombre: true } },
         voltaje: { select: { id: true, label: true } },
+        capacidad: { select: { id: true, nombre: true } },
       },
       orderBy: [{ modelo: { nombre: "asc" } }, { voltaje: { valor: "asc" } }],
     }),
@@ -101,14 +102,16 @@ export default async function EditarCotizacionPage({ params }: RouteParams) {
       });
     }
     const mEntry = modeloMap.get(v.modelo.id)!;
-    if (!mEntry.voltajesMap.has(v.voltaje.id)) {
-      mEntry.voltajesMap.set(v.voltaje.id, {
-        id: v.voltaje.id,
-        label: v.voltaje.label,
+    const capKey = `${v.voltaje.id}:${v.capacidad?.id ?? ""}`;
+    if (!mEntry.voltajesMap.has(capKey)) {
+      const ahSuffix = v.capacidad ? ` · ${v.capacidad.nombre}` : "";
+      mEntry.voltajesMap.set(capKey, {
+        id: capKey,
+        label: v.voltaje.label + ahSuffix,
         colores: [],
       });
     }
-    mEntry.voltajesMap.get(v.voltaje.id)!.colores.push({
+    mEntry.voltajesMap.get(capKey)!.colores.push({
       id: v.color.id,
       nombre: v.color.nombre,
       variantId: v.id,

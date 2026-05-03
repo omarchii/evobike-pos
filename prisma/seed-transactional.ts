@@ -510,6 +510,7 @@ async function seedAssemblyOrders(ctx: SeedContext): Promise<void> {
         modelo: { select: { id: true, nombre: true } },
         voltaje: { select: { id: true, label: true } },
         color: { select: { nombre: true } },
+        capacidad: { select: { nombre: true } },
       },
     });
 
@@ -549,7 +550,7 @@ async function seedAssemblyOrders(ctx: SeedContext): Promise<void> {
               serialNumber: vin,
               brand: "EVOBIKE",
               model: variant.modelo.nombre,
-              voltaje: variant.voltaje.label,
+              voltaje: variant.voltaje.label + (variant.capacidad ? ` · ${variant.capacidad.nombre}` : ""),
               color: variant.color.nombre,
             },
           });

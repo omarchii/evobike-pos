@@ -34,6 +34,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { valor: true, label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
         },
@@ -63,9 +64,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         id: s.productVariant!.id,
         modelo: s.productVariant!.modelo.nombre,
         color: s.productVariant!.color.nombre,
-        voltaje: s.productVariant!.voltaje.label,
+        voltaje: s.productVariant!.voltaje.label + (s.productVariant!.capacidad ? ` · ${s.productVariant!.capacidad.nombre}` : ""),
         stock: s.quantity,
-        label: `${s.productVariant!.modelo.nombre} — ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label} (disponible: ${s.quantity})`,
+        label: `${s.productVariant!.modelo.nombre} — ${s.productVariant!.color.nombre} ${s.productVariant!.voltaje.label}${s.productVariant!.capacidad ? ` · ${s.productVariant!.capacidad.nombre}` : ""} (disponible: ${s.quantity})`,
       }));
 
     const simpleProducts = spStocks

@@ -168,6 +168,7 @@ export interface TransferItemDetail {
     modelo: { nombre: string };
     color: { nombre: string };
     voltaje: { valor: number; label: string };
+    capacidad?: { nombre: string } | null;
   } | null;
   simpleProduct: { id: string; nombre: string } | null;
   battery: { id: string; serialNumber: string; status: string; branchId: string } | null;
@@ -232,7 +233,8 @@ export function formatDateTime(iso: string): string {
 export function itemDescription(item: TransferItemDetail): string {
   if (item.productVariant) {
     const pv = item.productVariant;
-    return `${pv.modelo.nombre} — ${pv.color.nombre} ${pv.voltaje.label}`;
+    const ahSuffix = pv.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+    return `${pv.modelo.nombre} — ${pv.color.nombre} ${pv.voltaje.label}${ahSuffix}`;
   }
   if (item.simpleProduct) return item.simpleProduct.nombre;
   if (item.battery) return `Batería #${item.battery.serialNumber}`;

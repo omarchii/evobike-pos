@@ -67,6 +67,7 @@ export default async function NuevaRecepcionPage({
         modelo: { select: { nombre: true, esBateria: true, requiere_vin: true } },
         color: { select: { nombre: true } },
         voltaje: { select: { label: true } },
+        capacidad: { select: { nombre: true } },
         stocks: { where: { branchId }, select: { quantity: true } },
       },
       orderBy: [{ modelo: { nombre: "asc" } }, { sku: "asc" }],
@@ -131,7 +132,7 @@ export default async function NuevaRecepcionPage({
   const variants: VariantCatalogItem[] = rawVariants.map((v) => ({
     id: v.id,
     sku: v.sku,
-    label: `${v.modelo.nombre} ${v.color.nombre} ${v.voltaje.label}`,
+    label: `${v.modelo.nombre} ${v.color.nombre} ${v.voltaje.label}${v.capacidad ? ` · ${v.capacidad.nombre}` : ""}`,
     esBateria: v.modelo.esBateria,
     costo: Number(v.costo),
     currentStock: v.stocks[0]?.quantity ?? 0,

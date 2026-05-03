@@ -55,6 +55,7 @@ export async function GET(
                 modelo: { select: { nombre: true } },
                 color: { select: { nombre: true } },
                 voltaje: { select: { label: true } },
+                capacidad: { select: { nombre: true } },
               },
             },
             simpleProduct: {
@@ -98,6 +99,7 @@ export async function GET(
           m.productVariant!.modelo?.nombre,
           m.productVariant!.color?.nombre,
           m.productVariant!.voltaje?.label,
+          m.productVariant!.capacidad?.nombre,
         ]
           .filter(Boolean)
           .join(" · "),

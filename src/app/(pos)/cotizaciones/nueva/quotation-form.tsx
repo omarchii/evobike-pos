@@ -368,7 +368,7 @@ function ItemCard({ index, modelos, onRemove }: ItemCardProps) {
                       const voltaje = modelo?.voltajes.find((v) => v.id === voltajeId);
                       form.setValue(
                         `items.${index}.description`,
-                        `${modelo?.nombre ?? ""} ${colorOpt.nombre} ${voltaje?.label ?? ""}`
+                        `${modelo?.nombre ?? ""} ${colorOpt.nombre} ${voltaje?.label ?? ""}`.trim()
                       );
                     }
                   }}

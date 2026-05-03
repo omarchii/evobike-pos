@@ -59,6 +59,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           modelo: { select: { nombre: true } },
           color: { select: { nombre: true } },
           voltaje: { select: { label: true } },
+          capacidad: { select: { nombre: true } },
         },
       },
       simpleProduct: {
@@ -96,7 +97,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               imageUrl: s.productVariant.imageUrl,
               modelo: s.productVariant.modelo.nombre,
               color: s.productVariant.color.nombre,
-              voltaje: s.productVariant.voltaje.label,
+              voltaje: s.productVariant.capacidad
+                ? `${s.productVariant.voltaje.label} · ${s.productVariant.capacidad.nombre}`
+                : s.productVariant.voltaje.label,
             }
           : null,
         simple: s.simpleProduct

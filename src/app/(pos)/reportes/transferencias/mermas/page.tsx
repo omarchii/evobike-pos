@@ -120,6 +120,7 @@ export default async function MermasReportPage({
                 modelo: { select: { nombre: true } },
                 color: { select: { nombre: true } },
                 voltaje: { select: { label: true } },
+                capacidad: { select: { nombre: true } },
               },
             },
             simpleProduct: { select: { id: true, nombre: true } },

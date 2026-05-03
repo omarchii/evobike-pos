@@ -76,6 +76,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
         },
@@ -260,8 +261,10 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
         {/* Rows */}
         {q.items.map((item, i) => {
           const isAlt = i % 2 === 1;
-          const catalogMeta = item.productVariant
-            ? `${item.productVariant.modelo.nombre} · ${item.productVariant.voltaje.label} · ${item.productVariant.color.nombre}`
+          const pv = item.productVariant;
+          const ahSuffix = pv?.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+          const catalogMeta = pv
+            ? `${pv.modelo.nombre} · ${pv.voltaje.label} · ${pv.color.nombre}${ahSuffix}`
             : null;
 
           return (

@@ -36,6 +36,7 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
         },
@@ -459,8 +460,9 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
             {/* Rows */}
             {q.items.map((item, i) => {
               const isAlt = i % 2 === 1;
+              const ahSuffix = item.productVariant?.capacidad ? ` · ${item.productVariant.capacidad.nombre}` : "";
               const catalogMeta = item.productVariant
-                ? `${item.productVariant.modelo.nombre} · ${item.productVariant.voltaje.label} · ${item.productVariant.color.nombre}`
+                ? `${item.productVariant.modelo.nombre} · ${item.productVariant.voltaje.label}${ahSuffix} · ${item.productVariant.color.nombre}`
                 : null;
 
               return (

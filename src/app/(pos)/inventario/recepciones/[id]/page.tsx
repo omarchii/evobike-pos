@@ -53,6 +53,7 @@ export default async function RecepcionDetailPage({
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
           simpleProduct: {
@@ -86,6 +87,7 @@ export default async function RecepcionDetailPage({
               modelo: { select: { nombre: true } },
               color: { select: { nombre: true } },
               voltaje: { select: { label: true } },
+              capacidad: { select: { nombre: true } },
             },
           },
           batteryConfiguration: {
@@ -119,6 +121,7 @@ export default async function RecepcionDetailPage({
         m.productVariant!.modelo?.nombre,
         m.productVariant!.color?.nombre,
         m.productVariant!.voltaje?.label,
+        m.productVariant!.capacidad?.nombre,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -158,6 +161,7 @@ export default async function RecepcionDetailPage({
         ao.productVariant.modelo?.nombre,
         ao.productVariant.color?.nombre,
         ao.productVariant.voltaje?.label,
+        ao.productVariant.capacidad?.nombre,
       ]
         .filter(Boolean)
         .join(" · "),

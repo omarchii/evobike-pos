@@ -3,6 +3,7 @@ export interface ProductoItem {
     modelo: { nombre: string };
     color: { nombre: string };
     voltaje: { label: string };
+    capacidad?: { nombre: string } | null;
   } | null;
   simpleProduct: { nombre: string } | null;
 }
@@ -10,7 +11,8 @@ export interface ProductoItem {
 export function formatProducto(item: ProductoItem): string {
   if (item.productVariant) {
     const pv = item.productVariant;
-    return [pv.modelo.nombre, pv.color.nombre, pv.voltaje.label]
+    const ahSuffix = pv.capacidad ? ` · ${pv.capacidad.nombre}` : "";
+    return [pv.modelo.nombre, pv.color.nombre, pv.voltaje.label + ahSuffix]
       .filter(Boolean)
       .join(" ");
   }

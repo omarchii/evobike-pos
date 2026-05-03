@@ -78,6 +78,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             modelo: { select: { nombre: true } },
             color: { select: { nombre: true } },
             voltaje: { select: { label: true } },
+            capacidad: { select: { nombre: true } },
           },
         },
         assembledBy: { select: { id: true, name: true } },
@@ -110,7 +111,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             voltajeId: o.productVariant.voltaje_id,
             modeloNombre: o.productVariant.modelo.nombre,
             colorNombre: o.productVariant.color.nombre,
-            voltajeLabel: o.productVariant.voltaje.label,
+            voltajeLabel: o.productVariant.capacidad
+              ? `${o.productVariant.voltaje.label} · ${o.productVariant.capacidad.nombre}`
+              : o.productVariant.voltaje.label,
           }
         : null,
       assembledBy: o.assembledBy ?? null,
@@ -184,6 +187,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           id: true,
           modelo: { select: { nombre: true } },
           voltaje: { select: { label: true } },
+          capacidad: { select: { nombre: true } },
           color: { select: { nombre: true } },
         },
       });
@@ -224,7 +228,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           serialNumber: vin,
           brand: "EVOBIKE",
           model: productVariant.modelo.nombre,
-          voltaje: productVariant.voltaje.label,
+          voltaje: productVariant.capacidad
+            ? `${productVariant.voltaje.label} · ${productVariant.capacidad.nombre}`
+            : productVariant.voltaje.label,
           color: productVariant.color.nombre,
           notes: notes ?? null,
         },
@@ -236,7 +242,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         if (serials.length !== requiredQuantity) {
           throw new Error(
-            `Se requieren ${requiredQuantity} baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}, pero se proporcionaron ${serials.length}`
+            `Se requieren ${requiredQuantity} baterías para ${productVariant.modelo.nombre} ${productVariant.voltaje.label}${productVariant.capacidad ? ` · ${productVariant.capacidad.nombre}` : ""}, pero se proporcionaron ${serials.length}`
           );
         }
 
