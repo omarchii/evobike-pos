@@ -76,8 +76,11 @@ export async function GET(
   // 5. Calcular datos financieros
   const total = quotation.total.toNumber();
   const descuento = quotation.discountAmount.toNumber();
-  // El subtotal se calcula sobre el neto (total - descuento) ya con IVA incluido
-  const { subtotal, iva } = calcSubtotalFromTotal(total - descuento);
+  // Q.7 — Quotation.total ya viene post-descuento (subtotal_gross - descuento).
+  // Desglosamos IVA sobre ese total (formula: total / 1.16). Subtotal aquí
+  // significa monto pre-IVA post-descuento, así Subtotal + IVA = Total.
+  // Descuento se renderiza como línea informativa (no opera en la suma).
+  const { subtotal, iva } = calcSubtotalFromTotal(total);
   const totalEnLetra = totalEnLetraFn(total);
 
   // 6. Mapear items

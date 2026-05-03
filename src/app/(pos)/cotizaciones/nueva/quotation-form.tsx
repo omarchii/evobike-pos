@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { formatMXN } from "@/lib/format";
+import { desglosarIVA } from "@/lib/quotations";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -528,6 +529,8 @@ export default function QuotationForm({
   );
   const discount = watchedDiscountEnabled ? (watchedDiscount ?? 0) : 0;
   const total = subtotal - discount;
+  // IVA desglose informativo (Q.7) — los precios catálogo ya incluyen IVA al 16%.
+  const { iva } = desglosarIVA(total);
 
   // Vigencia display
   const validUntilDisplay = (() => {
@@ -963,6 +966,17 @@ export default function QuotationForm({
                   </span>
                   <span className="text-sm font-medium" style={{ color: "var(--ter)" }}>
                     −{formatMXN(discount, { decimals: 2 })}
+                  </span>
+                </div>
+              )}
+
+              {total > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[0.6875rem] italic" style={{ color: "var(--on-surf-var)" }}>
+                    IVA 16%
+                  </span>
+                  <span className="text-xs italic" style={{ color: "var(--on-surf-var)" }}>
+                    {formatMXN(iva, { decimals: 2 })}
                   </span>
                 </div>
               )}

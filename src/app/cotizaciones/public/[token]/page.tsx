@@ -5,6 +5,7 @@ import {
   getEffectiveStatus,
   getDaysRemaining,
   formatDate,
+  desglosarIVA,
 } from "@/lib/quotations";
 import PrintButton from "./_components/print-button";
 
@@ -65,6 +66,8 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
   const subtotal = Number(q.subtotal);
   const discount = Number(q.discountAmount);
   const total = Number(q.total);
+  // IVA desglose informativo (Q.7) — los precios catálogo incluyen IVA al 16%.
+  const { iva } = desglosarIVA(total);
   const isExpired = effectiveStatus === "EXPIRED";
 
   const hasCustomer = !!q.customerId && !!q.customer;
@@ -599,6 +602,20 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
                     }}
                   >
                     −{formatMXN(discount)}
+                  </span>
+                </div>
+              )}
+              {total > 0 && (
+                <div style={{ display: "flex", gap: "3rem", alignItems: "center" }}>
+                  <span
+                    style={{ fontSize: "0.6875rem", fontStyle: "italic", color: "var(--on-surf-var)" }}
+                  >
+                    IVA 16%
+                  </span>
+                  <span
+                    style={{ fontSize: "0.8125rem", fontStyle: "italic", color: "var(--on-surf-var)" }}
+                  >
+                    {formatMXN(iva)}
                   </span>
                 </div>
               )}

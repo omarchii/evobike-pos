@@ -52,3 +52,23 @@ export function formatDate(date: Date | string): string {
     year: "numeric",
   });
 }
+
+/**
+ * Desglosa un total que ya incluye IVA al 16% en {subtotal, iva, total}.
+ * Cliente confirmó (A.1bis 2026-05-03) que los precios del catálogo
+ * incluyen IVA — el desglose es informativo, no se suma 16% extra.
+ * Redondeo half-up al centavo (estándar SAT México).
+ *
+ * Nota: `lib/pdf/helpers.ts` tiene `calcSubtotalFromTotal` con la misma
+ * matemática para los PDFs; este helper expone la versión UI con `total`
+ * incluido en el retorno para callsites que lo necesitan.
+ */
+export function desglosarIVA(totalConIVA: number): {
+  subtotal: number;
+  iva: number;
+  total: number;
+} {
+  const subtotal = Math.round((totalConIVA / 1.16) * 100) / 100;
+  const iva = Math.round((totalConIVA - subtotal) * 100) / 100;
+  return { subtotal, iva, total: totalConIVA };
+}

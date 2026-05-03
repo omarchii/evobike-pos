@@ -11,6 +11,7 @@ import {
   getEffectiveStatus,
   getDaysRemaining,
   formatDate,
+  desglosarIVA,
 } from "@/lib/quotations";
 import { formatMXN } from "@/lib/format";
 
@@ -94,6 +95,8 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
   const subtotal = Number(q.subtotal);
   const discount = Number(q.discountAmount);
   const total = Number(q.total);
+  // IVA desglose informativo (Q.7) — los precios catálogo incluyen IVA al 16%.
+  const { iva } = desglosarIVA(total);
 
   // Customer label
   const customerLabel = (() => {
@@ -338,6 +341,16 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
               </div>
               <span className="text-sm font-medium" style={{ color: "var(--ter)" }}>
                 −{formatMXN(discount, { decimals: 2 })}
+              </span>
+            </div>
+          )}
+          {total > 0 && (
+            <div className="flex gap-8 items-center">
+              <span className="text-[0.6875rem] italic" style={{ color: "var(--on-surf-var)" }}>
+                IVA 16%
+              </span>
+              <span className="text-xs italic" style={{ color: "var(--on-surf-var)" }}>
+                {formatMXN(iva, { decimals: 2 })}
               </span>
             </div>
           )}
