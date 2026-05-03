@@ -59,6 +59,7 @@ export async function GET(
               modelo: true,
               color: true,
               voltaje: true,
+              capacidad: true,
             },
           },
           simpleProduct: true,
@@ -109,7 +110,8 @@ export async function GET(
     let description: string;
 
     if (item.productVariantId !== null && item.productVariant !== null) {
-      description = `${item.productVariant.modelo.nombre} - ${item.productVariant.color.nombre} - ${item.productVariant.voltaje.label}`;
+      const ahSuffix = item.productVariant.capacidad ? ` · ${item.productVariant.capacidad.nombre}` : "";
+      description = `${item.productVariant.modelo.nombre} - ${item.productVariant.color.nombre} - ${item.productVariant.voltaje.label}${ahSuffix}`;
     } else if (item.simpleProductId !== null && item.simpleProduct !== null) {
       description = item.description ?? item.simpleProduct.nombre;
     } else {

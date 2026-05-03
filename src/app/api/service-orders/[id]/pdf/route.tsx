@@ -166,9 +166,7 @@ export async function GET(
           order.bikeInfo ||
           "—",
         color: order.customerBike.color ?? "—",
-        voltaje: order.customerBike.voltaje
-          ? `${order.customerBike.voltaje}V`
-          : "—",
+        voltaje: order.customerBike.voltaje ?? "—",
         vin: order.customerBike.serialNumber,
       }
     : null;

@@ -37,7 +37,7 @@ export async function GET(
       items: {
         include: {
           productVariant: {
-            include: { modelo: true, color: true, voltaje: true },
+            include: { modelo: true, color: true, voltaje: true, capacidad: true },
           },
         },
       },
@@ -160,7 +160,11 @@ export async function GET(
     vehiculo: {
       modelo: bike.model ?? sale.items.find((i) => i.productVariant?.modelo?.requiere_vin)?.productVariant?.modelo?.nombre ?? "—",
       color: bike.color ?? sale.items.find((i) => i.productVariant?.color)?.productVariant?.color?.nombre ?? "—",
-      voltaje: bike.voltaje ?? sale.items.find((i) => i.productVariant?.voltaje)?.productVariant?.voltaje?.label ?? "—",
+      voltaje: bike.voltaje ?? (() => {
+        const pv = sale.items.find((i) => i.productVariant?.voltaje)?.productVariant;
+        if (!pv?.voltaje) return "—";
+        return pv.capacidad ? `${pv.voltaje.label} · ${pv.capacidad.nombre}` : pv.voltaje.label;
+      })(),
       vin: bike.serialNumber,
     },
     baterias,
