@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Edit,
   Send,
-  Copy,
+  RotateCw,
   Ban,
   Loader2,
   AlertTriangle,
@@ -106,6 +106,7 @@ export default function QuotationActionsBar({
   const isDraft = effectiveStatus === "DRAFT";
   const isEnEsperaCliente = effectiveStatus === "EN_ESPERA_CLIENTE";
   const isEnEsperaFabrica = effectiveStatus === "EN_ESPERA_FABRICA";
+  const isAceptada = effectiveStatus === "ACEPTADA";
   const isPagada = effectiveStatus === "PAGADA";
   const isExpired = effectiveStatus === "EXPIRED";
 
@@ -113,13 +114,16 @@ export default function QuotationActionsBar({
   const canSend = isDraft;
   const canEnviarFabrica = isEnEsperaCliente;
   const canNotificarCliente = isEnEsperaFabrica;
-  // Q.3 mod4 — DRAFT incluido (cobro presencial directo).
-  const canRegistrarPago = isDraft || isEnEsperaCliente || isEnEsperaFabrica;
+  // Q.3 + Q.10 mod4 — DRAFT (cobro presencial) y ACEPTADA (cliente aceptó vía portal) incluidos.
+  const canRegistrarPago = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isAceptada;
+  // Q.12 (sesión 5) ampliará canConvert a todos los CONVERTIBLE_STATUSES.
   const canConvert = isEnEsperaCliente || isPagada;
-  // Q.3 mod4 — PAGADA NO cancelable v1 (state machine plan v2.2; ADMIN void manual escala JIT).
-  const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica;
-  const canShare = isDraft || isEnEsperaCliente || isExpired;
-  const canDuplicate = true;
+  // Q.10 mod4 — ACEPTADA cancelable (cliente puede arrepentirse antes de pagar).
+  // PAGADA NO cancelable v1 (terminal hasta convert; ADMIN void manual escala JIT).
+  const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isAceptada;
+  const canShare = isDraft || isEnEsperaCliente || isAceptada || isExpired;
+  // Q.8 mod4 — Renovar reemplaza a Duplicar; solo desde EXPIRED. Crea nueva DRAFT con renewedFromId.
+  const canRenew = isExpired;
 
   async function handleSend() {
     setLoading("send");
@@ -186,16 +190,16 @@ export default function QuotationActionsBar({
     await openPDFInNewTab(`/api/cotizaciones/${quotationId}/pdf`);
   }
 
-  async function handleDuplicate() {
-    setLoading("duplicate");
+  async function handleRenew() {
+    setLoading("renew");
     try {
-      const res = await fetch(`/api/cotizaciones/${quotationId}/duplicate`, { method: "POST" });
+      const res = await fetch(`/api/cotizaciones/${quotationId}/renew`, { method: "POST" });
       const data: { success: boolean; data?: { id: string }; error?: string } = await res.json();
       if (!data.success || !data.data) throw new Error(data.error);
-      toast.success("Cotización duplicada");
+      toast.success("Cotización renovada con precios actualizados");
       router.push(`/cotizaciones/${data.data.id}/edit`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al duplicar");
+      toast.error(err instanceof Error ? err.message : "Error al renovar");
     } finally {
       setLoading(null);
     }
@@ -324,13 +328,13 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Duplicate — siempre */}
-        {canDuplicate && (
+        {/* Renovar — solo EXPIRED (Q.8 mod4) */}
+        {canRenew && (
           <ActionBtn
-            icon={Copy}
-            label="Duplicar"
-            loading={loading === "duplicate"}
-            onClick={handleDuplicate}
+            icon={RotateCw}
+            label="Renovar"
+            loading={loading === "renew"}
+            onClick={handleRenew}
           />
         )}
 

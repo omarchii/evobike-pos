@@ -6,8 +6,10 @@ import {
   getDaysRemaining,
   formatDate,
   desglosarIVA,
+  PORTAL_ACCEPTABLE_STATUSES,
 } from "@/lib/quotations";
 import PrintButton from "./_components/print-button";
+import AcceptCTA from "./_components/accept-cta";
 
 // Comprobante público: usa precisión financiera local (centavos obligatorios).
 // NO reemplazar por @/lib/format/formatMXN — el global por defecto redondea a
@@ -69,6 +71,10 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
   // IVA desglose informativo (Q.7) — los precios catálogo incluyen IVA al 16%.
   const { iva } = desglosarIVA(total);
   const isExpired = effectiveStatus === "EXPIRED";
+  // Q.10 mod4 — CTA de aceptación visible solo si el estado lo permite o si ya fue aceptada (mostrar confirmación).
+  const canShowAcceptCta =
+    !isExpired &&
+    (PORTAL_ACCEPTABLE_STATUSES.includes(q.status) || !!q.acceptedAt);
 
   const hasCustomer = !!q.customerId && !!q.customer;
   const hasAnonymous =
@@ -655,6 +661,11 @@ export default async function PublicCotizacionPage({ params }: RouteParams) {
               </div>
             </div>
           </div>
+
+          {/* ── Accept CTA (Q.10 mod4) ───────────────────────────────────── */}
+          {canShowAcceptCta && (
+            <AcceptCTA token={token} alreadyAccepted={!!q.acceptedAt} />
+          )}
 
           {/* ── Footer legend ─────────────────────────────────────────────── */}
           <p

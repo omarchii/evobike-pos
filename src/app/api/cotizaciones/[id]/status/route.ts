@@ -16,7 +16,8 @@ const VALID_FROM: Record<Action, QuotationStatus[]> = {
   ENVIAR_A_FABRICA: ["EN_ESPERA_CLIENTE"],
   NOTIFICAR_CLIENTE: ["EN_ESPERA_FABRICA"],
   // Q.3 mod4 — DRAFT incluido (caso presencial: vendedor crea cotización y cliente paga al instante).
-  REGISTRAR_PAGO: ["DRAFT", "EN_ESPERA_CLIENTE", "EN_ESPERA_FABRICA"],
+  // Q.10 mod4 — ACEPTADA incluido (cliente aceptó vía portal, vendedor cobra después).
+  REGISTRAR_PAGO: ["DRAFT", "EN_ESPERA_CLIENTE", "EN_ESPERA_FABRICA", "ACEPTADA"],
 };
 
 const TARGET_STATUS: Record<Action, QuotationStatus> = {

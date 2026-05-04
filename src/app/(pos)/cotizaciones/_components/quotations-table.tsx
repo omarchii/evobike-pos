@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FileText, ChevronRight } from "lucide-react";
 import type { QuotationStatus } from "@prisma/client";
-import QuotationStatusBadge from "@/components/quotation-status-badge";
+import QuotationStatusBadge from "./quotation-status-badge";
 import {
   getEffectiveStatus,
   getDaysRemaining,

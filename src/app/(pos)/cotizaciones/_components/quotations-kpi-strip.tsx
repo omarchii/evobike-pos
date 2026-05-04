@@ -2,6 +2,7 @@ import { formatMXN } from "@/lib/format";
 
 interface Props {
   active: number;
+  acceptedPending: number;
   convertedThisMonth: number;
   pendingValue: number;
   conversionRate: number;
@@ -9,6 +10,7 @@ interface Props {
 
 export default function QuotationsKpiStrip({
   active,
+  acceptedPending,
   convertedThisMonth,
   pendingValue,
   conversionRate,
@@ -17,8 +19,14 @@ export default function QuotationsKpiStrip({
     {
       label: "Cotizaciones activas",
       value: String(active),
-      sub: "Borradores + enviadas vigentes",
+      sub: "Vigentes en cualquier estado abierto",
       gradient: true,
+    },
+    {
+      label: "Aceptadas (pend. pago)",
+      value: String(acceptedPending),
+      sub: "Cliente aceptó vía portal",
+      gradient: false,
     },
     {
       label: "Convertidas este mes",
@@ -41,7 +49,7 @@ export default function QuotationsKpiStrip({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
       {cards.map((card) => (
         <div
           key={card.label}

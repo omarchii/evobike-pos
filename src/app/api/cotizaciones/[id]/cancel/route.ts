@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireBranchedUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { CANCELLABLE_STATUSES } from "@/lib/quotations";
 import { z } from "zod";
 
 interface RouteParams {
@@ -13,9 +14,7 @@ const cancelSchema = z.object({
   reason: z.string().min(1, "El motivo de cancelación es requerido"),
 });
 
-const CANCELLABLE_STATUSES = ["DRAFT", "EN_ESPERA_CLIENTE"] as const;
-
-// POST /api/cotizaciones/[id]/cancel — DRAFT/EN_ESPERA_CLIENTE → RECHAZADA
+// POST /api/cotizaciones/[id]/cancel — {DRAFT,EN_ESPERA_CLIENTE,EN_ESPERA_FABRICA,ACEPTADA} → RECHAZADA
 export async function POST(req: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   const guard = requireBranchedUser(session);
@@ -46,11 +45,11 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
     return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 });
   }
 
-  if (!CANCELLABLE_STATUSES.includes(quotation.status as (typeof CANCELLABLE_STATUSES)[number])) {
+  if (!CANCELLABLE_STATUSES.includes(quotation.status)) {
     return NextResponse.json(
       {
         success: false,
-        error: `No se puede rechazar una cotización en estado ${quotation.status}. Solo se permiten DRAFT y EN_ESPERA_CLIENTE.`,
+        error: `No se puede rechazar una cotización en estado ${quotation.status}. Solo se permiten ${CANCELLABLE_STATUSES.join(", ")}.`,
       },
       { status: 422 }
     );

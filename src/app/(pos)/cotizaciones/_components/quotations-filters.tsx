@@ -10,6 +10,7 @@ type StatusFilter =
   | "DRAFT"
   | "EN_ESPERA_CLIENTE"
   | "EN_ESPERA_FABRICA"
+  | "ACEPTADA"
   | "PAGADA"
   | "FINALIZADA"
   | "RECHAZADA"
@@ -20,6 +21,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "DRAFT", label: "Borrador" },
   { value: "EN_ESPERA_CLIENTE", label: "En espera del cliente" },
   { value: "EN_ESPERA_FABRICA", label: "En espera de fábrica" },
+  { value: "ACEPTADA", label: "Aceptada" },
   { value: "PAGADA", label: "Pagada" },
   { value: "FINALIZADA", label: "Finalizada" },
   { value: "RECHAZADA", label: "Rechazada" },

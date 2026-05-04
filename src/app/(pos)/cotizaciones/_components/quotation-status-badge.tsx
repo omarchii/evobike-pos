@@ -25,6 +25,11 @@ const CONFIG: Record<
     bg: "var(--p-container)",
     color: "var(--on-p-container)",
   },
+  ACEPTADA: {
+    label: "Aceptada",
+    bg: "var(--sec-container)",
+    color: "var(--on-sec-container)",
+  },
   PAGADA: {
     label: "Pagada",
     bg: "var(--sec-container)",

@@ -104,37 +104,49 @@ export default async function CotizacionesPage({
   // KPI queries (always use user's branch filter for KPIs, not URL filter)
   const kpiBranchWhere = isAdmin ? {} : { branchId };
 
-  const [activeCount, convertedThisMonth, pendingValueResult, totalThisMonth] =
-    await Promise.all([
-      prisma.quotation.count({
-        where: {
-          ...kpiBranchWhere,
-          status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
-          validUntil: { gte: now },
-        },
-      }),
-      prisma.quotation.count({
-        where: {
-          ...kpiBranchWhere,
-          status: "FINALIZADA",
-          convertedAt: { gte: monthStart, lte: monthEnd },
-        },
-      }),
-      prisma.quotation.aggregate({
-        where: {
-          ...kpiBranchWhere,
-          status: { in: ["DRAFT", "EN_ESPERA_CLIENTE"] },
-          validUntil: { gte: now },
-        },
-        _sum: { total: true },
-      }),
-      prisma.quotation.count({
-        where: {
-          ...kpiBranchWhere,
-          createdAt: { gte: monthStart, lte: monthEnd },
-        },
-      }),
-    ]);
+  // Q.11 mod4 — ACEPTADA cuenta como activa (aún no se cobró/convirtió) y aporta a pendingValue.
+  // EN_ESPERA_FABRICA también es "activa" (compromiso del cliente) — antes faltaba.
+  const ACTIVE_STATUSES = ["DRAFT", "EN_ESPERA_CLIENTE", "EN_ESPERA_FABRICA", "ACEPTADA"] as const;
+
+  const [
+    activeCount,
+    acceptedPendingCount,
+    convertedThisMonth,
+    pendingValueResult,
+    totalThisMonth,
+  ] = await Promise.all([
+    prisma.quotation.count({
+      where: {
+        ...kpiBranchWhere,
+        status: { in: [...ACTIVE_STATUSES] },
+        validUntil: { gte: now },
+      },
+    }),
+    prisma.quotation.count({
+      where: { ...kpiBranchWhere, status: "ACEPTADA" },
+    }),
+    prisma.quotation.count({
+      where: {
+        ...kpiBranchWhere,
+        status: "FINALIZADA",
+        convertedAt: { gte: monthStart, lte: monthEnd },
+      },
+    }),
+    prisma.quotation.aggregate({
+      where: {
+        ...kpiBranchWhere,
+        status: { in: [...ACTIVE_STATUSES] },
+        validUntil: { gte: now },
+      },
+      _sum: { total: true },
+    }),
+    prisma.quotation.count({
+      where: {
+        ...kpiBranchWhere,
+        createdAt: { gte: monthStart, lte: monthEnd },
+      },
+    }),
+  ]);
 
   const pendingValue = Number(pendingValueResult._sum.total ?? 0);
   const conversionRate =
@@ -182,6 +194,7 @@ export default async function CotizacionesPage({
       {/* KPIs */}
       <QuotationsKpiStrip
         active={activeCount}
+        acceptedPending={acceptedPendingCount}
         convertedThisMonth={convertedThisMonth}
         pendingValue={pendingValue}
         conversionRate={conversionRate}

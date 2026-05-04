@@ -915,6 +915,12 @@ async function main() {
         requiredVariables: ['nombreCliente', 'folio', 'total', 'fechaVencimiento', 'sucursalNombre'],
       },
       {
+        key: 'QUOTATION_ACCEPTED_NOTIFY_VENDOR',
+        description: 'Aviso al vendedor: cliente aceptó cotización vía portal (Q.10 mod4)',
+        bodyTemplate: 'Hola {{vendedorNombre}}, *{{clienteNombre}}* acaba de aceptar la cotización *{{folio}}* por *{{total}}* en {{sucursalNombre}}. Coordina el siguiente paso (cobro o entrega).',
+        requiredVariables: ['vendedorNombre', 'folio', 'clienteNombre', 'total', 'sucursalNombre'],
+      },
+      {
         key: 'WARRANTY_ALERT_120D',
         description: 'Alerta de garantía a 120 días',
         bodyTemplate: 'Hola {{nombreCliente}}, te informamos que la garantía de tu {{modeloBici}} (serie {{serie}}) vence el {{fechaVencimiento}}. Si necesitas asistencia, acude a {{sucursalNombre}} antes de esa fecha.',

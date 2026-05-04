@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { requireBranchedUserOrRedirect } from "@/lib/auth-guards";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, FileText } from "lucide-react";
+import { ChevronLeft, FileText, CheckCircle2 } from "lucide-react";
 import QuotationStatusBadge from "../_components/quotation-status-badge";
 import QuotationActionsBar from "./_components/quotation-actions-bar";
 import {
@@ -172,7 +172,7 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
             <p className="text-sm font-semibold" style={{ color: "var(--on-surf)" }}>
               {formatDate(q.validUntil)}
             </p>
-            {["DRAFT", "SENT", "EXPIRED"].includes(effectiveStatus) && (
+            {["DRAFT", "EN_ESPERA_CLIENTE", "EXPIRED"].includes(effectiveStatus) && (
               <span
                 className="text-[0.625rem] font-medium px-1.5 py-0.5 rounded-full"
                 style={
@@ -205,6 +205,24 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
           </p>
         </div>
       </div>
+
+      {/* Accepted info (Q.10 mod4) */}
+      {q.acceptedAt && effectiveStatus === "ACEPTADA" && (
+        <div
+          className="flex items-start gap-3 rounded-2xl p-4 mb-6"
+          style={{ background: "var(--sec-container)" }}
+        >
+          <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" style={{ color: "var(--on-sec-container)" }} />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "var(--on-sec-container)" }}>
+              El cliente aceptó esta cotización el {formatDate(q.acceptedAt)}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--on-sec-container)" }}>
+              Coordina cobro o entrega para cerrar la venta.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Converted info */}
       {effectiveStatus === "FINALIZADA" && q.convertedToSale && (

@@ -2,11 +2,53 @@ import { QuotationStatus } from "@prisma/client";
 
 export type EffectiveStatus = QuotationStatus | "EXPIRED";
 
+// Q.8/Q.10/Q.11 mod4 — state machine helpers (plan v2.2 sesión 4).
+// Fuente de verdad: project_mod4_cotizaciones_plan.md state machine.
+
+/** Estados desde los que se puede convertir a venta vía Q.12 (POS handoff). */
+export const CONVERTIBLE_STATUSES: QuotationStatus[] = [
+  "DRAFT",
+  "EN_ESPERA_CLIENTE",
+  "EN_ESPERA_FABRICA",
+  "ACEPTADA",
+  "PAGADA",
+];
+
+export function canBeConverted(q: { status: QuotationStatus }): boolean {
+  return CONVERTIBLE_STATUSES.includes(q.status);
+}
+
+/**
+ * Estados desde los que se puede cancelar/rechazar manualmente.
+ * PAGADA NO cancelable v1 (terminal hasta convert; ADMIN void manual escala JIT).
+ * EXPIRED no se cancela: el cron ya lo marcó como terminal por inactividad.
+ */
+export const CANCELLABLE_STATUSES: QuotationStatus[] = [
+  "DRAFT",
+  "EN_ESPERA_CLIENTE",
+  "EN_ESPERA_FABRICA",
+  "ACEPTADA",
+];
+
+export function canBeCancelled(q: { status: QuotationStatus }): boolean {
+  return CANCELLABLE_STATUSES.includes(q.status);
+}
+
+/**
+ * Estados desde los que el portal público acepta el CTA "Aceptar cotización".
+ * ACEPTADA, PAGADA, FINALIZADA, RECHAZADA, EXPIRED → no se vuelve a aceptar.
+ */
+export const PORTAL_ACCEPTABLE_STATUSES: QuotationStatus[] = [
+  "DRAFT",
+  "EN_ESPERA_CLIENTE",
+  "EN_ESPERA_FABRICA",
+];
+
 /**
  * Determina el estado efectivo de una cotización en tiempo real.
  * Si el campo status es DRAFT o EN_ESPERA_CLIENTE pero validUntil ya pasó,
  * devuelve "EXPIRED" aunque el campo en DB no se haya actualizado.
- * EN_ESPERA_FABRICA, PAGADA, FINALIZADA y RECHAZADA no expiran
+ * EN_ESPERA_FABRICA, ACEPTADA, PAGADA, FINALIZADA y RECHAZADA no expiran
  * (ya hay compromiso del cliente o son estados terminales).
  * Fuente de verdad: spec 7.4.
  */
