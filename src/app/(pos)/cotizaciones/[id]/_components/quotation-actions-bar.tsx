@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { EffectiveStatus } from "@/lib/quotations";
 import ConvertQuotationDialog from "./convert-quotation-dialog";
 import WhatsAppShareButton from "./whatsapp-share-button";
+import RegisterPaymentDialog from "./register-payment-dialog";
 import type { Manager } from "./price-drift-alert";
 import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
 import { openPDFInNewTab } from "@/lib/pdf-client";
@@ -88,6 +89,7 @@ export default function QuotationActionsBar({
   const router = useRouter();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -111,9 +113,11 @@ export default function QuotationActionsBar({
   const canSend = isDraft;
   const canEnviarFabrica = isEnEsperaCliente;
   const canNotificarCliente = isEnEsperaFabrica;
-  const canRegistrarPago = isEnEsperaCliente || isEnEsperaFabrica;
+  // Q.3 mod4 — DRAFT incluido (cobro presencial directo).
+  const canRegistrarPago = isDraft || isEnEsperaCliente || isEnEsperaFabrica;
   const canConvert = isEnEsperaCliente || isPagada;
-  const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isPagada;
+  // Q.3 mod4 — PAGADA NO cancelable v1 (state machine plan v2.2; ADMIN void manual escala JIT).
+  const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica;
   const canShare = isDraft || isEnEsperaCliente || isExpired;
   const canDuplicate = true;
 
@@ -132,11 +136,10 @@ export default function QuotationActionsBar({
     }
   }
 
-  async function handleStatusTransition(action: "ENVIAR_A_FABRICA" | "NOTIFICAR_CLIENTE" | "REGISTRAR_PAGO") {
+  async function handleStatusTransition(action: "ENVIAR_A_FABRICA" | "NOTIFICAR_CLIENTE") {
     const labels: Record<typeof action, string> = {
       ENVIAR_A_FABRICA: "En espera de fábrica",
       NOTIFICAR_CLIENTE: "En espera del cliente",
-      REGISTRAR_PAGO: "Pagada",
     };
     setLoading(action);
     try {
@@ -151,6 +154,29 @@ export default function QuotationActionsBar({
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al cambiar estado");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleRegistrarPago(
+    method: "CASH" | "CARD" | "TRANSFER",
+    reference: string | null,
+  ) {
+    setLoading("REGISTRAR_PAGO");
+    try {
+      const res = await fetch(`/api/cotizaciones/${quotationId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "REGISTRAR_PAGO", method, reference }),
+      });
+      const data: { success: boolean; error?: string } = await res.json();
+      if (!data.success) throw new Error(data.error);
+      toast.success("Pago registrado, cotización marcada como pagada");
+      setPaymentOpen(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al registrar pago");
     } finally {
       setLoading(null);
     }
@@ -251,13 +277,13 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Registrar pago — EN_ESPERA_CLIENTE o EN_ESPERA_FABRICA */}
+        {/* Registrar pago — DRAFT, EN_ESPERA_CLIENTE o EN_ESPERA_FABRICA (Q.3 mod4) */}
         {canRegistrarPago && (
           <ActionBtn
             icon={Banknote}
             label="Registrar pago"
             loading={loading === "REGISTRAR_PAGO"}
-            onClick={() => handleStatusTransition("REGISTRAR_PAGO")}
+            onClick={() => setPaymentOpen(true)}
           />
         )}
 
@@ -325,6 +351,16 @@ export default function QuotationActionsBar({
           />
         )}
       </div>
+
+      {/* Register payment dialog (Q.3 mod4) */}
+      <RegisterPaymentDialog
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        folio={quotation.folio}
+        total={quotation.total}
+        loading={loading === "REGISTRAR_PAGO"}
+        onConfirm={handleRegistrarPago}
+      />
 
       {/* Convert dialog */}
       <ConvertQuotationDialog

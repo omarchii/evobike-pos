@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText, ChevronRight } from "lucide-react";
+import type { QuotationStatus } from "@prisma/client";
 import QuotationStatusBadge from "@/components/quotation-status-badge";
 import {
   getEffectiveStatus,
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
 export interface QuotationRow {
   id: string;
   folio: string;
-  status: "DRAFT" | "EN_ESPERA_CLIENTE" | "EN_ESPERA_FABRICA" | "PAGADA" | "FINALIZADA" | "RECHAZADA";
+  status: QuotationStatus;
   validUntil: string; // ISO
   createdAt: string;
   total: number;

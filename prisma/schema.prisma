@@ -439,6 +439,7 @@ model CashTransaction {
   reference        String? // WITHDRAWAL: número de sobre. PAYMENT_IN: referencia opcional de pago.
   beneficiary      String? // EXPENSE_OUT: nombre/razón social del destinatario (cuando NO es Supplier registrado)
   supplierId       String? // FK a Supplier — Pack D.bis. Cualquier expenseCategory puede linkear; refinement a PAGO_PROVEEDOR DROPADO (cliente listó CFE/Telmex/etc en categorías SERVICIOS_PUBLICOS/RENTA/MARKETING)
+  quotationId      String? // Q.3 mod4 — PAYMENT_IN registrado vía REGISTRAR_PAGO de cotización antes de Sale
   notes            String? // Motivo o concepto libre (obligatorio en EXPENSE_OUT, opcional en otros)
   collectionStatus CollectionStatus     @default(COLLECTED)
   collectedAt      DateTime? // Fecha en que el dinero quedó efectivamente en caja; null mientras collectionStatus = PENDING
@@ -446,16 +447,18 @@ model CashTransaction {
   depositCategory  CashDepositCategory? // Solo se pobla cuando type = CASH_DEPOSIT
   createdAt        DateTime             @default(now())
 
-  session  CashRegisterSession @relation(fields: [sessionId], references: [id])
-  sale     Sale?               @relation(fields: [saleId], references: [id])
-  user     User?               @relation(fields: [userId], references: [id])
-  customer Customer?           @relation(fields: [customerId], references: [id])
-  supplier Supplier?           @relation(fields: [supplierId], references: [id])
+  session   CashRegisterSession @relation(fields: [sessionId], references: [id])
+  sale      Sale?               @relation(fields: [saleId], references: [id])
+  user      User?               @relation(fields: [userId], references: [id])
+  customer  Customer?           @relation(fields: [customerId], references: [id])
+  supplier  Supplier?           @relation(fields: [supplierId], references: [id])
+  quotation Quotation?          @relation(fields: [quotationId], references: [id])
 
   creditConsumptions CreditConsumption[] // Pack D.1 — consumos/re-acreditaciones de saldo a favor
 
   @@index([customerId])
   @@index([supplierId]) // Pack D.bis — estado de cuenta GASTO por supplier
+  @@index([quotationId]) // Q.3 mod4 — lookup PAYMENT_IN por cotización en convert flow
 }
 
 // === CRM ===
@@ -1050,6 +1053,7 @@ enum QuotationStatus {
   PAGADA
   FINALIZADA
   RECHAZADA
+  EXPIRED // cron diario materializa desde {DRAFT, EN_ESPERA_CLIENTE} cuando validUntil < now (Q.3 mod4)
 }
 
 model Quotation {
@@ -1098,7 +1102,12 @@ model Quotation {
   cancelledByUserId String?
   cancelReason      String?
 
+  // Q.3 mod4 — cron expiración
+  expiredAt              DateTime? // cron diario estampa al transicionar status → EXPIRED
+  expiringAlertSentAt    DateTime? // idempotencia QUOTATION_EXPIRING (24h antes)
+
   items QuotationItem[]
+  cashTransactions CashTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

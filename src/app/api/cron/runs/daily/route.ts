@@ -5,6 +5,7 @@ import { enviarAlertas90d, expirarCreditos, type JobResult } from "@/lib/jobs/sa
 import { alertar120d, alertar173d, expirarPolizas } from "@/lib/jobs/garantias";
 import { expirarMensajesPendientes } from "@/lib/jobs/whatsapp-housekeeping";
 import { reportarGhostReservations } from "@/lib/jobs/ghost-reservations";
+import { expirarCotizaciones, alertarCotizacionesExpirando } from "@/lib/jobs/cotizaciones";
 
 // Cron hub diario (Pack D.1 P6).
 //
@@ -28,6 +29,8 @@ const JOBS: JobDef[] = [
   { name: "garantias:expirar", fn: expirarPolizas },
   { name: "whatsapp:housekeeping", fn: expirarMensajesPendientes },
   { name: "stock:ghost-reservations", fn: reportarGhostReservations },
+  { name: "cotizaciones:alertar-expiring-24h", fn: alertarCotizacionesExpirando },
+  { name: "cotizaciones:expirar", fn: expirarCotizaciones },
 ];
 
 type JobRunReport = {

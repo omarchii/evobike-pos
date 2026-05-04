@@ -909,6 +909,12 @@ async function main() {
         requiredVariables: ['nombreCliente', 'folio', 'total', 'fechaValidez', 'linkCotizacion'],
       },
       {
+        key: 'QUOTATION_EXPIRING',
+        description: 'Cotización vence en 24h (Q.3 cron diario)',
+        bodyTemplate: 'Hola {{nombreCliente}}, recordatorio: tu cotización *{{folio}}* por *{{total}}* vence mañana ({{fechaVencimiento}}). Pasa por {{sucursalNombre}} si quieres concretarla.',
+        requiredVariables: ['nombreCliente', 'folio', 'total', 'fechaVencimiento', 'sucursalNombre'],
+      },
+      {
         key: 'WARRANTY_ALERT_120D',
         description: 'Alerta de garantía a 120 días',
         bodyTemplate: 'Hola {{nombreCliente}}, te informamos que la garantía de tu {{modeloBici}} (serie {{serie}}) vence el {{fechaVencimiento}}. Si necesitas asistencia, acude a {{sucursalNombre}} antes de esa fecha.',
