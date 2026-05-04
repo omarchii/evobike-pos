@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import type { ModeloCategoria } from "@prisma/client";
-import PosTerminal from "./pos-terminal";
+import PosTerminal, { type PrefilledQuotation } from "./pos-terminal";
+import { CONVERTIBLE_STATUSES } from "@/lib/quotations";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,23 @@ interface AuthUser {
   branchName: string;
 }
 
-export default async function PointOfSalePage() {
+interface PageProps {
+  searchParams: Promise<{ quotationId?: string }>;
+}
+
+export default async function PointOfSalePage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   const authUser = session?.user as AuthUser | undefined;
   const branchId = authUser?.branchId ?? "";
+
+  // Q.12 mod4 — handoff desde detalle de cotización: ?quotationId=X.
+  // Resolvemos la cotización + (Path A) el pago previo para que PosTerminal
+  // pueda pre-llenar carrito, cliente, descuento y mostrar el panel "ya pagado".
+  const { quotationId } = await searchParams;
+  let prefilledQuotation: PrefilledQuotation | null = null;
+  if (quotationId && authUser) {
+    prefilledQuotation = await loadPrefilledQuotation(quotationId, authUser);
+  }
 
   // Vehicle variants only — baterías standalone se venden vía SimpleProduct,
   // no desde el grid de unidades.
@@ -223,7 +237,115 @@ export default async function PointOfSalePage() {
         branchName={branchName}
         userRole={userRole}
         remoteStockEntries={remoteStockEntries}
+        prefilledQuotation={prefilledQuotation}
       />
     </div>
   );
+}
+
+// Q.12 mod4 — loader server-side para handoff desde cotización.
+// Devuelve null si la cotización no existe, no es convertible, ya fue convertida,
+// o el usuario no tiene permiso para verla. PosTerminal entonces se renderiza
+// como flujo normal (sin warn al usuario — el handoff fue mal-formado).
+async function loadPrefilledQuotation(
+  quotationId: string,
+  authUser: AuthUser,
+): Promise<PrefilledQuotation | null> {
+  const q = await prisma.quotation.findUnique({
+    where: { id: quotationId },
+    include: {
+      customer: { select: { id: true, name: true, phone: true, phone2: true, email: true } },
+      items: {
+        include: {
+          productVariant: {
+            include: {
+              modelo: { select: { id: true, nombre: true, requiere_vin: true } },
+              color: { select: { id: true, nombre: true } },
+              voltaje: { select: { id: true, valor: true, label: true } },
+              capacidad: { select: { nombre: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!q) return null;
+  if (q.convertedToSaleId) return null; // ya convertida
+  if (!CONVERTIBLE_STATUSES.includes(q.status)) return null;
+  if (authUser.role !== "ADMIN" && q.branchId !== authUser.branchId) return null;
+
+  // Path A — cotización ya PAGADA: traer pago previo para mostrar panel "ya pagado".
+  let paidContext: PrefilledQuotation["paidContext"] = null;
+  if (q.status === "PAGADA") {
+    const paidTx = await prisma.cashTransaction.findFirst({
+      where: { quotationId: q.id, type: "PAYMENT_IN", saleId: null },
+      select: {
+        id: true,
+        method: true,
+        amount: true,
+        reference: true,
+        createdAt: true,
+      },
+    });
+    if (!paidTx) return null; // estado inconsistente — abortar handoff
+    paidContext = {
+      method: paidTx.method,
+      amount: Number(paidTx.amount),
+      reference: paidTx.reference,
+      paidAt: paidTx.createdAt.toISOString(),
+    };
+  }
+
+  return {
+    id: q.id,
+    folio: q.folio,
+    // status ya pasó CONVERTIBLE_STATUSES.includes; el cast estrecha al subset.
+    status: q.status as PrefilledQuotation["status"],
+    total: Number(q.total),
+    subtotal: Number(q.subtotal),
+    discountAmount: Number(q.discountAmount),
+    internalNote: q.internalNote ?? null,
+    branchId: q.branchId,
+    customerId: q.customerId,
+    customer: q.customer
+      ? {
+          id: q.customer.id,
+          name: q.customer.name,
+          phone: q.customer.phone,
+          phone2: q.customer.phone2,
+          email: q.customer.email,
+        }
+      : null,
+    anonymousCustomerName: q.anonymousCustomerName,
+    anonymousCustomerPhone: q.anonymousCustomerPhone,
+    items: q.items.map((it) => {
+      const pv = it.productVariant;
+      return {
+        quotationItemId: it.id,
+        productVariantId: it.productVariantId,
+        description: it.description,
+        isFreeForm: it.isFreeForm,
+        quantity: it.quantity,
+        unitPrice: Number(it.unitPrice),
+        // Catálogo: detalles del variant para reconstruir CartItem en POS.
+        variant: pv
+          ? {
+              id: pv.id,
+              sku: pv.sku,
+              modeloId: pv.modelo.id,
+              modeloNombre: pv.modelo.nombre,
+              requiereVin: pv.modelo.requiere_vin,
+              colorNombre: pv.color.nombre,
+              voltajeId: pv.voltaje.id,
+              voltajeLabel: pv.capacidad
+                ? `${pv.voltaje.label} · ${pv.capacidad.nombre}`
+                : pv.voltaje.label,
+            }
+          : null,
+      };
+    }),
+    paidContext,
+  };
 }

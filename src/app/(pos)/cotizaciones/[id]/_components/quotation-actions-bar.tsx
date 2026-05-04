@@ -24,12 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { EffectiveStatus } from "@/lib/quotations";
-import ConvertQuotationDialog from "./convert-quotation-dialog";
+import { CONVERTIBLE_STATUSES, type EffectiveStatus } from "@/lib/quotations";
 import WhatsAppShareButton from "./whatsapp-share-button";
 import RegisterPaymentDialog from "./register-payment-dialog";
-import type { Manager } from "./price-drift-alert";
-import type { CustomerOption } from "@/app/(pos)/point-of-sale/customer-selector-modal";
 import { openPDFInNewTab } from "@/lib/pdf-client";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -48,47 +45,32 @@ const INPUT_STYLE: React.CSSProperties = {
   outline: "none",
 };
 
-interface QuotationForDialog {
+interface QuotationForActions {
   id: string;
   folio: string;
   publicShareToken: string;
   validUntil: Date | string;
-  branchId: string;
-  branchName: string;
-  subtotal: number;
-  discountAmount: number;
   total: number;
   customerId: string | null;
   customerName: string | null;
   customerPhone: string | null;
-  customerEmail: string | null;
   anonymousCustomerName: string | null;
   anonymousCustomerPhone: string | null;
-  itemCount: number;
 }
 
 interface Props {
   quotationId: string;
   effectiveStatus: EffectiveStatus;
-  quotation: QuotationForDialog;
-  managers: Manager[];
-  customers: CustomerOption[];
-  currentUserBranchId: string;
-  currentUserBranchName: string;
+  quotation: QuotationForActions;
 }
 
 export default function QuotationActionsBar({
   quotationId,
   effectiveStatus,
   quotation,
-  managers,
-  customers,
-  currentUserBranchId,
-  currentUserBranchName,
 }: Props) {
   const router = useRouter();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [convertOpen, setConvertOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
@@ -116,8 +98,12 @@ export default function QuotationActionsBar({
   const canNotificarCliente = isEnEsperaFabrica;
   // Q.3 + Q.10 mod4 — DRAFT (cobro presencial) y ACEPTADA (cliente aceptó vía portal) incluidos.
   const canRegistrarPago = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isAceptada;
-  // Q.12 (sesión 5) ampliará canConvert a todos los CONVERTIBLE_STATUSES.
-  const canConvert = isEnEsperaCliente || isPagada;
+  // Q.12 mod4 — convert handoff a POS desde cualquier CONVERTIBLE_STATUS.
+  // Path A (PAGADA): POS muestra "ya pagado" y re-vincula CashTransaction.
+  // Path B (DRAFT/EN_ESPERA_*/ACEPTADA): POS abre selector de pago normal.
+  const canConvert =
+    effectiveStatus !== "EXPIRED" &&
+    CONVERTIBLE_STATUSES.includes(effectiveStatus as never);
   // Q.10 mod4 — ACEPTADA cancelable (cliente puede arrepentirse antes de pagar).
   // PAGADA NO cancelable v1 (terminal hasta convert; ADMIN void manual escala JIT).
   const canCancel = isDraft || isEnEsperaCliente || isEnEsperaFabrica || isAceptada;
@@ -291,12 +277,14 @@ export default function QuotationActionsBar({
           />
         )}
 
-        {/* Convertir — EN_ESPERA_CLIENTE o PAGADA */}
+        {/* Convertir — handoff a POS (Q.12 mod4). Cualquier CONVERTIBLE_STATUS.
+            POS lee ?quotationId=X, prefilea cart+cliente y, si PAGADA, omite el
+            paso de pago (Path A). */}
         {canConvert && (
           <ActionBtn
             icon={RefreshCw}
             label={isPagada ? "Convertir a venta" : "Convertir"}
-            onClick={() => setConvertOpen(true)}
+            onClick={() => router.push(`/point-of-sale?quotationId=${quotationId}`)}
           />
         )}
 
@@ -364,20 +352,6 @@ export default function QuotationActionsBar({
         total={quotation.total}
         loading={loading === "REGISTRAR_PAGO"}
         onConfirm={handleRegistrarPago}
-      />
-
-      {/* Convert dialog */}
-      <ConvertQuotationDialog
-        open={convertOpen}
-        onClose={() => {
-          setConvertOpen(false);
-          router.refresh();
-        }}
-        quotation={quotation}
-        managers={managers}
-        customers={customers}
-        currentUserBranchId={currentUserBranchId}
-        currentUserBranchName={currentUserBranchName}
       />
 
       {/* Cancel modal */}

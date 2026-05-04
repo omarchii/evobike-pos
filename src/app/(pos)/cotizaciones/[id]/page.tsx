@@ -27,38 +27,10 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
 
   const { id } = await params;
 
-  // Preload managers + customers for the convert dialog. Saldo a favor desde
-  // CustomerCredit aggregate (Pack D.5 — N+1 safe via groupBy).
-  const [managers, rawCustomers, creditAggregates] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: { in: ["MANAGER", "ADMIN"] } },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.customer.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true, phone2: true, email: true, creditLimit: true },
-    }),
-    prisma.customerCredit.groupBy({
-      by: ["customerId"],
-      where: { expiredAt: null, balance: { gt: 0 } },
-      _sum: { balance: true },
-    }),
-  ]);
-  const creditTotalsByCustomer = new Map<string, number>();
-  for (const row of creditAggregates) {
-    creditTotalsByCustomer.set(row.customerId, Number(row._sum.balance ?? 0));
-  }
-  const customers = rawCustomers.map((c) => ({
-    id: c.id,
-    name: c.name,
-    phone: c.phone,
-    phone2: c.phone2,
-    email: c.email,
-    balance: creditTotalsByCustomer.get(c.id) ?? 0,
-    creditLimit: Number(c.creditLimit),
-  }));
-
+  // Q.12 mod4: el botón "Convertir" hace handoff a /point-of-sale?quotationId=X
+  // (POS resuelve cliente, descuento y stock). Por eso este page ya no
+  // pre-carga Customer.findMany ni MANAGER lookup — se eliminó N+1 al absorber
+  // el dialog de convertir en POS.
   const q = await prisma.quotation.findUnique({
     where: { id },
     include: {
@@ -436,23 +408,13 @@ export default async function CotizacionDetallePage({ params }: RouteParams) {
           folio: q.folio,
           publicShareToken: q.publicShareToken,
           validUntil: q.validUntil,
-          branchId: q.branchId,
-          branchName: q.branch.name,
-          subtotal,
-          discountAmount: discount,
           total,
           customerId: q.customerId ?? null,
           customerName: q.customer?.name ?? null,
           customerPhone: q.customer?.phone ?? null,
-          customerEmail: q.customer?.email ?? null,
           anonymousCustomerName: q.anonymousCustomerName ?? null,
           anonymousCustomerPhone: q.anonymousCustomerPhone ?? null,
-          itemCount: q.items.length,
         }}
-        managers={managers}
-        customers={customers}
-        currentUserBranchId={user.branchId}
-        currentUserBranchName={user.branchName ?? ""}
       />
     </div>
   );

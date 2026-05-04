@@ -536,6 +536,54 @@ function SimpleProductCard({
 // P12-A: remote stock type shared with _components
 type RemoteStockMap = Map<string, RemoteStockEntry[]>;
 
+// Q.12 mod4 — handoff desde detalle de cotización vía /point-of-sale?quotationId=X.
+// El loader server-side (page.tsx → loadPrefilledQuotation) resuelve cliente,
+// items con detalle de variant, descuento y (Path A) el pago previo.
+export interface PrefilledQuotation {
+  id: string;
+  folio: string;
+  status: "DRAFT" | "EN_ESPERA_CLIENTE" | "EN_ESPERA_FABRICA" | "ACEPTADA" | "PAGADA";
+  total: number;
+  subtotal: number;
+  discountAmount: number;
+  internalNote: string | null;
+  branchId: string;
+  customerId: string | null;
+  customer: {
+    id: string;
+    name: string;
+    phone: string | null;
+    phone2: string | null;
+    email: string | null;
+  } | null;
+  anonymousCustomerName: string | null;
+  anonymousCustomerPhone: string | null;
+  items: {
+    quotationItemId: string;
+    productVariantId: string | null;
+    description: string;
+    isFreeForm: boolean;
+    quantity: number;
+    unitPrice: number;
+    variant: {
+      id: string;
+      sku: string;
+      modeloId: string;
+      modeloNombre: string;
+      requiereVin: boolean;
+      colorNombre: string;
+      voltajeId: string;
+      voltajeLabel: string;
+    } | null;
+  }[];
+  paidContext: {
+    method: "CASH" | "CARD" | "TRANSFER" | "CREDIT_BALANCE" | "ATRATO";
+    amount: number;
+    reference: string | null;
+    paidAt: string;
+  } | null;
+}
+
 export default function PosTerminal({
   modelos,
   customers = [],
@@ -547,6 +595,7 @@ export default function PosTerminal({
   branchName,
   userRole,
   remoteStockEntries = [],
+  prefilledQuotation = null,
 }: {
   modelos: ModeloData[];
   customers?: CustomerData[];
@@ -558,6 +607,7 @@ export default function PosTerminal({
   branchName: string;
   userRole: string;
   remoteStockEntries?: [string, RemoteStockEntry[]][];
+  prefilledQuotation?: PrefilledQuotation | null;
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -628,6 +678,62 @@ export default function PosTerminal({
   const [atratoReq, setAtratoReq] = useState("");
   const [atratoApproved, setAtratoApproved] = useState(false);
   const [finalPaymentMethods, setFinalPaymentMethods] = useState<PaymentMethodInput[]>([]);
+
+  // ── Q.12 mod4: prefill desde cotización (handoff vía ?quotationId=X) ─────
+  // Solo en mount: convierte QuotationItems → CartItems, fija cliente, descuento
+  // y nota interna. VIN/baterías quedan vacíos para que el vendedor los resuelva
+  // en el flujo natural del POS (cotización no captura serie ni assembly).
+  // Path A (paidContext != null): el panel de pago se reemplaza por "ya pagado"
+  // y el submit envía quotationFromPaid=true; el API re-vincula CashTransaction.
+  useEffect(() => {
+    if (!prefilledQuotation) return;
+    const q = prefilledQuotation;
+
+    const initialCart: CartItem[] = q.items.map((it, idx) => {
+      if (it.isFreeForm || !it.variant) {
+        return {
+          variantId: `qfree-${q.id}-${idx}`,
+          modeloId: "",
+          modeloNombre: it.description,
+          colorNombre: "",
+          voltajeLabel: "",
+          sku: "",
+          price: it.unitPrice,
+          quantity: it.quantity,
+          isSerialized: false,
+          isFreeForm: true,
+          description: it.description,
+        };
+      }
+      const v = it.variant;
+      return {
+        variantId: v.id,
+        modeloId: v.modeloId,
+        modeloNombre: v.modeloNombre,
+        colorNombre: v.colorNombre,
+        voltajeLabel: v.voltajeLabel,
+        sku: v.sku,
+        price: it.unitPrice,
+        quantity: it.quantity,
+        isSerialized: v.requiereVin,
+      };
+    });
+
+    setCart(initialCart);
+    if (q.customerId) setSelectedCustomerId(q.customerId);
+    if (q.discountAmount > 0) {
+      setDiscountAmount(q.discountAmount);
+      // Path A: el descuento ya fue autorizado al crear la cotización; el
+      // vendedor no debe re-autorizar. Marcamos como auto-autorizado vía POS.
+      setDiscountAuthorized({ authorizationId: null, name: "Cotización original" });
+    }
+    setInternalNote(
+      q.internalNote
+        ? `${q.internalNote}\n— Convertida desde cotización ${q.folio}`
+        : `Convertida desde cotización ${q.folio}`,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Derived: filtered modelos
   const filteredModelos = useMemo(() => {
@@ -939,6 +1045,14 @@ export default function PosTerminal({
       return;
     }
 
+    // Q.12 mod4 Path A — cotización ya PAGADA: NO abrir modal de pago.
+    // Submit directo con paymentMethods=[] + quotationFromPaid=true; el API
+    // re-vincula el CashTransaction existente al saleId nuevo.
+    if (prefilledQuotation?.paidContext) {
+      void handleCheckout([], 0);
+      return;
+    }
+
     setCashReceived("");
     setCardLast4("");
     setCardAuth("");
@@ -956,7 +1070,12 @@ export default function PosTerminal({
   const handleCheckout = async (methodsToSubmit: PaymentMethodInput[], totalChange: number = 0) => {
     setPaymentModalStep("idle");
     setIsProcessing(true);
-    toast.loading("Procesando venta...", { id: "checkout" });
+    const isQuotationConvert = !!prefilledQuotation;
+    const isPaidConvert = !!prefilledQuotation?.paidContext;
+    toast.loading(
+      isQuotationConvert ? "Convirtiendo cotización..." : "Procesando venta...",
+      { id: "checkout" },
+    );
 
     try {
       const result = await fetch("/api/sales", {
@@ -994,6 +1113,11 @@ export default function PosTerminal({
             discountAmount > 0 && discountAuthorized ? discountAmount : undefined,
           discountAuthorizationId: discountAuthorized?.authorizationId ?? undefined,
           discountAuthorizedByName: discountAuthorized?.name,
+          // Q.12 mod4 — handoff cotización (Path A/B). El API valida estado,
+          // marca FINALIZADA + linkage; en Path A re-vincula CashTransaction
+          // existente en lugar de crear pagos nuevos.
+          quotationId: prefilledQuotation?.id,
+          quotationFromPaid: isPaidConvert ? true : undefined,
         }),
       }).then((r) => r.json() as Promise<{ success: boolean; data?: { saleId: string; folio: string }; error?: string }>);
 
@@ -1006,7 +1130,9 @@ export default function PosTerminal({
 
       const hasVoltageChange = cart.some((ci) => ci.voltageChange);
       toast.success(
-        `Venta registrada · Folio: ${result.data!.folio}`,
+        isQuotationConvert
+          ? `Cotización convertida · Folio: ${result.data!.folio}`
+          : `Venta registrada · Folio: ${result.data!.folio}`,
         { id: "checkout", duration: 6000 },
       );
       if (hasVoltageChange) {
@@ -1032,7 +1158,14 @@ export default function PosTerminal({
         });
       }
 
-      resetCart();
+      // Q.12 mod4 — al convertir desde cotización, regresa a la vista de
+      // detalle (banner FINALIZADA + link a la venta). Flujo POS normal: reset
+      // y queda listo para la siguiente venta.
+      if (isQuotationConvert && prefilledQuotation) {
+        router.push(`/cotizaciones/${prefilledQuotation.id}`);
+      } else {
+        resetCart();
+      }
     } catch {
       toast.error("Error de conexión", { id: "checkout" });
     } finally {
@@ -2547,8 +2680,42 @@ export default function PosTerminal({
               </div>
             </div>
 
-            {/* Payment methods */}
-            {(() => {
+            {/* Q.12 mod4 — Path A: cotización ya PAGADA, mostrar resumen del
+                pago previo en lugar del selector de métodos. */}
+            {prefilledQuotation?.paidContext ? (
+              <div
+                className="rounded-xl px-3 py-3 mb-2"
+                style={{
+                  background: "var(--sec-container)",
+                  border: "1px solid var(--p-bright)",
+                }}
+              >
+                <p
+                  className="text-[10px] font-semibold tracking-widest uppercase mb-1"
+                  style={{ color: "var(--on-sec-container)" }}
+                >
+                  Pago ya registrado
+                </p>
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--on-sec-container)", fontFamily: "var(--font-display)" }}
+                >
+                  ${prefilledQuotation.paidContext.amount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}{" "}
+                  · {prefilledQuotation.paidContext.method}
+                </p>
+                {prefilledQuotation.paidContext.reference && (
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--on-sec-container)" }}>
+                    Ref: {prefilledQuotation.paidContext.reference}
+                  </p>
+                )}
+                <p className="text-[10px] mt-1" style={{ color: "var(--on-sec-container)" }}>
+                  Cotización {prefilledQuotation.folio} · al confirmar se vincula al ticket de venta sin generar un cobro nuevo.
+                </p>
+              </div>
+            ) : null}
+
+            {/* Payment methods (oculto en Path A) */}
+            {!prefilledQuotation?.paidContext && (() => {
               const paymentSvgIcons: Record<string, React.ReactNode> = {
                 CASH: (
                   <svg
@@ -2827,6 +2994,8 @@ export default function PosTerminal({
                 "SELECCIONAR CLIENTE"
               ) : !canProcess && cart.length === 0 ? (
                 "CARRITO VACÍO"
+              ) : prefilledQuotation ? (
+                "CONFIRMAR CONVERSIÓN"
               ) : (
                 "PROCESAR TRANSACCIÓN"
               )}

@@ -16,8 +16,9 @@ import {
 } from "@/lib/cash-register";
 import { getCustomerCreditBalance } from "@/lib/customer-credit";
 import { createPaymentInTransactions } from "@/lib/cash-transaction";
-import { paymentMethodsArraySchema } from "@/lib/validators/payment";
+import { paymentMethodEntrySchema } from "@/lib/validators/payment";
 import { adjustStock, StockConflictError, withStockRetry } from "@/lib/stock-ops";
+import { CONVERTIBLE_STATUSES } from "@/lib/quotations";
 
 const saleItemSchema = z.object({
   productVariantId: z.string().nullable().optional(),
@@ -50,24 +51,59 @@ const frozenItemSchema = z.object({
   unitPrice: z.number().nonnegative(),
 });
 
-const saleSchema = z.object({
-  items: z.array(saleItemSchema).min(1, "El carrito está vacío"),
-  total: z.number().nonnegative(),
-  discount: z.number().nonnegative().optional(),
-  paymentMethods: paymentMethodsArraySchema,
-  isLayaway: z.boolean().optional(),
-  customerId: z.string().optional(),
-  downPayment: z.number().nonnegative().optional(),
-  internalNote: z.string().optional(),
-  discountAmount: z.number().nonnegative().optional(),
-  discountAuthorizedByUserId: z.string().optional(),
-  discountAuthorizedByName: z.string().optional(),
-  // P5-C: ID de la AuthorizationRequest(DESCUENTO) APPROVED. Requerido para SELLER si discountAmount > 0.
-  discountAuthorizationId: z.string().optional(),
-  // Optional quotation conversion fields (additive — does not affect existing callers)
-  quotationId: z.string().optional(),
-  frozenItems: z.array(frozenItemSchema).optional(),
-});
+const saleSchema = z
+  .object({
+    items: z.array(saleItemSchema).min(1, "El carrito está vacío"),
+    total: z.number().nonnegative(),
+    discount: z.number().nonnegative().optional(),
+    // Q.12 mod4: paymentMethods puede estar vacío si quotationFromPaid=true
+    // (Path A — el pago ya quedó registrado en CashTransaction al hacer
+    // REGISTRAR_PAGO sobre la cotización; convertir solo re-vincula saleId).
+    paymentMethods: z.array(paymentMethodEntrySchema).default([]),
+    isLayaway: z.boolean().optional(),
+    customerId: z.string().optional(),
+    downPayment: z.number().nonnegative().optional(),
+    internalNote: z.string().optional(),
+    discountAmount: z.number().nonnegative().optional(),
+    discountAuthorizedByUserId: z.string().optional(),
+    discountAuthorizedByName: z.string().optional(),
+    // P5-C: ID de la AuthorizationRequest(DESCUENTO) APPROVED. Requerido para SELLER si discountAmount > 0.
+    discountAuthorizationId: z.string().optional(),
+    // Optional quotation conversion fields (additive — does not affect existing callers)
+    quotationId: z.string().optional(),
+    // Q.12 mod4 — Path A flag: la cotización ya está PAGADA, no crear
+    // CashTransactions nuevas; en su lugar re-link saleId en las existentes.
+    quotationFromPaid: z.boolean().optional(),
+    frozenItems: z.array(frozenItemSchema).optional(),
+  })
+  .superRefine((v, ctx) => {
+    // Empty paymentMethods solo válido en Path A (quotationFromPaid).
+    if (!v.quotationFromPaid && v.paymentMethods.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["paymentMethods"],
+        message: "Al menos un método de pago requerido",
+      });
+    }
+    // Dup-check (mismo invariante que paymentMethodsArraySchema).
+    const methods = v.paymentMethods.map((e) => e.method);
+    if (new Set(methods).size !== methods.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["paymentMethods"],
+        message:
+          "No se permite el mismo método de pago duplicado dentro de una misma transacción",
+      });
+    }
+    // quotationFromPaid requiere quotationId.
+    if (v.quotationFromPaid && !v.quotationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["quotationFromPaid"],
+        message: "quotationFromPaid requiere quotationId",
+      });
+    }
+  });
 
 // ── Commission generation ───────────────────────────────────────────────────
 
@@ -345,7 +381,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return frozenSale;
       }
 
-      // ── NORMAL POS PATH (unchanged) ────────────────────────────────────────
+      // ── NORMAL POS PATH (incl. Q.12 quotation handoff Path A/B) ──────────
+
+      // Q.12 mod4: cuando POS llega con `quotationId` (handoff vía
+      // /point-of-sale?quotationId=X), validamos atómicamente el estado de la
+      // cotización y bloqueamos doble-conversión. Más abajo se marca FINALIZADA
+      // y, en Path A (quotationFromPaid), se re-vincula el CashTransaction
+      // existente en lugar de crear pagos nuevos.
+      if (input.quotationId) {
+        const q = await tx.quotation.findUnique({
+          where: { id: input.quotationId },
+          select: { id: true, status: true, convertedToSaleId: true, branchId: true },
+        });
+        if (!q) throw new Error("Cotización no encontrada");
+        if (q.convertedToSaleId) {
+          throw new Error("Esta cotización ya fue convertida a venta");
+        }
+        if (!CONVERTIBLE_STATUSES.includes(q.status)) {
+          throw new Error(
+            `No se puede convertir una cotización en estado ${q.status}`,
+          );
+        }
+        if (input.quotationFromPaid && q.status !== "PAGADA") {
+          throw new Error(
+            "El flujo de pago previo solo aplica a cotizaciones PAGADAS",
+          );
+        }
+      }
 
       // CREDIT_BALANCE pre-flight check. Consumo FIFO real ocurre tras crear
       // el CashTransaction CREDIT_BALANCE en sección E (Pack D.5).
@@ -491,6 +553,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           discount: input.discount ?? 0,
           total: input.total,
           internalNote: finalNote || null,
+          // Q.12 mod4 — link bidireccional cotización ↔ venta. La marca de
+          // FINALIZADA en Quotation se hace al final de la transacción.
+          quotationId: input.quotationId ?? null,
           items: {
             create: input.items.map((item) => ({
               productVariantId: item.productVariantId ?? null,
@@ -534,15 +599,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       // E. Cash transactions (one per payment method)
-      const paymentTotal = input.isLayaway ? (input.downPayment ?? 0) : input.total;
-      if (paymentTotal > 0 && input.paymentMethods.length > 0) {
-        await createPaymentInTransactions(tx, {
-          saleId: sale.id,
-          sessionId: activeSession.id,
-          userId,
-          customerId: input.customerId,
-          entries: input.paymentMethods,
+      // Q.12 Path A: si la cotización ya estaba PAGADA, NO se crean
+      // CashTransactions nuevas; en su lugar re-vinculamos el(los) PAYMENT_IN
+      // existente(s) (creados por REGISTRAR_PAGO en sesión 3) al saleId nuevo.
+      // Q.12 Path B: flujo normal — paymentMethods llega del PaymentMethodList.
+      if (input.quotationFromPaid && input.quotationId) {
+        const existingPayments = await tx.cashTransaction.findMany({
+          where: {
+            quotationId: input.quotationId,
+            type: "PAYMENT_IN",
+            saleId: null,
+          },
+          select: { id: true },
         });
+        if (existingPayments.length === 0) {
+          throw new Error(
+            "No se encontró el pago previo de esta cotización. Reporta el folio al gerente.",
+          );
+        }
+        await tx.cashTransaction.updateMany({
+          where: { id: { in: existingPayments.map((c) => c.id) } },
+          data: { saleId: sale.id },
+        });
+      } else {
+        const paymentTotal = input.isLayaway ? (input.downPayment ?? 0) : input.total;
+        if (paymentTotal > 0 && input.paymentMethods.length > 0) {
+          await createPaymentInTransactions(tx, {
+            saleId: sale.id,
+            sessionId: activeSession.id,
+            userId,
+            customerId: input.customerId,
+            entries: input.paymentMethods,
+          });
+        }
       }
 
       // H. Voltage changes (4-D) — post-sale, needs sale.id
@@ -672,6 +761,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             discount: 0,
           })),
         );
+      }
+
+      // J. Q.12 mod4 — marcar cotización FINALIZADA + linkage trazable.
+      // updateMany con guard de status garantiza idempotencia frente a doble-submit
+      // (la 2da request entraría con status FINALIZADA y count=0 → rollback con
+      // el throw del guard "convertedToSaleId" más arriba; aquí solo es belt &
+      // suspenders).
+      if (input.quotationId) {
+        await tx.quotation.update({
+          where: { id: input.quotationId },
+          data: {
+            status: "FINALIZADA",
+            convertedToSaleId: sale.id,
+            convertedAt: new Date(),
+            convertedByUserId: userId,
+            convertedInBranchId: branchId,
+          },
+        });
       }
 
       return sale;
